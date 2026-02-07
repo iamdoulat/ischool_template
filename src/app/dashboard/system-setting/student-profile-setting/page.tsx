@@ -26,7 +26,6 @@ import {
     FileText,
     Printer,
     Columns,
-    Search,
     ArrowUpDown,
     ChevronLeft,
     ChevronRight
