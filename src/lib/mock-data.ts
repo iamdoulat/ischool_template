@@ -1,0 +1,81 @@
+export const mockDashboardData = {
+    stats: {
+        feesAwaitingPayment: { current: 14, total: 155, percentage: 10, color: "blue" },
+        staffApprovedLeave: { current: 1, total: 6, percentage: 15, color: "cyan" },
+        studentApprovedLeave: { current: 8, total: 43, percentage: 18, color: "indigo" },
+        convertedLeads: { current: 2, total: 14, percentage: 14, color: "red" },
+        staffPresentToday: { current: 0, total: 9, percentage: 2, color: "orange" },
+        studentsPresentToday: { current: 40, total: 73, percentage: 55, color: "yellow" },
+    },
+    dailyFinance: Array.from({ length: 31 }, (_, i) => ({
+        day: (i + 1).toString().padStart(2, '0'),
+        collections: i === 20 ? 42000 : Math.random() > 0.7 ? Math.floor(Math.random() * 2000) : 0,
+        expenses: Math.random() > 0.8 ? Math.floor(Math.random() * 800) : 100,
+    })),
+    expenseDistribution: [
+        { name: "Stationery Purchase", value: 30, color: "#a855f7" },
+        { name: "Electricity Bill", value: 40, color: "#3b82f6" },
+        { name: "Telephone Bill", value: 20, color: "#f97316" },
+        { name: "Flower", value: 15, color: "#d1d5db" },
+        { name: "Miscellaneous", value: 25, color: "#71717a" },
+    ],
+    incomeDistribution: [
+        { name: "Uniform Sale", value: 15, color: "#84cc16" },
+        { name: "Donation", value: 25, color: "#facc15" },
+        { name: "Miscellaneous", value: 20, color: "#22d3ee" },
+        { name: "Book Sale", value: 10, color: "#9ca3af" },
+        { name: "Rent", value: 30, color: "#78350f" },
+    ],
+    summary: {
+        monthlyFees: "$51,277.5",
+        monthlyExpenses: "$1,000.00",
+        studentCount: 73,
+        studentHeadCount: 72,
+        admin: 1,
+        teacher: 4,
+        accountant: 1,
+        librarian: 1,
+        receptionist: 1,
+        superAdmin: 1,
+    },
+    finance: [
+        { month: "Apr", collections: 25000, expenses: 1000 },
+        { month: "May", collections: 5000, expenses: 800 },
+        { month: "Jun", collections: 6000, expenses: 900 },
+        { month: "Jul", collections: 6200, expenses: 1000 },
+        { month: "Aug", collections: 5000, expenses: 800 },
+        { month: "Sep", collections: 4000, expenses: 950 },
+        { month: "Oct", collections: 4200, expenses: 1000 },
+        { month: "Nov", collections: 3500, expenses: 1100 },
+        { month: "Dec", collections: 7000, expenses: 1500 },
+        { month: "Jan", collections: 51000, expenses: 1000 },
+        { month: "Feb", collections: 2000, expenses: 1200 },
+        { month: "Mar", collections: 0, expenses: 1000 },
+    ],
+    overviews: {
+        fees: [
+            { label: "UNPAID", value: 130, percentage: 83.87, color: "bg-blue-600" },
+            { label: "PARTIAL", value: 11, percentage: 7.1, color: "bg-orange-500" },
+            { label: "PAID", value: 14, percentage: 9.03, color: "bg-cyan-500" },
+        ],
+        enquiry: [
+            { label: "ACTIVE", value: 9, percentage: 64.29, color: "bg-red-500" },
+            { label: "WON", value: 2, percentage: 14.29, color: "bg-yellow-500" },
+            { label: "PASSIVE", value: 1, percentage: 7.14, color: "bg-cyan-600" },
+            { label: "LOST", value: 1, percentage: 7.14, color: "bg-orange-400" },
+            { label: "DEAD", value: 1, percentage: 7.14, color: "bg-yellow-400" },
+        ],
+        library: [
+            { label: "DUE FOR RETURN", value: 85, percentage: 100, color: "bg-green-600" },
+            { label: "RETURNED", value: 76, percentage: 85, color: "bg-green-500" },
+            { label: "ISSUED OUT OF 370", value: 39, percentage: 10.54, color: "bg-green-400" },
+            { label: "AVAILABLE OUT OF 370", value: 331, percentage: 89.46, color: "bg-green-600" },
+        ],
+        attendance: [
+            { label: "PRESENT", value: 24, percentage: 32.88, color: "bg-blue-600" },
+            { label: "LATE", value: 8, percentage: 10.96, color: "bg-cyan-500" },
+            { label: "ABSENT", value: 6, percentage: 8.22, color: "bg-blue-400" },
+            { label: "HALF DAY", value: 8, percentage: 10.96, color: "bg-blue-700" },
+        ]
+    }
+};
