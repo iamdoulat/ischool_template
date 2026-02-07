@@ -26,7 +26,6 @@ import {
     FileText,
     Printer,
     Columns,
-    Search,
     ArrowUpDown,
     ChevronLeft,
     ChevronRight,
@@ -34,14 +33,11 @@ import {
     Bold,
     Italic,
     Underline,
-    Quote,
     List,
     ListOrdered,
     AlignLeft,
     AlignCenter,
     AlignRight,
-    Link2,
-    ImageIcon
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
