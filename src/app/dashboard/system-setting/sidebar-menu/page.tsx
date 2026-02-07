@@ -4,18 +4,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
     GripVertical,
-    ArrowRight,
-    ArrowLeft,
     Plus,
-    Minus,
-    X,
-    FolderOpen,
-    FileText,
-    Settings,
-    User,
-    CreditCard,
-    LayoutGrid,
-    Users
+    Minus
 } from "lucide-react";
 import {
     DragDropContext,
@@ -75,7 +65,7 @@ export default function SidebarMenuPage() {
     // Or implement actual DnD if desired. For UI mockup, simple click toggle is often enough, 
     // but DnD is better for "Sorting". Let's stick to a clean UI first.
 
-    const move toSelected = (item: { id: string, content: string }) => {
+    const moveToSelected = (item: { id: string, content: string }) => {
         setAvailableItems(prev => prev.filter(i => i.id !== item.id));
         setSelectedItems(prev => [...prev, item]);
     };
@@ -132,7 +122,7 @@ export default function SidebarMenuPage() {
                                         <div
                                             key={item.id}
                                             className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded hover:border-indigo-300 hover:shadow-sm transition-all cursor-pointer group"
-                                            onClick={() => move_toSelected(item)} // Changed funct name to avoid syntax error in tool
+                                            onClick={() => moveToSelected(item)}
                                         >
                                             <span className="text-[13px] text-gray-700 font-medium">{item.content}</span>
                                             <Plus className="h-4 w-4 text-gray-400 group-hover:text-indigo-600" />
@@ -148,7 +138,7 @@ export default function SidebarMenuPage() {
 
                             {/* Right Column: Selected Sidebar Menus */}
                             <Droppable droppableId="selected">
-                                {(provided) => (
+                                {(provided: any) => (
                                     <div
                                         className="flex flex-col h-full border border-gray-200 rounded-md bg-white"
                                         ref={provided.innerRef}
@@ -160,7 +150,7 @@ export default function SidebarMenuPage() {
                                         <div className="p-4 flex-1 space-y-2 overflow-y-auto max-h-[700px]">
                                             {selectedItems.map((item, index) => (
                                                 <Draggable key={item.id} draggableId={item.id} index={index}>
-                                                    {(providedSnapshot) => (
+                                                    {(providedSnapshot: any) => (
                                                         <div
                                                             ref={providedSnapshot.innerRef}
                                                             {...providedSnapshot.draggableProps}
