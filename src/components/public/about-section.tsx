@@ -44,7 +44,7 @@ export function AboutSection() {
                     <div className="space-y-8">
                         <div className="space-y-4">
                             <h3 className="text-2xl md:text-3xl font-bold text-slate-800 uppercase tracking-tight">
-                                Welcome to Mount Carmel
+                                Welcome to Smart School
                             </h3>
                             <p className="text-slate-600 leading-relaxed">
                                 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.

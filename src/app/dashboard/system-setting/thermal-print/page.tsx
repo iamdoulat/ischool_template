@@ -26,7 +26,7 @@ export default function ThermalPrintPage() {
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                         <Label className="text-[11px] font-bold text-gray-600 md:col-span-2">School Name <span className="text-red-500">*</span></Label>
                         <div className="md:col-span-10">
-                            <Input defaultValue="Mount/ Carmel /School" className="h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded" />
+                            <Input defaultValue="Smart School" className="h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded" />
                         </div>
                     </div>
 
@@ -34,7 +34,7 @@ export default function ThermalPrintPage() {
                         <Label className="text-[11px] font-bold text-gray-600 md:col-span-2 mt-2">Address</Label>
                         <div className="md:col-span-10">
                             <Textarea
-                                defaultValue="25 Kings Street, CA <br> 89562423934 <br> mountcarmelmailtest@gmail.com"
+                                defaultValue="25 Kings Street, CA <br> 89562423934 <br> info@smartschool.com.bd"
                                 className="min-h-[100px] text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded resize-y"
                             />
                         </div>
