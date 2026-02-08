@@ -102,7 +102,7 @@ export default function FrontCmsSettingPage() {
                                         <div className="h-8 w-8 bg-orange-500 rounded flex items-center justify-center text-white">
                                             <BookOpen size={16} fill="white" />
                                         </div>
-                                        <span className="text-sm font-bold text-gray-700">Mount Carmel School</span>
+                                        <span className="text-sm font-bold text-gray-700">Smart School</span>
                                     </div>
                                 </div>
                             </div>
@@ -123,7 +123,7 @@ export default function FrontCmsSettingPage() {
                         <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
                             <Label className="text-[11px] font-bold text-gray-600 md:col-span-4">Footer Text</Label>
                             <div className="md:col-span-8">
-                                <Input defaultValue="© Mount Carmel School 2026. All rights reserved" className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded" />
+                                <Input defaultValue="© Smart School 2026. All rights reserved" className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded" />
                             </div>
                         </div>
 

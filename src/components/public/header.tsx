@@ -41,9 +41,9 @@ export function PublicHeader() {
                             <Phone className="h-3 w-3 md:h-4 md:w-4" />
                             <span>+1 234 567 8900</span>
                         </a>
-                        <a href="mailto:info@smartschool.in" className="flex items-center gap-1 hover:opacity-80 transition-opacity">
+                        <a href="mailto:info@smartschool.com.bd" className="flex items-center gap-1 hover:opacity-80 transition-opacity">
                             <Mail className="h-3 w-3 md:h-4 md:w-4" />
-                            <span>info@smartschool.in</span>
+                            <span>info@smartschool.com.bd</span>
                         </a>
                     </div>
                     <div className="flex items-center gap-4">

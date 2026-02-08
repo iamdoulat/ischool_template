@@ -52,7 +52,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                 </div>
                 <div className="flex flex-col min-w-0">
                     <h1 className="text-base md:text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-indigo-600 to-rose-500 animate-in fade-in slide-in-from-left-4 duration-500 whitespace-nowrap overflow-hidden text-ellipsis">
-                        Mount Carmel School
+                        Smart School
                     </h1>
                     <div className="h-0.5 w-12 bg-gradient-to-r from-primary to-transparent rounded-full mt-[-2px] hidden md:block opacity-70" />
                 </div>

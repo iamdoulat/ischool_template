@@ -176,7 +176,7 @@ export default function OnlineAdmissionPage() {
                                         <Button variant="ghost" size="icon" className="h-6 w-6"><List className="h-3 w-3" /></Button>
                                         <Button variant="ghost" size="icon" className="h-6 w-6"><ListOrdered className="h-3 w-3" /></Button>
                                     </div>
-                                    <Textarea className="min-h-[100px] border-none focus-visible:ring-0 text-[11px] p-3 resize-y rounded-none shadow-none" placeholder="Enter instructions here..." defaultValue="General Instruction:- These instructions pertain to online application for admission to Mount Carmel School..." />
+                                    <Textarea className="min-h-[100px] border-none focus-visible:ring-0 text-[11px] p-3 resize-y rounded-none shadow-none" placeholder="Enter instructions here..." defaultValue="General Instruction:- These instructions pertain to online application for admission to Smart School..." />
                                 </div>
                             </div>
 

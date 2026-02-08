@@ -41,8 +41,8 @@ export default function ReportPage() {
         { id: 10, branch: "Home Branch", name: "Staff Training", invoice: "5754", head: "Miscellaneous", date: "05/06/2026", amount: 600.00 },
         { id: 11, branch: "Home Branch", name: "CBSE BOOKS", invoice: "7755", head: "Stationery-Furniture", date: "02/09/2026", amount: 350.00 },
         { id: 12, branch: "Home Branch (Retired)", name: "Instructional Internet", invoice: "172-0726", head: "Telephone Bill", date: "01/09/2026", amount: 1500.00 },
-        { id: 13, branch: "Mount Carmel School 1", name: "Stock Tunnel", invoice: "6454", head: "Miscellaneous", date: "07/28/2025", amount: 600.00 },
-        { id: 14, branch: "Mount Carmel School 1", name: "MORE NEW HOUSE", invoice: "654653", head: "Book Safe", date: "05/27/2026", amount: 650.00 },
+        { id: 13, branch: "Smart School 1", name: "Stock Tunnel", invoice: "6454", head: "Miscellaneous", date: "07/28/2025", amount: 600.00 },
+        { id: 14, branch: "Smart School 1", name: "MORE NEW HOUSE", invoice: "654653", head: "Book Safe", date: "05/27/2026", amount: 650.00 },
     ];
 
     const grandTotal = expenseData.reduce((sum, item) => sum + item.amount, 0);
@@ -68,8 +68,8 @@ export default function ReportPage() {
                                     key={report.id}
                                     onClick={() => setActiveReport(report.id)}
                                     className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-sm font-medium ${activeReport === report.id
-                                            ? "border-orange-500 bg-orange-50 text-orange-700"
-                                            : "border-muted/30 bg-white hover:border-muted/60 text-slate-600"
+                                        ? "border-orange-500 bg-orange-50 text-orange-700"
+                                        : "border-muted/30 bg-white hover:border-muted/60 text-slate-600"
                                         }`}
                                 >
                                     <Icon className="h-4 w-4" />

@@ -15,7 +15,7 @@ export default function DashboardLayout({
 
     // Set dashboard page title
     useEffect(() => {
-        document.title = "Mount Carmel School - iSchool";
+        document.title = "Smart School - iSchool";
     }, []);
 
     const toggleSidebar = () => {
@@ -40,7 +40,7 @@ export default function DashboardLayout({
                         {children}
                     </main>
                     <footer className="border-t bg-card h-14 min-h-[56px] flex items-center justify-end px-4 md:px-8">
-                        <p className="text-[15px] text-muted-foreground">© 2026 Mount Carmel School. All rights reserved.</p>
+                        <p className="text-[15px] text-muted-foreground">© 2026 Smart School. All rights reserved.</p>
                     </footer>
                 </div>
             </div>

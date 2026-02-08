@@ -74,7 +74,7 @@ export function PublicFooter() {
                             </li>
                             <li className="flex items-center gap-3">
                                 <Mail className="h-5 w-5 text-primary shrink-0" />
-                                <span>info@smartschool.in</span>
+                                <span>info@smartschool.com.bd</span>
                             </li>
                         </ul>
                     </div>
@@ -83,8 +83,8 @@ export function PublicFooter() {
 
             {/* Copyright Bar */}
             <div className="border-t border-slate-800 bg-slate-950/50">
-                <div className="container mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[18px] md:text-[21px] text-slate-500">
-                    <p>© 2026 Mount Carmel School. All rights reserved.</p>
+                <div className="container mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs md:text-sm text-slate-500">
+                    <p>© 2026 Smart School. All rights reserved.</p>
                     <div className="flex gap-6">
                         <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>
                         <Link href="#" className="hover:text-white transition-colors">Terms of Use</Link>

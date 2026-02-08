@@ -20,9 +20,9 @@ import { Plus, Search, Pencil, X, ChevronLeft, ChevronRight } from "lucide-react
 
 export default function SettingPage() {
     const branchData = [
-        { id: 1, branch: "Mount Carmel School 1", url: "https://demo.smart-school.io/branch2/" },
-        { id: 2, branch: "Mount Carmel School 2", url: "https://demo.smart-school.io/branch2/" },
-        { id: 3, branch: "Mount Carmel School 3", url: "https://demo.smart-school.io/branch2/" },
+        { id: 1, branch: "Smart School 1", url: "https://demo.smart-school.io/branch2/" },
+        { id: 2, branch: "Smart School 2", url: "https://demo.smart-school.io/branch2/" },
+        { id: 3, branch: "Smart School 3", url: "https://demo.smart-school.io/branch2/" },
     ];
 
     return (

@@ -19,57 +19,57 @@ export default function OverviewPage() {
     // Fees Details Data
     const feesData = [
         { id: 1, branch: "Home Branch", session: "2025-26", students: 75, totalFees: "$17,112.02", paidFees: "$96,512.5", balanceFees: "$6,12,559.53" },
-        { id: 2, branch: "Mount Carmel School 1", session: "2025-26", students: 18, totalFees: "$42,750.00", paidFees: "$7,235.98", balanceFees: "$35,159.00" },
-        { id: 3, branch: "Mount Carmel School 2", session: "2025-26", students: 11, totalFees: "$21,750.00", paidFees: "$2,200.00", balanceFees: "$10,550.00" },
-        { id: 4, branch: "Mount Carmel School 3", session: "2025-26", students: 14, totalFees: "$48,850.00", paidFees: "$3,700.00", balanceFees: "$44,580.00" },
+        { id: 2, branch: "Smart School 1", session: "2025-26", students: 18, totalFees: "$42,750.00", paidFees: "$7,235.98", balanceFees: "$35,159.00" },
+        { id: 3, branch: "Smart School 2", session: "2025-26", students: 11, totalFees: "$21,750.00", paidFees: "$2,200.00", balanceFees: "$10,550.00" },
+        { id: 4, branch: "Smart School 3", session: "2025-26", students: 14, totalFees: "$48,850.00", paidFees: "$3,700.00", balanceFees: "$44,580.00" },
     ];
 
     // Transport Fees Details Data
     const transportData = [
         { id: 1, branch: "Home Branch", session: "2025-26", totalFees: "$32,800.00", paidFees: "$3,045.00", balanceFees: "$30,755.00" },
-        { id: 2, branch: "Mount Carmel School 1", session: "2025-26", totalFees: "$2,350.00", paidFees: "$00.00", balanceFees: "$2,350.00" },
-        { id: 3, branch: "Mount Carmel School 2", session: "2025-26", totalFees: "$4,550.00", paidFees: "$00.00", balanceFees: "$4,430.00" },
-        { id: 4, branch: "Mount Carmel School 3", session: "2025-26", totalFees: "$7,850.00", paidFees: "$50.00", balanceFees: "$2,800.00" },
+        { id: 2, branch: "Smart School 1", session: "2025-26", totalFees: "$2,350.00", paidFees: "$00.00", balanceFees: "$2,350.00" },
+        { id: 3, branch: "Smart School 2", session: "2025-26", totalFees: "$4,550.00", paidFees: "$00.00", balanceFees: "$4,430.00" },
+        { id: 4, branch: "Smart School 3", session: "2025-26", totalFees: "$7,850.00", paidFees: "$50.00", balanceFees: "$2,800.00" },
     ];
 
     // Student Admission Data
     const admissionData = [
         { id: 1, branch: "Home Branch", session: "2025-26", offline: 28, online: 6 },
-        { id: 2, branch: "Mount Carmel School 1", session: "2025-26", offline: 3, online: 2 },
-        { id: 3, branch: "Mount Carmel School 2", session: "2025-26", offline: 3, online: 0 },
-        { id: 4, branch: "Mount Carmel School 3", session: "2025-26", offline: 3, online: 0 },
+        { id: 2, branch: "Smart School 1", session: "2025-26", offline: 3, online: 2 },
+        { id: 3, branch: "Smart School 2", session: "2025-26", offline: 3, online: 0 },
+        { id: 4, branch: "Smart School 3", session: "2025-26", offline: 3, online: 0 },
     ];
 
     // Library Details Data
     const libraryData = [
         { id: 1, branch: "Home Branch", totalBooks: 20, members: 52, bookIssued: 220 },
-        { id: 2, branch: "Mount Carmel School 1", totalBooks: 12, members: 18, bookIssued: 40 },
-        { id: 3, branch: "Mount Carmel School 2", totalBooks: 11, members: 16, bookIssued: 45 },
-        { id: 4, branch: "Mount Carmel School 3", totalBooks: 8, members: 21, bookIssued: 37 },
+        { id: 2, branch: "Smart School 1", totalBooks: 12, members: 18, bookIssued: 40 },
+        { id: 3, branch: "Smart School 2", totalBooks: 11, members: 16, bookIssued: 45 },
+        { id: 4, branch: "Smart School 3", totalBooks: 8, members: 21, bookIssued: 37 },
     ];
 
     // Alumni Students Data
     const alumniData = [
         { id: 1, branch: "Home Branch", students: 4 },
-        { id: 2, branch: "Mount Carmel School 1", students: 2 },
-        { id: 3, branch: "Mount Carmel School 2", students: 5 },
-        { id: 4, branch: "Mount Carmel School 3", students: 2 },
+        { id: 2, branch: "Smart School 1", students: 2 },
+        { id: 3, branch: "Smart School 2", students: 5 },
+        { id: 4, branch: "Smart School 3", students: 2 },
     ];
 
     // Staff Payroll Data
     const payrollData = [
         { id: 1, branch: "Home Branch", totalStaff: 5, generated: 2, notGenerated: 0, paid: 7, netAmount: "$1,93,420.00", paidAmount: "$1,61,440.00" },
-        { id: 2, branch: "Mount Carmel School 1", totalStaff: 7, generated: 0, notGenerated: 7, paid: 0, netAmount: "$0.00", paidAmount: "$0.00" },
-        { id: 3, branch: "Mount Carmel School 2", totalStaff: 7, generated: 0, notGenerated: 7, paid: 0, netAmount: "$0.00", paidAmount: "$0.00" },
-        { id: 4, branch: "Mount Carmel School 3", totalStaff: 8, generated: 0, notGenerated: 8, paid: 0, netAmount: "$0.00", paidAmount: "$0.00" },
+        { id: 2, branch: "Smart School 1", totalStaff: 7, generated: 0, notGenerated: 7, paid: 0, netAmount: "$0.00", paidAmount: "$0.00" },
+        { id: 3, branch: "Smart School 2", totalStaff: 7, generated: 0, notGenerated: 7, paid: 0, netAmount: "$0.00", paidAmount: "$0.00" },
+        { id: 4, branch: "Smart School 3", totalStaff: 8, generated: 0, notGenerated: 8, paid: 0, netAmount: "$0.00", paidAmount: "$0.00" },
     ];
 
     // Staff Attendance Data
     const attendanceData = [
         { id: 1, branch: "Home Branch", totalStaff: 5, present: 0, absent: 4 },
-        { id: 2, branch: "Mount Carmel School 1", totalStaff: 7, present: 1, absent: 1 },
-        { id: 3, branch: "Mount Carmel School 2", totalStaff: 7, present: 1, absent: 1 },
-        { id: 4, branch: "Mount Carmel School 3", totalStaff: 8, present: 1, absent: 1 },
+        { id: 2, branch: "Smart School 1", totalStaff: 7, present: 1, absent: 1 },
+        { id: 3, branch: "Smart School 2", totalStaff: 7, present: 1, absent: 1 },
+        { id: 4, branch: "Smart School 3", totalStaff: 8, present: 1, absent: 1 },
     ];
 
     return (
