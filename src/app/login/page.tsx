@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,7 +98,7 @@ export default function LoginPage() {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <Label htmlFor="password" className="text-slate-200">Password</Label>
-                                        <a href="#" className="text-xs text-primary hover:underline transition-colors">Forgot password?</a>
+                                        <Link href="/forgot-password" className="text-xs text-primary hover:underline transition-colors">Forgot password?</Link>
                                     </div>
                                     <div className="relative">
                                         <Lock className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
