@@ -375,8 +375,8 @@ function Th({ children, className }: { children: React.ReactNode, className?: st
     return <th className={cn("px-4 py-4 border-b border-muted/50", className)}>{children}</th>;
 }
 
-function Td({ children, className }: { children: React.ReactNode, className?: string }) {
-    return <td className={cn("px-4 py-4 text-sm font-medium text-slate-600", className)}>{children}</td>;
+function Td({ children, className, colSpan }: { children: React.ReactNode, className?: string, colSpan?: number }) {
+    return <td colSpan={colSpan} className={cn("px-4 py-4 text-sm font-medium text-slate-600", className)}>{children}</td>;
 }
 
 function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () => void, title?: string }) {
