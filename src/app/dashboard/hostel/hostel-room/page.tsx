@@ -192,7 +192,7 @@ export default function HostelRoomPage() {
         doc.text("Hostel Room List", 14, 15);
         autoTable(doc, {
             head: [['Room Number', 'Hostel', 'Room Type', 'Beds', 'Cost']],
-            body: filteredRooms.map(r => [r.room_number, r.hostel?.name, r.room_type?.name, r.number_of_bed, r.cost_per_bed]),
+            body: filteredRooms.map(r => [r.room_number, r.hostel?.name || '', r.room_type?.name || '', r.number_of_bed, r.cost_per_bed]),
             startY: 20,
         });
         doc.save("hostel_rooms.pdf");
