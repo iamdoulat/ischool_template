@@ -115,7 +115,7 @@ export default function BulkDeletePage() {
 
     const handleBulkDelete = async () => {
         if (selectedIds.size === 0) {
-            toast("warning", "Please select at least one student.");
+            toast("error", "Please select at least one student.");
             return;
         }
 
