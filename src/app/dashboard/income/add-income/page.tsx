@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Upload, Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, Trash2 } from "lucide-react";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+
 
 interface IncomeRecord {
     id: string;
@@ -122,6 +124,7 @@ const incomeData: IncomeRecord[] = [
 ];
 
 export default function AddIncomePage() {
+    const { symbol, formatCurrency } = useCurrencyFormatter();
     const [searchTerm, setSearchTerm] = useState("");
     const [rowsPerPage, setRowsPerPage] = useState("50");
 
@@ -179,7 +182,7 @@ export default function AddIncomePage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="amount" className="text-xs font-semibold text-gray-600">
-                                Amount ($) <span className="text-red-500">*</span>
+                                Amount ({symbol}) <span className="text-red-500">*</span>
                             </Label>
                             <Input id="amount" />
                         </div>
@@ -266,7 +269,7 @@ export default function AddIncomePage() {
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Invoice Number</TableHead>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Date</TableHead>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Income Head</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Amount ($)</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Amount ({symbol})</TableHead>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -278,7 +281,7 @@ export default function AddIncomePage() {
                                         <TableCell className="text-gray-600">{item.invoiceNumber}</TableCell>
                                         <TableCell className="text-gray-600">{item.date}</TableCell>
                                         <TableCell className="text-gray-600">{item.incomeHead}</TableCell>
-                                        <TableCell className="text-gray-600 text-right">${item.amount.toFixed(2)}</TableCell>
+                                        <TableCell className="text-gray-600 text-right">{formatCurrency(item.amount)}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <Button

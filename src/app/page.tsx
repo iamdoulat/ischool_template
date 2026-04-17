@@ -37,11 +37,11 @@ export default function Home() {
               <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground border-none text-sm py-1.5 px-4 font-semibold uppercase tracking-wider mb-2">
                 Admissions Open for 2026-27
               </Badge>
-              <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.1]">
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1]">
                 Empowering <span className="text-primary">Minds</span>,<br />
                 Shaping <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-green-400">Futures</span>.
               </h1>
-              <p className="text-xl md:text-2xl text-slate-200 max-w-2xl leading-relaxed font-light">
+              <p className="text-lg md:text-xl text-slate-200 max-w-2xl leading-relaxed font-light">
                 Provide your children with the best education possible. We focus on holistic development, academic excellence, and character building.
               </p>
               <div className="flex flex-col sm:flex-row gap-5 pt-6">
@@ -69,7 +69,7 @@ export default function Home() {
         {/* Notice Board Section */}
         <section id="notices" className="py-[50px] bg-slate-50 border-t border-slate-200">
           <div className="container mx-auto px-4 md:px-8">
-            <div className="max-w-4xl mx-auto space-y-12">
+            <div className="max-w-4xl mx-auto space-y-8">
               <div className="text-center space-y-4">
                 <h2 className="text-3xl md:text-4xl font-bold text-slate-900 uppercase tracking-tight">
                   Latest Notices

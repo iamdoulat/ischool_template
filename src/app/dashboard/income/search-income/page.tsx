@@ -7,8 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import Image from "next/image";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+
 
 export default function SearchIncomePage() {
+    const { symbol } = useCurrencyFormatter();
+
     return (
         <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -75,7 +79,7 @@ export default function SearchIncomePage() {
                                 <TableHead className="font-semibold text-gray-600">Invoice Number</TableHead>
                                 <TableHead className="font-semibold text-gray-600">Income Head</TableHead>
                                 <TableHead className="font-semibold text-gray-600">Date</TableHead>
-                                <TableHead className="font-semibold text-gray-600 text-right">Amount ($)</TableHead>
+                                <TableHead className="font-semibold text-gray-600 text-right">Amount ({symbol})</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>

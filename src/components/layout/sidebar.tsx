@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -54,466 +55,469 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useSettings } from "@/components/providers/settings-provider";
+import { useTranslation } from "@/hooks/use-translation";
+import { ThemeToggle } from "./theme-toggle";
 
 const menuItems = [
     {
-        group: "Main", items: [
-            { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard", submenus: [], color: "amber" }
+        group: "main", items: [
+            { name: "dashboard", icon: LayoutDashboard, href: "/dashboard", submenus: [], color: "amber" }
         ]
     },
     {
-        group: "Modules", items: [
+        group: "modules", items: [
             {
-                name: "Front Office",
+                name: "front_office",
                 icon: Building2,
                 href: "#",
                 color: "indigo",
                 submenus: [
-                    { name: "Admission Enquiry", href: "/dashboard/front-office/admission-enquiry" },
-                    { name: "Visitor Book", href: "/dashboard/front-office/visitor-book" },
-                    { name: "Phone Call Log", href: "/dashboard/front-office/phone-call-log" },
-                    { name: "Postal Dispatch", href: "/dashboard/front-office/postal-dispatch" },
-                    { name: "Postal Receive", href: "/dashboard/front-office/postal-receive" },
-                    { name: "Complain", href: "/dashboard/front-office/complain" },
-                    { name: "Setup Front Office", href: "/dashboard/front-office/setup-front-office" },
+                    { name: "admission_enquiry", href: "/dashboard/front-office/admission-enquiry" },
+                    { name: "visitor_book", href: "/dashboard/front-office/visitor-book" },
+                    { name: "phone_call_log", href: "/dashboard/front-office/phone-call-log" },
+                    { name: "postal_dispatch", href: "/dashboard/front-office/postal-dispatch" },
+                    { name: "postal_receive", href: "/dashboard/front-office/postal-receive" },
+                    { name: "complain", href: "/dashboard/front-office/complain" },
+                    { name: "setup_front_office", href: "/dashboard/front-office/setup-front-office" },
                 ]
             },
             {
-                name: "Student Information",
+                name: "student_information",
                 icon: Users,
                 href: "#",
                 color: "blue",
                 submenus: [
-                    { name: "Student Details", href: "/dashboard/student-information/student-details" },
-                    { name: "Student Admission", href: "/dashboard/student-information/student-admission" },
-                    { name: "Online Admission", href: "/dashboard/student-information/online-admission" },
-                    { name: "Disabled Students", href: "/dashboard/student-information/disabled-students" },
-                    { name: "Multi Class Student", href: "/dashboard/student-information/multi-class-student" },
-                    { name: "Bulk Delete", href: "/dashboard/student-information/bulk-delete" },
-                    { name: "Student Categories", href: "/dashboard/student-information/student-categories" },
-                    { name: "Student House", href: "/dashboard/student-information/student-house" },
-                    { name: "Disable Reason", href: "/dashboard/student-information/disable-reason" },
+                    { name: "student_details", href: "/dashboard/student-information/student-details" },
+                    { name: "student_admission", href: "/dashboard/student-information/student-admission" },
+                    { name: "online_admission", href: "/dashboard/student-information/online-admission" },
+                    { name: "disabled_students", href: "/dashboard/student-information/disabled-students" },
+                    { name: "multi_class_student", href: "/dashboard/student-information/multi-class-student" },
+                    { name: "bulk_delete", href: "/dashboard/student-information/bulk-delete" },
+                    { name: "student_categories", href: "/dashboard/student-information/student-categories" },
+                    { name: "student_house", href: "/dashboard/student-information/student-house" },
+                    { name: "disable_reason", href: "/dashboard/student-information/disable-reason" },
                 ]
             },
             {
-                name: "Fees Collection",
+                name: "fees_collection",
                 icon: Wallet,
                 href: "#",
                 color: "emerald",
                 submenus: [
-                    { name: "Collect Fees", href: "/dashboard/fees-collection/collect-fees" },
-                    { name: "Offline Bank Payments", href: "/dashboard/fees-collection/offline-bank-payments" },
-                    { name: "Search Fees Payment", href: "/dashboard/fees-collection/search-fees-payment" },
-                    { name: "Search Due Fees", href: "/dashboard/fees-collection/search-due-fees" },
-                    { name: "Fees Master", href: "/dashboard/fees-collection/fees-master" },
-                    { name: "Quick Fees", href: "/dashboard/fees-collection/quick-fees" },
-                    { name: "Fees Group", href: "/dashboard/fees-collection/fees-group" },
-                    { name: "Fees Type", href: "/dashboard/fees-collection/fees-type" },
-                    { name: "Fees Discount", href: "/dashboard/fees-collection/fees-discount" },
-                    { name: "Fees Carry Forward", href: "/dashboard/fees-collection/fees-carry-forward" },
-                    { name: "Fees Reminder", href: "/dashboard/fees-collection/fees-reminder" },
+                    { name: "collect_fees", href: "/dashboard/fees-collection/collect-fees" },
+                    { name: "offline_bank_payments", href: "/dashboard/fees-collection/offline-bank-payments" },
+                    { name: "search_fees_payment", href: "/dashboard/fees-collection/search-fees-payment" },
+                    { name: "search_due_fees", href: "/dashboard/fees-collection/search-due-fees" },
+                    { name: "fees_master", href: "/dashboard/fees-collection/fees-master" },
+                    { name: "quick_fees", href: "/dashboard/fees-collection/quick-fees" },
+                    { name: "fees_group", href: "/dashboard/fees-collection/fees-group" },
+                    { name: "fees_type", href: "/dashboard/fees-collection/fees-type" },
+                    { name: "fees_discount", href: "/dashboard/fees-collection/fees-discount" },
+                    { name: "fees_carry_forward", href: "/dashboard/fees-collection/fees-carry-forward" },
+                    { name: "fees_reminder", href: "/dashboard/fees-collection/fees-reminder" },
                 ]
             },
             {
-                name: "Income",
+                name: "income",
                 icon: DollarSign,
                 href: "#",
                 color: "cyan",
                 submenus: [
-                    { name: "Add Income", href: "/dashboard/income/add-income" },
-                    { name: "Search Income", href: "/dashboard/income/search-income" },
-                    { name: "Income Head", href: "/dashboard/income/income-head" },
+                    { name: "add_income", href: "/dashboard/income/add-income" },
+                    { name: "search_income", href: "/dashboard/income/search-income" },
+                    { name: "income_head", href: "/dashboard/income/income-head" },
                 ]
             },
             {
-                name: "Expenses",
+                name: "expenses",
                 icon: CreditCard,
                 href: "#",
                 color: "rose",
                 submenus: [
-                    { name: "Add Expense", href: "/dashboard/expenses/add-expense" },
-                    { name: "Search Expense", href: "/dashboard/expenses/search-expense" },
-                    { name: "Expense Head", href: "/dashboard/expenses/expense-head" },
+                    { name: "add_expense", href: "/dashboard/expenses/add-expense" },
+                    { name: "search_expense", href: "/dashboard/expenses/search-expense" },
+                    { name: "expense_head", href: "/dashboard/expenses/expense-head" },
                 ]
             },
             {
-                name: "Attendance",
+                name: "attendance",
                 icon: Calendar,
                 href: "#",
                 color: "orange",
                 submenus: [
-                    { name: "Student Attendance", href: "/dashboard/attendance/student-attendance" },
-                    { name: "Period Attendance", href: "/dashboard/attendance/period-attendance" },
-                    { name: "Approve Leave", href: "/dashboard/attendance/approve-leave" },
-                    { name: "Attendance By Date", href: "#" },
-                    { name: "Period Attendance By Date", href: "/dashboard/attendance/period-attendance-by-date" },
+                    { name: "student_attendance", href: "/dashboard/attendance/student-attendance" },
+                    { name: "period_attendance", href: "/dashboard/attendance/period-attendance" },
+                    { name: "approve_leave", href: "/dashboard/attendance/approve-leave" },
+                    { name: "attendance_by_date", href: "#" },
+                    { name: "period_attendance_by_date", href: "/dashboard/attendance/period-attendance-by-date" },
                 ]
             },
             {
-                name: "Examinations",
+                name: "examinations",
                 icon: PenSquare,
                 href: "#",
                 color: "purple",
                 submenus: [
-                    { name: "Exam Group", href: "/dashboard/examinations/exam-group" },
-                    { name: "Exam Schedule", href: "/dashboard/examinations/exam-schedule" },
-                    { name: "Exam Result", href: "/dashboard/examinations/exam-result" },
-                    { name: "Design Admit Card", href: "/dashboard/examinations/design-admit-card" },
-                    { name: "Print Admit Card", href: "/dashboard/examinations/print-admit-card" },
-                    { name: "Design Marksheet", href: "/dashboard/examinations/design-marksheet" },
-                    { name: "Print Marksheet", href: "/dashboard/examinations/print-marksheet" },
-                    { name: "Marks Grade", href: "/dashboard/examinations/marks-grade" },
-                    { name: "Marks Division", href: "/dashboard/examinations/marks-division" },
+                    { name: "exam_group", href: "/dashboard/examinations/exam-group" },
+                    { name: "exam_schedule", href: "/dashboard/examinations/exam-schedule" },
+                    { name: "exam_result", href: "/dashboard/examinations/exam-result" },
+                    { name: "design_admit_card", href: "/dashboard/examinations/design-admit-card" },
+                    { name: "print_admit_card", href: "/dashboard/examinations/print-admit-card" },
+                    { name: "design_marksheet", href: "/dashboard/examinations/design-marksheet" },
+                    { name: "print_marksheet", href: "/dashboard/examinations/print-marksheet" },
+                    { name: "marks_grade", href: "/dashboard/examinations/marks-grade" },
+                    { name: "marks_division", href: "/dashboard/examinations/marks-division" },
                 ]
             },
             {
-                name: "CBSE Examination",
+                name: "cbse_examination",
                 icon: FileText,
                 href: "#",
                 color: "violet",
                 submenus: [
-                    { name: "Exam", href: "/dashboard/cbse-examination/exam" },
-                    { name: "Exam Schedule", href: "/dashboard/cbse-examination/exam-schedule" },
-                    { name: "Print Marksheet", href: "/dashboard/cbse-examination/print-marksheet" },
-                    { name: "Template", href: "/dashboard/cbse-examination/template" },
-                    { name: "Assign Observation", href: "/dashboard/cbse-examination/assign-observation" },
-                    { name: "Reports", href: "/dashboard/cbse-examination/reports" },
-                    { name: "Setting", href: "/dashboard/cbse-examination/setting" },
+                    { name: "exam", href: "/dashboard/cbse-examination/exam" },
+                    { name: "exam_schedule", href: "/dashboard/cbse-examination/exam-schedule" },
+                    { name: "print_marksheet", href: "/dashboard/cbse-examination/print-marksheet" },
+                    { name: "template", href: "/dashboard/cbse-examination/template" },
+                    { name: "assign_observation", href: "/dashboard/cbse-examination/assign-observation" },
+                    { name: "reports", href: "/dashboard/cbse-examination/reports" },
+                    { name: "setting", href: "/dashboard/cbse-examination/setting" },
                 ]
             },
             {
-                name: "Online Examinations",
+                name: "online_examinations",
                 icon: Rss,
                 href: "#",
                 color: "fuchsia",
                 submenus: [
-                    { name: "Online Exam", href: "/dashboard/online-examinations/online-exam" },
-                    { name: "Question Bank", href: "/dashboard/online-examinations/question-bank" },
+                    { name: "online_exam", href: "/dashboard/online-examinations/online-exam" },
+                    { name: "question_bank", href: "/dashboard/online-examinations/question-bank" },
                 ]
             },
             {
-                name: "Academics",
+                name: "academics",
                 icon: GraduationCap,
                 href: "#",
                 color: "blue",
                 submenus: [
-                    { name: "Class Timetable", href: "/dashboard/academics/class-timetable" },
-                    { name: "Teachers Timetable", href: "/dashboard/academics/teachers-timetable" },
-                    { name: "Assign Class Teacher", href: "/dashboard/academics/assign-class-teacher" },
-                    { name: "Promote Students", href: "/dashboard/academics/promote-students" },
-                    { name: "Subject Group", href: "/dashboard/academics/subject-group" },
-                    { name: "Subjects", href: "/dashboard/academics/subjects" },
-                    { name: "Class", href: "/dashboard/academics/class" },
-                    { name: "Sections", href: "/dashboard/academics/sections" },
+                    { name: "class_timetable", href: "/dashboard/academics/class-timetable" },
+                    { name: "teachers_timetable", href: "/dashboard/academics/teachers-timetable" },
+                    { name: "assign_class_teacher", href: "/dashboard/academics/assign-class-teacher" },
+                    { name: "promote_students", href: "/dashboard/academics/promote-students" },
+                    { name: "subject_group", href: "/dashboard/academics/subject-group" },
+                    { name: "subjects", href: "/dashboard/academics/subjects" },
+                    { name: "class", href: "/dashboard/academics/class" },
+                    { name: "sections", href: "/dashboard/academics/sections" },
                 ]
             },
             {
-                name: "Human Resource",
+                name: "human_resource",
                 icon: UserPlus,
                 href: "#",
                 color: "indigo",
                 submenus: [
-                    { name: "Staff Directory", href: "/dashboard/hr/staff-directory" },
-                    { name: "Staff Attendance", href: "/dashboard/hr/staff-attendance" },
-                    { name: "Payroll", href: "/dashboard/hr/payroll" },
-                    { name: "Approve Leave Request", href: "/dashboard/hr/approve-leave-request" },
-                    { name: "Apply Leave", href: "/dashboard/hr/apply-leave" },
-                    { name: "Leave Type", href: "/dashboard/hr/leave-type" },
-                    { name: "Teachers Rating", href: "/dashboard/hr/teachers-rating" },
-                    { name: "Department", href: "/dashboard/hr/department" },
-                    { name: "Designation", href: "/dashboard/hr/designation" },
-                    { name: "Disabled Staff", href: "/dashboard/hr/disabled-staff" },
+                    { name: "staff_directory", href: "/dashboard/hr/staff-directory" },
+                    { name: "staff_attendance", href: "/dashboard/hr/staff-attendance" },
+                    { name: "payroll", href: "/dashboard/hr/payroll" },
+                    { name: "approve_leave_request", href: "/dashboard/hr/approve-leave-request" },
+                    { name: "apply_leave", href: "/dashboard/hr/apply-leave" },
+                    { name: "leave_type", href: "/dashboard/hr/leave-type" },
+                    { name: "teachers_rating", href: "/dashboard/hr/teachers-rating" },
+                    { name: "department", href: "/dashboard/hr/department" },
+                    { name: "designation", href: "/dashboard/hr/designation" },
+                    { name: "disabled_staff", href: "/dashboard/hr/disabled-staff" },
                 ]
             },
             {
-                name: "Communicate",
+                name: "communicate",
                 icon: MessageSquare,
                 href: "#",
                 color: "sky",
                 submenus: [
-                    { name: "Notice Board", href: "/dashboard/communicate/notice-board" },
-                    { name: "Send Email", href: "/dashboard/communicate/send-email" },
-                    { name: "Send SMS", href: "/dashboard/communicate/send-sms" },
-                    { name: "Email / SMS Log", href: "/dashboard/communicate/email-sms-log" },
-                    { name: "Schedule Email SMS Log", href: "/dashboard/communicate/schedule-email-sms-log" },
-                    { name: "Login Credentials Send", href: "/dashboard/communicate/login-credentials-send" },
-                    { name: "Email Template", href: "/dashboard/communicate/email-template" },
-                    { name: "SMS Template", href: "/dashboard/communicate/sms-template" },
+                    { name: "notice_board", href: "/dashboard/communicate/notice-board" },
+                    { name: "send_email", href: "/dashboard/communicate/send-email" },
+                    { name: "send_sms", href: "/dashboard/communicate/send-sms" },
+                    { name: "email_sms_log", href: "/dashboard/communicate/email-sms-log" },
+                    { name: "schedule_email_sms_log", href: "/dashboard/communicate/schedule-email-sms-log" },
+                    { name: "login_credentials_send", href: "/dashboard/communicate/login-credentials-send" },
+                    { name: "email_template", href: "/dashboard/communicate/email-template" },
+                    { name: "sms_template", href: "/dashboard/communicate/sms-template" },
                 ]
             },
             {
-                name: "Download Center",
+                name: "download_center",
                 icon: Download,
                 href: "#",
                 color: "blue",
                 submenus: [
-                    { name: "Upload/Share Content", href: "/dashboard/download-center/upload-content" },
-                    { name: "Content Share List", href: "/dashboard/download-center/content-share-list" },
-                    { name: "Video Tutorial", href: "/dashboard/download-center/video-tutorial" },
-                    { name: "Content Type", href: "/dashboard/download-center/content-type" },
+                    { name: "upload_share_content", href: "/dashboard/download-center/upload-content" },
+                    { name: "content_share_list", href: "/dashboard/download-center/content-share-list" },
+                    { name: "video_tutorial", href: "/dashboard/download-center/video-tutorial" },
+                    { name: "content_type", href: "/dashboard/download-center/content-type" },
                 ]
             },
             {
-                name: "Homework",
+                name: "homework",
                 icon: BookOpen,
                 href: "#",
                 color: "amber",
                 submenus: [
-                    { name: "Add Homework", href: "/dashboard/homework/add-homework" },
-                    { name: "Daily Assignment", href: "/dashboard/homework/daily-assignment" },
+                    { name: "add_homework", href: "/dashboard/homework/add-homework" },
+                    { name: "daily_assignment", href: "/dashboard/homework/daily-assignment" },
                 ]
             },
             {
-                name: "Online Course",
+                name: "online_course",
                 icon: Monitor,
                 href: "#",
                 color: "indigo",
                 submenus: [
-                    { name: "Online Course", href: "/dashboard/online-course/online-course-list" },
-                    { name: "Question Bank", href: "/dashboard/online-course/question-bank" },
-                    { name: "Offline Payment", href: "/dashboard/online-course/offline-payment" },
-                    { name: "Online Course Report", href: "/dashboard/online-course/reports" },
-                    { name: "Setting", href: "/dashboard/online-course/settings" },
+                    { name: "online_course", href: "/dashboard/online-course/online-course-list" },
+                    { name: "question_bank", href: "/dashboard/online-course/question-bank" },
+                    { name: "offline_payment", href: "/dashboard/online-course/offline-payment" },
+                    { name: "online_course_report", href: "/dashboard/online-course/reports" },
+                    { name: "setting", href: "/dashboard/online-course/settings" },
                 ]
             },
             {
-                name: "Library",
+                name: "library",
                 icon: Library,
                 href: "#",
                 color: "emerald",
                 submenus: [
-                    { name: "Book List", href: "/dashboard/library/book-list" },
-                    { name: "Issue - Return", href: "/dashboard/library/member" },
-                    { name: "Add Student", href: "/dashboard/library/add-student" },
-                    { name: "Add Staff Member", href: "/dashboard/library/add-staff" },
+                    { name: "book_list", href: "/dashboard/library/book-list" },
+                    { name: "issue_return", href: "/dashboard/library/member" },
+                    { name: "add_student", href: "/dashboard/library/add-student" },
+                    { name: "add_staff_member", href: "/dashboard/library/add-staff" },
                 ]
             },
             {
-                name: "Inventory",
+                name: "inventory",
                 icon: Package,
                 href: "#",
                 color: "rose",
                 submenus: [
-                    { name: "Issue Item", href: "/dashboard/inventory/issue-item" },
-                    { name: "Add Item Stock", href: "/dashboard/inventory/add-item-stock" },
-                    { name: "Add Item", href: "/dashboard/inventory/add-item" },
-                    { name: "Item Category", href: "/dashboard/inventory/item-category" },
-                    { name: "Item Store", href: "/dashboard/inventory/item-store" },
-                    { name: "Item Supplier", href: "/dashboard/inventory/item-supplier" },
+                    { name: "issue_item", href: "/dashboard/inventory/issue-item" },
+                    { name: "add_item_stock", href: "/dashboard/inventory/add-item-stock" },
+                    { name: "add_item", href: "/dashboard/inventory/add-item" },
+                    { name: "item_category", href: "/dashboard/inventory/item-category" },
+                    { name: "item_store", href: "/dashboard/inventory/item-store" },
+                    { name: "item_supplier", href: "/dashboard/inventory/item-supplier" },
                 ]
             },
             {
-                name: "Transport",
+                name: "transport",
                 icon: Bus,
                 href: "#",
                 color: "amber",
                 submenus: [
-                    { name: "Fees Master", href: "/dashboard/transport/fees-master" },
-                    { name: "Pickup Point", href: "/dashboard/transport/pickup-point" },
-                    { name: "Routes", href: "/dashboard/transport/route" },
-                    { name: "Vehicles", href: "/dashboard/transport/vehicles" },
-                    { name: "Assign Vehicle", href: "/dashboard/transport/assign-vehicle" },
-                    { name: "Route Pickup Point", href: "/dashboard/transport/route-pickup-point" },
-                    { name: "Student Transport Fees", href: "/dashboard/transport/student-transport-fees" },
+                    { name: "fees_master", href: "/dashboard/transport/fees-master" },
+                    { name: "pickup_point", href: "/dashboard/transport/pickup-point" },
+                    { name: "routes", href: "/dashboard/transport/route" },
+                    { name: "vehicles", href: "/dashboard/transport/vehicles" },
+                    { name: "assign_vehicle", href: "/dashboard/transport/assign-vehicle" },
+                    { name: "route_pickup_point", href: "/dashboard/transport/route-pickup-point" },
+                    { name: "student_transport_fees", href: "/dashboard/transport/student-transport-fees" },
                 ]
             },
             {
-                name: "Hostel",
+                name: "hostel",
                 icon: Hotel,
                 href: "#",
                 color: "indigo",
                 submenus: [
-                    { name: "Hostel Room", href: "/dashboard/hostel/hostel-room" },
-                    { name: "Room Type", href: "/dashboard/hostel/room-type" },
-                    { name: "Hostel", href: "/dashboard/hostel/hostel" },
+                    { name: "hostel_room", href: "/dashboard/hostel/hostel-room" },
+                    { name: "room_type", href: "/dashboard/hostel/room-type" },
+                    { name: "hostel", href: "/dashboard/hostel/hostel" },
                 ]
             },
             {
-                name: "Certificate",
+                name: "certificate",
                 icon: Award,
                 href: "#",
                 color: "amber",
                 submenus: [
-                    { name: "Transfer Certificate", href: "/dashboard/certificate/transfer-certificate" },
-                    { name: "Student Certificate", href: "/dashboard/certificate/student-certificate" },
-                    { name: "Generate Certificate", href: "/dashboard/certificate/generate-certificate" },
-                    { name: "Student ID Card", href: "/dashboard/certificate/student-id-card" },
-                    { name: "Generate ID Card", href: "/dashboard/certificate/generate-id-card" },
-                    { name: "Staff ID Card", href: "/dashboard/certificate/staff-id-card" },
-                    { name: "Generate Staff ID Card", href: "/dashboard/certificate/generate-staff-id-card" },
+                    { name: "transfer_certificate", href: "/dashboard/certificate/transfer-certificate" },
+                    { name: "student_certificate", href: "/dashboard/certificate/student-certificate" },
+                    { name: "generate_certificate", href: "/dashboard/certificate/generate-certificate" },
+                    { name: "student_id_card", href: "/dashboard/certificate/student-id-card" },
+                    { name: "generate_id_card", href: "/dashboard/certificate/generate-id-card" },
+                    { name: "staff_id_card", href: "/dashboard/certificate/staff-id-card" },
+                    { name: "generate_staff_id_card", href: "/dashboard/certificate/generate-staff-id-card" },
                 ]
             },
             {
-                name: "Multi Branch",
+                name: "multi_branch",
                 icon: GitBranch,
                 href: "#",
                 color: "emerald",
                 submenus: [
-                    { name: "Overview", href: "/dashboard/multi-branch/overview" },
-                    { name: "Report", href: "/dashboard/multi-branch/report" },
-                    { name: "Setting", href: "/dashboard/multi-branch/setting" },
+                    { name: "overview", href: "/dashboard/multi-branch/overview" },
+                    { name: "report", href: "/dashboard/multi-branch/report" },
+                    { name: "setting", href: "/dashboard/multi-branch/setting" },
                 ]
             },
             {
-                name: "Behaviour Records",
+                name: "behaviour_records",
                 icon: ClipboardList,
                 href: "#",
                 color: "rose",
                 submenus: [
-                    { name: "Assign Incident", href: "/dashboard/behaviour-records/assign-incident" },
-                    { name: "Incidents", href: "/dashboard/behaviour-records/incidents" },
-                    { name: "Reports", href: "/dashboard/behaviour-records/reports" },
-                    { name: "Setting", href: "/dashboard/behaviour-records/setting" },
+                    { name: "assign_incident", href: "/dashboard/behaviour-records/assign-incident" },
+                    { name: "incidents", href: "/dashboard/behaviour-records/incidents" },
+                    { name: "reports", href: "/dashboard/behaviour-records/reports" },
+                    { name: "setting", href: "/dashboard/behaviour-records/setting" },
                 ]
             },
             {
-                name: "Reports",
+                name: "reports",
                 icon: BarChart3,
                 href: "#",
                 color: "indigo",
                 submenus: [
-                    { name: "Student Information", href: "/dashboard/reports/student-information" },
-                    { name: "Finance", href: "/dashboard/reports/finance" },
-                    { name: "Attendance", href: "/dashboard/reports/attendance" },
-                    { name: "Examinations", href: "/dashboard/reports/examinations" },
-                    { name: "Online Examinations", href: "/dashboard/reports/online-examinations" },
-                    { name: "Lesson Plan", href: "/dashboard/reports/lesson-plan" },
-                    { name: "Human Resource", href: "/dashboard/reports/human-resource" },
-                    { name: "Homework", href: "/dashboard/reports/homework" },
-                    { name: "Library", href: "/dashboard/reports/library" },
-                    { name: "Inventory", href: "/dashboard/reports/inventory" },
-                    { name: "Transport", href: "/dashboard/reports/transport" },
-                    { name: "Hostel", href: "/dashboard/reports/hostel" },
-                    { name: "Alumni", href: "/dashboard/reports/alumni" },
-                    { name: "User Log", href: "/dashboard/reports/user-log" },
-                    { name: "Audit Trail Report", href: "/dashboard/reports/audit-trail" },
+                    { name: "student_information", href: "/dashboard/reports/student-information" },
+                    { name: "finance", href: "/dashboard/reports/finance" },
+                    { name: "attendance", href: "/dashboard/reports/attendance" },
+                    { name: "examinations", href: "/dashboard/reports/examinations" },
+                    { name: "online_examinations", href: "/dashboard/reports/online-examinations" },
+                    { name: "lesson_plan", href: "/dashboard/reports/lesson-plan" },
+                    { name: "human_resource", href: "/dashboard/reports/human-resource" },
+                    { name: "homework", href: "/dashboard/reports/homework" },
+                    { name: "library", href: "/dashboard/reports/library" },
+                    { name: "inventory", href: "/dashboard/reports/inventory" },
+                    { name: "transport", href: "/dashboard/reports/transport" },
+                    { name: "hostel", href: "/dashboard/reports/hostel" },
+                    { name: "alumni", href: "/dashboard/reports/alumni" },
+                    { name: "user_log", href: "/dashboard/reports/user-log" },
+                    { name: "audit_trail_report", href: "/dashboard/reports/audit-trail" },
                 ]
             },
             {
-                name: "Gmeet Live Classes",
+                name: "gmeet_live_classes",
                 icon: Video,
                 href: "#",
                 color: "blue",
                 submenus: [
-                    { name: "Live Classes", href: "/dashboard/gmeet-live-classes/live-classes" },
-                    { name: "Live Meeting", href: "/dashboard/gmeet-live-classes/live-meeting" },
-                    { name: "Live Classes Report", href: "/dashboard/gmeet-live-classes/live-classes-report" },
-                    { name: "Live Meeting Report", href: "/dashboard/gmeet-live-classes/live-meeting-report" },
-                    { name: "Setting", href: "/dashboard/gmeet-live-classes/setting" },
+                    { name: "live_classes", href: "/dashboard/gmeet-live-classes/live-classes" },
+                    { name: "live_meeting", href: "/dashboard/gmeet-live-classes/live-meeting" },
+                    { name: "live_classes_report", href: "/dashboard/gmeet-live-classes/live-classes-report" },
+                    { name: "live_meeting_report", href: "/dashboard/gmeet-live-classes/live-meeting-report" },
+                    { name: "setting", href: "/dashboard/gmeet-live-classes/setting" },
                 ]
             },
             {
-                name: "Zoom Live Classes",
+                name: "zoom_live_classes",
                 icon: Video,
                 href: "#",
                 color: "blue",
                 submenus: [
-                    { name: "Live Meeting", href: "/dashboard/zoom-live-classes/live-meeting" },
-                    { name: "Live Classes", href: "/dashboard/zoom-live-classes/live-classes" },
-                    { name: "Live Classes Report", href: "/dashboard/zoom-live-classes/live-classes-report" },
-                    { name: "Live Meeting Report", href: "/dashboard/zoom-live-classes/live-meeting-report" },
-                    { name: "Setting", href: "/dashboard/zoom-live-classes/setting" },
+                    { name: "live_meeting", href: "/dashboard/zoom-live-classes/live-meeting" },
+                    { name: "live_classes", href: "/dashboard/zoom-live-classes/live-classes" },
+                    { name: "live_classes_report", href: "/dashboard/zoom-live-classes/live-classes-report" },
+                    { name: "live_meeting_report", href: "/dashboard/zoom-live-classes/live-meeting-report" },
+                    { name: "setting", href: "/dashboard/zoom-live-classes/setting" },
                 ]
             },
             {
-                name: "Lesson Plan",
+                name: "lesson_plan",
                 icon: BookMarked,
                 href: "#",
                 color: "emerald",
                 submenus: [
-                    { name: "Copy Old Lessons", href: "/dashboard/lesson-plan/copy-old-lessons" },
-                    { name: "Manage Lesson Plan", href: "/dashboard/lesson-plan/manage-lesson-plan" },
-                    { name: "Manage Syllabus Status", href: "/dashboard/lesson-plan/manage-syllabus-status" },
-                    { name: "Lesson", href: "/dashboard/lesson-plan/lesson" },
-                    { name: "Topic", href: "/dashboard/lesson-plan/topic" },
+                    { name: "copy_old_lessons", href: "/dashboard/lesson-plan/copy-old-lessons" },
+                    { name: "manage_lesson_plan", href: "/dashboard/lesson-plan/manage-lesson-plan" },
+                    { name: "manage_syllabus_status", href: "/dashboard/lesson-plan/manage-syllabus-status" },
+                    { name: "lesson", href: "/dashboard/lesson-plan/lesson" },
+                    { name: "topic", href: "/dashboard/lesson-plan/topic" },
                 ]
             },
             {
-                name: "Student CV",
+                name: "student_cv",
                 icon: FileUser,
                 href: "#",
                 color: "blue",
                 submenus: [
-                    { name: "Build CV", href: "/dashboard/student-cv/build-cv" },
-                    { name: "Download CV", href: "/dashboard/student-cv/download-cv" },
+                    { name: "build_cv", href: "/dashboard/student-cv/build-cv" },
+                    { name: "download_cv", href: "/dashboard/student-cv/download-cv" },
                 ]
             },
             {
-                name: "Alumni",
+                name: "alumni",
                 icon: UserCheck,
                 href: "#",
                 color: "blue",
                 submenus: [
-                    { name: "Manage Alumni", href: "/dashboard/alumni/manage-alumni" },
-                    { name: "Events", href: "/dashboard/alumni/events" },
+                    { name: "manage_alumni", href: "/dashboard/alumni/manage-alumni" },
+                    { name: "events", href: "/dashboard/alumni/events" },
                 ]
             },
             {
-                name: "Annual Calendar",
+                name: "annual_calendar",
                 icon: CalendarDays,
                 href: "#",
                 color: "rose",
                 submenus: [
-                    { name: "Annual Calendar", href: "/dashboard/annual-calendar" },
-                    { name: "Holiday Type", href: "/dashboard/annual-calendar/holiday-type" },
+                    { name: "annual_calendar", href: "/dashboard/annual-calendar" },
+                    { name: "holiday_type", href: "/dashboard/annual-calendar/holiday-type" },
                 ]
             },
             {
-                name: "Front CMS",
+                name: "front_cms",
                 icon: Globe,
                 href: "#",
                 color: "cyan",
                 submenus: [
-                    { name: "Event", href: "/dashboard/front-cms/event" },
-                    { name: "Gallery", href: "/dashboard/front-cms/gallery" },
-                    { name: "News", href: "/dashboard/front-cms/news" },
-                    { name: "Media Manager", href: "/dashboard/front-cms/media-manager" },
-                    { name: "Pages", href: "/dashboard/front-cms/pages" },
-                    { name: "Menus", href: "/dashboard/front-cms/menus" },
-                    { name: "Banner Images", href: "/dashboard/front-cms/banner-images" },
+                    { name: "event", href: "/dashboard/front-cms/event" },
+                    { name: "gallery", href: "/dashboard/front-cms/gallery" },
+                    { name: "news", href: "/dashboard/front-cms/news" },
+                    { name: "media_manager", href: "/dashboard/front-cms/media-manager" },
+                    { name: "pages", href: "/dashboard/front-cms/pages" },
+                    { name: "menus", href: "/dashboard/front-cms/menus" },
+                    { name: "banner_images", href: "/dashboard/front-cms/banner-images" },
                 ]
             },
             {
-                name: "QR Code Attendance",
+                name: "qr_code_attendance",
                 icon: QrCode,
                 href: "#",
                 color: "rose",
                 submenus: [
-                    { name: "Attendance", href: "/dashboard/qr-code-attendance/attendance" },
-                    { name: "Setting", href: "/dashboard/qr-code-attendance/setting" },
+                    { name: "attendance", href: "/dashboard/qr-code-attendance/attendance" },
+                    { name: "setting", href: "/dashboard/qr-code-attendance/setting" },
                 ]
             },
             {
-                name: "System Setting",
+                name: "system_setting",
                 icon: Settings,
                 href: "#",
                 color: "gray",
                 submenus: [
-                    { name: "General Setting", href: "/dashboard/system-setting/general-setting" },
-                    { name: "Session Setting", href: "/dashboard/system-setting/session-setting" },
-                    { name: "Notification Setting", href: "/dashboard/system-setting/notification-setting" },
-                    { name: "Whatsapp Messaging", href: "/dashboard/system-setting/whatsapp-messaging" },
-                    { name: "SMS Setting", href: "/dashboard/system-setting/sms-setting" },
-                    { name: "Email Setting", href: "/dashboard/system-setting/email-setting" },
-                    { name: "Payment Methods", href: "/dashboard/system-setting/payment-methods" },
-                    { name: "Print Header Footer", href: "/dashboard/system-setting/print-header-footer" },
-                    { name: "Thermal Print", href: "/dashboard/system-setting/thermal-print" },
-                    { name: "Front CMS Setting", href: "/dashboard/system-setting/front-cms-setting" },
-                    { name: "Backup Restore", href: "/dashboard/system-setting/backup-restore" },
-                    { name: "Currency", href: "/dashboard/system-setting/currency" },
-                    { name: "Users", href: "/dashboard/system-setting/users" },
-                    { name: "Roles Permissions", href: "/dashboard/system-setting/roles-permissions" },
-                    { name: "Languages", href: "/dashboard/system-setting/languages" },
-                    { name: "Addons", href: "/dashboard/system-setting/addons" },
-                    { name: "Modules", href: "/dashboard/system-setting/modules" },
-                    { name: "Custom Fields", href: "/dashboard/system-setting/custom-fields" },
-                    { name: "Captcha Setting", href: "/dashboard/system-setting/captcha-setting" },
-                    { name: "System Fields", href: "/dashboard/system-setting/system-fields" },
-                    { name: "Student Profile Setting", href: "/dashboard/system-setting/student-profile-setting" },
-                    { name: "Online Admission", href: "/dashboard/system-setting/online-admission" },
-                    { name: "File Types", href: "/dashboard/system-setting/file-types" },
-                    { name: "Sidebar Menu", href: "/dashboard/system-setting/sidebar-menu" },
-                    { name: "System Update", href: "/dashboard/system-setting/system-update" },
+                    { name: "general_setting", href: "/dashboard/system-setting/general-setting" },
+                    { name: "session_setting", href: "/dashboard/system-setting/session-setting" },
+                    { name: "notification_setting", href: "/dashboard/system-setting/notification-setting" },
+                    { name: "whatsapp_messaging", href: "/dashboard/system-setting/whatsapp-messaging" },
+                    { name: "sms_setting", href: "/dashboard/system-setting/sms-setting" },
+                    { name: "email_setting", href: "/dashboard/system-setting/email-setting" },
+                    { name: "payment_methods", href: "/dashboard/system-setting/payment-methods" },
+                    { name: "print_header_footer", href: "/dashboard/system-setting/print-header-footer" },
+                    { name: "thermal_print", href: "/dashboard/system-setting/thermal-print" },
+                    { name: "front_cms_setting", href: "/dashboard/system-setting/front-cms-setting" },
+                    { name: "backup_restore", href: "/dashboard/system-setting/backup-restore" },
+                    { name: "currency", href: "/dashboard/system-setting/currency" },
+                    { name: "users", href: "/dashboard/system-setting/users" },
+                    { name: "roles_permissions", href: "/dashboard/system-setting/roles-permissions" },
+                    { name: "languages", href: "/dashboard/system-setting/languages" },
+                    { name: "addons", href: "/dashboard/system-setting/addons" },
+                    { name: "modules", href: "/dashboard/system-setting/modules" },
+                    { name: "custom_fields", href: "/dashboard/system-setting/custom-fields" },
+                    { name: "captcha_setting", href: "/dashboard/system-setting/captcha-setting" },
+                    { name: "system_fields", href: "/dashboard/system-setting/system-fields" },
+                    { name: "student_profile_setting", href: "/dashboard/system-setting/student-profile-setting" },
+                    { name: "online_admission", href: "/dashboard/system-setting/online-admission" },
+                    { name: "file_types", href: "/dashboard/system-setting/file-types" },
+                    { name: "sidebar_menu", href: "/dashboard/system-setting/sidebar-menu" },
+                    { name: "system_update", href: "/dashboard/system-setting/system-update" },
                 ]
             },
         ]
@@ -595,6 +599,9 @@ const sidebarColorMap = {
     }
 };
 
+import api from "@/lib/api";
+import { Loader2 } from "lucide-react";
+
 export function Sidebar({
     collapsed = false,
     mobileOpen = false,
@@ -605,6 +612,95 @@ export function Sidebar({
     onClose?: () => void;
 }) {
     const pathname = usePathname();
+    const { settings, loading: settingsLoading } = useSettings();
+    const { t } = useTranslation();
+
+    const [mounted, setMounted] = useState(false);
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [fetchingSessions, setFetchingSessions] = useState(false);
+    const [changingSessionId, setChangingSessionId] = useState<number | null>(null);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const [sidebarConfig, setSidebarConfig] = useState<any[]>([]);
+    const [fetchingSidebar, setFetchingSidebar] = useState(true);
+
+    useEffect(() => {
+        const fetchSessions = async () => {
+            try {
+                setFetchingSessions(true);
+                const response = await api.get("/system-setting/sessions");
+                if (response.data.success) {
+                    setSessions(response.data.data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch sessions", error);
+            } finally {
+                setFetchingSessions(false);
+            }
+        };
+
+        const fetchSidebarConfig = async () => {
+            try {
+                setFetchingSidebar(true);
+                const response = await api.get("/system-setting/sidebar-menu");
+                if (response.data.success) {
+                    setSidebarConfig(response.data.data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch sidebar config", error);
+            } finally {
+                setFetchingSidebar(false);
+            }
+        };
+
+        fetchSessions();
+        fetchSidebarConfig();
+    }, []);
+
+    // Process menu items based on backend config
+    const processedMenuItems = React.useMemo(() => {
+        if (fetchingSidebar || sidebarConfig.length === 0) {
+            return menuItems; // Fallback during loading or if empty
+        }
+
+        // Create a map for quick lookup
+        const configMap = new Map(sidebarConfig.map(c => [c.name, c]));
+
+        return menuItems.map(group => {
+            const filteredItems = group.items
+                .filter(item => {
+                    const config = configMap.get(item.name);
+                    return config ? config.is_visible : true; // Default to visible if not found (unexpected)
+                })
+                .sort((a, b) => {
+                    const configA = configMap.get(a.name);
+                    const configB = configMap.get(b.name);
+                    return (configA?.sort_order ?? 0) - (configB?.sort_order ?? 0);
+                });
+
+            return { ...group, items: filteredItems };
+        }).filter(group => group.items.length > 0);
+    }, [sidebarConfig, fetchingSidebar]);
+
+    const activeSession = sessions.find(s => s.is_active);
+
+    const handleSessionChange = async (session: any) => {
+        if (session.is_active) return;
+        try {
+            setChangingSessionId(session.id);
+            await api.put(`/system-setting/sessions/${session.id}`, {
+                session: session.session,
+                is_active: true
+            });
+            window.location.reload();
+        } catch (error) {
+            console.error("Failed to switch session", error);
+            setChangingSessionId(null);
+        }
+    };
 
     return (
         <>
@@ -619,18 +715,40 @@ export function Sidebar({
 
             <aside className={cn(
                 "fixed md:relative inset-y-0 left-0 z-50 md:z-0 flex flex-col border-r bg-card text-card-foreground transition-all duration-300 shadow-2xl md:shadow-none h-[100dvh] md:h-screen overflow-hidden overscroll-contain",
-                collapsed ? "md:w-20" : "md:w-64 w-64",
+                collapsed ? "md:w-20" : "md:w-[230px] w-[230px]",
                 mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
             )}>
                 <div className="h-14 min-h-[56px] flex items-center justify-between md:justify-center bg-gradient-to-r from-primary to-primary/80 text-white shadow-md z-10 px-4">
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-white/20 backdrop-blur-md rounded-lg border border-white/10 shadow-sm">
-                            <GraduationCap className="h-6 w-6 text-white" />
-                        </div>
-                        {(!collapsed || mobileOpen) && (
-                            <span className="font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300">
-                                Smart School
-                            </span>
+                        {collapsed && !mobileOpen ? (
+                            <div className="p-1.5 bg-white/20 backdrop-blur-md rounded-lg border border-white/10 shadow-sm overflow-hidden flex items-center justify-center h-9 w-9">
+                                {settings?.admin_small_logo ? (
+                                    <img src={settings.admin_small_logo} alt="S" className="h-5 w-5 object-contain" />
+                                ) : (
+                                    <GraduationCap className="h-6 w-6 text-white" />
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-white/20 backdrop-blur-md rounded-lg border border-white/10 shadow-sm overflow-hidden flex items-center justify-center">
+                                    {settings?.admin_small_logo ? (
+                                        <img src={settings.admin_small_logo} alt="S" className="h-5 w-5 object-contain" />
+                                    ) : (
+                                        <GraduationCap className="h-6 w-6 text-white" />
+                                    )}
+                                </div>
+                                <div className="flex flex-col">
+                                    {settingsLoading ? (
+                                        <div className="h-5 w-24 bg-white/20 animate-pulse rounded" />
+                                    ) : settings?.admin_logo ? (
+                                        <img src={settings.admin_logo} alt={settings.school_name} className="h-6 object-contain" />
+                                    ) : (
+                                        <span className="font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300">
+                                            {settings?.school_name || "Smart School"}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
                         )}
                     </div>
 
@@ -646,12 +764,16 @@ export function Sidebar({
                 </div>
 
                 <ScrollArea type="always" className="flex-1 min-h-0 w-full p-0 overscroll-contain">
-                    <nav className={cn("space-y-6 py-4 px-4", collapsed && "md:px-2")}>
-                        {menuItems.map((group) => (
+                    <nav className={cn("space-y-6 py-4 pl-2 pr-4", collapsed && "md:px-2")}>
+                        {fetchingSidebar ? (
+                            <div className="flex justify-center py-8">
+                                <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
+                            </div>
+                        ) : processedMenuItems.map((group) => (
                             <div key={group.group} className="space-y-2">
                                 {!collapsed && (
-                                    <h3 className="px-3 mb-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em]">
-                                        {group.group}
+                                    <h3 className="px-2 mb-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em]">
+                                        {t(group.group)}
                                     </h3>
                                 )}
                                 <div className="space-y-1">
@@ -667,8 +789,8 @@ export function Sidebar({
                                                     if (window.innerWidth < 768 && onClose) onClose();
                                                 }}
                                                 className={cn(
-                                                    "flex items-center transition-all group relative overflow-hidden",
-                                                    collapsed ? "justify-center h-12 w-12 mx-auto rounded-xl" : "gap-3 px-3 py-2.5 rounded-xl",
+                                                    "flex items-center justify-start transition-all group relative overflow-hidden",
+                                                    collapsed ? "justify-center h-12 w-12 mx-auto rounded-xl" : "gap-3 px-2 py-2.5 rounded-xl",
                                                     isItemActive
                                                         ? `${colors.active} text-white shadow-lg`
                                                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -687,7 +809,7 @@ export function Sidebar({
                                                 </div>
                                                 {!collapsed && (
                                                     <>
-                                                        <span className="flex-1">{item.name}</span>
+                                                        <span className="flex-1 text-left">{t(item.name)}</span>
                                                         {item.submenus && item.submenus.length > 0 ? (
                                                             <ChevronRight className={cn(
                                                                 "h-3.5 w-3.5 transition-transform duration-300",
@@ -718,7 +840,7 @@ export function Sidebar({
                                                     >
                                                         <div className="space-y-1">
                                                             <div className="px-3 py-2 border-b border-muted/20 mb-1">
-                                                                <p className={cn("text-xs font-bold uppercase tracking-widest", colors.icon)}>{item.name}</p>
+                                                                <p className={cn("text-xs font-bold uppercase tracking-widest", colors.icon)}>{t(item.name)}</p>
                                                             </div>
                                                             <Link
                                                                 href={item.href}
@@ -730,7 +852,7 @@ export function Sidebar({
                                                                     pathname === item.href ? `${colors.bg} ${colors.icon} font-bold` : "hover:bg-muted"
                                                                 )}
                                                             >
-                                                                Overview
+                                                                {t("overview")}
                                                             </Link>
                                                             {item.submenus && item.submenus.length > 0 && (
                                                                 <div className="pt-1 space-y-0.5">
@@ -748,7 +870,7 @@ export function Sidebar({
                                                                                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                                                                             )}
                                                                         >
-                                                                            {submenu.name}
+                                                                            {t(submenu.name)}
                                                                         </Link>
                                                                     ))}
                                                                 </div>
@@ -765,12 +887,12 @@ export function Sidebar({
                                                     <AccordionItem value={item.name} className="border-none">
                                                         <AccordionTrigger
                                                             className={cn(
-                                                                "flex items-center transition-all group hover:no-underline py-0 cursor-pointer",
-                                                                "gap-3 px-3 py-2.5 rounded-xl mb-1",
+                                                                "flex items-center justify-start transition-all group hover:no-underline py-0 cursor-pointer",
+                                                                "gap-3 px-2 py-2.5 rounded-xl mb-1",
                                                                 isItemActive
                                                                     ? `${colors.active} text-white shadow-lg`
                                                                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                                                                "text-sm font-semibold"
+                                                                "text-sm font-semibold text-left"
                                                             )}
                                                         >
                                                             <div className="flex items-center gap-3 w-full">
@@ -783,11 +905,11 @@ export function Sidebar({
                                                                         isItemActive ? "text-white" : "transition-colors"
                                                                     )} />
                                                                 </div>
-                                                                <span className="flex-1 text-left">{item.name}</span>
+                                                                <span className="flex-1 text-left">{t(item.name)}</span>
                                                             </div>
                                                         </AccordionTrigger>
                                                         <AccordionContent className="pb-2 pt-1 pl-4 pr-1">
-                                                            <div className={cn("flex flex-col gap-1 border-l-2 ml-5 pl-4 animate-in slide-in-from-top-2 duration-300", isItemActive ? `border-orange-500/20` : "border-primary/10")}>
+                                                            <div className={cn("flex flex-col gap-1 border-l-2 ml-3 pl-3 animate-in slide-in-from-top-2 duration-300 items-start", isItemActive ? `border-orange-500/20` : "border-primary/10")}>
                                                                 {item.submenus.map((submenu) => {
                                                                     const isSubActive = pathname === submenu.href;
                                                                     return (
@@ -798,15 +920,15 @@ export function Sidebar({
                                                                                 if (window.innerWidth < 768 && onClose) onClose();
                                                                             }}
                                                                             className={cn(
-                                                                                "relative py-2.5 text-xs font-bold rounded-xl transition-all duration-300 px-4 flex items-center justify-between group/sub",
+                                                                                "relative py-2.5 text-xs font-bold rounded-xl transition-all duration-300 px-3 flex items-center justify-start text-left w-full group/sub",
                                                                                 isSubActive
                                                                                     ? `${colors.active} text-white shadow-md shadow-orange-200/20 tracking-tight`
                                                                                     : "text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
                                                                             )}
                                                                         >
-                                                                            <span>{submenu.name}</span>
+                                                                            <span className="flex-1">{t(submenu.name)}</span>
                                                                             {isSubActive && (
-                                                                                <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-in fade-in zoom-in duration-300" />
+                                                                                <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-in fade-in zoom-in duration-300 ml-2" />
                                                                             )}
                                                                         </Link>
                                                                     );
@@ -826,25 +948,86 @@ export function Sidebar({
                     </nav>
                 </ScrollArea>
 
+
                 <div className={cn(
-                    "mt-auto border-t bg-muted/5 backdrop-blur-sm group cursor-pointer hover:bg-muted/10 transition-all h-14 min-h-[56px]",
+                    "mt-auto border-t bg-muted/5 backdrop-blur-sm group hover:bg-muted/10 transition-all h-14 min-h-[56px]",
                     collapsed ? "px-4 flex justify-center items-center" : "px-4 flex justify-between items-center"
                 )}>
-                    {collapsed ? (
-                        <div className="h-8 w-8 rounded-xl border border-muted/50 flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary transition-all shadow-sm">
-                            <Settings className="h-4 w-4" />
-                        </div>
+                    {mounted && (collapsed ? (
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <div className="h-8 w-8 rounded-xl border border-muted/50 cursor-pointer flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary transition-all shadow-sm">
+                                    <Settings className="h-4 w-4" />
+                                </div>
+                            </PopoverTrigger>
+                            <PopoverContent side="right" align="end" className="w-56 p-2 rounded-xl shadow-xl">
+                                <div className="space-y-1">
+                                    <p className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t("switch_session")}</p>
+                                    {fetchingSessions ? (
+                                        <div className="flex items-center justify-center py-4">
+                                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                        </div>
+                                    ) : sessions.map(session => (
+                                        <button
+                                            key={session.id}
+                                            onClick={() => handleSessionChange(session)}
+                                            disabled={changingSessionId !== null}
+                                            className={cn(
+                                                "w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors text-left",
+                                                session.is_active ? "bg-primary/10 text-primary font-bold" : "hover:bg-muted text-foreground/80",
+                                                changingSessionId === session.id && "opacity-50 cursor-not-allowed"
+                                            )}
+                                        >
+                                            <span>{session.session}</span>
+                                            {session.is_active && <div className="h-2 w-2 rounded-full bg-primary" />}
+                                            {changingSessionId === session.id && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                     ) : (
                         <>
                             <div className="flex flex-col">
-                                <p className="text-[9px] text-muted-foreground/60 uppercase tracking-[0.15em] font-black leading-tight mb-0.5">Session</p>
-                                <p className="text-sm font-extrabold text-foreground/90 tracking-tight">2025-2026</p>
+                                <p className="text-[9px] text-muted-foreground/60 uppercase tracking-[0.15em] font-black leading-tight mb-0.5">{t("session")}</p>
+                                <p className="text-sm font-extrabold text-foreground/90 tracking-tight">
+                                    {fetchingSessions ? t("loading") : (activeSession?.session || t("not_set"))}
+                                </p>
                             </div>
-                            <div className="h-8 w-8 rounded-xl border border-muted/50 flex items-center justify-center text-muted-foreground bg-card group-hover:text-primary group-hover:border-primary group-hover:shadow-lg transition-all duration-300">
-                                <Settings className="h-4 w-4" />
-                            </div>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <div className="h-8 w-8 rounded-xl border border-muted/50 cursor-pointer flex items-center justify-center text-muted-foreground bg-card group-hover:text-primary group-hover:border-primary group-hover:shadow-lg transition-all duration-300">
+                                        <Settings className="h-4 w-4" />
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent side="top" align="end" className="w-56 p-2 rounded-xl shadow-xl border-none">
+                                    <div className="space-y-1">
+                                        <p className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t("switch_session")}</p>
+                                        {fetchingSessions ? (
+                                            <div className="flex items-center justify-center py-4">
+                                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                            </div>
+                                        ) : sessions.map(session => (
+                                            <button
+                                                key={session.id}
+                                                onClick={() => handleSessionChange(session)}
+                                                disabled={changingSessionId !== null}
+                                                className={cn(
+                                                    "w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors text-left",
+                                                    session.is_active ? "bg-primary/10 text-primary font-bold" : "hover:bg-muted text-foreground/80",
+                                                    changingSessionId === session.id && "opacity-50 cursor-not-allowed"
+                                                )}
+                                            >
+                                                <span>{session.session}</span>
+                                                {session.is_active && <div className="h-2 w-2 rounded-full bg-primary" />}
+                                                {changingSessionId === session.id && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         </>
-                    )}
+                    ))}
                 </div>
             </aside >
         </>

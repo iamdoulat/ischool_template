@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +22,9 @@ import {
     ChevronLeft,
     ChevronRight,
     ArrowUpDown,
-    Tag,
+    Pencil,
+    Trash2,
+    Eye,
 } from "lucide-react";
 import {
     Select,
@@ -32,80 +34,268 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface StudentTransport {
-    admissionNo: string;
+    id: number;
+    admission_no: string;
     name: string;
-    class: string;
-    fatherName: string;
+    father_name: string;
     dob: string;
-    route: string;
-    vehicle: string;
-    pickupPoint: string;
+    school_class?: { name: string };
+    section?: { name: string };
+    transport_assignment?: {
+        route?: { title: string; id: number };
+        vehicle?: { vehicle_no: string; id: number };
+        pickup_point?: { name: string; id: number };
+    };
 }
 
-const mockStudents: StudentTransport[] = [
-    { admissionNo: "18024", name: "Steven Taylor", class: "Class 1(A)", fatherName: "Jason Taylor", dob: "08/17/2017", route: "Brooklyn South", vehicle: "VH5645", pickupPoint: "Brooklyn North" },
-    { admissionNo: "128020", name: "Ashwani Kumar", class: "Class 1(A)", fatherName: "Arjun Kumar", dob: "09/25/2009", route: "Brooklyn Central", vehicle: "VH1001", pickupPoint: "Brooklyn North" },
-    { admissionNo: "125005", name: "Nehal Wadhera", class: "Class 1(A)", fatherName: "Karan wadhera", dob: "11/22/2006", route: "Brooklyn Central", vehicle: "VH1001", pickupPoint: "Brooklyn North" },
-    { admissionNo: "18001", name: "Edward Thomas", class: "Class 1(A)", fatherName: "Olivier Thomas", dob: "10/24/2013", route: "Brooklyn West", vehicle: "VH4584", pickupPoint: "Brooklyn South" },
-    { admissionNo: "19001", name: "Edward Thomas", class: "Class 1(A)", fatherName: "Olivier Thomas", dob: "11/03/2014", route: "", vehicle: "", pickupPoint: "" },
-    { admissionNo: "25001", name: "Georgia Wareham", class: "Class 1(A)", fatherName: "Zakary Foulkes", dob: "05/10/2021", route: "Brooklyn Central", vehicle: "VH1001", pickupPoint: "Brooklyn North" },
-    { admissionNo: "520039", name: "Xavier bartlett", class: "Class 1(A)", fatherName: "David bartlett", dob: "05/12/2009", route: "Brooklyn East", vehicle: "VH4584", pickupPoint: "Brooklyn North" },
-    { admissionNo: "650990", name: "James Bennett", class: "Class 1(A)", fatherName: "David Wilson", dob: "05/05/2009", route: "Brooklyn North", vehicle: "VH5645", pickupPoint: "Brooklyn West" },
-    { admissionNo: "7656", name: "RAM", class: "Class 1(A)", fatherName: "jay", dob: "01/07/2020", route: "Brooklyn Central", vehicle: "VH1001", pickupPoint: "Brooklyn North" },
-    { admissionNo: "9001", name: "Niharika", class: "Class 1(A)", fatherName: "ajay", dob: "01/07/2020", route: "Brooklyn South", vehicle: "VH5645", pickupPoint: "Brooklyn North" },
-    { admissionNo: "90034", name: "Nidhi Verma", class: "Class 1(A)", fatherName: "Babu", dob: "09/02/2021", route: "", vehicle: "", pickupPoint: "" },
-    { admissionNo: "9004", name: "ARYAAN", class: "Class 1(A)", fatherName: "s.r", dob: "10/14/2020", route: "", vehicle: "", pickupPoint: "" },
-    { admissionNo: "98001", name: "Matthew Bacon", class: "Class 1(A)", fatherName: "Jason", dob: "12/31/2018", route: "", vehicle: "", pickupPoint: "" },
-];
-
 export default function StudentTransportFeesPage() {
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [fetchingInitial, setFetchingInitial] = useState(true);
 
-    const filteredStudents = mockStudents.filter((s) =>
+    const [students, setStudents] = useState<StudentTransport[]>([]);
+    const [classes, setClasses] = useState<any[]>([]);
+    const [sections, setSections] = useState<any[]>([]);
+    const [routes, setRoutes] = useState<any[]>([]);
+    const [vehicles, setVehicles] = useState<any[]>([]);
+    const [pickupPoints, setPickupPoints] = useState<any[]>([]);
+
+    // Filters
+    const [filters, setFilters] = useState({
+        class_id: "",
+        section_id: "",
+    });
+
+    // Assignment Modal State
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState<StudentTransport | null>(null);
+    const [assignmentForm, setAssignmentForm] = useState({
+        route_id: "",
+        vehicle_id: "",
+        pickup_point_id: "",
+    });
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(50);
+
+    const fetchInitialData = async () => {
+        setFetchingInitial(true);
+        try {
+            const [classesRes, routesRes, vehiclesRes, pointsRes] = await Promise.all([
+                api.get("/classes"),
+                api.get("/transport/routes"),
+                api.get("/transport/vehicles"),
+                api.get("/transport/pickup-points"),
+            ]);
+            setClasses(classesRes.data.data.data || classesRes.data.data || []);
+            setRoutes(routesRes.data.data.data || routesRes.data.data || []);
+            setVehicles(vehiclesRes.data.data.data || vehiclesRes.data.data || []);
+            setPickupPoints(pointsRes.data.data.data || pointsRes.data.data || []);
+        } catch (error) {
+            toast("error", "Failed to load initial data");
+        } finally {
+            setFetchingInitial(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchInitialData();
+    }, []);
+
+    const handleClassChange = async (classId: string) => {
+        setFilters({ ...filters, class_id: classId, section_id: "" });
+        try {
+            const res = await api.get(`/sections?class_id=${classId}`);
+            setSections(res.data.data.data || res.data.data || []);
+        } catch (error) {
+            toast("error", "Failed to load sections");
+        }
+    };
+
+    const handleSearch = async () => {
+        if (!filters.class_id) {
+            toast("error", "Please select a class");
+            return;
+        }
+        setLoading(true);
+        try {
+            const params: any = {};
+            if (filters.class_id) params.class_id = filters.class_id;
+            if (filters.section_id) params.section_id = filters.section_id;
+
+            const res = await api.get("/transport/student-assignments", { params });
+            setStudents(res.data.data);
+            setCurrentPage(1);
+        } catch (error) {
+            toast("error", "Failed to fetch students");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleOpenAssign = (student: StudentTransport) => {
+        setSelectedStudent(student);
+        setAssignmentForm({
+            route_id: student.transport_assignment?.route?.id?.toString() || "",
+            vehicle_id: student.transport_assignment?.vehicle?.id?.toString() || "",
+            pickup_point_id: student.transport_assignment?.pickup_point?.id?.toString() || "",
+        });
+        setIsAssignModalOpen(true);
+    };
+
+    const handleAssign = async () => {
+        if (!selectedStudent) return;
+        if (!assignmentForm.route_id || !assignmentForm.vehicle_id || !assignmentForm.pickup_point_id) {
+            toast("error", "Please select all fields");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await api.post("/transport/student-assignments", {
+                student_id: selectedStudent.id,
+                ...assignmentForm,
+            });
+            toast("success", "Transport assigned successfully");
+            setIsAssignModalOpen(false);
+            handleSearch();
+        } catch (error) {
+            toast("error", "Failed to assign transport");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRemoveAssignment = async (studentId: number) => {
+        if (!confirm("Are you sure you want to remove transport for this student?")) return;
+        try {
+            await api.delete(`/transport/student-assignments/${studentId}`);
+            toast("success", "Transport assignment removed");
+            handleSearch();
+        } catch (error) {
+            toast("error", "Failed to remove assignment");
+        }
+    };
+
+    const filteredStudents = students.filter((s) =>
         s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.admissionNo.includes(searchTerm)
+        s.admission_no.includes(searchTerm)
     );
+
+    // Pagination logic
+    const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
+
+    // Export Functions
+    const exportToExcel = () => {
+        const dataToExport = filteredStudents.map(s => ({
+            'Admission No': s.admission_no,
+            'Student Name': s.name,
+            'Class': `${s.school_class?.name || ''}(${s.section?.name || ''})`,
+            'Father Name': s.father_name,
+            'Route': s.transport_assignment?.route?.title || '-',
+            'Vehicle': s.transport_assignment?.vehicle?.vehicle_no || '-',
+            'Pickup Point': s.transport_assignment?.pickup_point?.name || '-'
+        }));
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Students Transport");
+        XLSX.writeFile(wb, "student_transport_fees.xlsx");
+    };
+
+    const exportToPDF = () => {
+        const doc = new jsPDF('l');
+        doc.text("Student Transport Fees Report", 14, 15);
+        const tableData = filteredStudents.map(s => [
+            s.admission_no,
+            s.name,
+            `${s.school_class?.name || ''}(${s.section?.name || ''})`,
+            s.father_name,
+            s.transport_assignment?.route?.title || '-',
+            s.transport_assignment?.vehicle?.vehicle_no || '-',
+            s.transport_assignment?.pickup_point?.name || '-'
+        ]);
+        autoTable(doc, {
+            head: [['Admission No', 'Student Name', 'Class', 'Father Name', 'Route', 'Vehicle', 'Pickup Point']],
+            body: tableData,
+            startY: 20,
+        });
+        doc.save("student_transport_fees.pdf");
+    };
+
+    const copyToClipboard = () => {
+        const text = filteredStudents.map(s =>
+            `${s.admission_no}\t${s.name}\t${s.school_class?.name || '-'}\t${s.transport_assignment?.route?.title || '-'}`
+        ).join('\n');
+        navigator.clipboard.writeText(text);
+        toast("success", "Data copied to clipboard");
+    };
+
+    if (fetchingInitial) return <div className="p-8 text-center text-gray-400 italic">Loading criteria data...</div>;
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
             {/* Select Criteria Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
                 <h2 className="text-sm font-medium text-gray-800 tracking-tight">Select Criteria</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                    <div className="space-y-1.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end text-left">
+                    <div className="space-y-1.5 align-left">
                         <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
                             Class <span className="text-red-500 font-bold">*</span>
                         </Label>
-                        <Select>
+                        <Select onValueChange={handleClassChange} value={filters.class_id}>
                             <SelectTrigger className="h-8 border-gray-200 text-[11px] focus:ring-indigo-500 rounded shadow-none">
-                                <SelectValue placeholder="Class 1" />
+                                <SelectValue placeholder="Select Class" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="c1">Class 1</SelectItem>
-                                <SelectItem value="c2">Class 2</SelectItem>
+                                {classes.map((c) => (
+                                    <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 flex flex-col items-start">
                         <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
-                        <Select>
+                        <Select onValueChange={(val) => setFilters({ ...filters, section_id: val })} value={filters.section_id}>
                             <SelectTrigger className="h-8 border-gray-200 text-[11px] focus:ring-indigo-500 rounded shadow-none">
-                                <SelectValue placeholder="A" />
+                                <SelectValue placeholder="Select Section" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="a">A</SelectItem>
-                                <SelectItem value="b">B</SelectItem>
+                                {sections.map((s) => (
+                                    <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
                 <div className="flex justify-end pt-2">
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5">
-                        <Search className="h-3.5 w-3.5" />
-                        Search
+                    <Button
+                        onClick={handleSearch}
+                        disabled={loading}
+                        variant="gradient"
+                        className="px-8 h-10 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg flex items-center gap-1.5 min-w-[120px]"
+                    >
+                        <Search className="h-4 w-4" />
+                        {loading ? "Searching..." : "Search"}
                     </Button>
                 </div>
             </div>
@@ -120,16 +310,16 @@ export default function StudentTransportFeesPage() {
                         <Input
                             placeholder="Search"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                             className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
                         />
                     </div>
 
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">50</span>
-                            <Select defaultValue="50">
-                                <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none rounded">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{itemsPerPage}</span>
+                            <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
+                                <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -138,14 +328,23 @@ export default function StudentTransportFeesPage() {
                                     <SelectItem value="50">50</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                         </div>
                         <div className="flex items-center gap-1 text-gray-400">
-                            {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, i) => (
-                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                    <Icon className="h-3.5 w-3.5" />
-                                </Button>
-                            ))}
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={copyToClipboard}>
+                                <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={exportToExcel}>
+                                <FileSpreadsheet className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={exportToPDF}>
+                                <FileText className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={() => window.print()}>
+                                <Printer className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
+                                <Columns className="h-3.5 w-3.5" />
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -155,71 +354,201 @@ export default function StudentTransportFeesPage() {
                     <Table className="min-w-[1400px]">
                         <TableHeader className="bg-gray-50/50">
                             <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Admission No <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Student Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Class <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Father Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Date Of Birth <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Route Title <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Vehicle Number <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Pickup Point <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
+                                <TableHead className="py-3 px-4">Admission No</TableHead>
+                                <TableHead className="py-3 px-4">Student Name</TableHead>
+                                <TableHead className="py-3 px-4">Class</TableHead>
+                                <TableHead className="py-3 px-4">Father Name</TableHead>
+                                <TableHead className="py-3 px-4">Date Of Birth</TableHead>
+                                <TableHead className="py-3 px-4">Route Title</TableHead>
+                                <TableHead className="py-3 px-4">Vehicle Number</TableHead>
+                                <TableHead className="py-3 px-4">Pickup Point</TableHead>
                                 <TableHead className="py-3 px-4 text-right">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredStudents.map((student) => (
-                                <TableRow key={student.admissionNo} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
-                                    <TableCell className="py-3 px-4 text-gray-700 font-medium">{student.admissionNo}</TableCell>
-                                    <TableCell className="py-3 px-4">
-                                        <span className="text-[#6366f1] font-medium hover:underline cursor-pointer">{student.name}</span>
-                                    </TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.class}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.fatherName}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.dob}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.route}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.vehicle}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.pickupPoint}</TableCell>
-                                    <TableCell className="py-3 px-4 text-right">
-                                        <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm">
-                                            <Tag className="h-3 w-3" />
-                                        </Button>
-                                    </TableCell>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={9} className="text-center py-10 text-gray-400">Loading students...</TableCell>
                                 </TableRow>
-                            ))}
+                            ) : paginatedStudents.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={9} className="text-center py-10 text-gray-400">No students found</TableCell>
+                                </TableRow>
+                            ) : (
+                                paginatedStudents.map((student) => (
+                                    <TableRow key={student.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
+                                        <TableCell className="py-3 px-4 text-gray-700 font-medium">{student.admission_no}</TableCell>
+                                        <TableCell className="py-3 px-4">
+                                            <span className="text-[#6366f1] font-medium hover:underline cursor-pointer">{student.name}</span>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-500">{`${student.school_class?.name || ''}(${student.section?.name || ''})`}</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-500">{student.father_name}</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-500">{student.dob}</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-500">{student.transport_assignment?.route?.title || '-'}</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-500">{student.transport_assignment?.vehicle?.vehicle_no || '-'}</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-500">{student.transport_assignment?.pickup_point?.name || '-'}</TableCell>
+                                        <TableCell className="py-3 px-4 text-right flex items-center justify-end gap-1">
+                                            <Button title="View Details" onClick={() => { setSelectedStudent(student); setIsViewModalOpen(true); }} size="icon" variant="ghost" className="h-6 w-6 bg-blue-500 hover:bg-blue-600 text-white rounded shadow-sm">
+                                                <Eye className="h-3 w-3" />
+                                            </Button>
+                                            <Button title="Edit Assignment" onClick={() => handleOpenAssign(student)} size="icon" variant="gradient" className="h-6 w-6 text-white rounded shadow-sm">
+                                                <Pencil className="h-3 w-3" />
+                                            </Button>
+                                            {student.transport_assignment && (
+                                                <Button title="Delete Assignment" onClick={() => handleRemoveAssignment(student.id)} size="icon" variant="ghost" className="h-6 w-6 bg-red-500 hover:bg-red-600 text-white rounded shadow-sm font-bold">
+                                                    <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2 border-t border-gray-50">
-                    <div>
-                        Showing 1 to {filteredStudents.length} of {mockStudents.length} entries
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-4 border-t border-gray-100">
+                        <div>
+                            Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredStudents.length)} of {filteredStudents.length} entries
+                        </div>
+                        <div className="flex gap-1.5 items-center">
+                            <Button
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                            >
+                                <ChevronLeft className="h-5 w-5 text-gray-600" />
+                            </Button>
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <Button
+                                    key={page}
+                                    variant={currentPage === page ? "gradient" : "ghost"}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={cn(
+                                        "h-9 w-9 rounded-xl text-[12px] font-bold p-0 transition-all shadow-sm",
+                                        currentPage === page ? "scale-105 border-0" : "border border-gray-50 text-gray-400 hover:text-indigo-600"
+                                    )}
+                                >
+                                    {page}
+                                </Button>
+                            ))}
+
+                            <Button
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                            >
+                                <ChevronRight className="h-5 w-5 text-gray-600" />
+                            </Button>
+                        </div>
                     </div>
-                    <div className="flex gap-1 items-center">
-                        <span className="text-gray-400 mr-2 cursor-pointer hover:text-gray-600 text-[10px]">‹</span>
-                        <Button variant="default" size="sm" className="h-6 w-6 p-0 bg-indigo-500 hover:bg-indigo-600 text-white border-0 text-[10px] rounded shadow-sm">
-                            1
-                        </Button>
-                        <span className="text-gray-400 ml-2 cursor-pointer hover:text-gray-600 text-[10px]">›</span>
-                    </div>
-                </div>
+                )}
             </div>
+
+            {/* Assign Transport Modal */}
+            <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Assign Transport: {selectedStudent?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label>Route <span className="text-red-500">*</span></Label>
+                            <Select value={assignmentForm.route_id} onValueChange={(val) => setAssignmentForm({ ...assignmentForm, route_id: val })}>
+                                <SelectTrigger className="h-8 text-[11px]">
+                                    <SelectValue placeholder="Select Route" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {routes.map((r) => (
+                                        <SelectItem key={r.id} value={r.id.toString()}>{r.title}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Vehicle <span className="text-red-500">*</span></Label>
+                            <Select value={assignmentForm.vehicle_id} onValueChange={(val) => setAssignmentForm({ ...assignmentForm, vehicle_id: val })}>
+                                <SelectTrigger className="h-8 text-[11px]">
+                                    <SelectValue placeholder="Select Vehicle" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {vehicles.map((v) => (
+                                        <SelectItem key={v.id} value={v.id.toString()}>{v.vehicle_no}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Pickup Point <span className="text-red-500">*</span></Label>
+                            <Select value={assignmentForm.pickup_point_id} onValueChange={(val) => setAssignmentForm({ ...assignmentForm, pickup_point_id: val })}>
+                                <SelectTrigger className="h-8 text-[11px]">
+                                    <SelectValue placeholder="Select Point" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {pickupPoints.map((p) => (
+                                        <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAssignModalOpen(false)} className="h-9 text-[11px] rounded-full px-6">Cancel</Button>
+                        <Button
+                            variant="gradient"
+                            disabled={loading}
+                            onClick={handleAssign}
+                            className="h-9 text-[11px] min-w-[120px] rounded-full px-8 shadow-lg font-bold uppercase"
+                        >
+                            {loading ? "Saving..." : "Save Assignment"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            {/* View Transport Modal */}
+            <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>View Transport: {selectedStudent?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-3 py-4 text-[12px]">
+                        <div className="flex justify-between border-b border-gray-50 pb-2">
+                            <span className="font-bold text-gray-400 uppercase tracking-tight">Admission No</span>
+                            <span className="text-gray-700 font-medium">{selectedStudent?.admission_no}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2">
+                            <span className="font-bold text-gray-400 uppercase tracking-tight">Student Name</span>
+                            <span className="text-[#6366f1] font-bold">{selectedStudent?.name}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2">
+                            <span className="font-bold text-gray-400 uppercase tracking-tight">Class</span>
+                            <span className="text-gray-700 font-medium">{selectedStudent?.school_class?.name} ({selectedStudent?.section?.name})</span>
+                        </div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2">
+                            <span className="font-bold text-gray-400 uppercase tracking-tight">Route</span>
+                            <span className="text-indigo-600 font-bold">{selectedStudent?.transport_assignment?.route?.title || "Not Assigned"}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2">
+                            <span className="font-bold text-gray-400 uppercase tracking-tight">Vehicle</span>
+                            <span className="text-gray-700 font-medium">{selectedStudent?.transport_assignment?.vehicle?.vehicle_no || "Not Assigned"}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2">
+                            <span className="font-bold text-gray-400 uppercase tracking-tight">Pickup Point</span>
+                            <span className="text-gray-700 font-medium">{selectedStudent?.transport_assignment?.pickup_point?.name || "Not Assigned"}</span>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setIsViewModalOpen(false)} variant="gradient" className="rounded-full px-8 h-9 text-[11px] font-bold uppercase shadow-lg">Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ToastProvider } from "@/components/ui/toast";
+import { SettingsProvider } from "@/components/providers/settings-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,6 +19,8 @@ export const metadata: Metadata = {
   description: "Comprehensive School Management System",
 };
 
+import { ThemeProvider } from "@/components/providers/theme-provider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +32,18 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ToastProvider>
+            <SettingsProvider>
+              {children}
+            </SettingsProvider>
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -14,29 +14,46 @@ import {
 } from "@/components/ui/table";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
+import { useEffect, useCallback } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { Loader2 } from "lucide-react";
 
-// Mock Data
-const initialCurrencies = [
-    { id: 1, currency: "AED", shortCode: "AED", symbol: "AEDf", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 2, currency: "AFN", shortCode: "AFN", symbol: "؋", rate: 140, isBase: false, isActive: false, isEnabled: true },
-    { id: 3, currency: "ALL", shortCode: "ALL", symbol: "ALL", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 4, currency: "AMD", shortCode: "AMD", symbol: "AMD", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 5, currency: "ANG", shortCode: "ANG", symbol: "ANG", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 6, currency: "AOA", shortCode: "AOA", symbol: "AOA", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 7, currency: "ARS", shortCode: "ARS", symbol: "ARS", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 8, currency: "AUD", shortCode: "AUD", symbol: "AUD", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 9, currency: "AWG", shortCode: "AWG", symbol: "AWG", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 10, currency: "AZN", shortCode: "AZN", symbol: "AZN", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 11, currency: "BAM", shortCode: "BAM", symbol: "BAM", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 12, currency: "BAM", shortCode: "BAM", symbol: "BAM", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 13, currency: "BDT", shortCode: "BDT", symbol: "BDT", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 14, currency: "BGN", shortCode: "BGN", symbol: "BGN", rate: 1, isBase: false, isActive: false, isEnabled: true },
-    { id: 15, currency: "BHD", shortCode: "BHD", symbol: "BHD", rate: 1, isBase: false, isActive: false, isEnabled: true },
-];
+interface Currency {
+    id: number;
+    currency: string;
+    short_code: string;
+    symbol: string;
+    rate: number;
+    is_base: boolean;
+    is_active: boolean;
+    is_enabled: boolean;
+}
 
 export default function CurrencyPage() {
-    const [currencies, setCurrencies] = useState(initialCurrencies);
-    const [activeCurrencyId, setActiveCurrencyId] = useState<number | null>(4); // Default to AMD based on mock or user choice (mock screenshot has row 4 Active, assuming index logic) (Actually row 4 is Arabic in screenshot, but here AMD is 4th. I'll stick to ID logic)
+    const [currencies, setCurrencies] = useState<Currency[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const { toast } = useToast();
+
+    const fetchCurrencies = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await api.get("/system-setting/currencies");
+            if (response.data.status === "Success") {
+                setCurrencies(response.data.data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch currencies", error);
+            toast("error", "Failed to fetch currencies");
+        } finally {
+            setLoading(false);
+        }
+    }, [toast]);
+
+    useEffect(() => {
+        fetchCurrencies();
+    }, [fetchCurrencies]);
 
     const handleRateChange = (id: number, val: string) => {
         setCurrencies(prev => prev.map(c => c.id === id ? { ...c, rate: parseFloat(val) || 0 } : c));
@@ -46,8 +63,54 @@ export default function CurrencyPage() {
         setCurrencies(prev => prev.map(c => c.id === id ? { ...c, symbol: val } : c));
     };
 
-    const toggleEnabled = (id: number) => {
-        setCurrencies(prev => prev.map(c => c.id === id ? { ...c, isEnabled: !c.isEnabled } : c));
+    const toggleEnabled = async (id: number) => {
+        try {
+            const response = await api.post(`/system-setting/currencies/${id}/toggle-enabled`);
+            if (response.data.status === "Success") {
+                setCurrencies(prev => prev.map(c => c.id === id ? { ...c, is_enabled: !c.is_enabled } : c));
+                toast("success", "Currency status updated");
+            }
+        } catch (error) {
+            console.error("Failed to toggle status", error);
+            toast("error", "Failed to update status");
+        }
+    };
+
+    const toggleActive = async (id: number) => {
+        try {
+            const response = await api.post(`/system-setting/currencies/${id}/toggle-active`);
+            if (response.data.status === "Success") {
+                setCurrencies(prev => prev.map(c => ({
+                    ...c,
+                    is_active: c.id === id
+                })));
+                toast("success", "Base currency changed");
+            }
+        } catch (error) {
+            console.error("Failed to change active currency", error);
+            toast("error", "Failed to change active currency");
+        }
+    };
+
+    const handleSave = async () => {
+        try {
+            setSaving(true);
+            const response = await api.post("/system-setting/currencies/batch-update", {
+                currencies: currencies.map(c => ({
+                    id: c.id,
+                    symbol: c.symbol,
+                    rate: c.rate
+                }))
+            });
+            if (response.data.status === "Success") {
+                toast("success", "Currencies saved successfully");
+            }
+        } catch (error) {
+            console.error("Failed to save currencies", error);
+            toast("error", "Failed to save currencies");
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -86,7 +149,7 @@ export default function CurrencyPage() {
                                         {currency.currency}
                                     </TableCell>
                                     <TableCell className="py-2 px-4 text-[11px] text-gray-500">
-                                        {currency.shortCode}
+                                        {currency.short_code}
                                     </TableCell>
                                     <TableCell className="py-2 px-4">
                                         <Input
@@ -109,15 +172,15 @@ export default function CurrencyPage() {
                                     <TableCell className="py-2 px-4 text-center">
                                         <div className="flex justify-center">
                                             <RadioGroup
-                                                value={activeCurrencyId?.toString()}
-                                                onValueChange={(val) => setActiveCurrencyId(parseInt(val))}
+                                                value={currencies.find(c => c.is_active)?.id.toString()}
+                                                onValueChange={(val) => toggleActive(parseInt(val))}
                                                 className="flex"
                                             >
                                                 <RadioGroupItem
                                                     value={currency.id.toString()}
                                                     className={cn(
                                                         "h-4 w-4 border-gray-300 text-indigo-600 data-[state=checked]:border-indigo-600 transition-all cursor-pointer",
-                                                        activeCurrencyId === currency.id ? "border-indigo-600" : ""
+                                                        currency.is_active ? "border-indigo-600" : ""
                                                     )}
                                                 />
                                             </RadioGroup>
@@ -126,7 +189,7 @@ export default function CurrencyPage() {
                                     <TableCell className="py-2 px-4 text-right">
                                         <div className="flex justify-end">
                                             <Switch
-                                                checked={currency.isEnabled}
+                                                checked={currency.is_enabled}
                                                 onCheckedChange={() => toggleEnabled(currency.id)}
                                                 className="data-[state=checked]:bg-gray-600 scale-90 transition-all"
                                             />
@@ -140,8 +203,14 @@ export default function CurrencyPage() {
 
                 {/* Footer Save Action if needed (standard practice usually) */}
                 {/* Screenshot clipped doesn't show one but usually lists like this have Save or Auto-save. Adding consistent Save button */}
+                {/* Footer Save Action */}
                 <div className="flex justify-end pt-4 border-t border-gray-50 mt-4">
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-8 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-md border-b-2 border-indigo-700">
+                    <Button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-8 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg border-none"
+                    >
+                        {saving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                         Save
                     </Button>
                 </div>

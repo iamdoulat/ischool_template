@@ -126,3 +126,94 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Theme Skins */
+.skin-shadow .bg-card, 
+.skin-shadow .bg-background,
+.skin-shadow .sidebar-content {
+  @apply shadow-2xl! shadow-black/5;
+}
+
+.skin-bordered .bg-card,
+.skin-bordered .bg-background,
+.skin-bordered .border,
+.skin-bordered footer,
+.skin-bordered header,
+.skin-bordered aside {
+  @apply border-gray-200!;
+}
+
+.skin-bordered .shadow-sm,
+.skin-bordered .shadow,
+.skin-bordered .shadow-md,
+.skin-bordered .shadow-lg,
+.skin-bordered .shadow-xl,
+.skin-bordered .shadow-2xl {
+  @apply shadow-none!;
+}
+
+.skin-bordered .bg-white {
+  @apply border border-gray-100;
+}
+
+@media print {
+  /* Hide sidebar, header, footer, and other UI controls */
+  aside, 
+  header, 
+  footer, 
+  .sidebar-container, 
+  .navbar,
+  .no-print,
+  button:not(.print-button),
+  [role="combobox"],
+  .select-criteria-section {
+    display: none !important;
+  }
+
+  /* Reset layout for print */
+  body, html {
+    overflow: visible !important;
+    height: auto !important;
+    background: white !important;
+  }
+
+  div.fixed, div.absolute {
+    position: relative !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure the printed container takes full width */
+  .main-content, .flex-1 {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Custom visibility */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Specific fixes for timetable grid */
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  .min-w-max {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Force page breaks if needed */
+  .page-break {
+    page-break-before: always;
+  }
+}

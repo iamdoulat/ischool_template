@@ -16,7 +16,7 @@ export function AboutSection() {
             <div className="absolute bottom-20 left-0 w-96 h-96 bg-[#C71585]/5 rounded-full blur-3xl -z-10" />
 
             <div className="container mx-auto px-4 md:px-8">
-                <div className="text-center space-y-4 mb-20 md:mb-24">
+                <div className="text-center space-y-4 mb-10 md:mb-12">
                     <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 uppercase tracking-tight">
                         About Us
                     </h2>

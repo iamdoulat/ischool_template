@@ -11,8 +11,10 @@ import {
     Youtube,
     GraduationCap
 } from "lucide-react";
+import { useSettings } from "@/components/providers/settings-provider";
 
 export function PublicFooter() {
+    const { settings } = useSettings();
     return (
         <footer className="bg-slate-900 text-slate-300">
             {/* Main Footer Content */}
@@ -20,12 +22,31 @@ export function PublicFooter() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
                     {/* Brand Column */}
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-white">
-                            <GraduationCap className="h-8 w-8" />
-                            <span className="font-extrabold text-xl tracking-tight uppercase">Smart School</span>
-                        </div>
+                        <Link href="/" className="flex items-center gap-3 text-white group">
+                            {settings?.app_logo ? (
+                                <img
+                                    src={settings.app_logo}
+                                    alt={settings.school_name || "School Logo"}
+                                    className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
+                                />
+                            ) : (
+                                <>
+                                    <div className="flex items-center">
+                                        <GraduationCap className="h-8 w-8 transition-transform group-hover:scale-110" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-extrabold text-xl tracking-tight uppercase leading-none group-hover:text-primary transition-colors">
+                                            {settings?.school_name || "iSchool"}
+                                        </span>
+                                        <span className="text-[9px] font-semibold tracking-widest text-slate-500 uppercase">
+                                            {settings?.school_slogan || "Excellence in Education"}
+                                        </span>
+                                    </div>
+                                </>
+                            )}
+                        </Link>
                         <p className="text-sm leading-relaxed text-slate-400">
-                            Empowering students with knowledge, character, and skills for a bright future. Excellence in education since 1990.
+                            {settings?.school_description || "Empowering students with knowledge, character, and skills for a bright future. Excellence in education since 2026."}
                         </p>
                         <div className="flex gap-4 pt-2">
                             <a href="#" className="hover:text-primary transition-colors"><Facebook className="h-5 w-5" /></a>

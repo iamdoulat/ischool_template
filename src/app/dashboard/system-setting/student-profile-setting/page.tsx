@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { Loader2 } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -31,27 +34,76 @@ import {
     ChevronRight
 } from "lucide-react";
 
-// Mock Data for Dashboard Settings
-const dashboardWidgetsRaw = [
-    { id: 1, name: "Welcome Student", student: true, parent: true },
-    { id: 2, name: "Notice Board", student: true, parent: true },
-    { id: 3, name: "Subject Progress", student: true, parent: true },
-    { id: 4, name: "Upcoming Class", student: true, parent: true },
-    { id: 5, name: "Homework", student: true, parent: true },
-    { id: 6, name: "Teacher List", student: true, parent: true },
-    { id: 7, name: "Visitor List", student: true, parent: true },
-    { id: 8, name: "Library", student: true, parent: true },
-];
+interface Widget {
+    id: number;
+    name: string;
+    student: boolean;
+    parent: boolean;
+}
 
 export default function StudentProfileSettingPage() {
-    // State for Dashboard Setting Tab
-    const [dashboardWidgets, setDashboardWidgets] = useState(dashboardWidgetsRaw);
+    const [dashboardWidgets, setDashboardWidgets] = useState<Widget[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
-
-    // State for Student Profile Update Tab
     const [allowEditable, setAllowEditable] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [savingProfile, setSavingProfile] = useState(false);
+    const [savingWidgets, setSavingWidgets] = useState(false);
+    const { toast } = useToast();
 
-    // Toggle Handlers
+    const fetchSettings = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await api.get("/system-setting/student-profile-setting");
+            if (response.data.status === "Success") {
+                setDashboardWidgets(response.data.data.widgets);
+                setAllowEditable(response.data.data.is_student_profile_edit);
+            }
+        } catch (error) {
+            console.error("Failed to fetch settings", error);
+            toast("error", "Failed to load settings");
+        } finally {
+            setLoading(false);
+        }
+    }, [toast]);
+
+    useEffect(() => {
+        fetchSettings();
+    }, [fetchSettings]);
+
+    const handleSaveProfileEdit = async () => {
+        try {
+            setSavingProfile(true);
+            const response = await api.post("/system-setting/student-profile-setting/update-profile-edit", {
+                is_student_profile_edit: allowEditable
+            });
+            if (response.data.status === "Success") {
+                toast("success", "Profile update setting saved");
+            }
+        } catch (error) {
+            console.error("Failed to save profile setting", error);
+            toast("error", "Failed to save profile setting");
+        } finally {
+            setSavingProfile(false);
+        }
+    };
+
+    const handleSaveWidgets = async () => {
+        try {
+            setSavingWidgets(true);
+            const response = await api.post("/system-setting/student-profile-setting/update-widgets", {
+                widgets: dashboardWidgets
+            });
+            if (response.data.status === "Success") {
+                toast("success", "Dashboard settings saved");
+            }
+        } catch (error) {
+            console.error("Failed to save dashboard settings", error);
+            toast("error", "Failed to save dashboard settings");
+        } finally {
+            setSavingWidgets(false);
+        }
+    };
+
     const toggleDashboardWidget = (id: number, type: 'student' | 'parent') => {
         setDashboardWidgets(prev => prev.map(widget =>
             widget.id === id ? { ...widget, [type]: !widget[type] } : widget
@@ -61,6 +113,31 @@ export default function StudentProfileSettingPage() {
     const filteredWidgets = dashboardWidgets.filter(w =>
         w.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleCopy = () => {
+        const text = filteredWidgets.map(w => `${w.name}\t${w.student ? 'Yes' : 'No'}\t${w.parent ? 'Yes' : 'No'}`).join('\n');
+        navigator.clipboard.writeText(`Name\tStudent\tParent\n${text}`);
+        toast("success", "Copied to clipboard");
+    };
+
+    const handleExportExcel = () => {
+        const csv = ["Name,Student,Parent", ...filteredWidgets.map(w => `"${w.name}",${w.student ? 'Yes' : 'No'},${w.parent ? 'Yes' : 'No'}`)].join("\n");
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dashboard_settings_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        toast("success", "Exported to CSV");
+    };
+
+    const handleExportPDF = () => {
+        window.print();
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
 
     return (
         <div className="p-4 bg-gray-50/10 min-h-screen font-sans space-y-4">
@@ -101,9 +178,15 @@ export default function StudentProfileSettingPage() {
                                     <Switch
                                         checked={allowEditable}
                                         onCheckedChange={setAllowEditable}
+                                        disabled={loading || savingProfile}
                                         className="data-[state=checked]:bg-indigo-600 scale-90"
                                     />
-                                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-md">
+                                    <Button
+                                        onClick={handleSaveProfileEdit}
+                                        disabled={loading || savingProfile}
+                                        className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-8 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg border-none"
+                                    >
+                                        {savingProfile && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                                         Save
                                     </Button>
                                 </div>
@@ -139,11 +222,20 @@ export default function StudentProfileSettingPage() {
                                     </Select>
                                 </div>
 
+                                <Button
+                                    onClick={handleSaveWidgets}
+                                    disabled={loading || savingWidgets}
+                                    className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-6 h-7 text-[10px] font-bold uppercase transition-all rounded-full shadow-md border-none"
+                                >
+                                    {savingWidgets && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                                    Save
+                                </Button>
+
                                 <div className="flex items-center gap-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Copy className="h-3.5 w-3.5" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileText className="h-3.5 w-3.5" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Printer className="h-3.5 w-3.5" /></Button>
+                                    <Button onClick={handleCopy} variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Copy className="h-3.5 w-3.5" /></Button>
+                                    <Button onClick={handleExportExcel} variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                                    <Button onClick={handleExportPDF} variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileText className="h-3.5 w-3.5" /></Button>
+                                    <Button onClick={handlePrint} variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Printer className="h-3.5 w-3.5" /></Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Columns className="h-3.5 w-3.5" /></Button>
                                 </div>
                             </div>
@@ -207,11 +299,13 @@ export default function StudentProfileSettingPage() {
                                     Showing 1 to {filteredWidgets.length} of {dashboardWidgets.length} entries
                                 </p>
                                 <div className="flex items-center gap-1">
-                                    <Button variant="outline" size="icon" className="h-7 w-7 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50" disabled>
+                                    <Button variant="outline" size="icon" className="h-7 w-7 text-gray-400 border-gray-100 hover:text-indigo-600 disabled:opacity-30 rounded-lg shadow-sm" disabled>
                                         <ChevronLeft className="h-3 w-3" />
                                     </Button>
-                                    <Button className="h-7 w-7 p-0 text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 hover:text-indigo-700 aspect-square">1</Button>
-                                    <Button variant="outline" size="icon" className="h-7 w-7 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50" disabled>
+                                    <Button className="h-8 w-8 p-0 text-[11px] font-bold bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] text-white border-none hover:opacity-90 transition-all rounded-lg shadow-md aspect-square">
+                                        1
+                                    </Button>
+                                    <Button variant="outline" size="icon" className="h-7 w-7 text-gray-400 border-gray-100 hover:text-indigo-600 disabled:opacity-30 rounded-lg shadow-sm" disabled>
                                         <ChevronRight className="h-3 w-3" />
                                     </Button>
                                 </div>

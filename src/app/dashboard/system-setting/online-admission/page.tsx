@@ -38,11 +38,18 @@ import {
     AlignLeft,
     AlignCenter,
     AlignRight,
+    Loader2
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { useCurrency } from "@/components/providers/currency-provider";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+import api from "@/lib/api";
+import { useEffect, useCallback } from "react";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 
-// Mock Data for Online Admission Fields
-const admissionFields = [
+// Initial field structure
+const initialFields = [
     { id: 1, name: "Last Name", active: true },
     { id: 2, name: "Category", active: true },
     { id: 3, name: "Religion", active: true },
@@ -69,13 +76,90 @@ const admissionFields = [
 ];
 
 export default function OnlineAdmissionPage() {
+    const { selectedCurrency } = useCurrency();
+    const { formatCurrency } = useCurrencyFormatter();
+    const { toast } = useToast();
+
     const [activeTab, setActiveTab] = useState("form-setting");
-    const [fields, setFields] = useState(admissionFields);
+    const [fields, setFields] = useState(initialFields);
     const [searchTerm, setSearchTerm] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [savingSettings, setSavingSettings] = useState(false);
+    const [savingFields, setSavingFields] = useState(false);
 
     // State for Form Settings
-    const [onlineAdmission, setOnlineAdmission] = useState(true);
-    const [paymentOption, setPaymentOption] = useState(true);
+    const [settings, setSettings] = useState({
+        online_admission: true,
+        online_admission_payment_option: true,
+        online_admission_form_fees: "100.00",
+        instructions: "General Instruction:- These instructions pertain to online application for admission to Smart School...",
+        terms_conditions: "General Terms & Conditions for Students:- 1. The User declares that the content of the Portal shall be accessed...",
+    });
+
+    const fetchData = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await api.get("/system-setting/online-admission");
+            if (response.data.success) {
+                const { settings: fetchedSettings, fields: fetchedFields } = response.data.data;
+                if (fetchedSettings) {
+                    setSettings({
+                        online_admission: Boolean(fetchedSettings.online_admission),
+                        online_admission_payment_option: Boolean(fetchedSettings.online_admission_payment_option),
+                        online_admission_form_fees: fetchedSettings.online_admission_form_fees,
+                        instructions: fetchedSettings.instructions || "",
+                        terms_conditions: fetchedSettings.terms_conditions || "",
+                    });
+                }
+                if (fetchedFields && fetchedFields.length > 0) {
+                    setFields(fetchedFields.map((f: any) => ({
+                        id: f.id,
+                        name: f.name,
+                        active: Boolean(f.is_active)
+                    })));
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching online admission settings:", error);
+            toast("error", "Failed to load settings. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    }, [toast]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const handleSaveSettings = async () => {
+        try {
+            setSavingSettings(true);
+            const response = await api.post("/system-setting/online-admission/settings", settings);
+            if (response.data.success) {
+                toast("success", "Form settings updated successfully.");
+            }
+        } catch (error) {
+            toast("error", "Failed to update form settings.");
+        } finally {
+            setSavingSettings(false);
+        }
+    };
+
+    const handleSaveFields = async () => {
+        try {
+            setSavingFields(true);
+            const response = await api.post("/system-setting/online-admission/fields", {
+                fields: fields.map(f => ({ id: f.id, is_active: f.active }))
+            });
+            if (response.data.success) {
+                toast("success", "Fields visibility updated successfully.");
+            }
+        } catch (error) {
+            toast("error", "Failed to update fields visibility.");
+        } finally {
+            setSavingFields(false);
+        }
+    };
 
     const toggleField = (id: number) => {
         setFields(prev => prev.map(item =>
@@ -83,9 +167,38 @@ export default function OnlineAdmissionPage() {
         ));
     };
 
+    const handleExport = (type: 'copy' | 'csv' | 'pdf' | 'print') => {
+        const data = fields.map(f => ({ Name: f.name, Status: f.active ? 'Active' : 'Inactive' }));
+
+        if (type === 'copy') {
+            const text = data.map(row => `${row.Name}\t${row.Status}`).join('\n');
+            navigator.clipboard.writeText(text);
+            toast("success", "Table data copied to clipboard.");
+        } else if (type === 'csv') {
+            const headers = "Name,Status\n";
+            const rows = data.map(row => `${row.Name},${row.Status}`).join('\n');
+            const blob = new Blob([headers + rows], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `online_admission_fields.csv`;
+            a.click();
+        } else if (type === 'pdf' || type === 'print') {
+            window.print();
+        }
+    };
+
     const filteredFields = fields.filter(item =>
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    if (loading) {
+        return (
+            <div className="flex h-[400px] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 bg-gray-50/10 min-h-screen font-sans space-y-4">
@@ -124,23 +237,27 @@ export default function OnlineAdmissionPage() {
                                 <div className="flex items-center justify-between">
                                     <label className="text-[12px] font-bold text-gray-700">Online Admission</label>
                                     <Switch
-                                        checked={onlineAdmission}
-                                        onCheckedChange={setOnlineAdmission}
+                                        checked={settings.online_admission}
+                                        onCheckedChange={(val) => setSettings({ ...settings, online_admission: val })}
                                         className="data-[state=checked]:bg-[#6366f1] scale-90"
                                     />
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <label className="text-[12px] font-bold text-gray-700">Online Admission Payment Option</label>
                                     <Switch
-                                        checked={paymentOption}
-                                        onCheckedChange={setPaymentOption}
+                                        checked={settings.online_admission_payment_option}
+                                        onCheckedChange={(val) => setSettings({ ...settings, online_admission_payment_option: val })}
                                         className="data-[state=checked]:bg-[#6366f1] scale-90"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5 md:col-span-1">
-                                    <label className="text-[12px] font-bold text-gray-700">Online Admission Form Fees ($)</label>
-                                    <Input className="h-8 text-[12px] border-gray-200 focus:ring-indigo-500 shadow-none rounded w-full" defaultValue="100.00" />
+                                    <label className="text-[12px] font-bold text-gray-700">Online Admission Form Fees ({selectedCurrency?.symbol || '$'})</label>
+                                    <Input
+                                        className="h-8 text-[12px] border-gray-200 focus:ring-indigo-500 shadow-none rounded w-full"
+                                        value={settings.online_admission_form_fees}
+                                        onChange={(e) => setSettings({ ...settings, online_admission_form_fees: e.target.value })}
+                                    />
                                 </div>
 
                                 <div className="space-y-1.5 md:col-span-2">
@@ -176,7 +293,12 @@ export default function OnlineAdmissionPage() {
                                         <Button variant="ghost" size="icon" className="h-6 w-6"><List className="h-3 w-3" /></Button>
                                         <Button variant="ghost" size="icon" className="h-6 w-6"><ListOrdered className="h-3 w-3" /></Button>
                                     </div>
-                                    <Textarea className="min-h-[100px] border-none focus-visible:ring-0 text-[11px] p-3 resize-y rounded-none shadow-none" placeholder="Enter instructions here..." defaultValue="General Instruction:- These instructions pertain to online application for admission to Smart School..." />
+                                    <Textarea
+                                        className="min-h-[100px] border-none focus-visible:ring-0 text-[11px] p-3 resize-y rounded-none shadow-none"
+                                        placeholder="Enter instructions here..."
+                                        value={settings.instructions}
+                                        onChange={(e) => setSettings({ ...settings, instructions: e.target.value })}
+                                    />
                                 </div>
                             </div>
 
@@ -189,12 +311,22 @@ export default function OnlineAdmissionPage() {
                                         <Button variant="ghost" size="icon" className="h-6 w-6"><Bold className="h-3 w-3" /></Button>
                                         <Button variant="ghost" size="icon" className="h-6 w-6"><Italic className="h-3 w-3" /></Button>
                                     </div>
-                                    <Textarea className="min-h-[100px] border-none focus-visible:ring-0 text-[11px] p-3 resize-y rounded-none shadow-none" placeholder="Enter terms here..." defaultValue="General Terms & Conditions for Students:- 1. The User declares that the content of the Portal shall be accessed..." />
+                                    <Textarea
+                                        className="min-h-[100px] border-none focus-visible:ring-0 text-[11px] p-3 resize-y rounded-none shadow-none"
+                                        placeholder="Enter terms here..."
+                                        value={settings.terms_conditions}
+                                        onChange={(e) => setSettings({ ...settings, terms_conditions: e.target.value })}
+                                    />
                                 </div>
                             </div>
 
                             <div className="flex justify-end pt-4 border-t border-gray-50">
-                                <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-md border-b-2 border-indigo-700">
+                                <Button
+                                    onClick={handleSaveSettings}
+                                    disabled={savingSettings}
+                                    className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:opacity-90 text-white px-8 h-9 text-[12px] font-bold uppercase transition-all rounded-full shadow-lg border-none min-w-[120px]"
+                                >
+                                    {savingSettings ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                     Save
                                 </Button>
                             </div>
@@ -230,10 +362,10 @@ export default function OnlineAdmissionPage() {
                                 </div>
 
                                 <div className="flex items-center gap-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Copy className="h-3.5 w-3.5" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileText className="h-3.5 w-3.5" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Printer className="h-3.5 w-3.5" /></Button>
+                                    <Button onClick={() => handleExport('copy')} variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Copy className="h-3.5 w-3.5" /></Button>
+                                    <Button onClick={() => handleExport('csv')} variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                                    <Button onClick={() => handleExport('pdf')} variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileText className="h-3.5 w-3.5" /></Button>
+                                    <Button onClick={() => handleExport('print')} variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Printer className="h-3.5 w-3.5" /></Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Columns className="h-3.5 w-3.5" /></Button>
                                 </div>
                             </div>
@@ -277,6 +409,18 @@ export default function OnlineAdmissionPage() {
                                 </Table>
                             </div>
 
+                            {/* Save Button for Fields */}
+                            <div className="flex justify-end pt-4 mt-4 border-t border-gray-50">
+                                <Button
+                                    onClick={handleSaveFields}
+                                    disabled={savingFields}
+                                    className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:opacity-90 text-white px-8 h-9 text-[12px] font-bold uppercase transition-all rounded-full shadow-lg border-none min-w-[120px]"
+                                >
+                                    {savingFields ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                    Save
+                                </Button>
+                            </div>
+
                             {/* Pagination */}
                             <div className="flex items-center justify-between pt-4">
                                 <p className="text-[10px] text-gray-500 font-medium">
@@ -286,7 +430,7 @@ export default function OnlineAdmissionPage() {
                                     <Button variant="outline" size="icon" className="h-7 w-7 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50" disabled>
                                         <ChevronLeft className="h-3 w-3" />
                                     </Button>
-                                    <Button className="h-7 w-7 p-0 text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 hover:text-indigo-700 aspect-square">1</Button>
+                                    <Button className="h-7 w-7 p-0 text-[10px] font-bold bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] text-white border-none hover:opacity-90 aspect-square rounded-md shadow-sm">1</Button>
                                     <Button variant="outline" size="icon" className="h-7 w-7 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50" disabled>
                                         <ChevronRight className="h-3 w-3" />
                                     </Button>

@@ -17,8 +17,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/components/providers/settings-provider";
 
 export function PublicHeader() {
+    const { settings } = useSettings();
+    console.log("PublicHeader Settings:", settings);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const navItems = [
@@ -55,7 +58,7 @@ export function PublicHeader() {
                             <a href="#" className="hover:opacity-80 transition-opacity"><Linkedin className="h-3 w-3 md:h-4 md:w-4" /></a>
                         </div>
                         <div className="w-px h-4 bg-primary-foreground/30 hidden md:block" />
-                        <Link href="/dashboard">
+                        <Link href="/login">
                             <Button variant="secondary" size="sm" className="h-7 px-3 text-xs bg-white text-primary hover:bg-white/90">
                                 <LogIn className="h-3 w-3 mr-1" />
                                 Login
@@ -69,12 +72,28 @@ export function PublicHeader() {
             <div className="bg-white border-b sticky top-0 shadow-sm">
                 <div className="container mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
                     {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2 text-primary">
-                        <GraduationCap className="h-8 w-8 md:h-10 md:w-10" />
-                        <div className="flex flex-col">
-                            <span className="font-extrabold text-xl md:text-2xl tracking-tight uppercase leading-none">Smart School</span>
-                            <span className="text-[10px] md:text-xs font-semibold tracking-widest text-muted-foreground uppercase">Excellence in Education</span>
-                        </div>
+                    <Link href="/" className="flex items-center gap-3 text-primary group">
+                        {settings?.app_logo ? (
+                            <img
+                                src={settings.app_logo}
+                                alt={settings.school_name || "School Logo"}
+                                className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-105"
+                            />
+                        ) : (
+                            <>
+                                <div className="flex items-center justify-center">
+                                    <GraduationCap className="h-8 w-8 md:h-10 md:w-10 transition-transform group-hover:scale-110" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="font-extrabold text-xl md:text-2xl tracking-tight uppercase leading-none text-slate-900 group-hover:text-primary transition-colors">
+                                        {settings?.school_name || "iSchool"}
+                                    </span>
+                                    <span className="text-[10px] md:text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                                        {settings?.school_slogan || "Excellence in Education"}
+                                    </span>
+                                </div>
+                            </>
+                        )}
                     </Link>
 
                     {/* Desktop Menu */}
