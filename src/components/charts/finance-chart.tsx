@@ -153,7 +153,5 @@ export function FinanceChart({ title, data, type }: FinanceChartProps) {
                 </div>
             </CardContent>
         </Card>
-            </CardContent>
-        </Card>
     );
 }
