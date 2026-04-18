@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
@@ -29,16 +29,15 @@ export default function FileUpload({
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Update preview when initialValue changes (e.g. after data fetch)
-    // using a key or effect in parent might be cleaner, but simple effect here works
-    // actually, let's just rely on initial render or key change for now to avoid complexity
-    // or add a useEffect to sync if needed. For now, let's stick to initial state if component re-mounts or add basic sync.
-    // Better: Add useEffect to sync initialValue changes if data loads async
-    const [initialized, setInitialized] = useState(false);
-    if (initialValue && !preview && !file && !initialized) {
-        setPreview(initialValue);
-        setInitialized(true);
-    }
+    // Synchronize initialValue with preview state
+    useEffect(() => {
+        if (initialValue) {
+            setPreview(initialValue);
+        } else if (!file) {
+            // Only clear preview if no new file is being held
+            setPreview(null);
+        }
+    }, [initialValue]);
 
     const handleFileSelect = (selectedFile: File | null) => {
         if (!selectedFile) return;
@@ -105,6 +104,8 @@ export default function FileUpload({
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
+        // Notify parent that the image was removed
+        onUploadComplete("", "");
     };
 
     return (
@@ -145,7 +146,10 @@ export default function FileUpload({
                                 alt="Preview"
                                 className="h-32 w-32 object-cover rounded-lg border border-gray-200"
                                 onError={(e) => {
+                                    // If image fails to load, we can show a placeholder or just hide it
+                                    // and let the user see the 'Change Photo' overlay or standard label
                                     e.currentTarget.style.display = 'none';
+                                    setError("Failed to load current photo. Use the button below to upload a new one.");
                                 }}
                             />
                             {/* Overlay to change image */}
