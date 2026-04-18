@@ -35,6 +35,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  {
+    protocol: "https",
+    hostname: "api.ischool.mddoulat.com",
+    port: "",
+    pathname: "/**",
+  },
 };
+
 
 export default nextConfig;

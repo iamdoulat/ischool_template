@@ -20,7 +20,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { ArrowLeft, Download, Upload, AlertCircle, Settings } from "lucide-react";
-import axios from "axios";
+import api from "@/lib/api";
 
 interface Role {
     name: string;
@@ -45,7 +45,7 @@ export default function ImportStaffPage() {
 
     const fetchRoles = async () => {
         try {
-            const response = await axios.get("http://127.0.0.1:8000/api/v1/hr/staff-roles");
+            const response = await api.get("/hr/staff-roles");
             if (response.data.status === "Success") {
                 setRoles(response.data.data);
             }

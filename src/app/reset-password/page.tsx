@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { KeyRound, Loader2, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
-import axios from "axios";
+import api from "@/lib/api";
 
 function ResetPasswordForm() {
     const router = useRouter();
@@ -41,7 +41,7 @@ function ResetPasswordForm() {
         setError(null);
 
         try {
-            const response = await axios.post("http://127.0.0.1:8000/api/v1/reset-password", {
+            const response = await api.post("/reset-password", {
                 token,
                 email,
                 password,

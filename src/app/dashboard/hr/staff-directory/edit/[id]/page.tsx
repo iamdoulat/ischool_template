@@ -13,9 +13,9 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Save } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Save, Lock, ShieldCheck } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
-import axios from "axios";
+import api from "@/lib/api";
 
 interface Role {
     name: string;
@@ -52,13 +52,22 @@ export default function EditStaffPage() {
         note: "",
         pan_number: "",
     });
+    const [passwordData, setPasswordData] = useState({
+        current_password: "",
+        new_password: "",
+        new_password_confirmation: "",
+    });
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [currentUser, setCurrentUser] = useState<any>(null);
+    const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
             const user = await fetchCurrentUser();
-            if (user && (user.permissions?.includes("human-resource.staff.edit") || user.permissions?.includes("all"))) {
+            if (user && (user.permissions?.includes("human-resource.staff.edit") || user.permissions?.includes("all") || user.staff_id === id)) {
+                setCurrentUser(user);
                 await Promise.all([fetchRoles(), fetchStaffDetails()]);
             } else if (user) {
                 alert("Unauthorized. You do not have permission to edit staff.");
@@ -71,12 +80,7 @@ export default function EditStaffPage() {
 
     const fetchCurrentUser = async () => {
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.get("http://127.0.0.1:8000/api/v1/profile", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.get("/profile");
             if (response.data.status === "Success") {
                 return response.data.data;
             }
@@ -89,12 +93,7 @@ export default function EditStaffPage() {
 
     const fetchRoles = async () => {
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.get("http://127.0.0.1:8000/api/v1/hr/staff-roles", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.get("/hr/staff-roles");
             if (response.data.status === "Success") {
                 setRoles(response.data.data);
             }
@@ -105,12 +104,7 @@ export default function EditStaffPage() {
 
     const fetchStaffDetails = async () => {
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.get(`http://127.0.0.1:8000/api/v1/hr/staff-directory/${id}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.get(`/hr/staff-directory/${id}`);
             if (response.data.status === "Success") {
                 const staff = response.data.data;
                 const nameParts = staff.name ? staff.name.split(" ") : ["", ""];
@@ -197,12 +191,7 @@ export default function EditStaffPage() {
 
         setIsSubmitting(true);
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.put(`http://127.0.0.1:8000/api/v1/hr/staff-directory/${id}`, formData, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.put(`/hr/staff-directory/${id}`, formData);
 
             if (response.data.status === "Success") {
                 alert("Staff member updated successfully!");
@@ -216,6 +205,50 @@ export default function EditStaffPage() {
             }
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handlePasswordSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setPasswordErrors({});
+
+        if (!passwordData.current_password) {
+            setPasswordErrors(prev => ({ ...prev, current_password: "Current password is required" }));
+            return;
+        }
+        if (passwordData.new_password.length < 8) {
+            setPasswordErrors(prev => ({ ...prev, new_password: "Password must be at least 8 characters" }));
+            return;
+        }
+        if (passwordData.new_password !== passwordData.new_password_confirmation) {
+            setPasswordErrors(prev => ({ ...prev, new_password_confirmation: "Passwords do not match" }));
+            return;
+        }
+
+        setIsChangingPassword(true);
+        try {
+            const response = await api.post(`/change-password`, {
+                current_password: passwordData.current_password,
+                new_password: passwordData.new_password,
+                new_password_confirmation: passwordData.new_password_confirmation
+            });
+
+            if (response.data.status === "Success") {
+                alert("Password updated successfully!");
+                setPasswordData({
+                    current_password: "",
+                    new_password: "",
+                    new_password_confirmation: "",
+                });
+            }
+        } catch (error: any) {
+            if (error.response?.data?.errors) {
+                setPasswordErrors(error.response.data.errors);
+            } else {
+                alert(error.response?.data?.message || "Failed to update password.");
+            }
+        } finally {
+            setIsChangingPassword(false);
         }
     };
 
@@ -550,6 +583,73 @@ export default function EditStaffPage() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Security Section (Change Password) - Only for own profile */}
+                    {currentUser?.staff_id === id && (
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200 flex items-center gap-2">
+                                <Lock className="h-5 w-5 text-amber-500" />
+                                Security & Password
+                            </h2>
+                            <div className="bg-gray-50/50 rounded-xl p-6 border border-gray-100">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase">Current Password</Label>
+                                        <Input
+                                            type="password"
+                                            value={passwordData.current_password}
+                                            onChange={(e) => setPasswordData(prev => ({ ...prev, current_password: e.target.value }))}
+                                            placeholder="••••••••"
+                                            className={`h-11 border-gray-200 ${passwordErrors.current_password ? "border-red-500" : ""}`}
+                                        />
+                                        {passwordErrors.current_password && <p className="text-xs text-red-500">{passwordErrors.current_password}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase">New Password</Label>
+                                        <Input
+                                            type="password"
+                                            value={passwordData.new_password}
+                                            onChange={(e) => setPasswordData(prev => ({ ...prev, new_password: e.target.value }))}
+                                            placeholder="••••••••"
+                                            className={`h-11 border-gray-200 ${passwordErrors.new_password ? "border-red-500" : ""}`}
+                                        />
+                                        {passwordErrors.new_password && <p className="text-xs text-red-500">{passwordErrors.new_password}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase">Confirm New Password</Label>
+                                        <Input
+                                            type="password"
+                                            value={passwordData.new_password_confirmation}
+                                            onChange={(e) => setPasswordData(prev => ({ ...prev, new_password_confirmation: e.target.value }))}
+                                            placeholder="••••••••"
+                                            className={`h-11 border-gray-200 ${passwordErrors.new_password_confirmation ? "border-red-500" : ""}`}
+                                        />
+                                        {passwordErrors.new_password_confirmation && <p className="text-xs text-red-500">{passwordErrors.new_password_confirmation}</p>}
+                                    </div>
+                                    <div className="md:col-span-3 flex justify-end mt-2">
+                                        <Button
+                                            type="button"
+                                            onClick={handlePasswordSubmit}
+                                            disabled={isChangingPassword}
+                                            className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg h-11 px-6 shadow-sm shadow-amber-200"
+                                        >
+                                            {isChangingPassword ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                    Updating...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ShieldCheck className="h-4 w-4 mr-2" />
+                                                    Update Password
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Submit Buttons */}
                     <div className="flex justify-end gap-4 pt-6 border-t border-gray-100">

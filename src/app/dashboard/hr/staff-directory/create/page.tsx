@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
-import axios from "axios";
+import api from "@/lib/api";
 
 interface Role {
     name: string;
@@ -69,12 +69,7 @@ export default function CreateStaffPage() {
 
     const fetchCurrentUser = async () => {
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.get("http://127.0.0.1:8000/api/v1/profile", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.get("/profile");
             if (response.data.status === "Success") {
                 return response.data.data;
             }
@@ -87,12 +82,7 @@ export default function CreateStaffPage() {
 
     const fetchRoles = async () => {
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.get("http://127.0.0.1:8000/api/v1/hr/staff-roles", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.get("/hr/staff-roles");
             if (response.data.status === "Success") {
                 setRoles(response.data.data);
             }
@@ -145,12 +135,7 @@ export default function CreateStaffPage() {
 
         setLoading(true);
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.post("http://127.0.0.1:8000/api/v1/hr/staff-directory", formData, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.post("/hr/staff-directory", formData);
 
             if (response.data.status === "Success") {
                 router.push("/dashboard/hr/staff-directory");

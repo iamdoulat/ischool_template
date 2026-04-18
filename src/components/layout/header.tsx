@@ -266,7 +266,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                             <div className="absolute -inset-1 bg-gradient-to-r from-primary to-indigo-500 rounded-full blur opacity-25 group-hover:opacity-60 transition duration-300" />
                             <Avatar className="h-9 w-9 border-2 border-background shadow-lg relative rounded-full ring-2 ring-primary/20 transition-all duration-300 group-hover:ring-primary/50">
                                 <AvatarImage
-                                    src={user?.avatar ? (user.avatar.startsWith('http://127.0.0.1:8000http') ? user.avatar.replace('http://127.0.0.1:8000http', 'http') : user.avatar) : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2000&auto=format&fit=crop"}
+                                    src={user?.avatar ? user.avatar : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2000&auto=format&fit=crop"}
                                     alt={user?.name}
                                 />
                                 <AvatarFallback className="bg-gradient-to-br from-primary to-indigo-600 text-white font-bold text-xs ring-inset ring-1 ring-white/20">

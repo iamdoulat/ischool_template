@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,12 +62,7 @@ export default function SessionSettingPage() {
     const fetchSessions = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.get("http://127.0.0.1:8000/api/v1/system-setting/sessions", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.get("/system-setting/sessions");
             if (response.data.success) {
                 setSessions(response.data.data);
             }
@@ -108,24 +103,17 @@ export default function SessionSettingPage() {
             setSaving(true);
             setError("");
             setSuccess("");
-            const token = localStorage.getItem("auth_token");
 
             const payload = {
                 session: sessionName,
                 is_active: isActive
             };
 
-            const config = {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            };
-
             if (editId) {
-                await axios.put(`http://127.0.0.1:8000/api/v1/system-setting/sessions/${editId}`, payload, config);
+                await api.put(`/system-setting/sessions/${editId}`, payload);
                 setSuccess("Session updated successfully");
             } else {
-                await axios.post("http://127.0.0.1:8000/api/v1/system-setting/sessions", payload, config);
+                await api.post("/system-setting/sessions", payload);
                 setSuccess("Session added successfully");
             }
 
@@ -146,12 +134,7 @@ export default function SessionSettingPage() {
         }
 
         try {
-            const token = localStorage.getItem("auth_token");
-            await axios.delete(`http://127.0.0.1:8000/api/v1/system-setting/sessions/${id}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            await api.delete(`/system-setting/sessions/${id}`);
             setSuccess("Session deleted successfully");
             fetchSessions();
             setTimeout(() => setSuccess(""), 3000);

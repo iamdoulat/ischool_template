@@ -21,6 +21,14 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
     Copy,
     FileSpreadsheet,
     FileText,
@@ -28,7 +36,8 @@ import {
     Columns,
     Search,
     ArrowUpDown,
-    Loader2
+    Loader2,
+    Key
 } from "lucide-react";
 import api from "@/lib/api";
 
@@ -38,6 +47,11 @@ export default function UsersPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState("Student");
     const [limit, setLimit] = useState("50");
+    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [resetDialogOpen, setResetDialogOpen] = useState(false);
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [isResetting, setIsResetting] = useState(false);
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
@@ -70,6 +84,33 @@ export default function UsersPage() {
             fetchUsers();
         } catch (error) {
             console.error("Failed to update status:", error);
+        }
+    };
+
+    const handleAdminResetPassword = async () => {
+        if (!newPassword || newPassword.length < 8) {
+            alert("Password must be at least 8 characters");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            alert("Passwords do not match");
+            return;
+        }
+
+        setIsResetting(true);
+        try {
+            await api.post(`/system-setting/users/${selectedUser.id}/reset-password`, {
+                new_password: newPassword,
+                new_password_confirmation: confirmPassword
+            });
+            alert(`Password for ${selectedUser.name} reset successfully`);
+            setResetDialogOpen(false);
+            setNewPassword("");
+            setConfirmPassword("");
+        } catch (error: any) {
+            alert(error.response?.data?.message || "Failed to reset password");
+        } finally {
+            setIsResetting(false);
         }
     };
 
@@ -207,7 +248,19 @@ export default function UsersPage() {
                                             </>
                                         )}
                                         <TableCell className="py-2 px-4 text-right">
-                                            <div className="flex justify-end">
+                                            <div className="flex justify-end items-center gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 text-amber-500 hover:text-amber-600 hover:bg-amber-50"
+                                                    onClick={() => {
+                                                        setSelectedUser(user);
+                                                        setResetDialogOpen(true);
+                                                    }}
+                                                    title="Reset Password"
+                                                >
+                                                    <Key className="h-3.5 w-3.5" />
+                                                </Button>
                                                 <Switch
                                                     className="data-[state=checked]:bg-[#6366f1] scale-75"
                                                     checked={user.active ?? true}
@@ -222,6 +275,65 @@ export default function UsersPage() {
                     )}
                 </div>
             </div>
+
+            {/* Reset Password Dialog */}
+            <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Key className="h-5 w-5 text-amber-500" />
+                            Reset Password
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-1">
+                            <p className="text-sm font-medium text-gray-500">Resetting password for:</p>
+                            <p className="text-sm font-bold text-gray-900">{selectedUser?.name} ({selectedUser?.email || selectedUser?.username})</p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="new-password">New Password</Label>
+                            <Input
+                                id="new-password"
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Enter at least 8 characters"
+                                className="h-10"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="confirm-password">Confirm Password</Label>
+                            <Input
+                                id="confirm-password"
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="Repeat the new password"
+                                className="h-10"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setResetDialogOpen(false)} disabled={isResetting}>
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleAdminResetPassword}
+                            disabled={isResetting}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                        >
+                            {isResetting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Resetting...
+                                </>
+                            ) : (
+                                "Reset Password"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

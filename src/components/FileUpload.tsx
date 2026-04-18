@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Upload, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import axios from "axios";
+import api from "@/lib/api";
 
 interface FileUploadProps {
     onUploadComplete: (url: string, path: string) => void;
@@ -77,11 +77,9 @@ export default function FileUpload({
         formData.append("type", type);
 
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.post("http://127.0.0.1:8000/api/v1/upload", formData, {
+            const response = await api.post("/upload", formData, {
                 headers: {
                     "Content-Type": "multipart/form-data",
-                    Authorization: `Bearer ${token}`,
                 },
             });
 
@@ -143,7 +141,7 @@ export default function FileUpload({
                         <div className="flex justify-center relative group">
                             {/* Use standard img tag for robustness */}
                             <img
-                                src={preview.startsWith('http://127.0.0.1:8000http') ? preview.replace('http://127.0.0.1:8000http', 'http') : preview}
+                                src={preview}
                                 alt="Preview"
                                 className="h-32 w-32 object-cover rounded-lg border border-gray-200"
                                 onError={(e) => {

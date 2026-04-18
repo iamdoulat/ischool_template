@@ -49,7 +49,7 @@ import {
     KeyRound
 } from "lucide-react";
 import Image from "next/image";
-import axios from "axios";
+import api from "@/lib/api";
 
 interface Staff {
     id: number;
@@ -86,12 +86,7 @@ export default function StaffDirectoryPage() {
             if (searchKeyword) params.append("keyword", searchKeyword);
             if (roleFilter !== "Select") params.append("role", roleFilter);
 
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.get(`http://127.0.0.1:8000/api/v1/hr/staff-directory?${params.toString()}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.get(`/hr/staff-directory?${params.toString()}`);
             if (response.data.status === "Success") {
                 setStaffList(response.data.data);
             }
@@ -104,12 +99,7 @@ export default function StaffDirectoryPage() {
 
     const fetchRoles = async () => {
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.get("http://127.0.0.1:8000/api/v1/hr/staff-roles", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.get("/hr/staff-roles");
             if (response.data.status === "Success") {
                 setRoles(response.data.data);
             }
@@ -120,12 +110,7 @@ export default function StaffDirectoryPage() {
 
     const fetchCurrentUser = async () => {
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.get("http://127.0.0.1:8000/api/v1/profile", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.get("/profile");
             if (response.data.status === "Success") {
                 setCurrentUser(response.data.data);
             }
@@ -166,14 +151,9 @@ export default function StaffDirectoryPage() {
         if (!staffToDelete) return;
 
         try {
-            const token = localStorage.getItem("auth_token");
             // Use staff_id if available, otherwise id. Backend supports both now.
             const idToDelete = staffToDelete.staff_id || staffToDelete.id;
-            const response = await axios.delete(`http://127.0.0.1:8000/api/v1/hr/staff-directory/${idToDelete}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.delete(`/hr/staff-directory/${idToDelete}`);
 
             if (response.data.status === "Success") {
                 // Show success message
@@ -194,12 +174,7 @@ export default function StaffDirectoryPage() {
 
     const handleResetPassword = async (staffId: string | number) => {
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.post(`http://127.0.0.1:8000/api/v1/hr/staff-directory/${staffId}/reset-password`, {}, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.post(`/hr/staff-directory/${staffId}/reset-password`, {});
 
             if (response.data.status === "Success") {
                 alert("Password reset link has been sent to the staff member's email.");
@@ -311,9 +286,9 @@ export default function StaffDirectoryPage() {
                                 {staffList.map((person) => (
                                     <div key={person.id} className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden flex gap-4">
                                         <div className="relative h-20 w-20 shrink-0 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
-                                            {person.avatar && (person.avatar.startsWith('http') || person.avatar.startsWith('/')) ? (
+                                            {person.avatar ? (
                                                 <img
-                                                    src={person.avatar.startsWith('http://127.0.0.1:8000http') ? person.avatar.replace('http://127.0.0.1:8000http', 'http') : person.avatar}
+                                                    src={person.avatar}
                                                     alt={person.name}
                                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                                     onError={(e) => {
@@ -438,10 +413,10 @@ export default function StaffDirectoryPage() {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="relative h-10 w-10 shrink-0 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
-                                                            {person.avatar && (person.avatar.startsWith('http') || person.avatar.startsWith('/')) ? (
+                                                        <div className="relative h-10 w-10 shrink-0 rounded-full overflow-hidden bg-gray-100 border border-gray-100">
+                                                            {person.avatar ? (
                                                                 <img
-                                                                    src={person.avatar.startsWith('http://127.0.0.1:8000http') ? person.avatar.replace('http://127.0.0.1:8000http', 'http') : person.avatar}
+                                                                    src={person.avatar}
                                                                     alt={person.name}
                                                                     className="w-full h-full object-cover"
                                                                 />

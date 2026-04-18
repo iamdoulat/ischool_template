@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "@/lib/api";
 
 export default function EmailSettingPage() {
     const [showPassword, setShowPassword] = useState(false);
@@ -32,12 +32,7 @@ export default function EmailSettingPage() {
     const fetchSettings = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.get("http://127.0.0.1:8000/api/v1/system-setting/email-setting", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.get("/system-setting/email-setting");
             if (response.data.status === "Success") {
                 setFormData(response.data.data);
             }
@@ -59,12 +54,7 @@ export default function EmailSettingPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await axios.post("http://127.0.0.1:8000/api/v1/system-setting/email-setting", formData, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const response = await api.post("/system-setting/email-setting", formData);
             if (response.data.status === "Success") {
                 alert("Email settings updated successfully!");
             }
