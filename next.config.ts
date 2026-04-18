@@ -33,13 +33,13 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "api.ischool.mddoulat.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
-  },
-  {
-    protocol: "https",
-    hostname: "api.ischool.mddoulat.com",
-    port: "",
-    pathname: "/**",
   },
 };
 
