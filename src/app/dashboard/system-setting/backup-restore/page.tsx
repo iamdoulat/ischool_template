@@ -94,10 +94,13 @@ export default function BackupRestorePage() {
             if (response.data.status === "Success") {
                 toast("success", "Backup created successfully");
                 fetchBackups();
+            } else {
+                toast("error", response.data.message || "Failed to create backup");
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to create backup", error);
-            toast("error", "Failed to create backup");
+            const errorMsg = error.response?.data?.message || "Failed to create backup";
+            toast("error", errorMsg);
         } finally {
             setCreating(false);
         }
