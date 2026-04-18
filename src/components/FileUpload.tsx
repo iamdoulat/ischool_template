@@ -188,6 +188,7 @@ export default function FileUpload({
                     {/* Remove/Clear Button */}
                     <div className="flex justify-end">
                         <Button
+                            type="button"
                             variant="ghost"
                             size="sm"
                             onClick={handleRemove}
@@ -205,6 +206,7 @@ export default function FileUpload({
                     {/* Upload Button - Only show if there is a NEW file to upload */}
                     {file && !uploadSuccess && (
                         <Button
+                            type="button"
                             onClick={handleUpload}
                             disabled={uploading}
                             className="w-full bg-gradient-to-r from-amber-500 to-purple-600 hover:from-amber-600 hover:to-purple-700 text-white rounded-full"
