@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
     PieChart,
     Pie,
@@ -15,7 +16,12 @@ interface DistributionChartProps {
 }
 
 export function DistributionChart({ title, data }: DistributionChartProps) {
+    const [mounted, setMounted] = useState(false);
     const total = data.reduce((acc, curr) => acc + curr.value, 0);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     return (
         <Card className="group hover:shadow-2xl transition-all duration-300 ease-in-out border-none cursor-pointer hover:-translate-y-1 hover:scale-[1.005] flex flex-col h-full bg-card">
@@ -23,9 +29,10 @@ export function DistributionChart({ title, data }: DistributionChartProps) {
                 <CardTitle className="text-sm font-bold text-foreground/80 uppercase tracking-widest">{title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col justify-center relative pb-6 px-0">
-                <div className="h-[320px] w-full relative">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 0, right: 0, left: 0, bottom: -10 }}>
+                <div className="h-[320px] min-h-[320px] w-full relative">
+                    {mounted ? (
+                        <ResponsiveContainer width="99.9%" height="100%">
+                            <PieChart margin={{ top: 0, right: 0, left: 0, bottom: -10 }}>
                             <defs>
                                 {data.map((item, index) => (
                                     <linearGradient key={`gradient-${index}`} id={`colorPie-${index}`} x1="0" y1="0" x2="0" y2="1">
@@ -70,6 +77,11 @@ export function DistributionChart({ title, data }: DistributionChartProps) {
                             />
                         </PieChart>
                     </ResponsiveContainer>
+                    ) : (
+                        <div className="flex items-center justify-center h-full">
+                            <div className="animate-pulse bg-muted rounded-xl w-full h-[320px]" />
+                        </div>
+                    )}
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center pb-2">
                         <span className="text-5xl font-black text-foreground/90 leading-none">
                             {total >= 1000 ? `${(total / 1000).toFixed(1)}k` : total}
