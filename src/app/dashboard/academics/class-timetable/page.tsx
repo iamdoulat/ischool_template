@@ -60,13 +60,13 @@ export default function ClassTimetablePage() {
             setLoading(true);
             try {
                 const [classRes, sectionRes, subjectGroupRes] = await Promise.all([
-                    api.get("/classes", { params: { limit: 1000 } }),
-                    api.get("/sections", { params: { limit: 1000 } }),
-                    api.get("/subject-groups", { params: { limit: 1000 } }),
+                    api.get("/academics/classes?no_paginate=true"),
+                    api.get("/academics/sections?no_paginate=true"),
+                    api.get("/academics/subject-groups?no_paginate=true"),
                 ]);
-                setClasses(classRes.data.data.data || []);
-                setSections(sectionRes.data.data.data || []);
-                setSubjectGroups(subjectGroupRes.data.data.data || []);
+                setClasses(classRes.data.data?.data || classRes.data.data || []);
+                setSections(sectionRes.data.data?.data || sectionRes.data.data || []);
+                setSubjectGroups(subjectGroupRes.data.data?.data || subjectGroupRes.data.data || []);
             } catch (error) {
                 console.error("Error fetching prerequisites:", error);
                 toast("error", "Failed to load prerequisite data");
@@ -85,7 +85,7 @@ export default function ClassTimetablePage() {
 
         setSearching(true);
         try {
-            const res = await api.get("/class-timetables", {
+            const res = await api.get("/academics/class-timetables", {
                 params: {
                     school_class_id: selectedClassId,
                     section_id: selectedSectionId,
@@ -112,7 +112,7 @@ export default function ClassTimetablePage() {
         if (!confirm("Are you sure you want to delete this entry?")) return;
 
         try {
-            await api.delete(`/class-timetables/${id}`);
+            await api.delete(`/academics/class-timetables/${id}`);
             toast("success", "Entry deleted successfully");
             handleSearch(); // Refresh list
         } catch (error) {

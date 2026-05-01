@@ -69,10 +69,10 @@ export default function AddClassTimetablePage() {
             setLoading(true);
             try {
                 const [classRes, sectionRes, subjectGroupRes, subjectRes, staffRes] = await Promise.all([
-                    api.get("/classes", { params: { limit: 1000 } }),
-                    api.get("/sections", { params: { limit: 1000 } }),
-                    api.get("/subject-groups", { params: { limit: 1000 } }),
-                    api.get("/subjects", { params: { limit: 1000 } }),
+                    api.get("/academics/classes", { params: { limit: 1000 } }),
+                    api.get("/academics/sections", { params: { limit: 1000 } }),
+                    api.get("/academics/subject-groups", { params: { limit: 1000 } }),
+                    api.get("/academics/subjects", { params: { limit: 1000 } }),
                     api.get("/users", { params: { role: "Staff", limit: 1000 } })
                 ]);
                 setClasses(classRes.data.data.data || []);
@@ -103,7 +103,7 @@ export default function AddClassTimetablePage() {
 
         setSearching(true);
         try {
-            const res = await api.get("/class-timetables", {
+            const res = await api.get("/academics/class-timetables", {
                 params: {
                     school_class_id: selectedClassId,
                     section_id: selectedSectionId,
@@ -224,7 +224,7 @@ export default function AddClassTimetablePage() {
                 return;
             }
 
-            await api.post("/class-timetables/bulk-store", {
+            await api.post("/academics/class-timetables/bulk-store", {
                 school_class_id: selectedClassId,
                 section_id: selectedSectionId,
                 subject_group_id: selectedSubjectGroupId,

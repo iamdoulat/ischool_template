@@ -36,11 +36,11 @@ export default function ImportStudentPage() {
     const fetchPrerequisites = async () => {
         try {
             const [classesRes, sectionsRes] = await Promise.all([
-                api.get("/classes?limit=100"),
-                api.get("/sections?limit=100")
+                api.get("/academics/classes?no_paginate=true"),
+                api.get("/academics/sections?no_paginate=true")
             ]);
-            setClasses(classesRes.data.data.data);
-            setSections(sectionsRes.data.data.data);
+            setClasses(classesRes.data.data?.data || classesRes.data.data || []);
+            setSections(sectionsRes.data.data?.data || sectionsRes.data.data || []);
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
             toast("error", "Failed to load classes and sections");
@@ -107,7 +107,20 @@ export default function ImportStudentPage() {
                         <p className="text-sm text-muted-foreground">Bulk import students from CSV file</p>
                     </div>
                 </div>
-                <Button variant="default" className="h-10 px-6 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white rounded-xl shadow-lg shadow-primary/20">
+                <Button
+                    variant="default"
+                    className="h-10 px-6 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white rounded-xl shadow-lg shadow-primary/20"
+                    onClick={() => {
+                        const csvContent = sampleColumns.join(",") + "\n" + sampleColumns.map(() => "").join(",");
+                        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = "student_import_sample.csv";
+                        link.click();
+                        URL.revokeObjectURL(url);
+                    }}
+                >
                     <Download className="h-4 w-4 mr-2" />
                     Download Sample Import File
                 </Button>

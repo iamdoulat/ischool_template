@@ -1,226 +1,403 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Pencil, X, Copy, FileSpreadsheet, FileText, Printer, Columns, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Pencil, X, Copy, FileSpreadsheet, FileText, Printer, Columns, ChevronLeft, ChevronRight, CheckCircle2, Loader2, Calendar, User, UserCheck, XCircle } from "lucide-react";
+import { toast } from "sonner";
+import api from "@/lib/api";
+import { cn } from "@/lib/utils";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface LeaveRequest {
-    id: string;
-    studentName: string;
-    studentId: string;
-    class: string;
-    section: string;
-    applyDate: string;
-    fromDate: string;
-    toDate: string;
+    id: number;
+    user: {
+        id: number;
+        name: string;
+        admission_no: string;
+        school_class: { name: string };
+        section: { name: string };
+    };
+    leave_type: { name: string };
+    apply_date: string;
+    leave_from: string;
+    leave_to: string;
+    days: number;
     status: "Approved" | "Disapproved" | "Pending";
-    statusDate?: string;
-    approvedBy?: string;
+    admin_remark: string;
+    reason: string;
 }
 
-const mockLeaveRequests: LeaveRequest[] = [
-    { id: "1", studentName: "David Clarkson", studentId: "RS56223", class: "Class 2", section: "A", applyDate: "02/13/2026", fromDate: "02/18/2026", toDate: "02/19/2026", status: "Disapproved", approvedBy: "Joe Black (9000)" },
-    { id: "2", studentName: "Niharika", studentId: "9001", class: "Class 2", section: "A", applyDate: "02/05/2026", fromDate: "02/18/2026", toDate: "02/19/2026", status: "Approved", statusDate: "02/02/2026", approvedBy: "Joe Black (9000)" },
-    { id: "3", studentName: "Edward Thomas", studentId: "18001", class: "Class 1", section: "A", applyDate: "02/05/2026", fromDate: "02/11/2026", toDate: "02/11/2026", status: "Pending" },
-    { id: "4", studentName: "Ashwani Kumar", studentId: "120020", class: "Class 1", section: "A", applyDate: "02/10/2026", fromDate: "02/16/2026", toDate: "02/16/2026", status: "Approved", statusDate: "02/02/2026", approvedBy: "Joe Black (9000)" },
-    { id: "5", studentName: "Niharika", studentId: "9001", class: "Class 2", section: "A", applyDate: "02/04/2026", fromDate: "02/09/2026", toDate: "02/09/2026", status: "Pending" },
-    { id: "6", studentName: "Niharika", studentId: "9001", class: "Class 2", section: "A", applyDate: "02/02/2026", fromDate: "02/03/2026", toDate: "02/03/2026", status: "Pending" },
-    { id: "7", studentName: "Vinay Singh", studentId: "5422", class: "Class 1", section: "B", applyDate: "01/25/2026", fromDate: "01/26/2026", toDate: "01/26/2026", status: "Pending" },
-    { id: "8", studentName: "RKS Kumar", studentId: "RKS001", class: "Class 1", section: "B", applyDate: "01/22/2026", fromDate: "01/23/2026", toDate: "01/23/2026", status: "Pending" },
-];
+interface SchoolClass {
+    id: number;
+    name: string;
+    sections?: { id: number; name: string }[];
+}
 
 export default function ApproveLeavePage() {
+    const [classes, setClasses] = useState<SchoolClass[]>([]);
+    const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
+    const [selectedClass, setSelectedClass] = useState("");
+    const [selectedSection, setSelectedSection] = useState("");
+    
+    const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+    const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const [rowsPerPage, setRowsPerPage] = useState("50");
+    
+    const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+    const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
+    const [adminRemark, setAdminRemark] = useState("");
+    const [updatingStatus, setUpdatingStatus] = useState(false);
 
-    const filteredData = mockLeaveRequests.filter((item) =>
-        item.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.studentId.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    useEffect(() => {
+        fetchClasses();
+        fetchLeaves();
+    }, []);
+
+    useEffect(() => {
+        if (selectedClass) {
+            const cls = classes.find(c => c.id.toString() === selectedClass);
+            setSections(cls?.sections || []);
+            setSelectedSection("");
+        }
+    }, [selectedClass, classes]);
+
+    const fetchClasses = async () => {
+        try {
+            const response = await api.get("/academics/classes?no_paginate=true");
+            if (response.data.success) {
+                setClasses(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching classes:", error);
+        }
+    };
+
+    const fetchLeaves = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get("/attendance/approve-leave", {
+                params: {
+                    school_class_id: selectedClass,
+                    section_id: selectedSection,
+                    search: searchTerm
+                }
+            });
+            if (response.data.success) {
+                setLeaves(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching leaves:", error);
+            toast.error("Failed to load leave requests");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateStatus = async (status: "Approved" | "Disapproved") => {
+        if (!selectedLeave) return;
+
+        setUpdatingStatus(true);
+        try {
+            const response = await api.put(`/attendance/approve-leave/${selectedLeave.id}/status`, {
+                status,
+                admin_remark: adminRemark
+            });
+            if (response.data.success) {
+                toast.success(`Leave request ${status.toLowerCase()} successfully`);
+                setStatusDialogOpen(false);
+                fetchLeaves();
+            }
+        } catch (error) {
+            console.error("Error updating status:", error);
+            toast.error("Failed to update status");
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this leave request?")) return;
+
+        try {
+            const response = await api.delete(`/attendance/approve-leave/${id}`);
+            if (response.data.success) {
+                toast.success("Leave request deleted successfully");
+                fetchLeaves();
+            }
+        } catch (error) {
+            console.error("Error deleting leave:", error);
+            toast.error("Failed to delete leave request");
+        }
+    };
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case "Approved":
+                return <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Approved</Badge>;
+            case "Disapproved":
+                return <Badge className="bg-red-50 text-red-700 hover:bg-red-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Disapproved</Badge>;
+            default:
+                return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Pending</Badge>;
+        }
+    };
 
     return (
-        <div className="space-y-6">
+        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border p-4 space-y-6">
-                <h2 className="text-lg font-medium text-gray-800 border-b pb-2">Select Criteria</h2>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
+                <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-tight mb-4 border-b border-gray-50 pb-2 flex items-center gap-2">
+                    <Search className="h-3 w-3" />
+                    Select Criteria
+                </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="class" className="text-xs font-semibold text-gray-600">
-                            Class <span className="text-red-500">*</span>
-                        </Label>
-                        <Select>
-                            <SelectTrigger id="class">
-                                <SelectValue placeholder="Select" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class</Label>
+                        <Select value={selectedClass} onValueChange={setSelectedClass}>
+                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                <SelectValue placeholder="Select Class" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="class1">Class 1</SelectItem>
-                                <SelectItem value="class2">Class 2</SelectItem>
+                                {classes.map(cls => (
+                                    <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="section" className="text-xs font-semibold text-gray-600">
-                            Section <span className="text-red-500">*</span>
-                        </Label>
-                        <Select>
-                            <SelectTrigger id="section">
-                                <SelectValue placeholder="Select" />
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
+                        <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
+                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                <SelectValue placeholder="Select Section" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="a">A</SelectItem>
-                                <SelectItem value="b">B</SelectItem>
+                                {sections.map(sec => (
+                                    <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
 
-                <div className="flex justify-end pt-2">
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-4 gap-2 text-xs h-8">
-                        <Search className="h-3.5 w-3.5" /> Search
+                <div className="flex justify-end mt-4">
+                    <Button 
+                        onClick={fetchLeaves}
+                        disabled={loading}
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
+                    >
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                        Search
                     </Button>
                 </div>
             </div>
 
             {/* Approve Leave List Section */}
-            <div className="bg-white rounded-lg shadow-sm border p-4 space-y-4">
-                <div className="flex justify-between items-center border-b pb-2">
-                    <h2 className="text-lg font-medium text-gray-800">Approve Leave List</h2>
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-4 text-xs h-8 gap-1">
-                        <Plus className="h-3.5 w-3.5" /> Add
-                    </Button>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="flex justify-between items-center border-b border-gray-50 pb-3">
+                    <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-tight flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-indigo-500" />
+                        Approve Leave List
+                    </h2>
                 </div>
 
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="relative w-full md:w-48">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="relative w-full md:w-80">
                         <Input
-                            placeholder="Search"
+                            placeholder="Search by student name or admission no..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-3 h-8 text-xs"
+                            onKeyUp={(e) => e.key === 'Enter' && fetchLeaves()}
+                            className="pl-4 h-10 text-xs border-gray-100 shadow-none rounded-full focus:ring-2 focus:ring-indigo-500/20 w-full transition-all"
                         />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                            <SelectTrigger className="w-[70px] h-8 text-xs">
-                                <SelectValue placeholder="50" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="10">10</SelectItem>
-                                <SelectItem value="25">25</SelectItem>
-                                <SelectItem value="50">50</SelectItem>
-                                <SelectItem value="100">100</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <div className="flex items-center gap-1 text-gray-400">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
-                                <Copy className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-full border border-gray-100">
+                        {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, idx) => (
+                            <Button key={idx} variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:text-indigo-600 rounded-full transition-all">
+                                <Icon className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
-                                <FileSpreadsheet className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
-                                <FileText className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
-                                <Printer className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
-                                <Columns className="h-3.5 w-3.5" />
-                            </Button>
-                        </div>
+                        ))}
                     </div>
                 </div>
 
-                <div className="rounded-md border overflow-x-auto">
+                <div className="rounded-lg border border-gray-100 overflow-hidden shadow-sm">
                     <Table>
-                        <TableHeader className="bg-gray-50 text-[11px] uppercase">
-                            <TableRow>
-                                <TableHead className="font-semibold text-gray-600 min-w-[150px]">Student Name</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[80px]">Class</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[80px]">Section</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[100px]">Apply Date</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[100px]">From Date</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[100px]">To Date</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[120px]">Status</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[150px]">Approve Disapprove By</TableHead>
-                                <TableHead className="font-semibold text-gray-600 text-right min-w-[120px]">Action</TableHead>
+                        <TableHeader>
+                            <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/50">
+                                <TableHead className="py-4 px-6">Student</TableHead>
+                                <TableHead className="py-4 px-6">Class/Section</TableHead>
+                                <TableHead className="py-4 px-6">Leave Type</TableHead>
+                                <TableHead className="py-4 px-6">Apply Date</TableHead>
+                                <TableHead className="py-4 px-6">Duration</TableHead>
+                                <TableHead className="py-4 px-6">Status</TableHead>
+                                <TableHead className="py-4 px-6 text-right">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredData.map((item) => (
-                                <TableRow key={item.id} className="text-[13px] hover:bg-gray-50/50">
-                                    <TableCell className="font-medium text-gray-700 py-3">
-                                        {item.studentName} ({item.studentId})
-                                    </TableCell>
-                                    <TableCell className="text-gray-500">{item.class}</TableCell>
-                                    <TableCell className="text-gray-500">{item.section}</TableCell>
-                                    <TableCell className="text-gray-500">{item.applyDate}</TableCell>
-                                    <TableCell className="text-gray-500">{item.fromDate}</TableCell>
-                                    <TableCell className="text-gray-500">{item.toDate}</TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className={`font-medium ${item.status === "Approved" ? "text-green-600" :
-                                                item.status === "Disapproved" ? "text-red-600" :
-                                                    "text-amber-600"
-                                                }`}>
-                                                {item.status} {item.statusDate && `(${item.statusDate})`}
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-gray-500">{item.approvedBy || ""}</TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            {item.status === "Pending" && (
-                                                <Button
-                                                    size="sm"
-                                                    className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded p-0 shadow-sm"
-                                                    title="Approve"
-                                                >
-                                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            )}
-                                            <Button
-                                                size="sm"
-                                                className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded p-0 shadow-sm"
-                                                title="Edit"
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded p-0 shadow-sm"
-                                                title="Delete"
-                                            >
-                                                <X className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </div>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="h-32 text-center">
+                                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            ) : leaves.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="h-32 text-center text-gray-400 text-xs italic">
+                                        No leave requests found.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                leaves.map((item) => (
+                                    <TableRow key={item.id} className="text-sm border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                                        <TableCell className="py-4 px-6">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{item.user.name}</span>
+                                                <span className="text-[10px] text-gray-400 font-medium">Adm: {item.user.admission_no}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-gray-700 font-semibold">{item.user.school_class.name}</span>
+                                                <span className="h-1 w-1 rounded-full bg-gray-300" />
+                                                <span className="text-gray-500 font-medium">{item.user.section.name}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6">
+                                            <Badge className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">
+                                                {item.leave_type.name}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6 text-gray-500 font-medium">
+                                            {new Date(item.apply_date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6">
+                                            <div className="flex flex-col gap-0.5">
+                                                <div className="flex items-center gap-2 text-gray-800 font-bold">
+                                                    <Calendar className="h-3 w-3 text-gray-400" />
+                                                    {new Date(item.leave_from).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })} - {new Date(item.leave_to).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}
+                                                </div>
+                                                <span className="text-[10px] text-indigo-500 font-black uppercase tracking-wider">{item.days} days duration</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6">
+                                            {getStatusBadge(item.status)}
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                {item.status === "Pending" && (
+                                                    <Button
+                                                        onClick={() => {
+                                                            setSelectedLeave(item);
+                                                            setAdminRemark(item.admin_remark || "");
+                                                            setStatusDialogOpen(true);
+                                                        }}
+                                                        size="sm"
+                                                        className="h-8 px-4 bg-gradient-to-r from-[#6366F1] to-[#4F46E5] hover:from-[#4F46E5] hover:to-[#4338CA] text-white rounded-full text-[10px] font-black uppercase shadow-md transition-all active:scale-95"
+                                                    >
+                                                        Review
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    onClick={() => handleDelete(item.id)}
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-full transition-all group/btn"
+                                                >
+                                                    <X className="h-4 w-4 group-hover/btn:scale-110 transition-transform" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </div>
-
-                <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
-                    <div>
-                        Showing 1 to {filteredData.length} of {mockLeaveRequests.length} entries
-                    </div>
-                    <div className="flex gap-1">
-                        <Button variant="outline" size="sm" className="h-7 w-7 p-0 group hover:bg-indigo-50 hover:text-indigo-600" disabled><ChevronLeft className="h-3.5 w-3.5" /></Button>
-                        <Button variant="default" size="sm" className="h-7 w-7 p-0 bg-indigo-500 hover:bg-indigo-600 text-white">1</Button>
-                        <Button variant="outline" size="sm" className="h-7 w-7 p-0 group hover:bg-indigo-50 hover:text-indigo-600" disabled><ChevronRight className="h-3.5 w-3.5" /></Button>
-                    </div>
-                </div>
-
             </div>
+
+            {/* Approval Dialog */}
+            <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+                <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+                    <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-8 text-white">
+                        <DialogHeader>
+                            <DialogTitle className="text-lg font-black uppercase tracking-widest text-white/90">Review Request</DialogTitle>
+                            <DialogDescription className="text-white/60 text-xs font-medium uppercase tracking-tight">
+                                Evaluate and process student leave application
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+                    
+                    <div className="p-8 space-y-8 bg-white">
+                        {selectedLeave && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                    <div className="space-y-1">
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Student</span>
+                                        <span className="text-xs font-bold text-gray-900 block">{selectedLeave.user.name}</span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Class</span>
+                                        <span className="text-xs font-bold text-gray-900 block">{selectedLeave.user.school_class.name} ({selectedLeave.user.section.name})</span>
+                                    </div>
+                                    <div className="col-span-2 space-y-1 pt-2 border-t border-gray-100 mt-2">
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Reason for Leave</span>
+                                        <p className="text-xs text-gray-600 font-medium leading-relaxed bg-white p-3 rounded-xl border border-gray-50 shadow-sm italic">
+                                            "{selectedLeave.reason || "No reason provided"}"
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-3">
+                                    <Label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                        <FileText className="h-3 w-3" />
+                                        Official Admin Remark
+                                    </Label>
+                                    <Textarea 
+                                        placeholder="Enter approval conditions or rejection reasons here..."
+                                        value={adminRemark}
+                                        onChange={(e) => setAdminRemark(e.target.value)}
+                                        className="min-h-[120px] text-xs border-gray-100 focus:ring-2 focus:ring-indigo-500/20 shadow-none resize-none rounded-xl bg-gray-50/50 p-4 transition-all"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-row justify-between w-full gap-4">
+                            <Button 
+                                variant="outline" 
+                                onClick={() => handleUpdateStatus("Disapproved")}
+                                disabled={updatingStatus}
+                                className="flex-1 h-12 text-[10px] font-black uppercase text-red-500 border-red-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-all active:scale-95 shadow-sm"
+                            >
+                                {updatingStatus ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
+                                Disapprove
+                            </Button>
+                            <Button 
+                                onClick={() => handleUpdateStatus("Approved")}
+                                disabled={updatingStatus}
+                                className="flex-1 h-12 text-[10px] font-black uppercase bg-gradient-to-r from-green-500 to-[#10B981] hover:from-[#10B981] hover:to-[#059669] text-white rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 border-none"
+                            >
+                                {updatingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                Approve Request
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

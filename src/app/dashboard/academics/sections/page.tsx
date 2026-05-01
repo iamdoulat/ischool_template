@@ -51,7 +51,7 @@ export default function SectionsPage() {
     const fetchSections = async (page = 1) => {
         setLoading(true);
         try {
-            const response = await api.get(`/sections`, {
+            const response = await api.get(`/academics/sections`, {
                 params: {
                     page: page,
                     search: searchTerm,
@@ -86,10 +86,10 @@ export default function SectionsPage() {
         setSaving(true);
         try {
             if (editingId) {
-                await api.put(`/sections/${editingId}`, { name: sectionName });
+                await api.put(`/academics/sections/${editingId}`, { name: sectionName });
                 toast("success", "Section updated successfully");
             } else {
-                await api.post(`/sections`, { name: sectionName });
+                await api.post(`/academics/sections`, { name: sectionName });
                 toast("success", "Section created successfully");
             }
             setSectionName("");
@@ -117,7 +117,7 @@ export default function SectionsPage() {
         if (!idToDelete) return;
         setLoading(true);
         try {
-            await api.delete(`/sections/${idToDelete}`);
+            await api.delete(`/academics/sections/${idToDelete}`);
             fetchSections(currentPage);
             toast("success", "Section deleted successfully (globally)");
         } catch (error: any) {

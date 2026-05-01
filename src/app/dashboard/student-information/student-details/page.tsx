@@ -12,11 +12,29 @@ import {
     Loader2,
     Eye,
     Pencil,
-    Trash2
+    Trash2,
+    User,
+    Mail,
+    Phone,
+    Calendar,
+    BadgeCheck,
+    X,
+    Check,
+    GraduationCap
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+
+const formatDate = (dateString?: string | null) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? dateString : date.toLocaleDateString('en-GB');
+};
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -32,12 +50,19 @@ interface Student {
     category: string;
     phone: string;
     father_name: string;
+    avatar?: string;
+    religion?: string;
+    caste?: string;
+    blood_group?: string;
     school_class?: { name: string };
     section?: { name: string };
+    student_category?: { category_name: string };
+    active: boolean;
 }
 
 export default function StudentDetailsPage() {
     const { toast } = useToast();
+    const router = useRouter();
     const [viewMode, setViewMode] = useState<"list" | "details">("list");
     const [loading, setLoading] = useState(false);
     const [fetchingPrereqs, setFetchingPrereqs] = useState(true);
@@ -49,7 +74,8 @@ export default function StudentDetailsPage() {
     const [filters, setFilters] = useState({
         school_class_id: "",
         section_id: "",
-        search: ""
+        search: "",
+        status: ""
     });
 
     const [pagination, setPagination] = useState({
@@ -59,19 +85,26 @@ export default function StudentDetailsPage() {
         from: 0,
         to: 0
     });
+    
+    // Action Dialogs
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [viewDialogOpen, setViewDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         fetchPrerequisites();
+        handleSearch(); // Initial load of all students
     }, []);
 
     const fetchPrerequisites = async () => {
         try {
             const [classesRes, sectionsRes] = await Promise.all([
-                api.get("/classes?limit=100"),
-                api.get("/sections?limit=100")
+                api.get("/academics/classes?no_paginate=true"),
+                api.get("/academics/sections?no_paginate=true")
             ]);
-            setClasses(classesRes.data.data.data);
-            setSections(sectionsRes.data.data.data);
+            setClasses(classesRes.data.data?.data || classesRes.data.data || []);
+            setSections(sectionsRes.data.data?.data || sectionsRes.data.data || []);
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
             toast("error", "Failed to load classes and sections");
@@ -80,23 +113,53 @@ export default function StudentDetailsPage() {
         }
     };
 
+    const handleDelete = async () => {
+        if (!selectedStudent) return;
+        setDeleting(true);
+        try {
+            await api.delete(`/students/${selectedStudent.id}`);
+            toast("success", "Student record deleted successfully");
+            setDeleteDialogOpen(false);
+            handleSearch(pagination.current_page);
+        } catch (error) {
+            console.error("Delete error:", error);
+            toast("error", "Failed to delete student record");
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const handleReset = () => {
+        setFilters({
+            school_class_id: "",
+            section_id: "",
+            search: "",
+            status: ""
+        });
+        handleSearch(1);
+    };
+
     const handleSearch = async (page = 1) => {
         setLoading(true);
         try {
-            const params = new URLSearchParams();
-            if (filters.school_class_id) params.append("school_class_id", filters.school_class_id);
-            if (filters.section_id) params.append("section_id", filters.section_id);
-            if (filters.search) params.append("search", filters.search);
-            params.append("page", page.toString());
-
-            const response = await api.get(`/students?${params.toString()}`);
-            setStudents(response.data.data);
+            const response = await api.get("/students", {
+                params: {
+                    school_class_id: filters.school_class_id || undefined,
+                    section_id: filters.section_id || undefined,
+                    status: filters.status || undefined,
+                    search: filters.search || undefined,
+                    page: page
+                }
+            });
+            const result = response.data.data;
+            
+            setStudents(result.data || []);
             setPagination({
-                current_page: response.data.current_page,
-                last_page: response.data.last_page,
-                total: response.data.total,
-                from: response.data.from,
-                to: response.data.to
+                current_page: result.current_page,
+                last_page: result.last_page,
+                total: result.total,
+                from: result.from,
+                to: result.to
             });
         } catch (error) {
             console.error("Error fetching students:", error);
@@ -152,16 +215,43 @@ export default function StudentDetailsPage() {
                                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 </div>
                             </div>
+                            <div className="space-y-2 group">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                                    Status
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        value={filters.status}
+                                        onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                                        className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    >
+                                        <option value="">Select Status</option>
+                                        <option value="active">Active</option>
+                                        <option value="disabled">Disabled</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                </div>
+                            </div>
                             <div className="sm:col-span-2 flex justify-end">
-                                <Button
-                                    variant="gradient"
-                                    className="h-11 px-8"
-                                    onClick={() => handleSearch(1)}
-                                    disabled={loading || !filters.school_class_id}
-                                >
-                                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                    Search
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        className="h-11 px-6 rounded-xl border-muted/50 hover:bg-muted/50"
+                                        onClick={handleReset}
+                                        disabled={loading}
+                                    >
+                                        Reset
+                                    </Button>
+                                    <Button
+                                        variant="gradient"
+                                        className="h-11 px-8"
+                                        onClick={() => handleSearch(1)}
+                                        disabled={loading}
+                                    >
+                                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                        Search
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
@@ -183,15 +273,25 @@ export default function StudentDetailsPage() {
                                 </div>
                             </div>
                             <div className="flex justify-end">
-                                <Button
-                                    variant="gradient"
-                                    className="h-11 px-8"
-                                    onClick={() => handleSearch(1)}
-                                    disabled={loading}
-                                >
-                                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                    Search
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        className="h-11 px-6 rounded-xl border-muted/50 hover:bg-muted/50"
+                                        onClick={handleReset}
+                                        disabled={loading}
+                                    >
+                                        Reset
+                                    </Button>
+                                    <Button
+                                        variant="gradient"
+                                        className="h-11 px-8"
+                                        onClick={() => handleSearch(1)}
+                                        disabled={loading}
+                                    >
+                                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                        Search
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -231,53 +331,192 @@ export default function StudentDetailsPage() {
                     </div>
                 </div>
 
-                <div className="p-0 overflow-x-auto min-h-[400px]">
+                <div className="p-0 min-h-[400px]">
                     {students.length > 0 ? (
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-muted/30">
-                                    {[
-                                        "Admission No", "Student Name", "Roll No.", "Class",
-                                        "Father Name", "Date Of Birth", "Gender", "Category",
-                                        "Mobile Number", "Action"
-                                    ].map((header) => (
-                                        <th key={header} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
-                                            {header}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
+                        viewMode === "list" ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-muted/30">
+                                            {[
+                                                "Avatar", "Admission No", "Student Name", "Roll No.", "Class",
+                                                "Father Name", "Date Of Birth", "Gender", "Category",
+                                                "Mobile Number", "Status", "Action"
+                                            ].map((header) => (
+                                                <th key={header} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
+                                                    {header}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {students.map((student) => (
+                                            <tr key={student.id} className="group hover:bg-muted/50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <Avatar className="h-10 w-10 border border-muted-foreground/20 shadow-sm">
+                                                        <AvatarImage src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${student.avatar}`} />
+                                                        <AvatarFallback className="bg-primary/5 text-primary text-[10px] font-black">
+                                                            {student.name.substring(0, 2).toUpperCase()}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.admission_no}</td>
+                                                <td className="px-6 py-4 text-sm font-bold text-primary">{student.name} {student.last_name}</td>
+                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.roll_no || "-"}</td>
+                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">
+                                                    {student.school_class?.name} ({student.section?.name})
+                                                </td>
+                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.father_name || "-"}</td>
+                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{formatDate(student.dob)}</td>
+                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.gender || "-"}</td>
+                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.student_category?.category_name || student.category || "-"}</td>
+                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.phone || "-"}</td>
+                                                <td className="px-6 py-4">
+                                                    <Badge className={cn(
+                                                        "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                                        student.active 
+                                                            ? "bg-green-500/10 text-green-600 border-green-500/20" 
+                                                            : "bg-red-500/10 text-red-600 border-red-500/20"
+                                                    )} variant="outline">
+                                                        {student.active ? "Active" : "Disabled"}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 rounded-lg bg-orange-500/10 border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all shadow-sm"
+                                                            onClick={() => {
+                                                                setSelectedStudent(student);
+                                                                setViewDialogOpen(true);
+                                                            }}
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 rounded-lg bg-indigo-500/10 border-indigo-500/20 text-indigo-600 hover:bg-indigo-500 hover:text-white transition-all shadow-sm"
+                                                            onClick={() => router.push(`/dashboard/student-information/student-details/${student.id}/edit`)}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 rounded-lg bg-red-500/10 border-red-500/20 text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                                            onClick={() => {
+                                                                setSelectedStudent(student);
+                                                                setDeleteDialogOpen(true);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {students.map((student) => (
-                                    <tr key={student.id} className="group hover:bg-muted/50 transition-colors">
-                                        <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.admission_no}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-primary">{student.name} {student.last_name}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.roll_no || "-"}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-foreground/80">
-                                            {student.school_class?.name} ({student.section?.name})
-                                        </td>
-                                        <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.father_name || "-"}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.dob || "-"}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.gender || "-"}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.category || "-"}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.phone || "-"}</td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg bg-orange-500/10 border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all shadow-sm">
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg bg-indigo-500/10 border-indigo-500/20 text-indigo-600 hover:bg-indigo-500 hover:text-white transition-all shadow-sm">
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg bg-red-500/10 border-red-500/20 text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-sm">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                    <div key={student.id} className="group relative bg-card rounded-[2rem] border border-muted/50 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2 z-10">
+                                            <Button 
+                                                variant="outline" 
+                                                size="icon" 
+                                                className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all shadow-lg"
+                                                onClick={() => {
+                                                    setSelectedStudent(student);
+                                                    setViewDialogOpen(true);
+                                                }}
+                                            >
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
+                                            <Button 
+                                                variant="outline" 
+                                                size="icon" 
+                                                className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm border-indigo-500/20 text-indigo-600 hover:bg-indigo-500 hover:text-white transition-all shadow-lg"
+                                                onClick={() => router.push(`/dashboard/student-information/student-details/${student.id}/edit`)}
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button 
+                                                variant="outline" 
+                                                size="icon" 
+                                                className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm border-red-500/20 text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-lg"
+                                                onClick={() => {
+                                                    setSelectedStudent(student);
+                                                    setDeleteDialogOpen(true);
+                                                }}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+
+                                        <div className="flex flex-col items-center text-center space-y-4">
+                                            <div className="relative">
+                                                <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
+                                                <Avatar className="h-24 w-24 rounded-2xl border-2 border-white shadow-md relative">
+                                                    <AvatarImage src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${student.avatar}`} />
+                                                    <AvatarFallback className="bg-primary/5 text-primary text-2xl font-black">
+                                                        {student.name.substring(0, 2).toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
                                             </div>
-                                        </td>
-                                    </tr>
+
+                                            <div className="space-y-1">
+                                                <h3 className="font-black text-lg tracking-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                                                    {student.name} {student.last_name}
+                                                </h3>
+                                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest bg-muted/50 px-3 py-1 rounded-full inline-block">
+                                                    ADM: {student.admission_no}
+                                                </p>
+                                            </div>
+
+                                            <div className="w-full pt-4 grid grid-cols-2 gap-3">
+                                                <div className="bg-muted/30 p-2 rounded-xl text-center">
+                                                    <p className="text-[10px] font-black text-muted-foreground/60 uppercase">Class</p>
+                                                    <p className="text-xs font-bold text-foreground line-clamp-1">{student.school_class?.name}</p>
+                                                </div>
+                                                <div className="bg-muted/30 p-2 rounded-xl text-center">
+                                                    <p className="text-[10px] font-black text-muted-foreground/60 uppercase">Roll No</p>
+                                                    <p className="text-xs font-bold text-foreground">{student.roll_no || "-"}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="w-full space-y-2 pt-2 border-t border-muted/50">
+                                                <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px]">
+                                                    <User className="h-3 w-3 text-primary/60" />
+                                                    <span className="line-clamp-1">F: {student.father_name || "-"}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between w-full">
+                                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px]">
+                                                        <Phone className="h-3 w-3 text-primary/60" />
+                                                        <span>{student.phone || "-"}</span>
+                                                    </div>
+                                                    <Badge className={cn(
+                                                        "px-2 py-0 rounded-full text-[8px] font-bold uppercase tracking-widest border-none shadow-none h-4",
+                                                        student.active 
+                                                            ? "bg-green-500/10 text-green-600" 
+                                                            : "bg-red-500/10 text-red-600"
+                                                    )}>
+                                                        {student.active ? "Active" : "Disabled"}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px]">
+                                                    <BadgeCheck className="h-3 w-3 text-primary/60" />
+                                                    <span className="line-clamp-1">Cat: {student.student_category?.category_name || student.category || "-"}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 ))}
-                            </tbody>
-                        </table>
+                            </div>
+                        )
                     ) : (
                         /* Empty State */
                         <div className="py-24 flex flex-col items-center justify-center text-center space-y-6">
@@ -354,6 +593,150 @@ export default function StudentDetailsPage() {
                     </div>
                 )}
             </Card>
+
+            {/* View Student Dialog */}
+            <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+                <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl rounded-3xl bg-background/95 backdrop-blur-md">
+                    <DialogHeader className="p-8 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent relative">
+                        <div className="absolute top-4 right-4">
+                            <Button variant="ghost" size="icon" onClick={() => setViewDialogOpen(false)} className="rounded-full hover:bg-white/20 transition-all">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <div className="flex flex-col md:flex-row items-center gap-8">
+                            <div className="relative group">
+                                <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-3xl blur opacity-30 group-hover:opacity-50 transition duration-500" />
+                                <Avatar className="h-32 w-32 md:h-40 md:w-40 rounded-3xl border-4 border-white shadow-xl relative transition-transform duration-500 group-hover:scale-[1.02]">
+                                    <AvatarImage src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${selectedStudent?.avatar}`} />
+                                    <AvatarFallback className="bg-primary/5 text-primary text-4xl font-black">
+                                        {selectedStudent?.name?.substring(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                </Avatar>
+                            </div>
+                            <div className="text-center md:text-left space-y-3">
+                                <Badge variant="secondary" className="px-4 py-1.5 rounded-full bg-primary/10 text-primary border-primary/20 text-xs font-bold uppercase tracking-widest shadow-sm">
+                                    Student Profile
+                                </Badge>
+                                <DialogTitle className="text-4xl font-black tracking-tight text-foreground">
+                                    {selectedStudent?.name} {selectedStudent?.last_name}
+                                </DialogTitle>
+                                <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-xl border border-muted/50">
+                                        <BadgeCheck className="h-4 w-4 text-primary" />
+                                        ADM: {selectedStudent?.admission_no}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-xl border border-muted/50">
+                                        <GraduationCap className="h-4 w-4 text-indigo-500" />
+                                        {selectedStudent?.school_class?.name} ({selectedStudent?.section?.name})
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    
+                    <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Personal Info */}
+                            <div className="space-y-6">
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 px-1">Personal Details</h4>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <InfoField label="Date of Birth" value={formatDate(selectedStudent?.dob)} icon={Calendar} />
+                                    <InfoField label="Gender" value={selectedStudent?.gender} icon={User} />
+                                    <InfoField label="Blood Group" value={selectedStudent?.blood_group || "-"} icon={BadgeCheck} />
+                                    <InfoField label="Religion" value={selectedStudent?.religion || "-"} icon={BadgeCheck} />
+                                </div>
+                            </div>
+                            
+                            {/* Contact & Parent Info */}
+                            <div className="space-y-6">
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">Contact & Guardian</h4>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <InfoField label="Mobile Number" value={selectedStudent?.phone} icon={Phone} />
+                                    <InfoField label="Email Address" value={selectedStudent?.email || "-"} icon={Mail} />
+                                    <InfoField label="Father Name" value={selectedStudent?.father_name} icon={User} />
+                                    <InfoField label="Category" value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} />
+                                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
+                                        <div className="p-2.5 bg-white rounded-xl shadow-sm border border-muted group-hover:scale-110 transition-transform">
+                                            <BadgeCheck className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Status</p>
+                                            <Badge className={cn(
+                                                "mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border-none",
+                                                selectedStudent?.active 
+                                                    ? "bg-green-500/10 text-green-600" 
+                                                    : "bg-red-500/10 text-red-600"
+                                            )}>
+                                                {selectedStudent?.active ? "Active" : "Disabled"}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <DialogFooter className="p-6 bg-muted/20 border-t border-muted/50 flex flex-row gap-3">
+                        <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => setViewDialogOpen(false)}>
+                            Close
+                        </Button>
+                        <Button 
+                            variant="gradient" 
+                            className="flex-1 rounded-2xl h-12 font-bold"
+                            onClick={() => {
+                                setViewDialogOpen(false);
+                                router.push(`/dashboard/student-information/student-details/${selectedStudent?.id}/edit`);
+                            }}
+                        >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit Profile
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent className="max-w-md border-none shadow-2xl rounded-3xl bg-background/95 backdrop-blur-md">
+                    <DialogHeader className="pt-6">
+                        <div className="mx-auto w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-4">
+                            <Trash2 className="h-8 w-8 text-red-600" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black text-center tracking-tight">Delete Record?</DialogTitle>
+                        <DialogDescription className="text-center pt-2 font-medium">
+                            Are you sure you want to delete <span className="text-foreground font-bold">{selectedStudent?.name} {selectedStudent?.last_name}</span>? 
+                            <br />This action is permanent and cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex flex-row gap-3 p-6 mt-2">
+                        <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => setDeleteDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            variant="destructive" 
+                            className="flex-1 rounded-2xl h-12 font-bold bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200"
+                            onClick={handleDelete}
+                            disabled={deleting}
+                        >
+                            {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Delete Student"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}
+
+function InfoField({ label, value, icon: Icon }: { label: string, value?: string, icon: any }) {
+    return (
+        <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
+            <div className="p-2.5 bg-white rounded-xl shadow-sm border border-muted group-hover:scale-110 transition-transform">
+                <Icon className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{label}</p>
+                <p className="text-sm font-bold text-foreground">{value || "N/A"}</p>
+            </div>
         </div>
     );
 }

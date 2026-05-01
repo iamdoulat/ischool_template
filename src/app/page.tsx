@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { PublicHeader } from "@/components/public/header";
 import { PublicFooter } from "@/components/public/footer";
 import { StaffSection } from "@/components/public/staff-section";
@@ -45,9 +46,11 @@ export default function Home() {
                 Provide your children with the best education possible. We focus on holistic development, academic excellence, and character building.
               </p>
               <div className="flex flex-col sm:flex-row gap-5 pt-6">
-                <Button size="lg" className="text-base font-bold px-10 h-14 rounded-full shadow-lg hover:shadow-primary/20 hover:scale-105 transition-all duration-300">
-                  Apply for Admission
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                <Button asChild size="lg" className="text-base font-bold px-10 h-14 rounded-full shadow-lg hover:shadow-primary/20 hover:scale-105 transition-all duration-300">
+                  <Link href="/online_admission">
+                    Apply for Admission
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
                 </Button>
                 <Button variant="outline" size="lg" className="text-base font-bold px-10 h-14 rounded-full bg-white/10 text-white border-white/20 hover:bg-white hover:text-slate-900 backdrop-blur-sm transition-all duration-300">
                   Take a Tour

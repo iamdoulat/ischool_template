@@ -1,0 +1,10 @@
+admission_no,roll_no,name,attendance,date,entry_time,exit_time,note
+002,,Sneha Patel,present,2026-05-01,08:30,14:00,On time
+003,,Hariom Yadav,absent,2026-05-01,,,Medical leave
+1800011,001,Edward Thomas,late,2026-05-01,09:15,14:00,Arrived late
+A003,,Hariom Yadav,present,2026-05-01,08:25,14:00,
+A004,,Nisha,half_day,2026-05-01,08:30,12:00,Left early
+A41003,,niya,absent,2026-05-01,,,Sick
+STU001,002,Rahul Kumar,present,2026-05-01,08:20,14:00,
+STU002,003,Priya Sharma,present,2026-05-01,08:28,14:00,
+STU003,004,Amit Singh,holiday,2026-05-01,,,School holiday

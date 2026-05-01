@@ -149,8 +149,7 @@ const menuItems = [
                     { name: "student_attendance", href: "/dashboard/attendance/student-attendance" },
                     { name: "period_attendance", href: "/dashboard/attendance/period-attendance" },
                     { name: "approve_leave", href: "/dashboard/attendance/approve-leave" },
-                    { name: "attendance_by_date", href: "#" },
-                    { name: "period_attendance_by_date", href: "/dashboard/attendance/period-attendance-by-date" },
+                    { name: "attendance_by_date", href: "/dashboard/attendance/attendencereport" },
                 ]
             },
             {
@@ -870,7 +869,7 @@ export function Sidebar({
                                                                                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                                                                             )}
                                                                         >
-                                                                            {t(submenu.name)}
+                                                                            {submenu.name === "period_attendance" ? "Attendance by Subject" : t(submenu.name)}
                                                                         </Link>
                                                                     ))}
                                                                 </div>
@@ -926,7 +925,7 @@ export function Sidebar({
                                                                                     : "text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
                                                                             )}
                                                                         >
-                                                                            <span className="flex-1">{t(submenu.name)}</span>
+                                                                            <span className="flex-1">{submenu.name === "period_attendance" ? "Attendance by Subject" : t(submenu.name)}</span>
                                                                             {isSubActive && (
                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-in fade-in zoom-in duration-300 ml-2" />
                                                                             )}

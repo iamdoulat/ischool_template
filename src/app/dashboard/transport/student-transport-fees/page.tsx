@@ -99,7 +99,7 @@ export default function StudentTransportFeesPage() {
         setFetchingInitial(true);
         try {
             const [classesRes, routesRes, vehiclesRes, pointsRes] = await Promise.all([
-                api.get("/classes"),
+                api.get("/academics/classes"),
                 api.get("/transport/routes"),
                 api.get("/transport/vehicles"),
                 api.get("/transport/pickup-points"),
@@ -122,7 +122,7 @@ export default function StudentTransportFeesPage() {
     const handleClassChange = async (classId: string) => {
         setFilters({ ...filters, class_id: classId, section_id: "" });
         try {
-            const res = await api.get(`/sections?class_id=${classId}`);
+            const res = await api.get(`/academics/sections?class_id=${classId}`);
             setSections(res.data.data.data || res.data.data || []);
         } catch (error) {
             toast("error", "Failed to load sections");

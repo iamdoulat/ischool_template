@@ -15,7 +15,25 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Loader2, Plus, Trash2, Globe, Share2, LayoutPanelLeft, FileText, Users, GraduationCap, Info } from "lucide-react";
+import { 
+    BookOpen, 
+    Loader2, 
+    Plus, 
+    Trash2, 
+    Globe, 
+    Share2, 
+    LayoutPanelLeft, 
+    FileText, 
+    Users, 
+    GraduationCap, 
+    Info,
+    ChevronLeft,
+    ChevronRight,
+    X,
+    Save,
+    Pencil,
+    Eye
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -80,7 +98,6 @@ export default function FrontCmsSettingPage() {
                 { title: "Terms of Service", url: "/terms" }
             ]
         },
-        // Previews and working files
         logo_preview: "",
         logo_file: null,
         favicon_preview: "",
@@ -101,6 +118,12 @@ export default function FrontCmsSettingPage() {
                     ...fetched,
                     logo_preview: fetched.logo_url || "",
                     favicon_preview: fetched.favicon_url || "",
+                    // Ensure arrays are initialized if null
+                    social_media: fetched.social_media || prev.social_media,
+                    about_us: fetched.about_us || prev.about_us,
+                    main_courses: fetched.main_courses || prev.main_courses,
+                    experienced_staffs: fetched.experienced_staffs || prev.experienced_staffs,
+                    latest_notices: fetched.latest_notices || prev.latest_notices,
                 }));
             }
         } catch (error) {
@@ -127,7 +150,6 @@ export default function FrontCmsSettingPage() {
         try {
             const formData = new FormData();
 
-            // Append general and JSON fields
             Object.keys(settings).forEach(key => {
                 if (["logo_preview", "favicon_preview", "logo_file", "favicon_file", "logo_url", "favicon_url"].includes(key)) return;
 
@@ -148,18 +170,10 @@ export default function FrontCmsSettingPage() {
 
             if (res.data?.status === "success") {
                 toast("success", "Front CMS settings saved successfully");
-                // Clear file states but keep previews from server
-                setSettings((prev: any) => ({
-                    ...prev,
-                    logo_file: null,
-                    favicon_file: null,
-                    logo_preview: res.data.data.logo_url || prev.logo_preview,
-                    favicon_preview: res.data.data.favicon_url || prev.favicon_preview
-                }));
+                fetchSettings();
             }
         } catch (error) {
             toast("error", "Failed to save settings");
-            console.error(error);
         } finally {
             setSaving(false);
         }
@@ -197,55 +211,74 @@ export default function FrontCmsSettingPage() {
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Front CMS Setting</h1>
+            <div className="flex justify-between items-center mb-2">
+                <h1 className="text-sm font-semibold text-gray-800 tracking-tight">Front CMS Setting</h1>
+                <Button 
+                    onClick={handleSave} 
+                    disabled={saving}
+                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-6 h-9 font-bold rounded-full shadow-md flex items-center gap-2"
+                >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save All Changes
+                </Button>
+            </div>
 
             <Tabs defaultValue="system" className="w-full">
-                <TabsList className="bg-white border text-gray-500 h-10 p-1 gap-1">
-                    <TabsTrigger value="system" className="text-[11px] gap-2 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"><Globe size={14} /> System</TabsTrigger>
-                    <TabsTrigger value="social" className="text-[11px] gap-2 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"><Share2 size={14} /> Social Links</TabsTrigger>
-                    <TabsTrigger value="sections" className="text-[11px] gap-2 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600"><LayoutPanelLeft size={14} /> Sections</TabsTrigger>
+                <TabsList className="bg-white border text-gray-500 h-11 p-1 gap-1 rounded-xl shadow-sm border-gray-100">
+                    <TabsTrigger value="system" className="text-[11px] font-bold uppercase gap-2 px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-400 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg transition-all duration-300">
+                        <Globe size={14} className="stroke-[2.5px]" /> System
+                    </TabsTrigger>
+                    <TabsTrigger value="social" className="text-[11px] font-bold uppercase gap-2 px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-400 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg transition-all duration-300">
+                        <Share2 size={14} className="stroke-[2.5px]" /> Social Links
+                    </TabsTrigger>
+                    <TabsTrigger value="sections" className="text-[11px] font-bold uppercase gap-2 px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-400 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg transition-all duration-300">
+                        <LayoutPanelLeft size={14} className="stroke-[2.5px]" /> Sections
+                    </TabsTrigger>
                 </TabsList>
 
                 {/* SYSTEM TAB */}
-                <TabsContent value="system" className="space-y-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                            <div className="space-y-4">
+                <TabsContent value="system" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+                            <div className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-600 md:col-span-4">Front CMS</Label>
-                                    <div className="md:col-span-8">
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4">Front CMS</Label>
+                                    <div className="md:col-span-8 flex items-center gap-2">
                                         <Switch
                                             checked={settings.is_active}
                                             onCheckedChange={(v) => setSettings({ ...settings, is_active: v })}
-                                            className="data-[state=checked]:bg-indigo-500 scale-90"
+                                            className="data-[state=checked]:bg-indigo-500"
                                         />
+                                        <span className="text-[10px] text-gray-400 font-medium uppercase">{settings.is_active ? 'Enabled' : 'Disabled'}</span>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-600 md:col-span-4">Sidebar</Label>
-                                    <div className="md:col-span-8">
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4">Sidebar</Label>
+                                    <div className="md:col-span-8 flex items-center gap-2">
                                         <Switch
                                             checked={settings.sidebar_active}
                                             onCheckedChange={(v) => setSettings({ ...settings, sidebar_active: v })}
-                                            className="data-[state=checked]:bg-indigo-500 scale-90"
+                                            className="data-[state=checked]:bg-indigo-500"
                                         />
+                                        <span className="text-[10px] text-gray-400 font-medium uppercase">{settings.sidebar_active ? 'Visible' : 'Hidden'}</span>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-600 md:col-span-4 text-nowrap">RTL Mode</Label>
-                                    <div className="md:col-span-8">
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4">RTL Mode</Label>
+                                    <div className="md:col-span-8 flex items-center gap-2">
                                         <Switch
                                             checked={settings.rtl_mode}
                                             onCheckedChange={(v) => setSettings({ ...settings, rtl_mode: v })}
-                                            className="data-[state=checked]:bg-indigo-500 scale-90"
+                                            className="data-[state=checked]:bg-indigo-500"
                                         />
+                                        <span className="text-[10px] text-gray-400 font-medium uppercase">{settings.rtl_mode ? 'On' : 'Off'}</span>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-600 md:col-span-4">Language</Label>
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4">Language</Label>
                                     <div className="md:col-span-8">
                                         <Select value={settings.language} onValueChange={(v) => setSettings({ ...settings, language: v })}>
-                                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                            <SelectTrigger className="h-9 text-[11px] border-gray-200 shadow-none rounded-lg bg-gray-50/50">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -255,87 +288,87 @@ export default function FrontCmsSettingPage() {
                                         </Select>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-12 items-start gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-600 md:col-span-4 pt-2">Logo</Label>
-                                    <div className="md:col-span-8 flex gap-4 items-center">
+                                <div className="grid grid-cols-1 md:grid-cols-12 items-start gap-4 pt-2">
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4 pt-3">Brand Logo</Label>
+                                    <div className="md:col-span-8 flex flex-col gap-3">
                                         <div
                                             onClick={() => logoInputRef.current?.click()}
-                                            className="h-20 w-44 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center cursor-pointer hover:border-indigo-400 transition-colors bg-gray-50 overflow-hidden"
+                                            className="h-24 w-full max-w-[200px] border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all bg-gray-50/50 overflow-hidden relative group"
                                         >
                                             {settings.logo_preview ? (
-                                                <img src={settings.logo_preview} className="h-full w-full object-contain p-2" alt="Logo" />
+                                                <>
+                                                    <img src={settings.logo_preview} className="h-full w-full object-contain p-4 transition-transform group-hover:scale-105" alt="Logo" />
+                                                    <div className="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <Pencil className="h-5 w-5 text-indigo-600" />
+                                                    </div>
+                                                </>
                                             ) : (
-                                                <Plus className="text-gray-400" />
+                                                <div className="flex flex-col items-center gap-1 text-gray-400">
+                                                    <Plus className="h-6 w-6" />
+                                                    <span className="text-[8px] font-bold uppercase">Upload Logo</span>
+                                                </div>
                                             )}
                                         </div>
                                         <input type="file" ref={logoInputRef} hidden onChange={(e) => handleFileChange(e, "logo")} accept="image/*" />
-                                        <div className="text-[10px] text-gray-400">368x75px</div>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-12 items-start gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-600 md:col-span-4 pt-2">Favicon</Label>
-                                    <div className="md:col-span-8 flex gap-4 items-center">
-                                        <div
-                                            onClick={() => faviconInputRef.current?.click()}
-                                            className="h-12 w-12 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center cursor-pointer hover:border-indigo-400 transition-colors bg-gray-50 overflow-hidden"
-                                        >
-                                            {settings.favicon_preview ? (
-                                                <img src={settings.favicon_preview} className="h-full w-full object-contain p-1" alt="Favicon" />
-                                            ) : (
-                                                <Plus className="text-gray-400" size={16} />
-                                            )}
-                                        </div>
-                                        <input type="file" ref={faviconInputRef} hidden onChange={(e) => handleFileChange(e, "favicon")} accept="image/*" />
-                                        <div className="text-[10px] text-gray-400">32x32px</div>
+                                        <p className="text-[9px] text-gray-400 font-medium tracking-tight">Recommended size: 368x75 pixels (PNG/JPG)</p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-600 md:col-span-4">Footer Text</Label>
+
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-12 items-start gap-4">
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4 pt-2">Footer Text</Label>
                                     <div className="md:col-span-8">
-                                        <Input value={settings.footer_text} onChange={(e) => setSettings({ ...settings, footer_text: e.target.value })} className="h-8 text-[11px] border-gray-200 shadow-none rounded" />
+                                        <Input value={settings.footer_text} onChange={(e) => setSettings({ ...settings, footer_text: e.target.value })} className="h-9 text-[11px] border-gray-200 shadow-none rounded-lg bg-gray-50/50" />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-12 items-start gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-600 md:col-span-4 pt-2">Analytics Code</Label>
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4 pt-2">Google Analytics</Label>
                                     <div className="md:col-span-8">
-                                        <Textarea value={settings.google_analytics} onChange={(e) => setSettings({ ...settings, google_analytics: e.target.value })} className="min-h-[100px] text-[10px] font-mono border-gray-200 shadow-none rounded bg-gray-50/50" />
+                                        <Textarea value={settings.google_analytics} onChange={(e) => setSettings({ ...settings, google_analytics: e.target.value })} className="min-h-[100px] text-[10px] font-mono border-gray-200 shadow-none rounded-lg bg-gray-50/50" placeholder="Paste script here..." />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-12 items-start gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-600 md:col-span-4 pt-2">Cookie Consent</Label>
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4 pt-2">Cookie Consent</Label>
                                     <div className="md:col-span-8">
-                                        <Textarea value={settings.cookie_consent} onChange={(e) => setSettings({ ...settings, cookie_consent: e.target.value })} className="min-h-[60px] text-[11px] border-gray-200 shadow-none rounded" placeholder="Your cookie agreement text..." />
+                                        <Textarea value={settings.cookie_consent} onChange={(e) => setSettings({ ...settings, cookie_consent: e.target.value })} className="min-h-[70px] text-[11px] border-gray-200 shadow-none rounded-lg bg-gray-50/50" placeholder="Cookie usage policy text..." />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Theme Selection */}
-                        <div className="pt-6 border-t border-gray-100">
-                            <Label className="text-[11px] font-bold text-gray-600 mb-4 block">Current Theme</Label>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        <div className="pt-8 border-t border-gray-100">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-6 block">Interface Theme Style</Label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
                                 {themes.map((theme) => (
                                     <div
                                         key={theme.id}
                                         onClick={() => setSettings({ ...settings, current_theme: theme.id })}
                                         className={cn(
-                                            "cursor-pointer group flex flex-col border rounded overflow-hidden transition-all",
-                                            settings.current_theme === theme.id ? "ring-2 ring-indigo-500 ring-offset-2 border-transparent" : "border-gray-200 hover:border-indigo-300"
+                                            "cursor-pointer group flex flex-col border-2 rounded-2xl overflow-hidden transition-all duration-300",
+                                            settings.current_theme === theme.id ? "border-indigo-500 shadow-lg scale-105" : "border-gray-50 hover:border-indigo-200 hover:shadow-md"
                                         )}
                                     >
                                         <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
-                                            <div className="h-2 w-full bg-white border-b border-gray-200"></div>
-                                            <div className={cn("h-4 w-full", theme.bg)}></div>
-                                            <div className="p-3 space-y-2">
-                                                <div className="h-4 w-3/4 bg-gray-200 rounded"></div>
-                                                <div className="h-8 w-full bg-gray-200 rounded"></div>
+                                            <div className="h-3 w-full bg-white border-b border-gray-100 flex items-center px-1.5 gap-0.5">
+                                                <div className="h-1 w-1 rounded-full bg-gray-200" />
+                                                <div className="h-1 w-1 rounded-full bg-gray-200" />
                                             </div>
+                                            <div className={cn("h-6 w-full", theme.bg)}></div>
+                                            <div className="p-4 space-y-2">
+                                                <div className="h-3 w-3/4 bg-gray-200 rounded-full"></div>
+                                                <div className="h-6 w-full bg-gray-200 rounded-lg opacity-50"></div>
+                                            </div>
+                                            {settings.current_theme === theme.id && (
+                                                <div className="absolute top-10 right-4 h-6 w-6 rounded-full bg-white shadow-md flex items-center justify-center">
+                                                    <div className="h-3 w-3 rounded-full bg-indigo-500" />
+                                                </div>
+                                            )}
                                         </div>
                                         <div className={cn(
-                                            "py-1 text-center text-[9px] font-bold uppercase",
-                                            settings.current_theme === theme.id ? "bg-indigo-600 text-white" : "bg-gray-500 text-white"
+                                            "py-2 text-center text-[9px] font-bold uppercase tracking-tight",
+                                            settings.current_theme === theme.id ? "bg-gradient-to-r from-orange-400 to-indigo-500 text-white" : "bg-gray-50 text-gray-400"
                                         )}>{theme.name}</div>
                                     </div>
                                 ))}
@@ -345,17 +378,21 @@ export default function FrontCmsSettingPage() {
                 </TabsContent>
 
                 {/* SOCIAL LINKS TAB */}
-                <TabsContent value="social" className="space-y-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                <TabsContent value="social" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6">
                             {Object.keys(settings.social_media).map((platform) => (
-                                <div key={platform} className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-600 md:col-span-3 capitalize">{platform.replace('_', ' ')}</Label>
-                                    <div className="md:col-span-9">
+                                <div key={platform} className="grid grid-cols-1 md:grid-cols-12 items-center gap-4 group">
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4 capitalize">{platform.replace('_', ' ')}</Label>
+                                    <div className="md:col-span-8 relative">
+                                        <div className="absolute left-3 top-2.5 h-4 w-4 text-indigo-400 group-hover:scale-110 transition-transform">
+                                            <Globe size={16} />
+                                        </div>
                                         <Input
                                             value={settings.social_media[platform]}
                                             onChange={(e) => updateSocialField(platform, e.target.value)}
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                            className="h-9 pl-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded-lg bg-gray-50/50 hover:bg-white transition-colors"
+                                            placeholder={`Enter ${platform} URL`}
                                         />
                                     </div>
                                 </div>
@@ -365,143 +402,227 @@ export default function FrontCmsSettingPage() {
                 </TabsContent>
 
                 {/* SECTIONS TAB */}
-                <TabsContent value="sections" className="space-y-6 animate-in fade-in duration-300">
+                <TabsContent value="sections" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
 
                     {/* About Us */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-4">
-                        <div className="flex items-center gap-2 border-b border-gray-50 pb-3 mb-4">
-                            <Info size={16} className="text-indigo-500" />
-                            <h2 className="text-xs font-bold text-gray-800 uppercase tracking-wider">About Us Section</h2>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 bg-indigo-500 h-full" />
+                        <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
+                            <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+                                <Info size={18} className="stroke-[2.5px]" />
+                            </div>
+                            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Welcome / About Us Section</h2>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                            <div className="md:col-span-8 space-y-4">
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400">Title</Label>
-                                    <Input value={settings.about_us.title} onChange={(e) => updateNestedField("about_us", "title", e.target.value)} className="h-9 text-[11px]" />
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                            <div className="md:col-span-8 space-y-5">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Headline Title</Label>
+                                    <Input value={settings.about_us.title} onChange={(e) => updateNestedField("about_us", "title", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400">Description</Label>
-                                    <Textarea value={settings.about_us.description} onChange={(e) => updateNestedField("about_us", "description", e.target.value)} className="min-h-[100px] text-[11px]" />
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Introduction Content</Label>
+                                    <Textarea value={settings.about_us.description} onChange={(e) => updateNestedField("about_us", "description", e.target.value)} className="min-h-[140px] text-[11px] leading-relaxed rounded-lg bg-gray-50/30" />
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Main Courses */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-4">
-                        <div className="flex items-center justify-between border-b border-gray-50 pb-3 mb-4">
-                            <div className="flex items-center gap-2">
-                                <GraduationCap size={16} className="text-indigo-500" />
-                                <h2 className="text-xs font-bold text-gray-800 uppercase tracking-wider">Our Main Courses</h2>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 bg-orange-400 h-full" />
+                        <div className="flex items-center justify-between border-b border-gray-50 pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500">
+                                    <GraduationCap size={18} className="stroke-[2.5px]" />
+                                </div>
+                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Our Main Courses Showcase</h2>
                             </div>
-                            <Button variant="outline" size="sm" onClick={() => addListItem("main_courses", { title: "", description: "", price: "" })} className="h-7 text-[10px] border-indigo-200 text-indigo-600 hover:bg-indigo-50">
-                                <Plus size={12} className="mr-1" /> Add Course
+                            <Button 
+                                onClick={() => addListItem("main_courses", { title: "", description: "", price: "" })} 
+                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
+                            >
+                                <Plus size={14} className="stroke-[3px]" /> Add New Course
                             </Button>
                         </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {settings.main_courses.map((course: any, idx: number) => (
-                                <div key={course.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50/30 space-y-3 relative group">
-                                    <Button variant="ghost" size="icon" onClick={() => removeListItem("main_courses", course.id)} className="absolute top-2 right-2 h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Trash2 size={12} />
+                                <div key={course.id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50/30 space-y-4 relative group hover:border-orange-200 transition-all hover:shadow-lg hover:bg-white">
+                                    <Button 
+                                        size="icon" 
+                                        onClick={() => removeListItem("main_courses", course.id)} 
+                                        className="absolute top-4 right-4 h-8 w-8 bg-red-500 text-white rounded-[10px] shadow-md opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 border-0"
+                                    >
+                                        <X size={16} className="stroke-[3.5px]" />
                                     </Button>
-                                    <Input placeholder="Course Title" value={course.title} onChange={(e) => {
-                                        const newCourses = [...settings.main_courses];
-                                        newCourses[idx].title = e.target.value;
-                                        setSettings({ ...settings, main_courses: newCourses });
-                                    }} className="h-8 text-[11px] bg-white" />
-                                    <Textarea placeholder="Short description..." value={course.description} onChange={(e) => {
-                                        const newCourses = [...settings.main_courses];
-                                        newCourses[idx].description = e.target.value;
-                                        setSettings({ ...settings, main_courses: newCourses });
-                                    }} className="min-h-[60px] text-[11px] bg-white" />
+                                    <div className="space-y-4 pr-10">
+                                        <Input 
+                                            placeholder="Course Name" 
+                                            value={course.title} 
+                                            onChange={(e) => {
+                                                const newCourses = [...settings.main_courses];
+                                                newCourses[idx].title = e.target.value;
+                                                setSettings({ ...settings, main_courses: newCourses });
+                                            }} 
+                                            className="h-9 text-[11px] font-bold bg-white border-gray-100 rounded-lg" 
+                                        />
+                                        <Textarea 
+                                            placeholder="What will students learn?" 
+                                            value={course.description} 
+                                            onChange={(e) => {
+                                                const newCourses = [...settings.main_courses];
+                                                newCourses[idx].description = e.target.value;
+                                                setSettings({ ...settings, main_courses: newCourses });
+                                            }} 
+                                            className="min-h-[80px] text-[11px] bg-white border-gray-100 rounded-lg leading-relaxed" 
+                                        />
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Staff */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-4">
-                        <div className="flex items-center justify-between border-b border-gray-50 pb-3 mb-4">
-                            <div className="flex items-center gap-2">
-                                <Users size={16} className="text-indigo-500" />
-                                <h2 className="text-xs font-bold text-gray-800 uppercase tracking-wider">Our Experienced Staffs</h2>
+                    {/* Experienced Staff */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 bg-green-500 h-full" />
+                        <div className="flex items-center justify-between border-b border-gray-50 pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
+                                    <Users size={18} className="stroke-[2.5px]" />
+                                </div>
+                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Experienced Faculty Members</h2>
                             </div>
-                            <Button variant="outline" size="sm" onClick={() => addListItem("experienced_staffs", { name: "", role: "" })} className="h-7 text-[10px] border-indigo-200 text-indigo-600 hover:bg-indigo-50">
-                                <Plus size={12} className="mr-1" /> Add Staff
+                            <Button 
+                                onClick={() => addListItem("experienced_staffs", { name: "", role: "" })} 
+                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
+                            >
+                                <Plus size={14} className="stroke-[3px]" /> Add Faculty Member
                             </Button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {settings.experienced_staffs.map((staff: any, idx: number) => (
-                                <div key={staff.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50/30 flex flex-col items-center space-y-3 relative group">
-                                    <Button variant="ghost" size="icon" onClick={() => removeListItem("experienced_staffs", staff.id)} className="absolute top-1 right-1 h-5 w-5 text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Trash2 size={10} />
+                                <div key={staff.id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50/30 flex flex-col items-center space-y-4 relative group hover:border-green-200 hover:shadow-lg hover:bg-white transition-all">
+                                    <Button 
+                                        size="icon" 
+                                        onClick={() => removeListItem("experienced_staffs", staff.id)} 
+                                        className="absolute top-3 right-3 h-7 w-7 bg-red-500 text-white rounded-[8px] shadow-md opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 border-0"
+                                    >
+                                        <X size={14} className="stroke-[3.5px]" />
                                     </Button>
-                                    <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-500"><Users size={24} /></div>
-                                    <Input placeholder="Staff Name" value={staff.name} onChange={(e) => {
-                                        const newList = [...settings.experienced_staffs];
-                                        newList[idx].name = e.target.value;
-                                        setSettings({ ...settings, experienced_staffs: newList });
-                                    }} className="h-7 text-[10px] text-center bg-white" />
-                                    <Input placeholder="Designation" value={staff.role} onChange={(e) => {
-                                        const newList = [...settings.experienced_staffs];
-                                        newList[idx].role = e.target.value;
-                                        setSettings({ ...settings, experienced_staffs: newList });
-                                    }} className="h-7 text-[10px] text-center bg-white" />
+                                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-indigo-50 to-green-50 border border-indigo-100 flex items-center justify-center text-indigo-400 shadow-inner group-hover:scale-110 transition-transform">
+                                        <Users size={32} className="stroke-[1.5px]" />
+                                    </div>
+                                    <div className="w-full space-y-2">
+                                        <Input 
+                                            placeholder="Full Name" 
+                                            value={staff.name} 
+                                            onChange={(e) => {
+                                                const newList = [...settings.experienced_staffs];
+                                                newList[idx].name = e.target.value;
+                                                setSettings({ ...settings, experienced_staffs: newList });
+                                            }} 
+                                            className="h-8 text-[11px] text-center font-bold bg-white border-gray-100" 
+                                        />
+                                        <Input 
+                                            placeholder="Position / Role" 
+                                            value={staff.role} 
+                                            onChange={(e) => {
+                                                const newList = [...settings.experienced_staffs];
+                                                newList[idx].role = e.target.value;
+                                                setSettings({ ...settings, experienced_staffs: newList });
+                                            }} 
+                                            className="h-8 text-[10px] text-center text-gray-500 font-medium bg-white border-gray-100 italic" 
+                                        />
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Notices */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-4">
-                        <div className="flex items-center justify-between border-b border-gray-50 pb-3 mb-4">
-                            <div className="flex items-center gap-2">
-                                <FileText size={16} className="text-indigo-500" />
-                                <h2 className="text-xs font-bold text-gray-800 uppercase tracking-wider">Latest Notices</h2>
+                    {/* Latest Notices */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 bg-red-400 h-full" />
+                        <div className="flex items-center justify-between border-b border-gray-50 pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500">
+                                    <FileText size={18} className="stroke-[2.5px]" />
+                                </div>
+                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Recent Announcements / Notices</h2>
                             </div>
-                            <Button variant="outline" size="sm" onClick={() => addListItem("latest_notices", { title: "", date: "" })} className="h-7 text-[10px] border-indigo-200 text-indigo-600 hover:bg-indigo-50">
-                                <Plus size={12} className="mr-1" /> Add Notice
+                            <Button 
+                                onClick={() => addListItem("latest_notices", { title: "", date: "" })} 
+                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
+                            >
+                                <Plus size={14} className="stroke-[3px]" /> Post Notice
                             </Button>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {settings.latest_notices.map((notice: any, idx: number) => (
-                                <div key={notice.id} className="flex gap-4 items-center p-3 border border-gray-50 rounded-lg bg-gray-50/20 group">
-                                    <Input placeholder="Notice Headline" value={notice.title} onChange={(e) => {
-                                        const newList = [...settings.latest_notices];
-                                        newList[idx].title = e.target.value;
-                                        setSettings({ ...settings, latest_notices: newList });
-                                    }} className="h-8 text-[11px] bg-white flex-1" />
-                                    <Input type="date" value={notice.date} onChange={(e) => {
-                                        const newList = [...settings.latest_notices];
-                                        newList[idx].date = e.target.value;
-                                        setSettings({ ...settings, latest_notices: newList });
-                                    }} className="h-8 text-[11px] w-40 bg-white" />
-                                    <Button variant="ghost" size="icon" onClick={() => removeListItem("latest_notices", notice.id)} className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50">
-                                        <Trash2 size={12} />
+                                <div key={notice.id} className="flex gap-4 items-center p-4 border border-gray-50 rounded-xl bg-gray-50/20 group hover:bg-white hover:border-red-100 hover:shadow-md transition-all">
+                                    <div className="h-2 w-2 rounded-full bg-red-400 animate-pulse" />
+                                    <Input 
+                                        placeholder="Enter notice headline..." 
+                                        value={notice.title} 
+                                        onChange={(e) => {
+                                            const newList = [...settings.latest_notices];
+                                            newList[idx].title = e.target.value;
+                                            setSettings({ ...settings, latest_notices: newList });
+                                        }} 
+                                        className="h-9 text-[11px] font-medium bg-white flex-1 border-gray-100 rounded-lg" 
+                                    />
+                                    <Input 
+                                        type="date" 
+                                        value={notice.date} 
+                                        onChange={(e) => {
+                                            const newList = [...settings.latest_notices];
+                                            newList[idx].date = e.target.value;
+                                            setSettings({ ...settings, latest_notices: newList });
+                                        }} 
+                                        className="h-9 text-[11px] w-48 bg-white border-gray-100 rounded-lg text-gray-500 font-bold" 
+                                    />
+                                    <Button 
+                                        size="icon" 
+                                        onClick={() => removeListItem("latest_notices", notice.id)} 
+                                        className="h-8 w-8 bg-red-500 text-white rounded-[10px] shadow-md border-0 transition-transform hover:scale-105"
+                                    >
+                                        <Trash2 size={16} />
                                     </Button>
                                 </div>
                             ))}
                         </div>
+                        
+                        {/* Standard Pagination Footer for Sections */}
+                        <div className="flex items-center justify-between text-[10px] text-gray-400 font-medium pt-6 border-t border-gray-50">
+                            <div>Showing {settings.latest_notices.length} notices in library</div>
+                            <div className="flex gap-2 items-center">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-gray-50/50 border border-gray-100 hover:bg-gray-100">
+                                    <ChevronLeft size={14} className="stroke-[3px]" />
+                                </Button>
+                                <Button className="h-8 w-8 p-0 bg-gradient-to-r from-orange-400 to-indigo-500 text-white border-0 font-bold text-[12px] rounded-xl shadow-md">
+                                    1
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-gray-50/50 border border-gray-100 hover:bg-gray-100">
+                                    <ChevronRight size={14} className="stroke-[3px]" />
+                                </Button>
+                            </div>
+                        </div>
                     </div>
-
                 </TabsContent>
             </Tabs>
 
-            {/* Global Save Action */}
-            <div className="w-full bg-white border-t border-gray-100 p-4 flex justify-end sticky bottom-0 z-10 rounded-b-lg shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]">
+            {/* Global Sticky Save Action */}
+            <div className="w-full bg-white/80 backdrop-blur-md border-t border-gray-100 p-5 flex justify-center sticky bottom-0 z-20 rounded-b-2xl shadow-[0_-8px_30px_rgb(0,0,0,0.04)] mt-8">
                 <Button
                     onClick={handleSave}
                     disabled={saving}
-                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-10 h-10 text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5"
+                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-95 text-white px-16 h-11 text-xs font-bold uppercase tracking-widest transition-all rounded-full shadow-[0_8px_20px_rgba(99,102,241,0.3)] hover:shadow-[0_10px_25px_rgba(99,102,241,0.25)] hover:-translate-y-1"
                 >
                     {saving ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Saving Configuration...</>
                     ) : (
-                        <>Save Configuration</>
+                        <>Apply Global Configuration</>
                     )}
                 </Button>
             </div>
         </div>
     );
 }
-

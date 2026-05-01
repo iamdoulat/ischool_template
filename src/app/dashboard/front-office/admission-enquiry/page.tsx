@@ -136,7 +136,7 @@ export default function AdmissionEnquiryPage() {
 
     const fetchClasses = useCallback(async () => {
         try {
-            const response = await api.get("/classes?limit=1000");
+            const response = await api.get("/academics/classes?no_paginate=true");
             const classesData = response.data.data?.data || response.data.data || [];
             if (Array.isArray(classesData)) {
                 setClasses(classesData);

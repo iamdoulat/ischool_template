@@ -15,24 +15,73 @@ import {
     X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
+import api from "@/lib/api";
+
+interface MenuItem {
+    id: number;
+    title: string;
+    is_external: boolean;
+    open_new_tab: boolean;
+    url?: string;
+    page?: string;
+    type: string;
+    parent_id?: number | null;
+    order: number;
+    sub_items?: MenuItem[];
+}
 
 export function PublicHeader() {
     const { settings } = useSettings();
     console.log("PublicHeader Settings:", settings);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [dynamicMenus, setDynamicMenus] = useState<MenuItem[]>([]);
+    const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
 
-    const navItems = [
-        { name: "Home", href: "/" },
+    useEffect(() => {
+        const fetchMenus = async () => {
+            try {
+                const res = await api.get("front-cms/menus");
+                if (res.data?.status === "Success") {
+                    // Filter main menu items
+                    const mainMenus = res.data.data.filter((m: MenuItem) => m.type === "main");
+                    setDynamicMenus(mainMenus);
+                }
+            } catch (error) {
+                console.error("Failed to fetch menus", error);
+            }
+        };
+        fetchMenus();
+    }, []);
+
+    const defaultNavItems = [
+        { name: "Home", href: `${frontendUrl}/` },
         { name: "Academics", href: "#" },
-        { name: "Admissions", href: "/admissions" },
-        { name: "Exam Results", href: "/exam-results" },
-        { name: "Notices", href: "#notices" },
-        { name: "About Us", href: "/about" },
-        { name: "Contact", href: "#" },
+        { name: "Admissions", href: `${frontendUrl}/online_admission` },
+        { name: "Exam Results", href: `${frontendUrl}/exam-results` },
+        { name: "Notices", href: `${frontendUrl}/notices` },
+        { name: "About Us", href: `${frontendUrl}/about-us` },
+        { name: "Contact", href: `${frontendUrl}/contact-us` },
     ];
+
+    const displayMenus = dynamicMenus.length > 0 ? dynamicMenus.map(m => {
+        const cleanBase = frontendUrl.replace(/\/$/, '');
+        let path = '';
+        if (!!m.is_external) {
+            path = m.url || '';
+        } else {
+            const pageSlug = m.page === 'home' ? '' : (m.page === 'admission' ? 'online_admission' : (m.page || ''));
+            path = pageSlug.startsWith('/') ? pageSlug : `/${pageSlug}`;
+        }
+        
+        return {
+            name: m.title,
+            href: !!m.is_external ? path : `${cleanBase}${path}`,
+            newTab: !!m.open_new_tab
+        };
+    }) : defaultNavItems;
 
     return (
         <header className="w-full flex flex-col z-50 sticky top-0 bg-white shadow-md">
@@ -98,16 +147,19 @@ export function PublicHeader() {
 
                     {/* Desktop Menu */}
                     <nav className="hidden md:flex items-center gap-1">
-                        {navItems.map((item) => (
+                        {displayMenus.map((item) => (
                             <Link
                                 key={item.name}
-                                href={item.href}
+                                href={item.href || '#'}
+                                target={(item as any).newTab ? "_blank" : "_self"}
                                 className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-primary hover:bg-primary/5 rounded-md transition-all"
                             >
                                 {item.name}
                             </Link>
                         ))}
-                        <Button className="ml-4 font-semibold">Apply Now</Button>
+                        <Button asChild className="ml-4 font-semibold">
+                            <Link href="/online_admission">Apply Now</Link>
+                        </Button>
                     </nav>
 
                     {/* Mobile Menu Toggle */}
@@ -125,10 +177,11 @@ export function PublicHeader() {
                 {isMenuOpen && (
                     <div className="md:hidden border-t bg-white absolute w-full left-0 shadow-lg animate-in slide-in-from-top-2">
                         <div className="flex flex-col p-4 space-y-2">
-                            {navItems.map((item) => (
+                            {displayMenus.map((item) => (
                                 <Link
                                     key={item.name}
-                                    href={item.href}
+                                    href={item.href || '#'}
+                                    target={(item as any).newTab ? "_blank" : "_self"}
                                     className="px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 rounded-lg"
                                     onClick={() => setIsMenuOpen(false)}
                                 >
@@ -136,7 +189,9 @@ export function PublicHeader() {
                                 </Link>
                             ))}
                             <div className="pt-2">
-                                <Button className="w-full">Apply Now</Button>
+                                <Button asChild className="w-full">
+                                    <Link href="/online_admission">Apply Now</Link>
+                                </Button>
                             </div>
                         </div>
                     </div>

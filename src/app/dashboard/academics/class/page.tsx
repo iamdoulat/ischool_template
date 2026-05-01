@@ -59,7 +59,7 @@ export default function ClassPage() {
     const fetchClasses = async (page = 1) => {
         setLoading(true);
         try {
-            const response = await api.get(`/classes`, {
+            const response = await api.get(`/academics/classes`, {
                 params: { page, search: searchTerm, limit: 10 }
             });
             const { data } = response.data;
@@ -133,9 +133,9 @@ export default function ClassPage() {
             const payload = { name: className, sections: allTags };
 
             if (editingId) {
-                await api.put(`/classes/${editingId}`, payload);
+                await api.put(`/academics/classes/${editingId}`, payload);
             } else {
-                await api.post(`/classes`, payload);
+                await api.post(`/academics/classes`, payload);
             }
             resetForm();
             fetchClasses(currentPage);
@@ -165,7 +165,7 @@ export default function ClassPage() {
         if (!idToDelete) return;
         setLoading(true);
         try {
-            const response = await api.delete(`/classes/${idToDelete}`);
+            const response = await api.delete(`/academics/classes/${idToDelete}`);
             if (response.data.status === "success") {
                 toast("success", response.data.message || "Class deleted successfully");
                 fetchClasses(currentPage);

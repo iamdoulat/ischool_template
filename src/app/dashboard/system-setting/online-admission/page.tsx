@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -42,11 +42,10 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrency } from "@/components/providers/currency-provider";
-import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import api from "@/lib/api";
 import { useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
+
 
 // Initial field structure
 const initialFields = [
@@ -77,15 +76,16 @@ const initialFields = [
 
 export default function OnlineAdmissionPage() {
     const { selectedCurrency } = useCurrency();
-    const { formatCurrency } = useCurrencyFormatter();
     const { toast } = useToast();
-
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState("form-setting");
     const [fields, setFields] = useState(initialFields);
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
     const [savingSettings, setSavingSettings] = useState(false);
     const [savingFields, setSavingFields] = useState(false);
+    const instructionsTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const termsTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     // State for Form Settings
     const [settings, setSettings] = useState({
@@ -94,6 +94,8 @@ export default function OnlineAdmissionPage() {
         online_admission_form_fees: "100.00",
         instructions: "General Instruction:- These instructions pertain to online application for admission to Smart School...",
         terms_conditions: "General Terms & Conditions for Students:- 1. The User declares that the content of the Portal shall be accessed...",
+        admission_form_file: null as File | null,
+        admission_form_file_name: "",
     });
 
     const fetchData = useCallback(async () => {
@@ -109,10 +111,12 @@ export default function OnlineAdmissionPage() {
                         online_admission_form_fees: fetchedSettings.online_admission_form_fees,
                         instructions: fetchedSettings.instructions || "",
                         terms_conditions: fetchedSettings.terms_conditions || "",
+                        admission_form_file: null,
+                        admission_form_file_name: fetchedSettings.admission_form_file_name || "",
                     });
                 }
                 if (fetchedFields && fetchedFields.length > 0) {
-                    setFields(fetchedFields.map((f: any) => ({
+                    setFields(fetchedFields.map((f: { id: number; name: string; is_active: boolean }) => ({
                         id: f.id,
                         name: f.name,
                         active: Boolean(f.is_active)
@@ -131,21 +135,79 @@ export default function OnlineAdmissionPage() {
         fetchData();
     }, [fetchData]);
 
+    const validateSettings = () => {
+        if (!settings.online_admission_form_fees || isNaN(parseFloat(settings.online_admission_form_fees))) {
+            toast("error", "Please enter a valid numeric value for form fees.");
+            return false;
+        }
+        if (parseFloat(settings.online_admission_form_fees) < 0) {
+            toast("error", "Form fees cannot be negative.");
+            return false;
+        }
+        if (!settings.instructions.trim()) {
+            toast("error", "Instructions are required.");
+            return false;
+        }
+        if (!settings.terms_conditions.trim()) {
+            toast("error", "Terms & conditions are required.");
+            return false;
+        }
+        return true;
+    };
+
     const handleSaveSettings = async () => {
+        if (!validateSettings()) {
+            return;
+        }
+
+        if (!confirm("Are you sure you want to save the form settings?")) {
+            return;
+        }
         try {
             setSavingSettings(true);
-            const response = await api.post("/system-setting/online-admission/settings", settings);
+
+            const formData = new FormData();
+            formData.append('online_admission', settings.online_admission.toString());
+            formData.append('online_admission_payment_option', settings.online_admission_payment_option.toString());
+            formData.append('online_admission_form_fees', settings.online_admission_form_fees);
+            formData.append('instructions', settings.instructions);
+            formData.append('terms_conditions', settings.terms_conditions);
+
+            if (settings.admission_form_file) {
+                formData.append('admission_form_file', settings.admission_form_file);
+            }
+
+            const response = await api.post("/system-setting/online-admission/settings", formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
             if (response.data.success) {
                 toast("success", "Form settings updated successfully.");
+                // Clear the file after successful upload
+                setSettings(prev => ({
+                    ...prev,
+                    admission_form_file: null
+                }));
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                }
             }
-        } catch (error) {
-            toast("error", "Failed to update form settings.");
+        } catch (error: unknown) {
+            console.error("Save settings error:", error);
+            const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to update form settings.";
+            toast("error", errorMessage);
         } finally {
             setSavingSettings(false);
         }
     };
 
     const handleSaveFields = async () => {
+        if (!confirm("Are you sure you want to update the fields visibility settings?")) {
+            return;
+        }
+
         try {
             setSavingFields(true);
             const response = await api.post("/system-setting/online-admission/fields", {
@@ -153,9 +215,13 @@ export default function OnlineAdmissionPage() {
             });
             if (response.data.success) {
                 toast("success", "Fields visibility updated successfully.");
+            } else {
+                toast("error", response.data.message || "Failed to update fields visibility.");
             }
-        } catch (error) {
-            toast("error", "Failed to update fields visibility.");
+        } catch (error: unknown) {
+            console.error("Save fields error:", error);
+            const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to update fields visibility.";
+            toast("error", errorMessage);
         } finally {
             setSavingFields(false);
         }
@@ -165,6 +231,112 @@ export default function OnlineAdmissionPage() {
         setFields(prev => prev.map(item =>
             item.id === id ? { ...item, active: !item.active } : item
         ));
+    };
+
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            // Validate file type (PDF, DOC, DOCX)
+            const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+            if (!allowedTypes.includes(file.type)) {
+                toast("error", "Please select a PDF or Word document file.");
+                return;
+            }
+
+            // Validate file size (max 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                toast("error", "File size must be less than 10MB.");
+                return;
+            }
+
+            setSettings(prev => ({
+                ...prev,
+                admission_form_file: file,
+                admission_form_file_name: file.name
+            }));
+        }
+    };
+
+    const handleFileUpload = () => {
+        fileInputRef.current?.click();
+    };
+
+    const removeFile = () => {
+        setSettings(prev => ({
+            ...prev,
+            admission_form_file: null,
+            admission_form_file_name: ""
+        }));
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
+    const formatText = (command: string, textareaRef: React.RefObject<HTMLTextAreaElement>) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = textarea.value.substring(start, end);
+
+        let formattedText = selectedText;
+        let newStart = start;
+        let newEnd = end;
+
+        switch (command) {
+            case 'bold':
+                formattedText = `**${selectedText}**`;
+                newStart += 2;
+                newEnd += 2;
+                break;
+            case 'italic':
+                formattedText = `*${selectedText}*`;
+                newStart += 1;
+                newEnd += 1;
+                break;
+            case 'underline':
+                formattedText = `<u>${selectedText}</u>`;
+                newStart += 3;
+                newEnd += 3;
+                break;
+            case 'align-left':
+                // For simplicity, we'll just add markdown-style alignment
+                formattedText = selectedText; // Keep as is for now
+                break;
+            case 'align-center':
+                formattedText = `<center>${selectedText}</center>`;
+                newStart += 8;
+                newEnd += 8;
+                break;
+            case 'align-right':
+                formattedText = `<div style="text-align: right">${selectedText}</div>`;
+                newStart += 31;
+                newEnd += 31;
+                break;
+            case 'list':
+                formattedText = `• ${selectedText}`;
+                newStart += 2;
+                newEnd += 2;
+                break;
+            case 'list-ordered':
+                formattedText = `1. ${selectedText}`;
+                newStart += 3;
+                newEnd += 3;
+                break;
+        }
+
+        const newValue = textarea.value.substring(0, start) + formattedText + textarea.value.substring(end);
+        textarea.value = newValue;
+        textarea.setSelectionRange(newStart, newEnd);
+        textarea.focus();
+
+        // Update the state
+        if (textareaRef === instructionsTextareaRef) {
+            setSettings(prev => ({ ...prev, instructions: newValue }));
+        } else if (textareaRef === termsTextareaRef) {
+            setSettings(prev => ({ ...prev, terms_conditions: newValue }));
+        }
     };
 
     const handleExport = (type: 'copy' | 'csv' | 'pdf' | 'print') => {
@@ -262,16 +434,41 @@ export default function OnlineAdmissionPage() {
 
                                 <div className="space-y-1.5 md:col-span-2">
                                     <label className="text-[12px] font-bold text-gray-700">Upload Admission Application Form</label>
-                                    <div className="flex gap-2">
-                                        <div className="flex-1 border-2 border-dashed border-gray-200 rounded-lg h-8 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
-                                            <div className="flex items-center gap-2 text-gray-500">
-                                                <CloudUpload className="h-3 w-3" />
-                                                <span className="text-[10px] font-medium">Drag and drop a file here or click</span>
+                                    <div className="space-y-2">
+                                        <div className="flex gap-2">
+                                            <div className="flex-1 border-2 border-dashed border-gray-200 rounded-lg h-8 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={handleFileUpload}>
+                                                <div className="flex items-center gap-2 text-gray-500">
+                                                    <CloudUpload className="h-3 w-3" />
+                                                    <span className="text-[10px] font-medium">
+                                                        {settings.admission_form_file_name ? settings.admission_form_file_name : "Drag and drop a file here or click"}
+                                                    </span>
+                                                </div>
                                             </div>
+                                            <Button size="icon" className="h-8 w-8 bg-[#6366f1] hover:bg-[#5558dd] rounded shadow-sm" onClick={handleFileUpload}>
+                                                <CloudUpload className="h-3.5 w-3.5 text-white" />
+                                            </Button>
                                         </div>
-                                        <Button size="icon" className="h-8 w-8 bg-[#6366f1] hover:bg-[#5558dd] rounded shadow-sm">
-                                            <CloudUpload className="h-3.5 w-3.5 text-white" />
-                                        </Button>
+                                        {settings.admission_form_file_name && (
+                                            <div className="flex items-center gap-2 text-[10px] text-gray-600">
+                                                <span>Current file: {settings.admission_form_file_name}</span>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-5 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    onClick={removeFile}
+                                                >
+                                                    Remove
+                                                </Button>
+                                            </div>
+                                        )}
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept=".pdf,.doc,.docx"
+                                            onChange={handleFileSelect}
+                                            className="hidden"
+                                        />
+                                        <p className="text-[9px] text-gray-400">Accepted formats: PDF, DOC, DOCX (Max 10MB)</p>
                                     </div>
                                 </div>
                             </div>
@@ -282,18 +479,19 @@ export default function OnlineAdmissionPage() {
                                 <div className="border border-gray-200 rounded-md overflow-hidden">
                                     {/* Editor Toolbar */}
                                     <div className="bg-gray-50 p-1 flex items-center gap-1 border-b border-gray-200 flex-wrap">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><Bold className="h-3 w-3" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><Italic className="h-3 w-3" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><Underline className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('bold', instructionsTextareaRef)}><Bold className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('italic', instructionsTextareaRef)}><Italic className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('underline', instructionsTextareaRef)}><Underline className="h-3 w-3" /></Button>
                                         <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><AlignLeft className="h-3 w-3" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><AlignCenter className="h-3 w-3" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><AlignRight className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('align-left', instructionsTextareaRef)}><AlignLeft className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('align-center', instructionsTextareaRef)}><AlignCenter className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('align-right', instructionsTextareaRef)}><AlignRight className="h-3 w-3" /></Button>
                                         <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><List className="h-3 w-3" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><ListOrdered className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('list', instructionsTextareaRef)}><List className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('list-ordered', instructionsTextareaRef)}><ListOrdered className="h-3 w-3" /></Button>
                                     </div>
                                     <Textarea
+                                        ref={instructionsTextareaRef}
                                         className="min-h-[100px] border-none focus-visible:ring-0 text-[11px] p-3 resize-y rounded-none shadow-none"
                                         placeholder="Enter instructions here..."
                                         value={settings.instructions}
@@ -308,10 +506,19 @@ export default function OnlineAdmissionPage() {
                                 <div className="border border-gray-200 rounded-md overflow-hidden">
                                     {/* Editor Toolbar */}
                                     <div className="bg-gray-50 p-1 flex items-center gap-1 border-b border-gray-200 flex-wrap">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><Bold className="h-3 w-3" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><Italic className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('bold', termsTextareaRef)}><Bold className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('italic', termsTextareaRef)}><Italic className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('underline', termsTextareaRef)}><Underline className="h-3 w-3" /></Button>
+                                        <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('align-left', termsTextareaRef)}><AlignLeft className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('align-center', termsTextareaRef)}><AlignCenter className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('align-right', termsTextareaRef)}><AlignRight className="h-3 w-3" /></Button>
+                                        <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('list', termsTextareaRef)}><List className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('list-ordered', termsTextareaRef)}><ListOrdered className="h-3 w-3" /></Button>
                                     </div>
                                     <Textarea
+                                        ref={termsTextareaRef}
                                         className="min-h-[100px] border-none focus-visible:ring-0 text-[11px] p-3 resize-y rounded-none shadow-none"
                                         placeholder="Enter terms here..."
                                         value={settings.terms_conditions}

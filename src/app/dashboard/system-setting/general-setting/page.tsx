@@ -13,6 +13,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -48,6 +57,7 @@ import axios from "axios";
 import { useEffect } from "react";
 import { useSettings } from "@/components/providers/settings-provider";
 import api from "@/lib/api";
+import { CheckCircle2, AlertTriangle, Save } from "lucide-react";
 
 const tabs = [
     "General Setting",
@@ -230,7 +240,18 @@ export default function GeneralSettingPage() {
         event_reminder: false,
         staff_apply_leave_notification_email: "",
         enable_multi_class_selection_in_student_admission_form: false,
+        footer_contact_title: "Contact Us",
+        footer_contact_info_label: "Contact Info",
+        facebook_url: "",
+        twitter_url: "",
+        instagram_url: "",
+        youtube_url: "",
+        linkedin_url: "",
+        pinterest_url: "",
     });
+
+    const { toast } = useToast();
+    const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
 
     const [activeAttendanceTab, setActiveAttendanceTab] = useState<"Staff" | "Student">("Staff");
     const [selectedClassId, setSelectedClassId] = useState<string>("all");
@@ -324,11 +345,12 @@ export default function GeneralSettingPage() {
             const response = await api.post("/system-setting/general-setting", formData);
             if (response.data.status === "Success") {
                 await refreshSettings();
-                alert("General settings updated successfully!");
+                toast("success", "General settings updated successfully!");
+                setIsSaveDialogOpen(false);
             }
         } catch (error: any) {
             console.error("Error saving general settings:", error);
-            alert(error.response?.data?.message || "Failed to save general settings.");
+            toast("error", error.response?.data?.message || "Failed to save general settings.");
         } finally {
             setSaving(false);
         }
@@ -349,11 +371,12 @@ export default function GeneralSettingPage() {
             if (response.data.status === "Success") {
                 const imageUrl = response.data.data.url;
                 handleChange(field, imageUrl);
+                toast("success", "Logo uploaded successfully!");
                 return imageUrl;
             }
         } catch (error) {
-            console.error(`Failed to upload ${field}:`, error);
-            alert(`Failed to upload ${field.replace('_', ' ')}`);
+            console.error("Error uploading logo:", error);
+            toast("error", "Upload failed. Please try again.");
         }
         return null;
     };
@@ -653,6 +676,119 @@ export default function GeneralSettingPage() {
                                             value={formData.file_upload_path}
                                             onChange={(e) => handleChange("file_upload_path", e.target.value)}
                                             placeholder="/var/www/demo.smart-school.in/public_html"
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
+                                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Footer Contact Information</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Footer Contact Title</Label>
+                                        <Input
+                                            value={formData.footer_contact_title}
+                                            onChange={(e) => handleChange("footer_contact_title", e.target.value)}
+                                            placeholder="Contact Us"
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Footer Contact Info Label</Label>
+                                        <Input
+                                            value={formData.footer_contact_info_label}
+                                            onChange={(e) => handleChange("footer_contact_info_label", e.target.value)}
+                                            placeholder="Contact Info"
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-medium text-gray-600">Footer Address</Label>
+                                    <Input
+                                        value={formData.address}
+                                        onChange={(e) => handleChange("address", e.target.value)}
+                                        placeholder="123 Education Street, Knowledge City, State - 400001"
+                                        className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Footer Phone</Label>
+                                        <Input
+                                            value={formData.phone}
+                                            onChange={(e) => handleChange("phone", e.target.value)}
+                                            placeholder="+1 234 567 8900"
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Footer Email</Label>
+                                        <Input
+                                            value={formData.email}
+                                            onChange={(e) => handleChange("email", e.target.value)}
+                                            placeholder="info@smartschool.com.bd"
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
+                                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Social Media Links</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Facebook URL</Label>
+                                        <Input
+                                            value={formData.facebook_url}
+                                            onChange={(e) => handleChange("facebook_url", e.target.value)}
+                                            placeholder="https://facebook.com/..."
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Twitter URL</Label>
+                                        <Input
+                                            value={formData.twitter_url}
+                                            onChange={(e) => handleChange("twitter_url", e.target.value)}
+                                            placeholder="https://twitter.com/..."
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Instagram URL</Label>
+                                        <Input
+                                            value={formData.instagram_url}
+                                            onChange={(e) => handleChange("instagram_url", e.target.value)}
+                                            placeholder="https://instagram.com/..."
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">YouTube URL</Label>
+                                        <Input
+                                            value={formData.youtube_url}
+                                            onChange={(e) => handleChange("youtube_url", e.target.value)}
+                                            placeholder="https://youtube.com/..."
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">LinkedIn URL</Label>
+                                        <Input
+                                            value={formData.linkedin_url}
+                                            onChange={(e) => handleChange("linkedin_url", e.target.value)}
+                                            placeholder="https://linkedin.com/..."
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Pinterest URL</Label>
+                                        <Input
+                                            value={formData.pinterest_url}
+                                            onChange={(e) => handleChange("pinterest_url", e.target.value)}
+                                            placeholder="https://pinterest.com/..."
                                             className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                         />
                                     </div>
@@ -1597,6 +1733,56 @@ export default function GeneralSettingPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Student Roll Generation */}
+                        <div className="space-y-4 pt-4 border-t border-gray-50">
+                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">Student Roll Auto Generation</h3>
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="flex items-center justify-between max-w-sm">
+                                    <Label className="text-[11px] font-medium text-gray-600">Auto Roll No.</Label>
+                                    <Switch
+                                        checked={formData.auto_roll_no}
+                                        onCheckedChange={(checked) => handleChange('auto_roll_no', checked)}
+                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Student Roll Prefix <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.roll_no_prefix}
+                                            onChange={(e) => handleChange('roll_no_prefix', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-[11px]"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Student No. Digit <span className="text-red-500">*</span></Label>
+                                        <Select
+                                            value={String(formData.roll_no_digit)}
+                                            onValueChange={(value) => handleChange('roll_no_digit', parseInt(value))}
+                                        >
+                                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="1">1</SelectItem>
+                                                <SelectItem value="2">2</SelectItem>
+                                                <SelectItem value="3">3</SelectItem>
+                                                <SelectItem value="4">4</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Student Roll Start From <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.roll_no_start_from}
+                                            onChange={(e) => handleChange('roll_no_start_from', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-[11px]"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 );
 
@@ -2084,7 +2270,7 @@ export default function GeneralSettingPage() {
                     {/* Save Button */}
                     <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
                         <Button
-                            onClick={handleSave}
+                            onClick={() => setIsSaveDialogOpen(true)}
                             disabled={saving}
                             className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-[11px] font-bold uppercase transition-all rounded-full shadow-md flex items-center gap-2 border-none"
                         >
@@ -2100,6 +2286,50 @@ export default function GeneralSettingPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Save Confirmation Dialog */}
+            <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+                <DialogContent className="sm:max-w-[425px] border-none shadow-2xl p-0 overflow-hidden rounded-2xl bg-white">
+                    <div className="bg-gradient-to-br from-indigo-50/50 to-white p-6 pt-8">
+                        <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-6 animate-in zoom-in duration-300">
+                            <Save className="h-8 w-8 text-indigo-600" />
+                        </div>
+                        <DialogHeader className="space-y-3">
+                            <DialogTitle className="text-center text-xl font-bold text-gray-800">
+                                Save Configuration?
+                            </DialogTitle>
+                            <DialogDescription className="text-center text-sm text-gray-500 leading-relaxed px-4">
+                                You are about to update the system settings. These changes will be applied across the entire platform immediately.
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+                    
+                    <DialogFooter className="bg-gray-50/80 p-4 gap-3 sm:gap-0 flex flex-row">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsSaveDialogOpen(false)}
+                            disabled={saving}
+                            className="flex-1 h-11 font-bold text-gray-500 hover:bg-gray-100 rounded-xl"
+                        >
+                            Review
+                        </Button>
+                        <Button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex-1 h-11 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95"
+                        >
+                            {saving ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    Applying...
+                                </>
+                            ) : (
+                                "Update Now"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

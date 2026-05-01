@@ -21,6 +21,8 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         gradient: "bg-gradient-to-r from-[#FFA500] to-[#6366F1] text-white font-bold shadow-[0_4px_15px_rgba(255,165,0,0.3)] hover:scale-[1.02] active:scale-[0.98] rounded-full",
         branded: "bg-[#FFA500] text-white hover:bg-[#E69500] shadow-md",
+        "pagination-active": "bg-gradient-to-br from-[#f69d3c] to-[#3f51b5] text-white font-extrabold shadow-lg shadow-indigo-500/30 rounded-2xl hover:scale-105 active:scale-95 transition-all",
+        "pagination-inactive": "bg-[#f8f9fa] hover:bg-gray-100 text-gray-500 rounded-2xl hover:shadow-sm active:scale-95 transition-all border border-transparent",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

@@ -59,7 +59,7 @@ export default function SubjectsPage() {
     const fetchSubjects = async (page = 1) => {
         setLoading(true);
         try {
-            const response = await api.get(`/subjects`, {
+            const response = await api.get(`/academics/subjects`, {
                 params: { page, search: searchTerm, limit: 10 }
             });
             const { data } = response.data;

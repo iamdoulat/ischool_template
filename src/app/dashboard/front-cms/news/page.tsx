@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +24,10 @@ import {
     Trash2,
     Plus,
     ArrowUpDown,
+    Eye,
+    X,
+    Loader2,
+    Calendar
 } from "lucide-react";
 import {
     Select,
@@ -33,40 +37,138 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface NewsItem {
-    id: string;
+    id: number;
     title: string;
-    url: string;
+    date: string;
+    description: string | null;
+    image_path: string | null;
 }
 
-const mockNews: NewsItem[] = [
-    { id: "1", title: "The Junior Red Cross", url: "https://demo.smart-school.in/read/the-junior-red-cross" },
-    { id: "2", title: "Parents and Guardians Teacher's Meeting", url: "https://demo.smart-school.in/read/parents-and-guardians-teachers-meeting" },
-    { id: "3", title: "Winter Term-end Exams Start", url: "https://demo.smart-school.in/read/winter-term-end-exams-start" },
-    { id: "4", title: "The Opening Ceremony of Computer Science Month", url: "https://demo.smart-school.in/read/the-opening-ceremony-of-computer-science-month" },
-    { id: "5", title: "Children's Day Program by teachers", url: "https://demo.smart-school.in/read/childrens-day-program-by-teachers-1" },
-    { id: "6", title: "Webinar for the Students of Class IX to XII on Career information.", url: "https://demo.smart-school.in/read/webinar-for-the-students-of-class-ix-to-xii-on-career-information" },
-    { id: "7", title: "Diwali Celebration Notice", url: "https://demo.smart-school.in/read/diwali-celebration-notice" },
-    { id: "8", title: "Teachers' Day Celebration", url: "https://demo.smart-school.in/read/teachers-day-celebration-2" },
-    { id: "9", title: "Sports Quiz competition", url: "https://demo.smart-school.in/read/sports-quiz-competition" },
-    { id: "10", title: "Inter-House patriotic song competition", url: "https://demo.smart-school.in/read/inter-house-patriotic-song-competition" },
-    { id: "11", title: "National Level Workshop for Science Teachers Teaching in Class X to XII (Online)", url: "https://demo.smart-school.in/read/national-level-workshop-for-science-teachers-teaching-in-class-x-to-xii-online" },
-    { id: "12", title: "Admissions for the current academic year 2025-26 are now open.", url: "https://demo.smart-school.in/read/admissions-for-the-current-academic-year-2025-26-are-now-open" },
-    { id: "13", title: "World Environment Day program", url: "https://demo.smart-school.in/read/world-environment-day-program" },
-    { id: "14", title: "School Vacation Notice", url: "https://demo.smart-school.in/read/school-vacation-notice" },
-    { id: "15", title: "Books Mela", url: "https://demo.smart-school.in/read/books-mela-1" },
-    { id: "16", title: "New Academic Session Admission Start (2025-26)!!!!!", url: "https://demo.smart-school.in/read/new-academic-session-admission-start-2025-26" },
-    { id: "17", title: "Date sheet Final Exam Nursery to Sr.Kg", url: "https://demo.smart-school.in/read/date-sheet-final-exam-nursery-to-srkg-1" },
-    { id: "18", title: "Board Exams Preparation", url: "https://demo.smart-school.in/read/board-exams-preparation" },
-];
-
 export default function NewsListPage() {
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
+    const [news, setNews] = useState<NewsItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [saving, setSaving] = useState(false);
+    
+    const [formData, setFormData] = useState({
+        title: "",
+        date: new Date().toISOString().split('T')[0],
+        description: "",
+        image: null as File | null
+    });
 
-    const filteredNews = mockNews.filter((news) =>
-        news.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        news.url.toLowerCase().includes(searchTerm.toLowerCase())
+    useEffect(() => {
+        fetchNews();
+    }, []);
+
+    const fetchNews = async () => {
+        setLoading(true);
+        try {
+            const res = await api.get("front-cms/news");
+            if (res.data?.status === "Success") {
+                setNews(res.data.data);
+            }
+        } catch (error) {
+            toast("error", "Failed to load news");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleOpenDialog = (item?: NewsItem) => {
+        if (item) {
+            setEditingId(item.id);
+            setFormData({
+                title: item.title,
+                date: item.date,
+                description: item.description || "",
+                image: null
+            });
+        } else {
+            setEditingId(null);
+            setFormData({
+                title: "",
+                date: new Date().toISOString().split('T')[0],
+                description: "",
+                image: null
+            });
+        }
+        setIsDialogOpen(true);
+    };
+
+    const handleSave = async () => {
+        if (!formData.title || !formData.date) {
+            toast("error", "Title and Date are required");
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const data = new FormData();
+            data.append("title", formData.title);
+            data.append("date", formData.date);
+            data.append("description", formData.description);
+            if (formData.image) {
+                data.append("image", formData.image);
+            }
+
+            let res;
+            if (editingId) {
+                // For PUT with files, Laravel sometimes needs _method override if not using SPOOFING
+                // But let's try direct update first or handle as POST if needed
+                data.append('_method', 'PUT');
+                res = await api.post(`front-cms/news/${editingId}`, data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                res = await api.post("front-cms/news", data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            }
+
+            if (res.data?.status === "Success" || res.status === 200 || res.status === 201) {
+                toast("success", editingId ? "News updated successfully" : "News added successfully");
+                setIsDialogOpen(false);
+                fetchNews();
+            }
+        } catch (error) {
+            toast("error", "Failed to save news");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this news?")) return;
+        try {
+            const res = await api.delete(`front-cms/news/${id}`);
+            if (res.data?.status === "Success") {
+                toast("success", "News deleted successfully");
+                fetchNews();
+            }
+        } catch (error) {
+            toast("error", "Failed to delete news");
+        }
+    };
+
+    const filteredNews = news.filter((item) =>
+        item.title.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -74,38 +176,33 @@ export default function NewsListPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
                 <div className="flex justify-between items-center border-b border-gray-50 pb-4">
                     <h2 className="text-sm font-semibold text-gray-800 tracking-tight">News List</h2>
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-4 h-7 text-[10px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5 font-bold tracking-tight">
-                        <Plus className="h-3.5 w-3.5" />
-                        Add
+                    <Button 
+                        onClick={() => handleOpenDialog()}
+                        className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-5 h-9 font-bold rounded-full shadow-md flex items-center gap-2 tracking-tight"
+                    >
+                        <Plus className="h-4 w-4 text-white font-bold stroke-[3px]" />
+                        Add News
                     </Button>
                 </div>
 
                 {/* Toolbar */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="relative w-full md:w-64">
-                        <Input
-                            placeholder="Search"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
-                        />
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <div className="relative w-full md:w-64">
+                            <Input
+                                placeholder="Search"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-3 h-9 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50"
+                            />
+                        </div>
+                        <Button className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-5 h-9 font-bold rounded-full shadow-md flex items-center gap-2">
+                            <Search className="h-4 w-4" />
+                            Search
+                        </Button>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">50</span>
-                            <Select defaultValue="50">
-                                <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none rounded">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
-                        </div>
                         <div className="flex items-center gap-1 text-gray-400">
                             {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, i) => (
                                 <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
@@ -121,34 +218,62 @@ export default function NewsListPage() {
                     <Table className="min-w-[800px]">
                         <TableHeader className="bg-gray-50/50">
                             <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Title <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">URL <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
+                                <TableHead className="py-3 px-4">Title</TableHead>
+                                <TableHead className="py-3 px-4">Date</TableHead>
                                 <TableHead className="py-3 px-4 text-right">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredNews.map((news) => (
-                                <TableRow key={news.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
-                                    <TableCell className="py-3 px-4">
-                                        <span className="text-[#6366f1] font-medium hover:underline cursor-pointer">{news.title}</span>
-                                    </TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{news.url}</TableCell>
-                                    <TableCell className="py-3 px-4 text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm">
-                                                <Pencil className="h-3 w-3" />
-                                            </Button>
-                                            <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm">
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </div>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="text-center py-8">
+                                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            ) : filteredNews.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="text-center py-8 text-gray-400 text-sm">
+                                        No news found.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                filteredNews.map((item) => (
+                                    <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
+                                        <TableCell className="py-3 px-4 font-medium text-gray-700">
+                                            {item.title}
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-500">
+                                            <div className="flex items-center gap-1">
+                                                <Calendar className="h-3 w-3" />
+                                                {item.date}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 bg-[#10b981] hover:bg-[#059669] text-white rounded-[10px] shadow-md border-0">
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
+                                                <Button 
+                                                    size="icon" 
+                                                    variant="ghost" 
+                                                    onClick={() => handleOpenDialog(item)}
+                                                    className="h-8 w-8 bg-[#6366f1] hover:bg-[#4f46e5] text-white rounded-[10px] shadow-md border-0"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                <Button 
+                                                    size="icon" 
+                                                    variant="ghost" 
+                                                    onClick={() => handleDelete(item.id)}
+                                                    className="h-8 w-8 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-[10px] shadow-md border-0 flex items-center justify-center"
+                                                >
+                                                    <X className="h-4 w-4 stroke-[3px]" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </div>
@@ -156,17 +281,74 @@ export default function NewsListPage() {
                 {/* Footer */}
                 <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2 border-t border-gray-50">
                     <div>
-                        Showing 1 to {filteredNews.length} of {mockNews.length} entries
+                        Showing 1 to {filteredNews.length} of {news.length} entries
                     </div>
-                    <div className="flex gap-1 items-center">
-                        <span className="text-gray-400 mr-2 cursor-pointer hover:text-gray-600 text-[10px]">‹</span>
-                        <Button variant="default" size="sm" className="h-6 w-6 p-0 bg-indigo-500 hover:bg-indigo-600 text-white border-0 text-[10px] rounded shadow-sm">
+                    <div className="flex gap-2 items-center">
+                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-[14px] bg-gray-50/50 border border-gray-100 hover:bg-gray-100 text-gray-500">
+                            <ChevronLeft className="h-4 w-4 stroke-[3px]" />
+                        </Button>
+                        <Button variant="default" size="icon" className="h-9 w-9 p-0 bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white border-0 font-bold text-[14px] rounded-[14px] shadow-md">
                             1
                         </Button>
-                        <span className="text-gray-400 ml-2 cursor-pointer hover:text-gray-600 text-[10px]">›</span>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-[14px] bg-gray-50/50 border border-gray-100 hover:bg-gray-100 text-gray-500">
+                            <ChevronRight className="h-4 w-4 stroke-[3px]" />
+                        </Button>
                     </div>
                 </div>
             </div>
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>{editingId ? "Edit News" : "Add News"}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Title <span className="text-red-500">*</span></Label>
+                            <Input
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                className="h-9 border-gray-200 text-[11px] focus-visible:ring-indigo-500 shadow-none bg-gray-50/50"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Date <span className="text-red-500">*</span></Label>
+                            <Input
+                                type="date"
+                                value={formData.date}
+                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                className="h-9 border-gray-200 text-[11px] focus-visible:ring-indigo-500 shadow-none bg-gray-50/50"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Description</Label>
+                            <Textarea
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                className="border-gray-200 text-[11px] focus-visible:ring-indigo-500 shadow-none bg-gray-50/50 min-h-[100px]"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Feature Image</Label>
+                            <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => setFormData({ ...formData, image: e.target.files?.[0] || null })}
+                                className="h-9 border-gray-200 text-[11px] focus-visible:ring-indigo-500 shadow-none bg-gray-50/50 cursor-pointer"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button 
+                            onClick={handleSave} 
+                            disabled={saving}
+                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-[11px] font-bold uppercase transition-all rounded-full shadow-md"
+                        >
+                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save News"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

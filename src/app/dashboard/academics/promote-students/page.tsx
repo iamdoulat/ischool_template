@@ -68,12 +68,12 @@ export default function PromoteStudentsPage() {
             try {
                 const [sessionRes, classRes, sectionRes] = await Promise.all([
                     api.get("/system-setting/sessions"),
-                    api.get("/classes"),
-                    api.get("/sections")
+                    api.get("/academics/classes?no_paginate=true"),
+                    api.get("/academics/sections?no_paginate=true")
                 ]);
                 setSessions(sessionRes.data.data || []);
-                setClasses(classRes.data.data.data || []);
-                setSections(sectionRes.data.data.data || []);
+                setClasses(classRes.data.data?.data || classRes.data.data || []);
+                setSections(sectionRes.data.data?.data || sectionRes.data.data || []);
 
                 // Set default session if active one exists
                 const activeSession = sessionRes.data.data?.find((s: any) => s.is_active);
@@ -98,7 +98,7 @@ export default function PromoteStudentsPage() {
 
         setSearching(true);
         try {
-            const response = await api.get("/student-promotion", {
+            const response = await api.get("/academics/promote-students", {
                 params: {
                     academic_session_id: currentSessionId,
                     school_class_id: currentClassId,
@@ -145,7 +145,7 @@ export default function PromoteStudentsPage() {
 
         setPromoting(true);
         try {
-            await api.post("/student-promotion", payload);
+            await api.post("/academics/promote-students", payload);
             toast("success", "Students promoted successfully");
             setStudents([]);
             setSelectedStudentIds([]);

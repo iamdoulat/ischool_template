@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import React from "react";
 import {
     Search,
     FileText,
@@ -16,18 +18,28 @@ import {
     Loader2,
     ChevronLeft,
     ChevronRight,
-    Copy
+    Copy,
+    X,
+    GraduationCap,
+    Info
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
+const formatDate = (dateString?: string | null) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? dateString : date.toLocaleDateString('en-GB');
+};
 
 interface OnlineAdmission {
     id: string;
@@ -37,15 +49,21 @@ interface OnlineAdmission {
     middle_name?: string;
     school_class?: { name: string };
     section?: { name: string };
+    school_class_id?: string;
+    section_id?: string;
     father_name: string;
     dob: string;
     gender: string;
     category: string;
     phone: string;
+    email?: string;
     form_status: string;
     payment_status: string;
     is_enrolled: boolean;
     created_at: string;
+    father_phone?: string;
+    mother_name?: string;
+    mother_phone?: string;
 }
 
 export default function OnlineAdmissionPage() {
@@ -53,6 +71,15 @@ export default function OnlineAdmissionPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const { toast } = useToast();
+    const router = useRouter();
+
+    // Dialog states
+    const [viewDialogOpen, setViewDialogOpen] = useState(false);
+    const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
+    const [selectedAdmission, setSelectedAdmission] = useState<any>(null);
+    const [classes, setClasses] = useState<any[]>([]);
+    const [sections, setSections] = useState<any[]>([]);
+    const [submitting, setSubmitting] = useState(false);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -88,6 +115,33 @@ export default function OnlineAdmissionPage() {
         }
     }, [searchTerm, toast]);
 
+    const fetchClasses = useCallback(async () => {
+        try {
+            const response = await api.get("/academics/classes?no_paginate=true");
+            if (response.data.success) {
+                setClasses(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching classes:", error);
+        }
+    }, []);
+
+    const fetchSections = useCallback(async (classId: string) => {
+        if (!classId) return;
+        try {
+            const response = await api.get(`/academics/sections?school_class_id=${classId}&no_paginate=true`);
+            if (response.data.success) {
+                setSections(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching sections:", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchClasses();
+    }, [fetchClasses]);
+
     useEffect(() => {
         const timeout = setTimeout(() => {
             fetchAdmissions(1);
@@ -101,15 +155,16 @@ export default function OnlineAdmissionPage() {
             toast("error", "No data to copy.");
             return;
         }
-        const headers = ["Reference No", "Student Name", "Class", "Father Name", "DOB", "Gender", "Category", "Mobile", "Form Status", "Payment Status", "Enrolled", "Created At"];
+        const headers = ["Reference No", "Student Name", "Class", "Section", "Father Name", "DOB", "Gender", "Category", "Mobile", "Form Status", "Payment Status", "Enrolled", "Created At"];
         const rows = admissions.map(a => [
             a.reference_no,
             `${a.first_name} ${a.last_name}`,
-            `${a.school_class?.name || ""}(${a.section?.name || ""})`,
+            a.school_class?.name || "",
+            a.section?.name || "",
             a.father_name,
             a.dob,
             a.gender,
-            a.category,
+            a.student_category?.category_name || a.category,
             a.phone,
             a.form_status,
             a.payment_status,
@@ -130,11 +185,12 @@ export default function OnlineAdmissionPage() {
         const data = admissions.map(a => ({
             "Reference No": a.reference_no,
             "Student Name": `${a.first_name} ${a.last_name}`,
-            "Class": `${a.school_class?.name || ""}(${a.section?.name || ""})`,
+            "Class": a.school_class?.name || "",
+            "Section": a.section?.name || "",
             "Father Name": a.father_name,
             "Date Of Birth": a.dob,
             "Gender": a.gender,
-            "Category": a.category,
+            "Category": a.student_category?.category_name || a.category,
             "Mobile Number": a.phone,
             "Form Status": a.form_status,
             "Payment Status": a.payment_status,
@@ -155,12 +211,13 @@ export default function OnlineAdmissionPage() {
             return;
         }
         const doc = new jsPDF("landscape");
-        autoTable(doc, {
-            head: [["Ref No", "Student Name", "Class", "Father", "DOB", "Gender", "Mobile", "Form Status", "Payment", "Enrolled"]],
+        doc.autoTable({
+            head: [["Ref No", "Student Name", "Class", "Section", "Father", "DOB", "Gender", "Mobile", "Form Status", "Payment", "Enrolled"]],
             body: admissions.map(a => [
                 a.reference_no,
                 `${a.first_name} ${a.last_name}`,
-                `${a.school_class?.name || ""}(${a.section?.name || ""})`,
+                a.school_class?.name || "",
+                a.section?.name || "",
                 a.father_name,
                 a.dob,
                 a.gender,
@@ -180,26 +237,44 @@ export default function OnlineAdmissionPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this record?")) return;
+        if (!confirm("Are you sure you want to delete this record? This action cannot be undone.")) return;
         try {
             await api.delete(`/online-admissions/${id}`);
-            toast("success", "Record deleted successfully");
+            toast("success", "Admission record deleted successfully.");
             fetchAdmissions(currentPage);
         } catch (error) {
-            toast("error", "Failed to delete record");
+            toast("error", "Failed to delete record. Please try again.");
         }
     };
 
-    const handleEnroll = async (id: string) => {
-        if (!confirm("Are you sure you want to enroll this applicant?")) return;
+    const handleEnroll = async () => {
+        if (!selectedAdmission) return;
+        setSubmitting(true);
         try {
-            await api.post(`/online-admissions/${id}/enroll`);
-            toast("success", "Applicant enrolled as student successfully");
+            const response = await api.post(`/online-admissions/${selectedAdmission.id}/enroll`);
+            const enrolledStudent = response.data?.data;
+            const message = response.data?.message || `Successfully enrolled ${selectedAdmission.first_name} as a student.`;
+            toast("success", message);
+            setEnrollDialogOpen(false);
+            setSelectedAdmission(null);
             fetchAdmissions(currentPage);
-        } catch (error) {
-            toast("error", "Failed to enroll applicant");
+        } catch (error: any) {
+            toast("error", error.response?.data?.message || "Failed to enroll applicant.");
+        } finally {
+            setSubmitting(false);
         }
     };
+
+    const handleView = (admission: OnlineAdmission) => {
+        setSelectedAdmission(admission);
+        setViewDialogOpen(true);
+    };
+
+    const handleEdit = (admission: OnlineAdmission) => {
+        router.push(`/dashboard/student-information/online-admission/${admission.id}/edit`);
+    };
+
+
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -247,6 +322,7 @@ export default function OnlineAdmissionPage() {
                                     <Th>Reference No</Th>
                                     <Th>Student Name</Th>
                                     <Th>Class</Th>
+                                    <Th>Section</Th>
                                     <Th>Father Name</Th>
                                     <Th>Date Of Birth</Th>
                                     <Th>Gender</Th>
@@ -264,11 +340,12 @@ export default function OnlineAdmissionPage() {
                                     <tr key={student.id} className="hover:bg-muted/10 transition-colors">
                                         <Td><span className="font-semibold text-primary/80">{student.reference_no}</span></Td>
                                         <Td className="font-semibold">{student.first_name} {student.last_name}</Td>
-                                        <Td>{student.school_class?.name || ""}({student.section?.name || ""})</Td>
-                                        <Td>{student.father_name}</Td>
-                                        <Td>{student.dob}</Td>
-                                        <Td>{student.gender}</Td>
-                                        <Td>{student.category || "-"}</Td>
+                                        <Td>{student.school_class?.name || ""}</Td>
+                                        <Td>{student.section?.name || ""}</Td>
+                                        <Td>{student.father_name || "-"}</Td>
+                                        <Td>{formatDate(student.dob)}</Td>
+                                        <Td>{student.gender || "-"}</Td>
+                                        <Td>{student.student_category?.category_name || student.category || "-"}</Td>
                                         <Td>{student.phone}</Td>
                                         <Td>
                                             <Badge className={cn(
@@ -307,10 +384,18 @@ export default function OnlineAdmissionPage() {
                                         <Td className="text-right print:hidden">
                                             <div className="flex justify-end gap-1">
                                                 {!student.is_enrolled && (
-                                                    <ActionBtn icon={Check} onClick={() => handleEnroll(student.id)} className="bg-green-500 hover:bg-green-600" title="Enroll" />
+                                                    <ActionBtn
+                                                        icon={Check}
+                                                        onClick={() => {
+                                                            setSelectedAdmission(student);
+                                                            setEnrollDialogOpen(true);
+                                                        }}
+                                                        className="bg-green-500 hover:bg-green-600"
+                                                        title="Enroll"
+                                                    />
                                                 )}
-                                                <ActionBtn icon={Eye} className="bg-indigo-500 hover:bg-indigo-600" title="View" />
-                                                <ActionBtn icon={Pencil} className="bg-indigo-500 hover:bg-indigo-600" title="Edit" />
+                                                <ActionBtn icon={Eye} onClick={() => handleView(student)} className="bg-indigo-500 hover:bg-indigo-600" title="View" />
+                                                <ActionBtn icon={Pencil} onClick={() => handleEdit(student)} className="bg-indigo-500 hover:bg-indigo-600" title="Edit" />
                                                 <ActionBtn icon={Trash2} onClick={() => handleDelete(student.id)} className="bg-red-500 hover:bg-red-600" title="Delete" />
                                             </div>
                                         </Td>
@@ -318,7 +403,7 @@ export default function OnlineAdmissionPage() {
                                 ))}
                                 {!loading && admissions.length === 0 && (
                                     <tr>
-                                        <Td colSpan={13} className="text-center py-10 text-muted-foreground">No records found.</Td>
+                                        <Td colSpan={14} className="text-center py-10 text-muted-foreground">No records found.</Td>
                                     </tr>
                                 )}
                             </tbody>
@@ -366,6 +451,98 @@ export default function OnlineAdmissionPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* View Dialog */}
+            <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto border-none shadow-2xl rounded-2xl bg-background/95 backdrop-blur-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                            <Eye className="h-5 w-5 text-indigo-500" />
+                            Admission Application Details
+                        </DialogTitle>
+                        <DialogDescription className="font-semibold text-primary">Reference No: {selectedAdmission?.reference_no}</DialogDescription>
+                    </DialogHeader>
+                    {selectedAdmission && (
+                        <div className="space-y-6 pt-4">
+                            <div className="flex justify-center mb-6">
+                                <div className="w-40 h-40 rounded-2xl bg-slate-100 border-2 border-slate-200 flex items-center justify-center overflow-hidden shadow-lg">
+                                    {selectedAdmission.student_photo ? (
+                                        <img 
+                                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${selectedAdmission.student_photo}`} 
+                                            alt="Student" 
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <User className="w-20 h-20 text-slate-300" />
+                                    )}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">Student Info</h4>
+                                    <InfoRow label="Full Name" value={`${selectedAdmission.first_name} ${selectedAdmission.middle_name || ""} ${selectedAdmission.last_name}`} />
+                                    <InfoRow label="Date of Birth" value={formatDate(selectedAdmission.dob)} />
+                                    <InfoRow label="Gender" value={selectedAdmission.gender} />
+                                    <InfoRow label="Mobile" value={selectedAdmission.phone} />
+                                    <InfoRow label="Email" value={selectedAdmission.email} />
+                                    <InfoRow label="Class" value={selectedAdmission.school_class?.name} />
+                                    <InfoRow label="Section" value={selectedAdmission.section?.name} />
+                                </div>
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">Parent Info</h4>
+                                    <InfoRow label="Father Name" value={selectedAdmission.father_name} />
+                                    <InfoRow label="Father Mobile" value={selectedAdmission.father_phone} />
+                                    <InfoRow label="Mother Name" value={selectedAdmission.mother_name} />
+                                    <InfoRow label="Mother Mobile" value={selectedAdmission.mother_phone} />
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 mt-4">Status</h4>
+                                    <InfoRow label="Form Status" value={selectedAdmission.form_status} />
+                                    <InfoRow label="Payment Status" value={selectedAdmission.payment_status} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Enroll Confirmation Dialog */}
+            <Dialog open={enrollDialogOpen} onOpenChange={setEnrollDialogOpen}>
+                <DialogContent className="max-w-md border-none shadow-2xl rounded-2xl bg-background/95 backdrop-blur-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                            <div className="p-2 bg-green-100 rounded-lg text-green-600">
+                                <Check className="h-5 w-5" />
+                            </div>
+                            Confirm Enrollment
+                        </DialogTitle>
+                        <DialogDescription className="pt-2 text-sm text-muted-foreground font-medium">
+                            Are you sure you want to enroll <span className="text-foreground font-bold">{selectedAdmission?.first_name} {selectedAdmission?.last_name}</span>?
+                            <br /><br />
+                            This will create a new student record and generate an admission number automatically.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-end gap-3 mt-4">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setEnrollDialogOpen(false)}
+                            className="rounded-xl border-muted/50 active:scale-95 transition-all"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleEnroll} 
+                            disabled={submitting}
+                            className="rounded-xl bg-green-500 hover:bg-green-600 active:scale-95 transition-all shadow-lg shadow-green-500/20"
+                        >
+                            {submitting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Enrolling...
+                                </>
+                            ) : "Confirm Enrollment"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -400,5 +577,14 @@ function ActionBtn({ icon: Icon, className, onClick, title }: { icon: any, class
         >
             <Icon className="h-3.5 w-3.5" />
         </button>
+    );
+}
+
+function InfoRow({ label, value }: { label: string, value?: string }) {
+    return (
+        <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider">{label}</span>
+            <span className="text-sm font-semibold">{value || "-"}</span>
+        </div>
     );
 }

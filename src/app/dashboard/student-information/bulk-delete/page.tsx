@@ -15,7 +15,8 @@ import {
     Loader2,
     Trash2,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    User,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,16 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -38,6 +49,8 @@ interface Student {
     gender: string;
     category: string;
     phone: string;
+    avatar?: string;
+    student_category?: { category_name: string };
 }
 
 export default function BulkDeletePage() {
@@ -52,16 +65,17 @@ export default function BulkDeletePage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalStudents, setTotalStudents] = useState(0);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const { toast } = useToast();
 
     const fetchDropdowns = useCallback(async () => {
         try {
             const [classRes, sectionRes] = await Promise.all([
-                api.get("/academics/classes"),
-                api.get("/academics/sections")
+                api.get("/academics/classes?no_paginate=true"),
+                api.get("/academics/sections?no_paginate=true")
             ]);
-            setClasses(classRes.data.data);
-            setSections(sectionRes.data.data);
+            setClasses(classRes.data.data?.data || classRes.data.data || []);
+            setSections(sectionRes.data.data?.data || sectionRes.data.data || []);
         } catch (error) {
             console.error("Error fetching dropdowns:", error);
         }
@@ -79,9 +93,9 @@ export default function BulkDeletePage() {
                     limit: 50
                 }
             });
-            setStudents(response.data.data.data);
-            setTotalPages(response.data.data.last_page);
-            setTotalStudents(response.data.data.total);
+            setStudents(response.data.data?.data || response.data.data || []);
+            setTotalPages(response.data.data?.last_page || 1);
+            setTotalStudents(response.data.data?.total || 0);
             setSelectedIds(new Set()); // Reset selections when data changes
         } catch (error) {
             console.error("Error fetching students:", error);
@@ -94,6 +108,10 @@ export default function BulkDeletePage() {
     useEffect(() => {
         fetchDropdowns();
     }, [fetchDropdowns]);
+
+    useEffect(() => {
+        fetchStudents();
+    }, [fetchStudents]);
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
@@ -118,12 +136,12 @@ export default function BulkDeletePage() {
             toast("error", "Please select at least one student.");
             return;
         }
+        setIsDeleteDialogOpen(true);
+    };
 
-        if (!confirm(`Are you sure you want to delete ${selectedIds.size} selected students? This action cannot be undone.`)) {
-            return;
-        }
-
+    const confirmDelete = async () => {
         setLoading(true);
+        setIsDeleteDialogOpen(false);
         try {
             await api.post("/students/bulk-delete", { ids: Array.from(selectedIds) });
             toast("success", "Students deleted successfully.");
@@ -196,10 +214,23 @@ export default function BulkDeletePage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-destructive/10 rounded-2xl">
+                        <Trash2 className="h-6 w-6 text-destructive" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-800">Bulk Delete</h1>
+                        <p className="text-sm text-muted-foreground font-medium">Search and remove multiple students from the system</p>
+                    </div>
+                </div>
+            </div>
+
             {/* Select Criteria Section */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm print:hidden">
                 <CardHeader className="border-b border-muted/50 pb-4">
-                    <CardTitle className="text-xl font-bold tracking-tight">Select Criteria</CardTitle>
+                    <CardTitle className="text-xl font-bold tracking-tight text-slate-800">Select Criteria</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
@@ -294,9 +325,10 @@ export default function BulkDeletePage() {
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
-                                    <thead className="bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                                    <thead className="bg-muted/50 text-[13px] font-bold uppercase tracking-wider text-muted-foreground">
                                         <tr>
                                             <Th className="w-10">#</Th>
+                                            <Th className="w-12">Avatar</Th>
                                             <Th>Admission No</Th>
                                             <Th>Student Name</Th>
                                             <Th>Class</Th>
@@ -317,12 +349,31 @@ export default function BulkDeletePage() {
                                                         onChange={() => handleSelectOne(student.id)}
                                                     />
                                                 </Td>
-                                                <Td className="font-semibold text-primary">{student.admission_no}</Td>
+                                                <Td>
+                                                <div className="h-10 w-10 rounded-full border-2 border-muted overflow-hidden bg-muted/20">
+                                                    {student.avatar ? (
+                                                        <img 
+                                                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${student.avatar}`} 
+                                                            alt="Avatar" 
+                                                            className="h-full w-full object-cover" 
+                                                        />
+                                                    ) : (
+                                                        <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+                                                            <User className="h-5 w-5" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </Td>
+                                            <Td className="font-semibold text-primary">{student.admission_no}</Td>
                                                 <Td className="font-medium text-destructive">{student.name} {student.last_name}</Td>
                                                 <Td>{student.school_class?.name}({student.section?.name})</Td>
                                                 <Td>{student.dob}</Td>
                                                 <Td>{student.gender}</Td>
-                                                <Td>{student.category || "General"}</Td>
+                                            <Td>
+                                                <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
+                                                    {student.student_category?.category_name || student.category || "General"}
+                                                </span>
+                                            </Td>
                                                 <Td>{student.phone}</Td>
                                             </tr>
                                         ))}
@@ -403,6 +454,38 @@ export default function BulkDeletePage() {
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent className="rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
+                    <AlertDialogHeader className="p-8 bg-destructive/5 border-b border-destructive/10">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-destructive text-white rounded-2xl shadow-lg shadow-destructive/20">
+                                <Trash2 className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <AlertDialogTitle className="text-2xl font-bold text-slate-800 tracking-tight">
+                                    Confirm Bulk Deletion
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-muted-foreground font-medium mt-1">
+                                    Are you sure you want to delete <span className="text-destructive font-bold">{selectedIds.size}</span> selected students? This action is permanent and cannot be undone.
+                                </AlertDialogDescription>
+                            </div>
+                        </div>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="p-8 bg-muted/20 flex gap-4">
+                        <AlertDialogCancel className="flex-1 h-12 rounded-2xl font-bold border-muted/50 mt-0">
+                            Cancel, Keep Records
+                        </AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={confirmDelete}
+                            className="flex-1 h-12 rounded-2xl font-bold bg-destructive hover:bg-destructive/90 text-white shadow-lg shadow-destructive/20 border-none"
+                        >
+                            Yes, Delete Permanently
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
@@ -413,7 +496,7 @@ function Th({ children, className }: { children: React.ReactNode, className?: st
 }
 
 function Td({ children, className }: { children: React.ReactNode, className?: string }) {
-    return <td className={cn("px-4 py-3 text-xs", className)}>{children}</td>;
+    return <td className={cn("px-4 py-3 text-[14px]", className)}>{children}</td>;
 }
 
 function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () => void, title?: string }) {

@@ -48,6 +48,14 @@ interface GeneralSettings {
     low_attendance_limit: string;
     staff_attendance_settings: Array<{ type: string; from: string; upto: string; total: string }>;
     student_attendance_settings: Array<{ type: string; from: string; upto: string; total: string }>;
+    footer_contact_title?: string;
+    footer_contact_info_label?: string;
+    facebook_url?: string;
+    twitter_url?: string;
+    instagram_url?: string;
+    youtube_url?: string;
+    linkedin_url?: string;
+    pinterest_url?: string;
 }
 
 interface SettingsContextType {
@@ -93,7 +101,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     'student_login_mobile_no', 'student_login_email', 'parent_login_mobile_no',
                     'parent_login_email', 'allow_student_to_add_timeline',
                     'attendance_type', 'biometric_attendance', 'devices', 'low_attendance_limit',
-                    'staff_attendance_settings', 'student_attendance_settings'
+                    'staff_attendance_settings', 'student_attendance_settings',
+                    'footer_contact_title', 'footer_contact_info_label',
+                    'facebook_url', 'twitter_url', 'instagram_url', 'youtube_url', 'linkedin_url', 'pinterest_url'
                 ];
 
                 fields.forEach(field => {
@@ -117,6 +127,61 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             }
         } catch (error) {
             console.error("Failed to fetch general settings:", error);
+            // Fallback: set default settings if API fails
+            const defaultSettings: GeneralSettings = {
+                school_name: "iSchool Management System",
+                school_slogan: "Excellence in Education",
+                school_description: "Comprehensive school management system",
+                school_code: "ISCHOOL",
+                address: "Default Address",
+                phone: "+1 234 567 890",
+                email: "admin@ischool.com",
+                session: "2026",
+                session_start_month: "4",
+                date_format: "d/m/Y",
+                timezone: "UTC",
+                start_day_of_week: "monday",
+                currency_format: "USD",
+                base_url: "/",
+                file_upload_path: "uploads/",
+                print_logo: "",
+                admin_logo: "",
+                admin_small_logo: "",
+                app_logo: "",
+                login_page_background_admin: "",
+                login_page_background_user: "",
+                theme_mode: "light",
+                skins: "default",
+                side_menu: "default",
+                primary_color: "#3b82f6",
+                box_content: "default",
+                mobile_api_url: "/",
+                mobile_primary_color: "#3b82f6",
+                mobile_secondary_color: "#64748b",
+                student_login: true,
+                parent_login: true,
+                student_login_admission_no: true,
+                student_login_mobile_no: true,
+                student_login_email: true,
+                parent_login_mobile_no: true,
+                parent_login_email: true,
+                allow_student_to_add_timeline: true,
+                attendance_type: "day_wise",
+                biometric_attendance: false,
+                devices: "",
+                low_attendance_limit: "75",
+                staff_attendance_settings: [],
+                student_attendance_settings: [],
+                footer_contact_title: "Contact Us",
+                footer_contact_info_label: "Contact Info",
+                facebook_url: "",
+                twitter_url: "",
+                instagram_url: "",
+                youtube_url: "",
+                linkedin_url: "",
+                pinterest_url: ""
+            };
+            setSettings(defaultSettings);
         } finally {
             setLoading(false);
         }

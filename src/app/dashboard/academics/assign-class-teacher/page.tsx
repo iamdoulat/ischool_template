@@ -89,14 +89,14 @@ export default function AssignClassTeacherPage() {
         setLoading(true);
         try {
             const [classRes, sectionRes, staffRes, assignRes] = await Promise.all([
-                api.get("/classes", { params: { limit: 1000 } }),
-                api.get("/sections", { params: { limit: 1000 } }),
+                api.get("/academics/classes?no_paginate=true"),
+                api.get("/academics/sections?no_paginate=true"),
                 api.get("/users", { params: { role: "Staff", limit: 1000 } }),
-                api.get("/class-teachers")
+                api.get("/academics/class-teachers")
             ]);
-            setClasses(classRes.data.data.data || []);
-            setSections(sectionRes.data.data.data || []);
-            setStaffList(staffRes.data.data.data || []);
+            setClasses(classRes.data.data?.data || classRes.data.data || []);
+            setSections(sectionRes.data.data?.data || sectionRes.data.data || []);
+            setStaffList(staffRes.data.data?.data || staffRes.data.data || []);
             setAssignments(assignRes.data.data || []);
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
@@ -118,7 +118,7 @@ export default function AssignClassTeacherPage() {
 
         setSaving(true);
         try {
-            await api.post("/class-teachers", {
+            await api.post("/academics/class-teachers", {
                 school_class_id: parseInt(selectedClassId),
                 section_id: parseInt(selectedSectionId),
                 teacher_ids: selectedStaffIds
@@ -126,7 +126,7 @@ export default function AssignClassTeacherPage() {
             toast("success", "Class teachers assigned successfully");
 
             // Refresh list
-            const assignRes = await api.get("/class-teachers");
+            const assignRes = await api.get("/academics/class-teachers");
             setAssignments(assignRes.data.data || []);
 
             // Clear form
@@ -177,7 +177,7 @@ export default function AssignClassTeacherPage() {
         if (!idToDelete) return;
         setDeleting(true);
         try {
-            await api.delete(`/class-teachers/${idToDelete}`);
+            await api.delete(`/academics/class-teachers/${idToDelete}`);
             toast("success", "Assignment removed successfully");
             setAssignments(prev => prev.filter(a => a.id !== idToDelete));
             setSelectedKeys(prev => prev.filter(k => k !== idToDelete));
@@ -195,7 +195,7 @@ export default function AssignClassTeacherPage() {
         if (selectedKeys.length === 0) return;
         setDeleting(true);
         try {
-            await api.post("/class-teachers/bulk-delete", { keys: selectedKeys });
+            await api.post("/academics/class-teachers/bulk-delete", { keys: selectedKeys });
             toast("success", `${selectedKeys.length} assignments removed successfully`);
             setAssignments(prev => prev.filter(a => !selectedKeys.includes(a.id)));
             setSelectedKeys([]);

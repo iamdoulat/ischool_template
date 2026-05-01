@@ -90,13 +90,13 @@ export default function SubjectGroupPage() {
         const fetchPrerequisites = async () => {
             try {
                 const [classRes, subRes, secRes] = await Promise.all([
-                    api.get(`/classes`, { params: { limit: 1000 } }),
-                    api.get(`/subjects`, { params: { limit: 1000 } }),
-                    api.get(`/sections`, { params: { limit: 1000 } })
+                    api.get(`/academics/classes?no_paginate=true`),
+                    api.get(`/academics/subjects?no_paginate=true`),
+                    api.get(`/academics/sections?no_paginate=true`)
                 ]);
-                setClasses(classRes.data.data.data || []);
-                setSubjects(subRes.data.data.data || []);
-                setSections(secRes.data.data.data || []);
+                setClasses(classRes.data.data?.data || classRes.data.data || []);
+                setSubjects(subRes.data.data?.data || subRes.data.data || []);
+                setSections(secRes.data.data?.data || secRes.data.data || []);
             } catch (error) {
                 console.error("Failed to load prerequisites", error);
                 toast("error", "Failed to load prerequisites");
@@ -109,7 +109,7 @@ export default function SubjectGroupPage() {
     const fetchSubjectGroups = async (page = 1) => {
         setLoading(true);
         try {
-            const response = await api.get(`/subject-groups`, {
+            const response = await api.get(`/academics/subject-groups`, {
                 params: {
                     page,
                     search: searchTerm,
@@ -160,10 +160,10 @@ export default function SubjectGroupPage() {
 
         try {
             if (editingId) {
-                await api.put(`/subject-groups/${editingId}`, payload);
+                await api.put(`/academics/subject-groups/${editingId}`, payload);
                 toast("success", "Subject Group updated successfully");
             } else {
-                await api.post(`/subject-groups`, payload);
+                await api.post(`/academics/subject-groups`, payload);
                 toast("success", "Subject Group created successfully");
             }
             resetForm();
@@ -204,7 +204,7 @@ export default function SubjectGroupPage() {
         if (!idToDelete) return;
         setLoading(true);
         try {
-            await api.delete(`/subject-groups/${idToDelete}`);
+            await api.delete(`/academics/subject-groups/${idToDelete}`);
             fetchSubjectGroups(currentPage);
             toast("success", "Subject Group deleted successfully");
         } catch (error: any) {

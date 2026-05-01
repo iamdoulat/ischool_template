@@ -64,7 +64,7 @@ export default function CollectFeesPage() {
     const fetchInitialData = useCallback(async () => {
         try {
             const [classesRes] = await Promise.all([
-                api.get("/classes")
+                api.get("/academics/classes?no_paginate=true")
             ]);
             setClasses(classesRes.data.data.data || classesRes.data.data);
         } catch (error) {
