@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChevronLeft, ChevronRight, Search, Loader2, Calendar } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { DatePicker } from "@/components/ui/date-picker";
+import { formatDate } from "@/lib/utils";
 
 interface ExpenseRecord {
     id: string;
@@ -95,11 +97,11 @@ export default function SearchExpensePage() {
                             <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                 <div className="space-y-1">
                                     <Label className="text-[10px] font-bold uppercase text-gray-400">Start Date</Label>
-                                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9 text-xs" />
+                                    <DatePicker value={startDate} onChange={(val) => setStartDate(val)} />
                                 </div>
                                 <div className="space-y-1">
                                     <Label className="text-[10px] font-bold uppercase text-gray-400">End Date</Label>
-                                    <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-9 text-xs" />
+                                    <DatePicker value={endDate} onChange={(val) => setEndDate(val)} />
                                 </div>
                             </div>
                         )}
@@ -186,7 +188,7 @@ export default function SearchExpensePage() {
                                         <TableCell className="font-medium text-gray-700">{item.name}</TableCell>
                                         <TableCell className="text-gray-600">{item.invoice_number}</TableCell>
                                         <TableCell className="text-gray-600 font-medium">{item.expense_head.expense_head}</TableCell>
-                                        <TableCell className="text-gray-600">{item.date}</TableCell>
+                                        <TableCell className="text-gray-600">{formatDate(item.date)}</TableCell>
                                         <TableCell className="text-right font-bold text-gray-800">${item.amount}</TableCell>
                                     </TableRow>
                                 ))

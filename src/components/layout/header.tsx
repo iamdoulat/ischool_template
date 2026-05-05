@@ -103,56 +103,64 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
         }
     };
 
-    const LanguageSelector = () => (
-        <Popover>
-            <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl relative group">
-                    <Languages className="h-5 w-5" />
-                    {selectedLanguage && (
-                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white font-bold ring-2 ring-background uppercase">
-                            {selectedLanguage.short_code.substring(0, 2)}
-                        </span>
-                    )}
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-2 bg-card/95 backdrop-blur-md border-muted/50 shadow-2xl rounded-2xl" align="end" sideOffset={12}>
-                <div className="p-3 border-b border-muted/50 mb-2">
-                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest pl-1">{t("select_language")}</p>
-                </div>
-                <div className="space-y-1">
-                    {availableLanguages.map((lang) => (
-                        <Button
-                            key={lang.id}
-                            variant="ghost"
-                            onClick={() => setSelectedLanguage(lang)}
-                            className={cn(
-                                "w-full justify-between items-center h-10 text-sm font-medium rounded-xl hover:bg-primary/10 transition-all px-3",
-                                selectedLanguage?.id === lang.id ? "bg-primary/15 text-primary" : "text-foreground"
-                            )}
-                        >
-                            <div className="flex items-center gap-2.5">
-                                <div className={cn(
-                                    "w-6 h-6 rounded bg-muted/50 flex items-center justify-center text-[10px] font-bold uppercase",
-                                    selectedLanguage?.id === lang.id ? "bg-primary/20" : ""
-                                )}>
-                                    {lang.short_code.substring(0, 2)}
+    const LanguageSelector = () => {
+        if (!mounted) return (
+            <div className="h-10 w-10 flex items-center justify-center">
+                <Languages className="h-5 w-5 text-muted-foreground/20" />
+            </div>
+        );
+
+        return (
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl relative group">
+                        <Languages className="h-5 w-5" />
+                        {selectedLanguage && (
+                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white font-bold ring-2 ring-background uppercase">
+                                {selectedLanguage.short_code.substring(0, 2)}
+                            </span>
+                        )}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2 bg-card/95 backdrop-blur-md border-muted/50 shadow-2xl rounded-2xl" align="end" sideOffset={12}>
+                    <div className="p-3 border-b border-muted/50 mb-2">
+                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest pl-1">{t("select_language")}</p>
+                    </div>
+                    <div className="space-y-1">
+                        {availableLanguages.map((lang) => (
+                            <Button
+                                key={lang.id}
+                                variant="ghost"
+                                onClick={() => setSelectedLanguage(lang)}
+                                className={cn(
+                                    "w-full justify-between items-center h-10 text-sm font-medium rounded-xl hover:bg-primary/10 transition-all px-3",
+                                    selectedLanguage?.id === lang.id ? "bg-primary/15 text-primary" : "text-foreground"
+                                )}
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <div className={cn(
+                                        "w-6 h-6 rounded bg-muted/50 flex items-center justify-center text-[10px] font-bold uppercase",
+                                        selectedLanguage?.id === lang.id ? "bg-primary/20" : ""
+                                    )}>
+                                        {lang.short_code.substring(0, 2)}
+                                    </div>
+                                    <span className="font-semibold">{lang.name}</span>
                                 </div>
-                                <span className="font-semibold">{lang.name}</span>
+                                {selectedLanguage?.id === lang.id && (
+                                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                                )}
+                            </Button>
+                        ))}
+                        {availableLanguages.length === 0 && (
+                            <div className="p-4 text-center text-[11px] text-muted-foreground italic">
+                                {t("no_languages_available")}
                             </div>
-                            {selectedLanguage?.id === lang.id && (
-                                <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                            )}
-                        </Button>
-                    ))}
-                    {availableLanguages.length === 0 && (
-                        <div className="p-4 text-center text-[11px] text-muted-foreground italic">
-                            {t("no_languages_available")}
-                        </div>
-                    )}
-                </div>
-            </PopoverContent>
-        </Popover>
-    );
+                        )}
+                    </div>
+                </PopoverContent>
+            </Popover>
+        );
+    };
 
     return (
         <header className="h-14 min-h-[56px] border-b bg-card/80 backdrop-blur-xl pl-2 pr-4 md:pr-8 flex items-center justify-between sticky top-0 z-30 transition-all duration-300">

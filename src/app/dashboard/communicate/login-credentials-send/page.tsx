@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,34 +36,143 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 interface StudentCredential {
-    id: string;
-    admissionNo: string;
-    studentName: string;
-    class: string;
+    id: number;
+    admission_no: string;
+    name: string;
+    last_name: string;
     dob: string;
     gender: string;
-    mobile: string;
+    phone: string;
+    school_class?: { name: string };
+    section?: { name: string };
 }
 
-const mockStudents: StudentCredential[] = [
-    { id: "1", admissionNo: "0212360", studentName: "Sanjit Kumar", class: "Class 1(A)", dob: "05/08/2024", gender: "Male", mobile: "111111111111" },
-    { id: "2", admissionNo: "10024", studentName: "Steven Taylor", class: "Class 1(A)", dob: "08/17/2017", gender: "Male", mobile: "890567345" },
-    { id: "3", admissionNo: "120020", studentName: "Ashwani Kumar", class: "Class 1(A)", dob: "09/05/2009", gender: "Male", mobile: "980678463" },
-    { id: "4", admissionNo: "125005", studentName: "Nehal Wadhera", class: "Class 1(A)", dob: "11/23/2005", gender: "Male", mobile: "890786784" },
-    { id: "5", admissionNo: "18001", studentName: "Edward Thomas", class: "Class 1(A)", dob: "10/24/2013", gender: "Male", mobile: "8906785675" },
-    { id: "6", admissionNo: "19001", studentName: "Edward Thomas", class: "Class 1(A)", dob: "11/03/2014", gender: "Male", mobile: "8233306613" },
-    { id: "7", admissionNo: "25001", studentName: "Georgia Wareham", class: "Class 1(A)", dob: "05/10/2021", gender: "Female", mobile: "9006906777" },
-    { id: "8", admissionNo: "520038", studentName: "xavier bartlett", class: "Class 1(A)", dob: "05/13/2009", gender: "Male", mobile: "0890786657" },
-    { id: "9", admissionNo: "650000", studentName: "James Bennett", class: "Class 1(A)", dob: "05/05/2009", gender: "Male", mobile: "8978786888" },
-    { id: "10", admissionNo: "7856", studentName: "RAM", class: "Class 1(A)", dob: "01/07/2020", gender: "Male", mobile: "" },
-    { id: "11", admissionNo: "9001", studentName: "Niharika", class: "Class 1(A)", dob: "01/07/2020", gender: "Female", mobile: "" },
-    { id: "12", admissionNo: "90034", studentName: "Nidhi Verma", class: "Class 1(A)", dob: "09/02/2021", gender: "Female", mobile: "76785683786" },
-    { id: "13", admissionNo: "9004", studentName: "AVYAAN", class: "Class 1(A)", dob: "10/14/2020", gender: "Male", mobile: "78846736787" },
-    { id: "14", admissionNo: "95001", studentName: "Matthew Bacon", class: "Class 1(A)", dob: "12/31/2018", gender: "Male", mobile: "08909789" },
-];
+interface AcademicClass {
+    id: number;
+    name: string;
+    sections?: Section[];
+}
+
+interface Section {
+    id: number;
+    name: string;
+}
 
 export default function LoginCredentialsSendPage() {
+    const { toast } = useToast();
+    const [classes, setClasses] = useState<AcademicClass[]>([]);
+    const [sections, setSections] = useState<Section[]>([]);
+    const [selectedClass, setSelectedClass] = useState<string>("");
+    const [selectedSection, setSelectedSection] = useState<string>("");
+    const [students, setStudents] = useState<StudentCredential[]>([]);
+    const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
+    const [messageTo, setMessageTo] = useState<string>("student");
+    const [notificationType, setNotificationType] = useState<string>("email");
     const [searchTerm, setSearchTerm] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [sending, setSending] = useState(false);
+
+    useEffect(() => {
+        fetchClasses();
+    }, []);
+
+    const fetchClasses = async () => {
+        try {
+            const response = await api.get('/academics/classes?no_paginate=true');
+            setClasses(response.data.data || response.data);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to fetch classes", variant: "destructive" });
+        }
+    };
+
+    const handleClassChange = (value: string) => {
+        setSelectedClass(value);
+        setSelectedSection("");
+        // Extract sections from the selected class (already loaded with classes)
+        const selectedClassObj = classes.find(c => String(c.id) === value);
+        setSections(selectedClassObj?.sections || []);
+    };
+
+    const handleSearch = async () => {
+        if (!selectedClass || !selectedSection) {
+            toast({ title: "Required", description: "Please select both class and section", variant: "destructive" });
+            return;
+        }
+        setLoading(true);
+        try {
+            const response = await api.post('/communicate/search-students', {
+                class_id: selectedClass,
+                section_id: selectedSection,
+                search: searchTerm
+            });
+            setStudents(response.data.data || response.data);
+            setSelectedStudentIds([]); // Reset selection on new search
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to search students", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedStudentIds.length === students.length) {
+            setSelectedStudentIds([]);
+        } else {
+            setSelectedStudentIds(students.map(s => s.id));
+        }
+    };
+
+    const toggleStudentSelection = (id: number) => {
+        setSelectedStudentIds(prev => 
+            prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+        );
+    };
+
+    const handleSend = async () => {
+        if (selectedStudentIds.length === 0) {
+            toast({ title: "Selection Required", description: "Please select at least one student", variant: "destructive" });
+            return;
+        }
+        setSending(true);
+        try {
+            const response = await api.post('/communicate/send-credentials', {
+                student_ids: selectedStudentIds,
+                message_to: messageTo,
+                notification_type: notificationType
+            });
+            toast({ title: "Success", description: response.data.message });
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to send credentials", variant: "destructive" });
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const handleCopy = () => {
+        const text = students.map(s => `${s.admission_no}\t${s.first_name} ${s.last_name}\t${s.mobile_no}`).join('\n');
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copied", description: "Student data copied" });
+    };
+
+    const handleExportCSV = () => {
+        const headers = ["Admission No", "Student Name", "Mobile"];
+        const rows = students.map(s => [s.admission_no, `${s.first_name} ${s.last_name}`, s.mobile_no]);
+        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "students_credentials.csv");
+        link.click();
+    };
+
+    const toolbarActions = [
+        { Icon: Copy, onClick: handleCopy, title: "Copy" },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
+        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
+        { Icon: Printer, onClick: () => window.print(), title: "Print" },
+        { Icon: Columns, onClick: () => {}, title: "Columns" },
+    ];
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
@@ -69,42 +180,42 @@ export default function LoginCredentialsSendPage() {
                 <h1 className="text-sm font-medium text-gray-800 uppercase tracking-tight">Login Credentials Send</h1>
             </div>
 
-            {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                <h2 className="text-sm font-medium text-gray-800 border-b pb-2">Select Criteria</h2>
+             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+                <div className="flex items-center gap-2 border-b pb-4">
+                    <div className="h-5 w-1 bg-indigo-500 rounded-full" />
+                    <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Select Criteria</h2>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                    <div className="space-y-1.5">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                    <div className="space-y-2">
+                        <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                             Class <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="class1">
-                            <SelectTrigger className="h-9 border-gray-200 text-sm focus:ring-indigo-500 rounded">
-                                <SelectValue placeholder="Select" />
+                        <Select value={selectedClass} onValueChange={handleClassChange}>
+                            <SelectTrigger className="h-10 border-gray-200 text-sm focus:ring-indigo-500 rounded-lg shadow-none bg-gray-50/30">
+                                <SelectValue placeholder="Select Class" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="class1">Class 1</SelectItem>
-                                <SelectItem value="class2">Class 2</SelectItem>
+                                {classes.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                    <div className="space-y-2">
+                        <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                             Section <span className="text-red-500">*</span>
                         </Label>
-                        <div className="flex gap-2 items-center">
-                            <Select defaultValue="a">
-                                <SelectTrigger className="h-9 border-gray-200 text-sm focus:ring-indigo-500 rounded flex-1">
-                                    <SelectValue placeholder="Select" />
+                        <div className="flex gap-3 items-center">
+                            <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
+                                <SelectTrigger className="h-10 border-gray-200 text-sm focus:ring-indigo-500 rounded-lg shadow-none bg-gray-50/30 flex-1">
+                                    <SelectValue placeholder="Select Section" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="a">A</SelectItem>
-                                    <SelectItem value="b">B</SelectItem>
+                                    {sections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white gap-2 h-9 px-4 text-xs shadow-sm transition-all rounded">
-                                <Search className="h-4 w-4" /> Search
+                            <Button onClick={handleSearch} disabled={loading} className="btn-gradient gap-2 h-10 px-6 text-xs font-bold uppercase transition-all rounded-full shadow-lg shadow-indigo-100">
+                                <Search className="h-4 w-4" /> {loading ? "Searching..." : "Search"}
                             </Button>
                         </div>
                     </div>
@@ -112,22 +223,27 @@ export default function LoginCredentialsSendPage() {
             </div>
 
             {/* Dispatch Configuration Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 pt-6 mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start mb-6">
+             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 pt-8 mt-4 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-start border-b border-gray-50 pb-8">
                     <div className="space-y-3">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase">Select All</Label>
-                        <div className="flex items-center gap-2">
-                            <Checkbox className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-5 w-5" />
+                        <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Select All</Label>
+                        <div className="flex items-center gap-3">
+                            <Checkbox 
+                                checked={students.length > 0 && selectedStudentIds.length === students.length}
+                                onCheckedChange={toggleSelectAll}
+                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-6 w-6 rounded-md transition-all" 
+                            />
+                            <span className="text-[11px] text-gray-400 font-medium">({selectedStudentIds.length} Selected)</span>
                         </div>
                     </div>
 
-                    <div className="space-y-1.5 md:col-span-2">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                    <div className="space-y-2 md:col-span-2">
+                        <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                             Message To <span className="text-red-500">*</span>
                         </Label>
-                        <Select>
-                            <SelectTrigger className="h-10 border-gray-200 text-sm focus:ring-indigo-500 rounded">
-                                <SelectValue placeholder="Select" />
+                        <Select value={messageTo} onValueChange={setMessageTo}>
+                            <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 rounded-xl bg-gray-50/20 shadow-none">
+                                <SelectValue placeholder="Recipient" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="student">Student</SelectItem>
@@ -136,108 +252,114 @@ export default function LoginCredentialsSendPage() {
                         </Select>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                    <div className="space-y-2">
+                        <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                             Notification Type <span className="text-red-500">*</span>
                         </Label>
-                        <Select>
-                            <SelectTrigger className="h-10 border-gray-200 text-sm focus:ring-indigo-500 rounded">
-                                <SelectValue placeholder="Select" />
+                        <Select value={notificationType} onValueChange={setNotificationType}>
+                            <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 rounded-xl bg-gray-50/20 shadow-none">
+                                <SelectValue placeholder="Method" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="email">Email</SelectItem>
-                                <SelectItem value="sms">SMS</SelectItem>
-                                <SelectItem value="both">Both</SelectItem>
+                                <SelectItem value="email">Email Only</SelectItem>
+                                <SelectItem value="sms">SMS Only</SelectItem>
+                                <SelectItem value="both">Both (Email & SMS)</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
 
-                {/* Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+                 {/* Toolbar */}
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="relative w-full md:w-64">
                         <Input
-                            placeholder="Search"
+                            placeholder="Filter results..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500"
+                            className="pl-3 h-9 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50"
                         />
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold uppercase">SD</span>
-                            <Select defaultValue="50">
-                                <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
-                        </div>
-                        <div className="flex items-center gap-1 text-gray-400">
-                            {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, i) => (
-                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
-                                    <Icon className="h-3.5 w-3.5" />
+                        <div className="flex items-center gap-1.5 text-gray-400">
+                            {toolbarActions.map((action, i) => (
+                                <Button 
+                                    key={i} 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={action.onClick}
+                                    title={action.title}
+                                    className="h-8 w-8 hover:bg-gray-100 rounded-full transition-all"
+                                >
+                                    <action.Icon className="h-4 w-4" />
                                 </Button>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {/* Student Credential Table */}
-                <div className="rounded-md border border-gray-50 overflow-hidden mb-4">
+                 {/* Student Credential Table */}
+                <div className="rounded-xl border border-gray-100 overflow-hidden shadow-sm">
                     <Table>
                         <TableHeader className="bg-gray-50/50">
                             <TableRow className="hover:bg-transparent border-gray-100">
-                                <TableHead className="w-[50px] py-3">
-                                    <Checkbox className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4" />
+                                <TableHead className="w-[50px] py-4">
+                                    <Checkbox 
+                                        checked={students.length > 0 && selectedStudentIds.length === students.length}
+                                        onCheckedChange={toggleSelectAll}
+                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4" 
+                                    />
                                 </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Admission No</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Student Name</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Class</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Date Of Birth</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Gender</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Mobile Number</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">Admission No</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">Student Name</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">Class / Section</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">Date Of Birth</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">Gender</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest text-right">Mobile Number</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {mockStudents.map((student) => (
-                                <TableRow key={student.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
-                                    <TableCell className="py-3.5">
-                                        <Checkbox className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4" />
+                            {students.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="h-32 text-center text-gray-400 text-xs italic">
+                                        No students found. Please search by class and section.
                                     </TableCell>
-                                    <TableCell className="py-3.5 text-gray-500">{student.admissionNo}</TableCell>
-                                    <TableCell className="py-3.5 text-[#6366f1] font-bold cursor-pointer hover:underline">{student.studentName}</TableCell>
-                                    <TableCell className="py-3.5 text-gray-500">{student.class}</TableCell>
-                                    <TableCell className="py-3.5 text-gray-500">{student.dob}</TableCell>
-                                    <TableCell className="py-3.5 text-gray-500">{student.gender}</TableCell>
-                                    <TableCell className="py-3.5 text-right text-gray-500">{student.mobile || "-"}</TableCell>
                                 </TableRow>
-                            ))}
+                            ) : (
+                                students.map((student) => (
+                                    <TableRow key={student.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/20 transition-colors">
+                                        <TableCell className="py-4">
+                                            <Checkbox 
+                                                checked={selectedStudentIds.includes(student.id)}
+                                                onCheckedChange={() => toggleStudentSelection(student.id)}
+                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4" 
+                                            />
+                                        </TableCell>
+                                        <TableCell className="py-4 text-gray-500 font-medium">{student.admission_no}</TableCell>
+                                        <TableCell className="py-4 text-gray-800 font-bold uppercase tracking-tight">{student.name} {student.last_name || ''}</TableCell>
+                                        <TableCell className="py-4 text-gray-400 font-medium">{student.school_class?.name} ({student.section?.name})</TableCell>
+                                        <TableCell className="py-4 text-gray-500">{student.dob}</TableCell>
+                                        <TableCell className="py-4 text-gray-500 uppercase">{student.gender}</TableCell>
+                                        <TableCell className="py-4 text-right text-indigo-600 font-bold">{student.phone || "-"}</TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </div>
 
-                {/* Footer */}
-                <div className="flex flex-col md:flex-row items-center justify-between border-t pt-4">
-                    <div className="text-[11px] text-gray-500 font-medium mb-4 md:mb-0">
-                        Showing 1 to {mockStudents.length} of {mockStudents.length} entries
+                 {/* Footer */}
+                <div className="flex flex-col md:flex-row items-center justify-between pt-6 border-t border-gray-50">
+                    <div className="text-[11px] text-gray-400 font-medium mb-4 md:mb-0">
+                        {students.length > 0 ? `Showing 1 to ${students.length} of ${students.length} entries` : "No entries to show"}
                     </div>
-                    <div className="flex gap-4 items-center">
-                        <div className="flex gap-1 items-center">
-                            <span className="text-gray-400 mr-2 cursor-pointer hover:text-gray-600">‹</span>
-                            <Button variant="default" size="sm" className="h-7 w-7 p-0 bg-indigo-500 hover:bg-indigo-600 text-white border-0">
-                                1
-                            </Button>
-                            <span className="text-gray-400 ml-2 cursor-pointer hover:text-gray-600">›</span>
-                        </div>
-                        <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-8 h-9 text-[10px] font-bold uppercase transition-all rounded shadow-md shadow-indigo-100">
-                            Send
+                    <div className="flex gap-6 items-center">
+                        <Button 
+                            onClick={handleSend} 
+                            disabled={sending || selectedStudentIds.length === 0}
+                            className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-600 text-white px-10 h-10 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg shadow-purple-300/50 min-w-[150px] border-none"
+                        >
+                            {sending ? "Sending..." : `Send Credentials (${selectedStudentIds.length})`}
                         </Button>
                     </div>
                 </div>

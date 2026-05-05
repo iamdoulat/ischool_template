@@ -46,10 +46,13 @@ import {
     Loader2,
     Edit,
     Trash2,
-    KeyRound
+    KeyRound,
+    CheckCircle,
+    Ban
 } from "lucide-react";
 import Image from "next/image";
 import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Staff {
     id: number;
@@ -59,8 +62,8 @@ interface Staff {
     role: string;
     phone: string;
     department?: string;
-    designation?: string;
     avatar?: string;
+    active?: boolean | number;
 }
 
 interface Role {
@@ -69,22 +72,27 @@ interface Role {
 
 export default function StaffDirectoryPage() {
     const router = useRouter();
+    const { toast } = useToast();
     const [view, setView] = useState("card");
     const [staffList, setStaffList] = useState<Staff[]>([]);
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [keyword, setKeyword] = useState("");
     const [selectedRole, setSelectedRole] = useState("Select");
+    const [selectedStatus, setSelectedStatus] = useState("all");
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
+    const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+    const [staffToToggle, setStaffToToggle] = useState<Staff | null>(null);
     const [currentUser, setCurrentUser] = useState<any>(null);
 
-    const fetchStaff = async (searchKeyword = "", roleFilter = "Select") => {
+    const fetchStaff = async (searchKeyword = "", roleFilter = "Select", statusFilter = "all") => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
             if (searchKeyword) params.append("keyword", searchKeyword);
             if (roleFilter !== "Select") params.append("role", roleFilter);
+            params.append("active", statusFilter);
 
             const response = await api.get(`/hr/staff-directory?${params.toString()}`);
             if (response.data.status === "Success") {
@@ -135,7 +143,7 @@ export default function StaffDirectoryPage() {
     };
 
     const handleSearch = () => {
-        fetchStaff(keyword, selectedRole);
+        fetchStaff(keyword, selectedRole, selectedStatus);
     };
 
     const handleEdit = (staffId: string | number) => {
@@ -151,24 +159,24 @@ export default function StaffDirectoryPage() {
         if (!staffToDelete) return;
 
         try {
-            // Use staff_id if available, otherwise id. Backend supports both now.
             const idToDelete = staffToDelete.staff_id || staffToDelete.id;
             const response = await api.delete(`/hr/staff-directory/${idToDelete}`);
 
             if (response.data.status === "Success") {
-                // Show success message
-                alert("Staff deleted successfully!");
-
-                // Refresh staff list
-                fetchStaff(keyword, selectedRole);
-
-                // Close dialog
+                toast({
+                    title: "Success",
+                    description: "Staff deleted successfully!",
+                });
+                fetchStaff(keyword, selectedRole, selectedStatus);
                 setDeleteDialogOpen(false);
                 setStaffToDelete(null);
             }
         } catch (error: any) {
-            console.error("Error deleting staff:", error);
-            alert(error.response?.data?.message || "Failed to delete staff. Please try again.");
+            toast({
+                title: "Error",
+                description: error.response?.data?.message || "Failed to delete staff. Please try again.",
+                variant: "destructive",
+            });
         }
     };
 
@@ -177,11 +185,48 @@ export default function StaffDirectoryPage() {
             const response = await api.post(`/hr/staff-directory/${staffId}/reset-password`, {});
 
             if (response.data.status === "Success") {
-                alert("Password reset link has been sent to the staff member's email.");
+                toast({
+                    title: "Success",
+                    description: "Password reset link has been sent to the staff member's email.",
+                });
             }
         } catch (error: any) {
-            console.error("Error sending reset link:", error);
-            alert(error.response?.data?.message || "Failed to send reset link. Please try again.");
+            toast({
+                title: "Error",
+                description: error.response?.data?.message || "Failed to send reset link. Please try again.",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const handleConfirmToggleStatus = async () => {
+        if (!staffToToggle) return;
+        
+        const newStatus = !(staffToToggle.active !== false && staffToToggle.active !== 0);
+        const actionText = newStatus ? "enabled" : "disabled";
+        
+        try {
+            const idToUpdate = staffToToggle.staff_id || staffToToggle.id;
+            const response = await api.put(`/hr/staff-directory/${idToUpdate}`, { active: newStatus });
+            
+            if (response.data.status === "Success") {
+                toast({
+                    title: `Staff Member ${actionText === "enabled" ? "Enabled" : "Disabled"}`,
+                    description: `${staffToToggle.name} has been successfully ${actionText}.`,
+                    variant: "default",
+                });
+                fetchStaff(keyword, selectedRole, selectedStatus);
+                setStatusDialogOpen(false);
+                setStaffToToggle(null);
+            }
+        } catch (error: any) {
+            console.error(`Error toggling staff:`, error);
+            toast({
+                title: "Error",
+                description: error.response?.data?.message || `Failed to update status for ${staffToToggle.name}. Please try again.`,
+                variant: "destructive",
+            });
+            setStatusDialogOpen(false);
         }
     };
 
@@ -258,7 +303,7 @@ export default function StaffDirectoryPage() {
             {/* Staff View Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <Tabs defaultValue="card" className="w-full" onValueChange={setView}>
-                    <div className="px-6 border-b border-gray-100 bg-white">
+                    <div className="px-6 border-b border-gray-100 bg-white flex justify-between items-center">
                         <TabsList className="bg-transparent h-14 gap-8 p-0">
                             <TabsTrigger
                                 value="card"
@@ -273,6 +318,25 @@ export default function StaffDirectoryPage() {
                                 <ListIcon className="h-4 w-4 mr-2" /> List View
                             </TabsTrigger>
                         </TabsList>
+
+                        <div className="flex items-center">
+                            <Select 
+                                value={selectedStatus} 
+                                onValueChange={(val) => { 
+                                    setSelectedStatus(val); 
+                                    fetchStaff(keyword, selectedRole, val); 
+                                }}
+                            >
+                                <SelectTrigger className="h-9 w-[140px] border-gray-200 text-xs font-semibold text-gray-600 focus:ring-indigo-500 transition-all rounded-lg">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Staff</SelectItem>
+                                    <SelectItem value="true">Active Staff</SelectItem>
+                                    <SelectItem value="false">Disabled Staff</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     <TabsContent value="card" className="p-6 m-0">
@@ -284,7 +348,7 @@ export default function StaffDirectoryPage() {
                         ) : staffList.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {staffList.map((person) => (
-                                    <div key={person.id} className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden flex gap-4">
+                                    <div key={person.id} className={`bg-white border border-gray-100 rounded-xl p-4 hover:shadow-xl transition-all group relative overflow-hidden flex gap-4 ${person.active === false || person.active === 0 ? "opacity-60 grayscale hover:grayscale-0 hover:opacity-100" : "hover:shadow-indigo-500/5"}`}>
                                         <div className="relative h-20 w-20 shrink-0 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
                                             {person.avatar ? (
                                                 <img
@@ -333,6 +397,11 @@ export default function StaffDirectoryPage() {
                                                         {person.designation}
                                                     </span>
                                                 )}
+                                                {(person.active === false || person.active === 0) && (
+                                                    <span className="px-2 py-0.5 bg-red-100 text-red-600 text-[9px] font-bold rounded-md uppercase tracking-tight">
+                                                        Disabled
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
 
@@ -344,6 +413,18 @@ export default function StaffDirectoryPage() {
                                                     </button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-40">
+                                                    {hasPerm("human-resource.staff.edit") && (
+                                                        <DropdownMenuItem
+                                                            onClick={() => { setStaffToToggle(person); setStatusDialogOpen(true); }}
+                                                            className={`cursor-pointer ${person.active === false || person.active === 0 ? "text-green-600 focus:text-green-600" : "text-amber-600 focus:text-amber-600"}`}
+                                                        >
+                                                            {person.active === false || person.active === 0 ? (
+                                                                <><CheckCircle className="h-4 w-4 mr-2" /> Enable Staff</>
+                                                            ) : (
+                                                                <><Ban className="h-4 w-4 mr-2" /> Disable Staff</>
+                                                            )}
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     {hasPerm("human-resource.staff.edit") && (
                                                         <DropdownMenuItem
                                                             onClick={() => handleEdit(person.staff_id || person.id)}
@@ -407,9 +488,12 @@ export default function StaffDirectoryPage() {
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-100">
                                         {staffList.map((person) => (
-                                            <tr key={person.id} className="hover:bg-gray-50 transition-colors group">
+                                            <tr key={person.id} className={`hover:bg-gray-50 transition-colors group ${person.active === false || person.active === 0 ? "opacity-60 grayscale hover:grayscale-0 hover:opacity-100" : ""}`}>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="text-sm font-bold text-purple-600">{person.staff_id || "N/A"}</div>
+                                                    {(person.active === false || person.active === 0) && (
+                                                        <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase inline-block mt-1">Disabled</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-3">
@@ -458,6 +542,18 @@ export default function StaffDirectoryPage() {
                                                                 </button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end" className="w-40">
+                                                                {hasPerm("human-resource.staff.edit") && (
+                                                                    <DropdownMenuItem
+                                                                        onClick={() => { setStaffToToggle(person); setStatusDialogOpen(true); }}
+                                                                        className={`cursor-pointer ${person.active === false || person.active === 0 ? "text-green-600 focus:text-green-600" : "text-amber-600 focus:text-amber-600"}`}
+                                                                    >
+                                                                        {person.active === false || person.active === 0 ? (
+                                                                            <><CheckCircle className="h-4 w-4 mr-2" /> Enable Staff</>
+                                                                        ) : (
+                                                                            <><Ban className="h-4 w-4 mr-2" /> Disable Staff</>
+                                                                        )}
+                                                                    </DropdownMenuItem>
+                                                                )}
                                                                 {hasPerm("human-resource.staff.edit") && (
                                                                     <DropdownMenuItem
                                                                         onClick={() => handleEdit(person.staff_id || person.id)}
@@ -521,6 +617,33 @@ export default function StaffDirectoryPage() {
                             className="bg-red-600 hover:bg-red-700 text-white"
                         >
                             Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Status Toggle Confirmation Dialog */}
+            <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0) 
+                                ? "Enable Staff Member?" 
+                                : "Disable Staff Member?"}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0)
+                                ? `Are you sure you want to enable ${staffToToggle.name}? They will regain access to the system.`
+                                : `Are you sure you want to disable ${staffToToggle?.name}? They will lose access to the system until re-enabled.`}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setStaffToToggle(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmToggleStatus}
+                            className={staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0) ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-600 hover:bg-amber-700 text-white"}
+                        >
+                            {staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0) ? "Enable" : "Disable"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

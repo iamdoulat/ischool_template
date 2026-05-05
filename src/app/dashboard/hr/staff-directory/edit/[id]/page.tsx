@@ -16,8 +16,14 @@ import {
 import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Save, Lock, ShieldCheck } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
 import api from "@/lib/api";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface Role {
+    name: string;
+}
+
+interface CommonData {
+    id: number;
     name: string;
 }
 
@@ -28,6 +34,9 @@ export default function EditStaffPage() {
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [roles, setRoles] = useState<Role[]>([]);
+    const [designations, setDesignations] = useState<CommonData[]>([]);
+    const [departments, setDepartments] = useState<CommonData[]>([]);
+    
     const [formData, setFormData] = useState({
         staff_id: "",
         role: "",
@@ -51,6 +60,7 @@ export default function EditStaffPage() {
         work_experience: "",
         note: "",
         pan_number: "",
+        active: true,
     });
     const [passwordData, setPasswordData] = useState({
         current_password: "",
@@ -68,7 +78,12 @@ export default function EditStaffPage() {
             const user = await fetchCurrentUser();
             if (user && (user.permissions?.includes("human-resource.staff.edit") || user.permissions?.includes("all") || user.staff_id === id)) {
                 setCurrentUser(user);
-                await Promise.all([fetchRoles(), fetchStaffDetails()]);
+                await Promise.all([
+                    fetchRoles(),
+                    fetchDesignations(),
+                    fetchDepartments(),
+                    fetchStaffDetails()
+                ]);
             } else if (user) {
                 alert("Unauthorized. You do not have permission to edit staff.");
                 router.push("/dashboard/hr/staff-directory");
@@ -99,6 +114,28 @@ export default function EditStaffPage() {
             }
         } catch (error) {
             console.error("Error fetching roles:", error);
+        }
+    };
+
+    const fetchDesignations = async () => {
+        try {
+            const response = await api.get("/hr/designation");
+            if (response.data.success) {
+                setDesignations(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching designations:", error);
+        }
+    };
+
+    const fetchDepartments = async () => {
+        try {
+            const response = await api.get("/hr/department");
+            if (response.data.success) {
+                setDepartments(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching departments:", error);
         }
     };
 
@@ -134,6 +171,7 @@ export default function EditStaffPage() {
                     work_experience: staff.work_experience || "",
                     note: staff.note || "",
                     pan_number: staff.pan_number || "",
+                    active: staff.active !== undefined ? !!staff.active : true,
                 });
             }
         } catch (error: any) {
@@ -147,7 +185,7 @@ export default function EditStaffPage() {
         }
     };
 
-    const handleInputChange = (field: string, value: string) => {
+    const handleInputChange = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
         if (errors[field]) {
             setErrors(prev => {
@@ -177,6 +215,7 @@ export default function EditStaffPage() {
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             newErrors.email = "Invalid email format";
         }
+        if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -339,26 +378,53 @@ export default function EditStaffPage() {
                                 {errors.role && <p className="text-xs text-red-500">{errors.role}</p>}
                             </div>
 
+                            {/* Status */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-500 uppercase">
+                                    Status
+                                </Label>
+                                <Select 
+                                    value={formData.active ? "true" : "false"} 
+                                    onValueChange={(value) => handleInputChange("active", value === "true")}
+                                >
+                                    <SelectTrigger className="h-11 border-gray-200">
+                                        <SelectValue placeholder="Select Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="true">Active</SelectItem>
+                                        <SelectItem value="false">Disabled</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
                             {/* Designation */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">Designation</Label>
-                                <Input
-                                    value={formData.designation}
-                                    onChange={(e) => handleInputChange("designation", e.target.value)}
-                                    placeholder="Enter Designation"
-                                    className="h-11 border-gray-200"
-                                />
+                                <Select value={formData.designation} onValueChange={(value) => handleInputChange("designation", value)}>
+                                    <SelectTrigger className="h-11 border-gray-200">
+                                        <SelectValue placeholder="Select Designation" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {designations.map((d) => (
+                                            <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             {/* Department */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">Department</Label>
-                                <Input
-                                    value={formData.department}
-                                    onChange={(e) => handleInputChange("department", e.target.value)}
-                                    placeholder="Enter Department"
-                                    className="h-11 border-gray-200"
-                                />
+                                <Select value={formData.department} onValueChange={(value) => handleInputChange("department", value)}>
+                                    <SelectTrigger className="h-11 border-gray-200">
+                                        <SelectValue placeholder="Select Department" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {departments.map((d) => (
+                                            <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             {/* First Name */}
@@ -441,10 +507,9 @@ export default function EditStaffPage() {
                             {/* Date of Birth */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">Date of Birth</Label>
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={formData.date_of_birth}
-                                    onChange={(e) => handleInputChange("date_of_birth", e.target.value)}
+                                    onChange={(val) => handleInputChange("date_of_birth", val)}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
@@ -452,23 +517,25 @@ export default function EditStaffPage() {
                             {/* Date of Joining */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">Date of Joining</Label>
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={formData.date_of_joining}
-                                    onChange={(e) => handleInputChange("date_of_joining", e.target.value)}
+                                    onChange={(val) => handleInputChange("date_of_joining", val)}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
 
                             {/* Phone */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Phone</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">
+                                    Phone <span className="text-red-500">*</span>
+                                </Label>
                                 <Input
                                     value={formData.phone}
                                     onChange={(e) => handleInputChange("phone", e.target.value)}
                                     placeholder="Enter Phone Number"
-                                    className="h-11 border-gray-200"
+                                    className={`h-11 border-gray-200 ${errors.phone ? "border-red-500" : ""}`}
                                 />
+                                {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
                             </div>
 
                             {/* Emergency Contact */}

@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import {
     Card,
     CardContent,
@@ -18,26 +20,87 @@ import {
     CheckCircle2,
     Users,
     Activity,
-    ShoppingBag
+    ShoppingBag,
+    RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const reportTypes = [
-    { name: "Student Course Purchase Report", icon: FileText, active: true },
-    { name: "Course Sell Count Report", icon: ShoppingBag, active: false },
-    { name: "Course Trending Report", icon: Activity, active: false },
-    { name: "Course Complete Report", icon: CheckCircle2, active: false },
-    { name: "Course Assignment Report", icon: FileText, active: false },
-    { name: "Course Exam Result Report", icon: Trophy, active: false },
-    { name: "Course Exam Attempt Report", icon: BarChart3, active: false },
+    { id: "purchase", name: "Student Course Purchase Report", icon: FileText },
+    { id: "sell_count", name: "Course Sell Count Report", icon: ShoppingBag },
+    { id: "trending", name: "Course Trending Report", icon: Activity },
+    { id: "complete", name: "Course Complete Report", icon: CheckCircle2 },
+    { id: "assignment", name: "Course Assignment Report", icon: FileText },
+    { id: "exam_result", name: "Course Exam Result Report", icon: Trophy },
+    { id: "exam_attempt", name: "Course Exam Attempt Report", icon: BarChart3 },
 ];
 
+interface ReportData {
+    id: number;
+    user_name: string;
+    user_type: string;
+    date: string;
+    course: string;
+    provider: string;
+    payment_type: string;
+    payment_method: string;
+    price: number;
+}
+
 export default function OnlineCourseReportPage() {
-    const [selectedReport, setSelectedReport] = useState("Student Course Purchase Report");
+    const { toast } = useToast();
+    const [selectedReport, setSelectedReport] = useState(reportTypes[0]);
+    const [loading, setLoading] = useState(false);
+    const [criteria, setCriteria] = useState<{
+        search_types: any[],
+        payment_types: any[],
+        payment_status: any[],
+        user_types: any[]
+    }>({ search_types: [], payment_types: [], payment_status: [], user_types: [] });
+
+    // Filter State
+    const [filters, setFilters] = useState({
+        search_type: "all",
+        payment_type: "all",
+        payment_status: "success",
+        user_type: "all"
+    });
+
+    const [reports, setReports] = useState<ReportData[]>([]);
+
+    useEffect(() => {
+        fetchCriteria();
+    }, []);
+
+    const fetchCriteria = async () => {
+        try {
+            const response = await api.get('/online-course/reports/criteria');
+            setCriteria(response.data);
+        } catch (error) {
+            console.error("Failed to fetch course report criteria");
+        }
+    };
+
+    const fetchReports = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('/online-course/reports', {
+                params: {
+                    report_type: selectedReport.id,
+                    ...filters
+                }
+            });
+            setReports(response.data.data || []);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to fetch analytical report", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-20 font-sans">
             {/* Title */}
             <h1 className="text-2xl font-bold tracking-tight text-slate-800">Online Course Report</h1>
 
@@ -48,17 +111,17 @@ export default function OnlineCourseReportPage() {
                         {reportTypes.map((report) => (
                             <button
                                 key={report.name}
-                                onClick={() => setSelectedReport(report.name)}
+                                onClick={() => setSelectedReport(report)}
                                 className={cn(
                                     "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all text-left group",
-                                    selectedReport === report.name
+                                    selectedReport.id === report.id
                                         ? "bg-muted text-primary shadow-sm"
                                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                                 )}
                             >
                                 <report.icon className={cn(
                                     "h-4 w-4 transition-colors",
-                                    selectedReport === report.name ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                                    selectedReport.id === report.id ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                                 )} />
                                 <span className="truncate">{report.name}</span>
                             </button>
@@ -70,18 +133,44 @@ export default function OnlineCourseReportPage() {
             {/* Filter Section */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-6 py-4 border-b border-muted/50">
-                    <CardTitle className="text-lg font-bold tracking-tight">{selectedReport}</CardTitle>
+                    <CardTitle className="text-lg font-bold tracking-tight">{selectedReport.name}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
-                        <FilterSelect label="Search Type" required />
-                        <FilterSelect label="Payment Type" required defaultValue="All" />
-                        <FilterSelect label="Payment Status" defaultValue="Success" />
-                        <FilterSelect label="Users Type" defaultValue="All" />
+                        <FilterSelect 
+                            label="Search Type" 
+                            required 
+                            options={criteria.search_types} 
+                            value={filters.search_type} 
+                            onChange={(val) => setFilters({...filters, search_type: val})} 
+                        />
+                        <FilterSelect 
+                            label="Payment Type" 
+                            required 
+                            options={criteria.payment_types} 
+                            value={filters.payment_type} 
+                            onChange={(val) => setFilters({...filters, payment_type: val})} 
+                        />
+                        <FilterSelect 
+                            label="Payment Status" 
+                            options={criteria.payment_status} 
+                            value={filters.payment_status} 
+                            onChange={(val) => setFilters({...filters, payment_status: val})} 
+                        />
+                        <FilterSelect 
+                            label="Users Type" 
+                            options={criteria.user_types} 
+                            value={filters.user_type} 
+                            onChange={(val) => setFilters({...filters, user_type: val})} 
+                        />
 
                         <div className="lg:col-start-4 flex justify-end">
-                            <Button className="h-10 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
-                                <Search className="h-4 w-4" />
+                            <Button 
+                                onClick={fetchReports}
+                                disabled={loading}
+                                className="h-10 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all group"
+                            >
+                                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />}
                                 Search
                             </Button>
                         </div>
@@ -97,34 +186,69 @@ export default function OnlineCourseReportPage() {
                             <thead className="bg-muted/30 text-muted-foreground text-[10px] font-black uppercase tracking-widest border-y border-muted/50">
                                 <tr>
                                     <th className="px-6 py-4">Student / Guest</th>
-                                    <th className="px-6 py-4">Date</th>
+                                    <th className="px-6 py-4 text-center">Date</th>
                                     <th className="px-6 py-4">Course</th>
                                     <th className="px-6 py-4">Course Provider</th>
-                                    <th className="px-6 py-4">Payment Type</th>
-                                    <th className="px-6 py-4">Payment Method</th>
+                                    <th className="px-6 py-4 text-center">Payment Type</th>
+                                    <th className="px-6 py-4 text-center">Payment Method</th>
                                     <th className="px-6 py-4 text-right">Price ($)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr className="group transition-colors">
-                                    <td colSpan={7} className="px-6 py-20 text-center">
-                                        <div className="flex flex-col items-center justify-center space-y-4">
-                                            <p className="text-destructive/60 font-medium text-xs">No data available in table</p>
-
-                                            <div className="relative group/folder cursor-help mb-4">
-                                                <div className="absolute -inset-4 bg-primary/5 rounded-full scale-0 group-hover/folder:scale-100 transition-transform duration-500" />
-                                                <div className="relative p-6 bg-card rounded-2xl shadow-sm border border-muted/50">
-                                                    <FileSearch className="h-16 w-16 text-muted-foreground/20 group-hover/folder:text-primary/40 transition-colors duration-500" />
-                                                </div>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={7} className="px-6 py-20 text-center">
+                                            <div className="flex flex-col items-center justify-center space-y-3">
+                                                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Executing course analytical audit...</p>
                                             </div>
+                                        </td>
+                                    </tr>
+                                ) : reports.length === 0 ? (
+                                    <tr className="group transition-colors">
+                                        <td colSpan={7} className="px-6 py-20 text-center">
+                                            <div className="flex flex-col items-center justify-center space-y-4">
+                                                <p className="text-destructive/60 font-medium text-xs">No data available in table</p>
 
-                                            <button className="flex items-center gap-2 group/btn px-4 py-2 hover:bg-primary/5 rounded-full transition-all">
-                                                <ArrowRight className="h-4 w-4 text-emerald-500 group-hover/btn:translate-x-1 transition-transform" />
-                                                <span className="text-[11px] font-black text-emerald-600 uppercase tracking-widest">Add new record or search with different criteria.</span>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
+                                                <div className="relative group/folder cursor-help mb-4">
+                                                    <div className="absolute -inset-4 bg-primary/5 rounded-full scale-0 group-hover/folder:scale-100 transition-transform duration-500" />
+                                                    <div className="relative p-6 bg-card rounded-2xl shadow-sm border border-muted/50">
+                                                        <FileSearch className="h-16 w-16 text-muted-foreground/20 group-hover/folder:text-primary/40 transition-colors duration-500" />
+                                                    </div>
+                                                </div>
+
+                                                <button onClick={fetchReports} className="flex items-center gap-2 group/btn px-4 py-2 hover:bg-primary/5 rounded-full transition-all">
+                                                    <ArrowRight className="h-4 w-4 text-emerald-500 group-hover/btn:translate-x-1 transition-transform" />
+                                                    <span className="text-[11px] font-black text-emerald-600 uppercase tracking-widest">Add new record or search with different criteria.</span>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    reports.map((item) => (
+                                        <tr key={item.id} className="hover:bg-muted/30 border-b border-muted/10 transition-colors group">
+                                            <td className="px-6 py-4 font-bold text-slate-700">
+                                                <div className="flex flex-col">
+                                                    <span>{item.user_name}</span>
+                                                    <span className="text-[10px] font-black uppercase text-muted-foreground/50 tracking-tighter">{item.user_type}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center tabular-nums text-slate-500">{item.date}</td>
+                                            <td className="px-6 py-4 font-bold text-slate-700">{item.course}</td>
+                                            <td className="px-6 py-4 text-slate-500">{item.provider}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={cn(
+                                                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
+                                                    item.payment_type === 'Online' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'bg-orange-50 text-orange-600 border border-orange-100'
+                                                )}>
+                                                    {item.payment_type}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-slate-500">{item.payment_method}</td>
+                                            <td className="px-6 py-4 text-right tabular-nums font-black text-slate-800">${item.price.toFixed(2)}</td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -132,16 +256,16 @@ export default function OnlineCourseReportPage() {
                     {/* Pagination Footer */}
                     <div className="px-6 py-4 bg-muted/10 border-t border-muted/50 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                            Showing 0 to 0 of 0 entries
+                            Showing {reports.length > 0 ? 1 : 0} to {reports.length} of {reports.length} entries
                         </p>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
+                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all" disabled>
                                 <ChevronDown className="h-4 w-4 rotate-90" />
                             </Button>
                             <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
-                                0
+                                {reports.length > 0 ? 1 : 0}
                             </Button>
-                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
+                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all" disabled>
                                 <ChevronDown className="h-4 w-4 -rotate-90" />
                             </Button>
                         </div>
@@ -152,15 +276,21 @@ export default function OnlineCourseReportPage() {
     );
 }
 
-function FilterSelect({ label, required, defaultValue }: { label: string, required?: boolean, defaultValue?: string }) {
+function FilterSelect({ label, required, value, onChange, options }: { label: string, required?: boolean, value: string, onChange: (val: string) => void, options: any[] }) {
     return (
         <div className="space-y-2 group">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
                 {label} {required && <span className="text-destructive">*</span>}
             </label>
             <div className="relative">
-                <select className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer">
-                    <option value="">{defaultValue || "Select"}</option>
+                <select 
+                    value={value} 
+                    onChange={(e) => onChange(e.target.value)}
+                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer font-bold"
+                >
+                    {options.map((opt) => (
+                        <option key={opt.id} value={opt.id}>{opt.label}</option>
+                    ))}
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             </div>

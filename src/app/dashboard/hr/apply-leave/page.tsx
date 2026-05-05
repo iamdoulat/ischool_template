@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
     Table,
     TableBody,
@@ -24,7 +25,8 @@ import {
     List,
     History,
     Loader2,
-    X
+    X,
+    Trash2
 } from "lucide-react";
 import {
     Select,
@@ -44,6 +46,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface LeaveRequest {
     id: number;
@@ -66,10 +72,8 @@ interface Meta {
     last_page: number;
 }
 
-const gradBtn = "bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 transition-opacity text-white border-none";
-const gradPill = "bg-gradient-to-r from-orange-400 to-indigo-500 text-white border-0 shadow-sm";
-
-export default function ApproveLeaveRequestPage() {
+export default function ApplyLeavePage() {
+    const { toast } = useToast();
     const [keyword, setKeyword] = useState("");
     const [requests, setRequests] = useState<LeaveRequest[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
@@ -100,15 +104,54 @@ export default function ApproveLeaveRequestPage() {
     const [roles, setRoles] = useState<any[]>([]);
     const [submitLoading, setSubmitLoading] = useState(false);
 
+    const fetchInitialData = async () => {
+        try {
+            const [staffRes, typeRes, roleRes] = await Promise.all([
+                api.get("/hr/staff-directory"),
+                api.get("/hr/leave-type"),
+                api.get("/hr/staff-roles")
+            ]);
+            setStaffList(staffRes.data?.data || []);
+            setLeaveTypes(typeRes.data?.data || []);
+            setRoles(roleRes.data?.data || []);
+        } catch (error) {
+            console.error("Error fetching initial data:", error);
+        }
+    };
+
     useEffect(() => {
-        api.get("/hr/staff-directory").then(res => setStaffList(res.data?.data || [])).catch(console.error);
-        api.get("/hr/leave-types").then(res => setLeaveTypes(res.data?.data || [])).catch(console.error);
-        api.get("/hr/staff-roles").then(res => setRoles(res.data?.data || [])).catch(console.error);
+        fetchInitialData();
     }, []);
+
+    const fetchRequests = async (p = page, limit = perPage, q = keyword) => {
+        setLoading(true);
+        try {
+            const res = await api.get("/hr/leave-request", {
+                params: {
+                    page: p,
+                    per_page: limit,
+                    search: q || undefined
+                }
+            });
+            if (res.data?.success) {
+                setRequests(res.data.data);
+                setMeta(res.data.meta);
+            }
+        } catch (error) {
+            console.error(error);
+            toast("error", "Failed to load leave requests");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchRequests();
+    }, [page, perPage]);
 
     const handleAddSubmit = async () => {
         if (!addForm.user_id || !addForm.leave_type_id || !addForm.leave_from || !addForm.leave_to || !addForm.apply_date) {
-            alert("Please fill required fields (Name, Leave Type, Dates).");
+            toast("error", "Please fill required fields (Name, Leave Type, Dates).");
             return;
         }
         setSubmitLoading(true);
@@ -132,98 +175,82 @@ export default function ApproveLeaveRequestPage() {
                 status: addForm.status
             };
 
-            const res = await api.post("/hr/leave-requests", payload);
+            const res = await api.post("/hr/leave-request", payload);
             if (res.data?.success) {
+                toast("success", "Leave request submitted successfully");
                 setIsAddOpen(false);
                 fetchRequests();
                 setAddForm({
                     role: "Select", user_id: "", apply_date: new Date().toISOString().split('T')[0],
                     leave_type_id: "", leave_from: "", leave_to: "", half_day: "", reason: "", admin_remark: "", status: "Pending"
                 });
-            } else {
-                alert("Error adding request.");
             }
         } catch (e: any) {
-            alert(e.response?.data?.message || "Failed to submit request.");
+            toast("error", e.response?.data?.message || "Failed to submit request.");
         } finally {
             setSubmitLoading(false);
-        }
-    };
-
-    const fetchRequests = async (p = page, limit = perPage, q = keyword) => {
-        setLoading(true);
-        try {
-            const res = await api.get("/hr/leave-requests", {
-                params: {
-                    page: p,
-                    per_page: limit,
-                    search: q || undefined
-                }
-            });
-            if (res.data?.success) {
-                setRequests(res.data.data);
-                setMeta(res.data.meta);
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
         }
     };
 
     const handleDelete = async (id: number) => {
         if (!confirm("Are you sure you want to delete this leave request?")) return;
         try {
-            const res = await api.delete(`/hr/leave-requests/${id}`);
+            const res = await api.delete(`/hr/leave-request/${id}`);
             if (res.data?.success) {
+                toast("success", "Leave request deleted");
                 fetchRequests();
             }
         } catch (error) {
             console.error(error);
-            alert("Failed to delete request");
+            toast("error", "Failed to delete request");
         }
     };
-
-    useEffect(() => {
-        fetchRequests();
-    }, [page, perPage]);
 
     const handleSearch = () => {
         setPage(1);
         fetchRequests(1, perPage, keyword);
     };
 
-    const handleCopy = () => {
-        if (!requests.length) return;
-        const text = requests.map(r => `${r.staff}\t${r.leaveType}\t${r.leaveDate}\t${r.days}\t${r.status}`).join('\n');
-        navigator.clipboard.writeText("Staff\tLeave Type\tLeave Date\tDays\tStatus\n" + text);
-        alert("Copied to clipboard!");
+    // Export Functions
+    const exportToExcel = () => {
+        const ws = XLSX.utils.json_to_sheet(requests.map(r => ({
+            "Staff": r.staff,
+            "Type": r.leaveType,
+            "Dates": r.leaveDate,
+            "Days": r.days,
+            "Status": r.status
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Leave Requests");
+        XLSX.writeFile(wb, "leave_requests.xlsx");
     };
 
-    const handleExportCSV = () => {
-        if (!requests.length) return;
-        const csv = ["Staff,Leave Type,Leave Date,Days,Status"];
-        requests.forEach(r => {
-            csv.push(`"${r.staff}","${r.leaveType}","${r.leaveDate}","${r.days}","${r.status}"`);
+    const exportToPDF = () => {
+        const doc = new jsPDF();
+        doc.text("Leave Request List", 14, 15);
+        autoTable(doc, {
+            head: [['Staff', 'Type', 'Leave Dates', 'Days', 'Status']],
+            body: requests.map(r => [r.staff, r.leaveType, r.leaveDate, r.days, r.status]),
+            startY: 20,
         });
-        const blob = new Blob([csv.join('\n')], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = "leaves_export.csv";
-        a.click();
-        URL.revokeObjectURL(url);
+        doc.save("leave_requests.pdf");
     };
 
-    const handlePrint = () => {
-        window.print();
+    const copyToClipboard = () => {
+        const text = requests.map(r => `${r.staff} - ${r.leaveType} (${r.leaveDate}): ${r.status}`).join('\n');
+        navigator.clipboard.writeText(text);
+        toast("success", "Data copied to clipboard");
     };
 
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             <div className="flex justify-between items-center">
                 <h1 className="text-xl font-medium text-gray-800">Leaves</h1>
-                <Button onClick={() => setIsAddOpen(true)} className={cn("gap-2 h-9 px-4 text-xs font-bold rounded-full cursor-pointer", gradBtn)}>
+                <Button 
+                    onClick={() => setIsAddOpen(true)} 
+                    variant="gradient"
+                    className="gap-2 h-9 px-6 text-[11px] font-bold uppercase rounded shadow-md flex items-center"
+                >
                     <Plus className="h-4 w-4" /> Apply Leave
                 </Button>
             </div>
@@ -236,23 +263,23 @@ export default function ApproveLeaveRequestPage() {
                             value={keyword}
                             onChange={(e) => setKeyword(e.target.value)}
                             onKeyDown={e => e.key === "Enter" && handleSearch()}
-                            className="h-9 w-64 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-full"
+                            className="h-8 w-64 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
                         />
                         <Button
                             onClick={handleSearch}
                             disabled={loading}
-                            className={cn("gap-2 h-9 px-6 text-sm font-bold rounded-full cursor-pointer", gradBtn)}
+                            variant="gradient"
+                            className="gap-2 h-8 px-6 text-[11px] font-bold uppercase rounded shadow-sm flex items-center"
                         >
-                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
                             Search
                         </Button>
                     </div>
 
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold">{perPage}</span>
                             <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); setPage(1); }}>
-                                <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none">
+                                <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -261,29 +288,28 @@ export default function ApproveLeaveRequestPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                         </div>
                         <div className="flex items-center gap-1 text-gray-400">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" onClick={handleCopy} title="Copy Table">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
                                 <Copy className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" onClick={handleExportCSV} title="Export to Excel (CSV)">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
                                 <FileSpreadsheet className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" onClick={handlePrint} title="Export PDF">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
                                 <FileText className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" onClick={handlePrint} title="Print">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
                                 <Printer className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
                                 <Columns className="h-3.5 w-3.5" />
                             </Button>
                         </div>
                     </div>
                 </div>
 
-                <div className="rounded-md border border-gray-50 overflow-hidden">
+                <div className="rounded border border-gray-50 overflow-hidden">
                     <Table>
                         <TableHeader className="bg-gray-50/50">
                             <TableRow className="hover:bg-transparent border-gray-100">
@@ -294,9 +320,9 @@ export default function ApproveLeaveRequestPage() {
                         </TableHeader>
                         <TableBody>
                             {loading && requests.length === 0 ? (
-                                <TableRow><TableCell colSpan={8} className="h-24 text-center text-gray-400 text-xs">Loading...</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="h-24 text-center text-gray-400 text-[11px] italic">Loading...</TableCell></TableRow>
                             ) : requests.length === 0 ? (
-                                <TableRow><TableCell colSpan={8} className="h-24 text-center text-gray-400 text-xs">No leave requests found.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="h-24 text-center text-gray-400 text-[11px] italic">No leave requests found.</TableCell></TableRow>
                             ) : requests.map((req) => (
                                 <TableRow key={req.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
                                     <TableCell className="py-3.5 text-gray-700 font-medium">{req.staff}</TableCell>
@@ -316,14 +342,12 @@ export default function ApproveLeaveRequestPage() {
                                         </span>
                                     </TableCell>
                                     <TableCell className="py-3.5 text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            {/* List/View */}
-                                            <Button size="icon" variant="ghost" className="h-6 w-6 bg-[#6366f1] hover:bg-[#5558dd] text-white rounded shadow-sm" title="View details" onClick={() => { setSelectedRequest(req); setIsViewOpen(true); }}>
-                                                <List className="h-3 w-3" />
+                                        <div className="flex items-center justify-end gap-1.5">
+                                            <Button size="icon" variant="ghost" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors shadow-sm" title="View details" onClick={() => { setSelectedRequest(req); setIsViewOpen(true); }}>
+                                                <List className="h-3.5 w-3.5" />
                                             </Button>
-                                            {/* Cancel/Delete */}
-                                            <Button size="icon" variant="ghost" className="h-6 w-6 bg-[#6366f1] hover:bg-[#5558dd] text-white rounded shadow-sm" title="Cancel request" onClick={() => handleDelete(req.id)}>
-                                                <X className="h-3 w-3" />
+                                            <Button size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm" title="Cancel request" onClick={() => handleDelete(req.id)}>
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         </div>
                                     </TableCell>
@@ -333,78 +357,55 @@ export default function ApproveLeaveRequestPage() {
                     </Table>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2">
-                    <div>
-                        Showing {(page - 1) * perPage + 1} to {Math.min(page * perPage, meta?.total || 0)} of {meta?.total || 0} entries
-                    </div>
-                    <div className="flex gap-2 items-center">
+                <div className="flex justify-end items-center gap-2 py-4">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={page === 1}
+                        onClick={() => setPage(page - 1)}
+                        className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                    >
+                        <ChevronLeft className="h-4 w-4 text-gray-600" />
+                    </Button>
+
+                    {Array.from({ length: meta?.last_page || 1 }).map((_, i) => (
                         <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 rounded-2xl border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm"
-                            disabled={page === 1}
-                            onClick={() => setPage(page - 1)}
+                            key={i + 1}
+                            variant={page === i + 1 ? "gradient" : "outline"}
+                            onClick={() => setPage(i + 1)}
+                            className={cn(
+                                "h-8 w-8 rounded-xl text-[10px] font-bold p-0 transition-all",
+                                page === i + 1 ? "shadow-md scale-105" : "border-gray-100 text-gray-400 hover:text-indigo-600"
+                            )}
                         >
-                            <ChevronLeft className="h-4 w-4" />
+                            {i + 1}
                         </Button>
+                    ))}
 
-                        {/* Pagination Numbers */}
-                        {Array.from({ length: meta?.last_page || 1 }).map((_, i) => {
-                            const p = i + 1;
-                            // Basic logic: show first, last, current, and adjacent
-                            const isCurrent = p === page;
-                            const isAdjacent = Math.abs(p - page) <= 1;
-                            const isEdge = p === 1 || p === (meta?.last_page || 1);
-
-                            if (isCurrent || isAdjacent || isEdge) {
-                                return (
-                                    <Button
-                                        key={p}
-                                        variant="outline"
-                                        size="sm"
-                                        className={cn(
-                                            "h-8 w-8 rounded-2xl font-bold shadow-sm transition-all",
-                                            isCurrent ? gradPill : "border-transparent bg-transparent hover:bg-gray-100 text-gray-600"
-                                        )}
-                                        onClick={() => setPage(p)}
-                                    >
-                                        {p}
-                                    </Button>
-                                );
-                            } else if (p === 2 && page > 4) {
-                                return <span key={p} className="text-gray-400">...</span>;
-                            } else if (p === (meta?.last_page || 1) - 1 && page < (meta?.last_page || 1) - 3) {
-                                return <span key={p} className="text-gray-400">...</span>;
-                            }
-                            return null;
-                        })}
-
-
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 rounded-2xl border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm"
-                            disabled={page === (meta?.last_page || 1) || !meta}
-                            onClick={() => setPage(page + 1)}
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={page === (meta?.last_page || 1) || !meta}
+                        onClick={() => setPage(page + 1)}
+                        className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                    >
+                        <ChevronRight className="h-4 w-4 text-gray-600" />
+                    </Button>
                 </div>
             </div>
 
             {/* Add Leave Request Modal */}
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogContent className="sm:max-w-[700px] p-0 font-sans border-0 shadow-lg overflow-hidden gap-0">
-                    <div className="bg-[#6366f1] p-3 text-white flex justify-between items-center rounded-none">
-                        <DialogTitle className="text-sm font-medium">Add Leave Request</DialogTitle>
-                    </div>
-                    <div className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-600">Role <span className="text-red-500">*</span></Label>
+                <DialogContent className="sm:max-w-[700px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-xl">
+                    <DialogHeader className="bg-gradient-to-r from-orange-400 to-indigo-500 p-4 text-white">
+                        <DialogTitle className="text-sm font-bold uppercase tracking-wider">Apply Leave Request</DialogTitle>
+                    </DialogHeader>
+                    <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-5">
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Role <span className="text-red-500">*</span></Label>
                                 <Select value={addForm.role} onValueChange={v => setAddForm({ ...addForm, role: v })}>
-                                    <SelectTrigger className="h-8 text-xs border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500"><SelectValue placeholder="Select" /></SelectTrigger>
                                     <SelectContent>
                                         {roles.map(r => (
                                             <SelectItem key={r.name} value={r.name}>{r.name}</SelectItem>
@@ -412,88 +413,93 @@ export default function ApproveLeaveRequestPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-600">Name <span className="text-red-500">*</span></Label>
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Name <span className="text-red-500">*</span></Label>
                                 <Select value={addForm.user_id} onValueChange={v => setAddForm({ ...addForm, user_id: v })}>
-                                    <SelectTrigger className="h-8 text-xs border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500"><SelectValue placeholder="Select" /></SelectTrigger>
                                     <SelectContent>
-                                        {staffList.map(s => <SelectItem key={s.id} value={String(s.user_id || s.id)}>{s.name} {s.staff_id ? `(${s.staff_id})` : ''}</SelectItem>)}
+                                        {staffList.filter(s => addForm.role === "Select" || s.role === addForm.role).map(s => (
+                                            <SelectItem key={s.id} value={String(s.user_id || s.id)}>
+                                                {s.name} {s.staff_id ? `(${s.staff_id})` : ''}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-600">Apply Date <span className="text-red-500">*</span></Label>
-                                <Input type="date" value={addForm.apply_date} onChange={e => setAddForm({ ...addForm, apply_date: e.target.value })} className="h-8 text-xs border-gray-200" />
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Apply Date <span className="text-red-500">*</span></Label>
+                                <DatePicker value={addForm.apply_date} onChange={val => setAddForm({ ...addForm, apply_date: val })} className="h-9 text-xs border-gray-200 rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500" />
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-600">Leave Type <span className="text-red-500">*</span></Label>
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Leave Type <span className="text-red-500">*</span></Label>
                                 <Select value={addForm.leave_type_id} onValueChange={v => setAddForm({ ...addForm, leave_type_id: v })}>
-                                    <SelectTrigger className="h-8 text-xs border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500"><SelectValue placeholder="Select" /></SelectTrigger>
                                     <SelectContent>
                                         {leaveTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-600">Leave From Date <span className="text-red-500">*</span></Label>
-                                <Input type="date" value={addForm.leave_from} onChange={e => setAddForm({ ...addForm, leave_from: e.target.value })} className="h-8 text-xs border-gray-200" />
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Leave From Date <span className="text-red-500">*</span></Label>
+                                <DatePicker value={addForm.leave_from} onChange={val => setAddForm({ ...addForm, leave_from: val })} className="h-9 text-xs border-gray-200 rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500" />
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-600">Leave To Date <span className="text-red-500">*</span></Label>
-                                <Input type="date" value={addForm.leave_to} onChange={e => setAddForm({ ...addForm, leave_to: e.target.value })} className="h-8 text-xs border-gray-200" />
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Leave To Date <span className="text-red-500">*</span></Label>
+                                <DatePicker value={addForm.leave_to} onChange={val => setAddForm({ ...addForm, leave_to: val })} className="h-9 text-xs border-gray-200 rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500" />
                             </div>
                         </div>
 
-                        <div className="flex justify-start gap-4 items-center">
-                            <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
-                                <input type="radio" name="half_day" checked={addForm.half_day === "First Half"} onChange={() => setAddForm({ ...addForm, half_day: "First Half" })} className="accent-indigo-600" />
-                                Half Day (First Half)
+                        <div className="flex justify-start gap-6 items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <label className="flex items-center gap-2 text-xs font-medium text-gray-600 cursor-pointer group">
+                                <input type="radio" name="half_day" checked={addForm.half_day === "First Half"} onChange={() => setAddForm({ ...addForm, half_day: "First Half" })} className="h-4 w-4 accent-indigo-600" />
+                                <span className="group-hover:text-indigo-600 transition-colors">Half Day (First Half)</span>
                             </label>
-                            <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
-                                <input type="radio" name="half_day" checked={addForm.half_day === "Second Half"} onChange={() => setAddForm({ ...addForm, half_day: "Second Half" })} className="accent-indigo-600" />
-                                Half Day (Second Half)
+                            <label className="flex items-center gap-2 text-xs font-medium text-gray-600 cursor-pointer group">
+                                <input type="radio" name="half_day" checked={addForm.half_day === "Second Half"} onChange={() => setAddForm({ ...addForm, half_day: "Second Half" })} className="h-4 w-4 accent-indigo-600" />
+                                <span className="group-hover:text-indigo-600 transition-colors">Half Day (Second Half)</span>
                             </label>
                             {addForm.half_day && (
-                                <span className="text-[10px] text-blue-500 cursor-pointer hover:underline ml-2" onClick={() => setAddForm({ ...addForm, half_day: "" })}>Clear Half Day</span>
+                                <Button variant="ghost" className="h-6 px-2 text-[10px] text-blue-500 hover:bg-blue-50 font-bold uppercase tracking-wider" onClick={() => setAddForm({ ...addForm, half_day: "" })}>Clear</Button>
                             )}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-600">Reason</Label>
-                                <Textarea value={addForm.reason} onChange={e => setAddForm({ ...addForm, reason: e.target.value })} className="text-xs resize-none h-20 border-gray-200" />
+                        <div className="grid grid-cols-2 gap-5">
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Reason</Label>
+                                <Textarea value={addForm.reason} onChange={e => setAddForm({ ...addForm, reason: e.target.value })} className="text-xs resize-none h-20 border-gray-200 rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500" placeholder="Describe leave reason..." />
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-600">Note</Label>
-                                <Textarea value={addForm.admin_remark} onChange={e => setAddForm({ ...addForm, admin_remark: e.target.value })} className="text-xs resize-none h-20 border-gray-200" />
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Note</Label>
+                                <Textarea value={addForm.admin_remark} onChange={e => setAddForm({ ...addForm, admin_remark: e.target.value })} className="text-xs resize-none h-20 border-gray-200 rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500" placeholder="Internal notes..." />
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-600 font-bold mb-1 block">Attach Document</Label>
-                                <label className="border border-dashed border-gray-300 rounded-md p-3 text-center cursor-pointer hover:bg-gray-50 flex flex-col items-center justify-center gap-1">
-                                    <span className="text-[11px] text-gray-600">☁️ Drag and drop a file here or click</span>
+                        <div className="grid grid-cols-2 gap-5 pt-2 border-t border-gray-100">
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Attach Document</Label>
+                                <label className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:bg-indigo-50/30 hover:border-indigo-200 transition-all flex flex-col items-center justify-center gap-2">
+                                    <span className="text-[10px] text-gray-400 font-medium">☁️ DRAG AND DROP OR CLICK TO UPLOAD</span>
                                     <input type="file" className="hidden" />
                                 </label>
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-600 font-bold mb-1 block">Status</Label>
-                                <div className="flex gap-4 items-center">
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Status</Label>
+                                <div className="flex gap-4 items-center h-9">
                                     {["Pending", "Approved", "Disapproved"].map(st => (
-                                        <label key={st} className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
-                                            <input type="radio" name="status" checked={addForm.status === st} onChange={() => setAddForm({ ...addForm, status: st as any })} className="accent-indigo-600" />
-                                            {st}
+                                        <label key={st} className="flex items-center gap-2 text-xs font-medium text-gray-600 cursor-pointer group">
+                                            <input type="radio" name="status" checked={addForm.status === st} onChange={() => setAddForm({ ...addForm, status: st as any })} className="h-4 w-4 accent-indigo-600" />
+                                            <span className="group-hover:text-indigo-600 transition-colors">{st}</span>
                                         </label>
                                     ))}
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <DialogFooter className="bg-white p-3 border-t border-gray-100">
-                        <Button onClick={handleAddSubmit} disabled={submitLoading} className={cn("gap-2 h-9 px-8 text-sm font-bold rounded-full cursor-pointer", gradBtn)}>
-                            {submitLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-                            SAVE
+                    <DialogFooter className="bg-gray-50 p-4 border-t border-gray-100 rounded-b-xl flex gap-2">
+                        <Button onClick={() => setIsAddOpen(false)} variant="outline" className="h-9 px-6 text-xs font-bold uppercase rounded-lg border-gray-200 hover:bg-white shadow-sm">Cancel</Button>
+                        <Button onClick={handleAddSubmit} disabled={submitLoading} variant="gradient" className="h-9 px-8 text-xs font-bold uppercase rounded-lg shadow-md min-w-[120px]">
+                            {submitLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            SAVE REQUEST
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -501,22 +507,41 @@ export default function ApproveLeaveRequestPage() {
 
             {/* View Details Modal */}
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <DialogContent className="sm:max-w-[450px] p-0 font-sans border-0 shadow-lg overflow-hidden gap-0">
-                    <div className="bg-[#6366f1] p-3 text-white flex justify-between items-center rounded-none">
-                        <DialogTitle className="text-sm font-medium">Leave Request Details</DialogTitle>
-                    </div>
+                <DialogContent className="sm:max-w-[450px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-xl">
+                    <DialogHeader className="bg-gradient-to-r from-orange-400 to-indigo-500 p-4 text-white">
+                        <DialogTitle className="text-sm font-bold uppercase tracking-wider">Leave Request Details</DialogTitle>
+                    </DialogHeader>
                     {selectedRequest && (
-                        <div className="p-5 space-y-4">
-                            <div className="grid grid-cols-2 gap-4 text-sm mt-2">
-                                <div><span className="font-bold text-gray-500 block text-[11px] uppercase mb-0.5">Staff</span> <span className="text-gray-800">{selectedRequest.staff}</span></div>
-                                <div><span className="font-bold text-gray-500 block text-[11px] uppercase mb-0.5">Leave Type</span> <span className="text-gray-800">{selectedRequest.leaveType}</span></div>
-                                <div><span className="font-bold text-gray-500 block text-[11px] uppercase mb-0.5">Leave Date</span> <span className="text-gray-800">{selectedRequest.leaveDate}</span></div>
-                                <div><span className="font-bold text-gray-500 block text-[11px] uppercase mb-0.5">Apply Date</span> <span className="text-gray-800">{selectedRequest.applyDate}</span></div>
-                                <div><span className="font-bold text-gray-500 block text-[11px] uppercase mb-0.5">Days</span> <span className="text-gray-800">{selectedRequest.days}</span></div>
-                                <div><span className="font-bold text-gray-500 block text-[11px] uppercase mb-0.5">Half Day</span> <span className="text-gray-800">{selectedRequest.halfDay || 'N/A'}</span></div>
-                                <div className="col-span-2"><span className="font-bold text-gray-500 block text-[11px] uppercase mb-1">Status</span>
+                        <div className="p-6 space-y-6">
+                            <div className="grid grid-cols-2 gap-6 text-sm">
+                                <div className="space-y-1">
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Staff</span> 
+                                    <span className="text-gray-800 font-semibold">{selectedRequest.staff}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Leave Type</span> 
+                                    <span className="text-gray-800 font-semibold">{selectedRequest.leaveType}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Leave Date</span> 
+                                    <span className="text-gray-800 font-medium">{selectedRequest.leaveDate}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Apply Date</span> 
+                                    <span className="text-gray-800 font-medium">{selectedRequest.applyDate}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Days</span> 
+                                    <span className="text-gray-800 font-bold text-indigo-600">{selectedRequest.days}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Half Day</span> 
+                                    <span className="text-gray-800 font-medium">{selectedRequest.halfDay || 'No'}</span>
+                                </div>
+                                <div className="col-span-2 space-y-1.5">
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Status</span>
                                     <span className={cn(
-                                        "text-[10px] font-bold px-2 py-0.5 rounded uppercase mt-1 inline-block",
+                                        "text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter inline-block shadow-sm",
                                         selectedRequest.status === "Pending" && "bg-orange-500 text-white",
                                         selectedRequest.status === "Approved" && "bg-green-600 text-white",
                                         selectedRequest.status === "Disapproved" && "bg-red-600 text-white"
@@ -525,14 +550,18 @@ export default function ApproveLeaveRequestPage() {
                                     </span>
                                 </div>
                             </div>
-                            <div className="pt-3 border-t border-gray-100">
-                                <span className="font-bold text-gray-500 block text-[11px] uppercase mb-1.5">Reason</span>
-                                <p className="text-[13px] text-gray-700 bg-gray-50 p-3 rounded-md min-h-16 border border-gray-100">{selectedRequest.reason || 'No reason provided.'}</p>
+                            <div className="pt-4 border-t border-gray-100">
+                                <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest mb-2">Reason</span>
+                                <div className="text-[12px] text-gray-700 bg-gray-50 p-4 rounded-xl min-h-20 border border-gray-100 leading-relaxed italic shadow-inner">
+                                    {selectedRequest.reason || 'No reason provided.'}
+                                </div>
                             </div>
                             {selectedRequest.adminRemark && (
-                                <div className="pt-3 border-t border-gray-100">
-                                    <span className="font-bold text-gray-500 block text-[11px] uppercase mb-1.5">Admin Remark</span>
-                                    <p className="text-[13px] text-gray-700 bg-gray-50 p-3 rounded-md min-h-16 border border-gray-100">{selectedRequest.adminRemark}</p>
+                                <div className="pt-4 border-t border-gray-100">
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest mb-2">Admin Remark</span>
+                                    <div className="text-[12px] text-gray-700 bg-indigo-50/30 p-4 rounded-xl min-h-20 border border-indigo-100/50 leading-relaxed shadow-inner">
+                                        {selectedRequest.adminRemark}
+                                    </div>
                                 </div>
                             )}
                         </div>

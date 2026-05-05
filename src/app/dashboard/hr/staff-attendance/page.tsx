@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
     Table,
     TableBody,
@@ -20,8 +21,11 @@ import {
     TableRow
 } from "@/components/ui/table";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Search, Save, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Search, Save, Loader2, CheckCircle2, AlertCircle, History, CalendarDays, UserCheck } from "lucide-react";
 import api from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
+import { StaffCsvImportDialog } from "@/components/attendance/StaffCsvImportDialog";
 
 interface StaffAttendanceRecord {
     id: number;
@@ -37,27 +41,27 @@ interface StaffAttendanceRecord {
 }
 
 const attendanceOptions = [
-    { label: "Present", value: "present", color: "text-emerald-600" },
-    { label: "Late", value: "late", color: "text-amber-500" },
-    { label: "Absent", value: "absent", color: "text-red-500" },
-    { label: "Half Day", value: "half_day", color: "text-orange-500" },
-    { label: "Holiday", value: "holiday", color: "text-blue-500" },
-    { label: "Half Day (2nd)", value: "half_day_second", color: "text-purple-500" },
+    { label: "Present", value: "present", color: "text-green-600", bg: "bg-green-600" },
+    { label: "Late", value: "late", color: "text-amber-500", bg: "bg-amber-500" },
+    { label: "Absent", value: "absent", color: "text-red-600", bg: "bg-red-600" },
+    { label: "Half Day", value: "half_day", color: "text-orange-500", bg: "bg-orange-500" },
+    { label: "Holiday", value: "holiday", color: "text-blue-500", bg: "bg-blue-500" },
+    { label: "2nd Half", value: "half_day_second", color: "text-purple-500", bg: "bg-purple-500" },
 ];
 
 const attendanceBadge: Record<string, string> = {
-    present: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    late: "bg-amber-50 text-amber-700 border-amber-200",
-    absent: "bg-red-50 text-red-700 border-red-200",
-    half_day: "bg-orange-50 text-orange-700 border-orange-200",
-    holiday: "bg-blue-50 text-blue-700 border-blue-200",
-    half_day_second: "bg-purple-50 text-purple-700 border-purple-200",
+    present: "bg-green-600 text-white shadow-sm",
+    late: "bg-amber-500 text-white shadow-sm",
+    absent: "bg-red-600 text-white shadow-sm",
+    half_day: "bg-orange-500 text-white shadow-sm",
+    holiday: "bg-blue-500 text-white shadow-sm",
+    half_day_second: "bg-purple-500 text-white shadow-sm",
 };
 
-// Format today's date as YYYY-MM-DD
 const today = new Date().toISOString().split("T")[0];
 
 export default function StaffAttendancePage() {
+    const { toast } = useToast();
     const [role, setRole] = useState("all");
     const [date, setDate] = useState(today);
     const [attendanceData, setAttendanceData] = useState<StaffAttendanceRecord[]>([]);
@@ -65,30 +69,31 @@ export default function StaffAttendancePage() {
     const [searching, setSearching] = useState(false);
     const [saving, setSaving] = useState(false);
     const [searched, setSearched] = useState(false);
-    const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+    const [roles, setRoles] = useState<any[]>([]);
 
-    const showToast = (type: "success" | "error", msg: string) => {
-        setToast({ type, msg });
-        setTimeout(() => setToast(null), 3500);
-    };
+    useEffect(() => {
+        api.get("/hr/staff-roles").then(res => setRoles(res.data?.data || [])).catch(console.error);
+    }, []);
 
     const handleSearch = useCallback(async () => {
-        if (!date) { showToast("error", "Please select an attendance date."); return; }
+        if (!date) { toast("error", "Please select an attendance date."); return; }
         try {
             setSearching(true);
             setSearched(false);
             const params: Record<string, string> = { date };
             if (role && role !== "all") params.role = role;
             const res = await api.get("/hr/staff-attendance", { params });
-            setAttendanceData(res.data.data ?? []);
-            setBulkAttendance("");
-            setSearched(true);
+            if (res.data?.success) {
+                setAttendanceData(res.data.data ?? []);
+                setBulkAttendance("");
+                setSearched(true);
+            }
         } catch {
-            showToast("error", "Failed to load staff. Please try again.");
+            toast("error", "Failed to load staff list.");
         } finally {
             setSearching(false);
         }
-    }, [date, role]);
+    }, [date, role, toast]);
 
     const handleBulkChange = (value: string) => {
         setBulkAttendance(value);
@@ -101,8 +106,37 @@ export default function StaffAttendancePage() {
         ));
     };
 
+    const handleCsvImport = (records: any[]) => {
+        setAttendanceData(prev => {
+            const updated = [...prev];
+            let matchCount = 0;
+            records.forEach(record => {
+                const idx = updated.findIndex(s => 
+                    s.staff_id === record.staff_id || 
+                    s.name.toLowerCase() === record.name.toLowerCase()
+                );
+                if (idx !== -1) {
+                    updated[idx] = {
+                        ...updated[idx],
+                        attendance: record.attendance || updated[idx].attendance,
+                        entry_time: record.entry_time || updated[idx].entry_time,
+                        exit_time: record.exit_time || updated[idx].exit_time,
+                        note: record.note || updated[idx].note,
+                    };
+                    matchCount++;
+                }
+            });
+            if (matchCount > 0) {
+                toast("success", `Applied CSV data to ${matchCount} matching staff members.`);
+            } else {
+                toast("error", "No matching staff members found for the imported records.");
+            }
+            return updated;
+        });
+    };
+
     const handleSave = async () => {
-        if (attendanceData.length === 0) { showToast("error", "No staff to save. Search first."); return; }
+        if (attendanceData.length === 0) { toast("error", "No staff to save."); return; }
         try {
             setSaving(true);
             const records = attendanceData.map(s => ({
@@ -113,107 +147,103 @@ export default function StaffAttendancePage() {
                 note: s.note || null,
             }));
             const res = await api.post("/hr/staff-attendance", { date, records });
-            showToast("success", res.data.message ?? "Attendance saved!");
-        } catch {
-            showToast("error", "Failed to save attendance. Please try again.");
+            if (res.data?.success) {
+                toast("success", res.data.message ?? "Attendance saved successfully!");
+            }
+        } catch (e: any) {
+            toast("error", e.response?.data?.message || "Failed to save attendance.");
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-
-            {/* Toast */}
-            {toast && (
-                <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-[10px] font-medium transition-all
-                    ${toast.type === "success" ? "bg-emerald-600 text-white" : "bg-red-600 text-white"}`}>
-                    {toast.type === "success"
-                        ? <CheckCircle2 className="h-4 w-4 shrink-0" />
-                        : <AlertCircle className="h-4 w-4 shrink-0" />}
-                    {toast.msg}
-                </div>
-            )}
-
-            {/* Page Title */}
-            <h1 className="text-[16px] font-medium text-gray-800">Staff Attendance</h1>
+        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
+            <div className="flex justify-between items-center">
+                <h1 className="text-xl font-medium text-gray-800">Staff Attendance</h1>
+                <Button 
+                    onClick={() => window.history.back()} 
+                    variant="outline"
+                    className="gap-2 h-9 px-6 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-white shadow-sm flex items-center"
+                >
+                    <History className="h-4 w-4" /> Attendance Report
+                </Button>
+            </div>
 
             {/* Select Criteria */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                <h2 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-3">Select Criteria</h2>
-                <div className="flex flex-col md:flex-row gap-4 items-end">
-
-                    <div className="flex-1 space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
-                            Role
-                        </Label>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-50">
+                    <div className="h-4 w-1 bg-indigo-500 rounded-full"></div>
+                    <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Mark Daily Attendance</h2>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Role <span className="text-red-500">*</span></Label>
                         <Select value={role} onValueChange={setRole}>
-                            <SelectTrigger className="h-9 border-gray-200 text-[10px] focus:ring-indigo-500 bg-white">
+                            <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
                                 <SelectValue placeholder="All Roles" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="rounded-xl border-gray-100">
                                 <SelectItem value="all">All Roles</SelectItem>
-                                <SelectItem value="Admin">Admin</SelectItem>
-                                <SelectItem value="Teacher">Teacher</SelectItem>
-                                <SelectItem value="Accountant">Accountant</SelectItem>
-                                <SelectItem value="Librarian">Librarian</SelectItem>
-                                <SelectItem value="Receptionist">Receptionist</SelectItem>
+                                {roles.map((r, idx) => (
+                                    <SelectItem key={r.id || idx} value={r.name}>{r.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
 
-                    <div className="flex-1 space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
-                            Attendance Date <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                            type="date"
-                            value={date}
-                            onChange={e => setDate(e.target.value)}
-                            className="h-9 border-gray-200 text-[10px] focus-visible:ring-indigo-500 bg-white"
-                        />
-                    </div>
-
-                    <div className="pb-0.5">
-                        <Button
-                            onClick={handleSearch}
-                            disabled={searching}
-                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white gap-2 h-9 px-5 text-[10px] font-bold shadow-md transition-all rounded-full border-none disabled:opacity-60"
-                        >
-                            {searching
-                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                : <Search className="h-3.5 w-3.5" />}
-                            {searching ? "Searching..." : "Search"}
-                        </Button>
+                    <div className="space-y-2 col-span-2">
+                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Attendance Date <span className="text-red-500">*</span></Label>
+                        <div className="flex gap-4">
+                             <DatePicker
+                                 value={date}
+                                 onChange={val => setDate(val)}
+                                 className="h-10 border-gray-100 text-xs focus-visible:ring-indigo-500 bg-white rounded-lg shadow-none max-w-[250px]"
+                             />
+                            <Button
+                                onClick={handleSearch}
+                                disabled={searching}
+                                variant="gradient"
+                                className="gap-2 h-10 px-8 text-[11px] font-bold uppercase tracking-widest rounded shadow-md"
+                            >
+                                {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                Search
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Staff Attendance Table */}
             {(searched || attendanceData.length > 0) && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-
-                    {/* Toolbar: bulk radio + save */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50/40">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                                Set all as:
-                            </span>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 space-y-4">
+                    {/* Bulk Action Toolbar */}
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-6 py-4 border-b border-gray-50 bg-indigo-50/20">
+                        <div className="flex flex-wrap items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-indigo-100 rounded-lg">
+                                    <UserCheck className="h-4 w-4 text-indigo-600" />
+                                </div>
+                                <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                                    Set Bulk:
+                                </span>
+                            </div>
                             <RadioGroup
                                 value={bulkAttendance}
                                 onValueChange={handleBulkChange}
-                                className="flex flex-wrap gap-3"
+                                className="flex flex-wrap gap-4"
                             >
                                 {attendanceOptions.map(opt => (
                                     <div key={opt.value} className="flex items-center gap-1.5">
                                         <RadioGroupItem
                                             value={opt.value}
                                             id={`bulk-${opt.value}`}
-                                            className="h-3.5 w-3.5 border-gray-300 text-indigo-600"
+                                            className="h-4 w-4 border-gray-300 text-indigo-600"
                                         />
                                         <Label
                                             htmlFor={`bulk-${opt.value}`}
-                                            className={`text-[10px] font-medium cursor-pointer leading-none ${opt.color}`}
+                                            className={cn("text-[11px] font-bold cursor-pointer leading-none uppercase tracking-tighter", opt.color)}
                                         >
                                             {opt.label}
                                         </Label>
@@ -222,141 +252,155 @@ export default function StaffAttendancePage() {
                             </RadioGroup>
                         </div>
 
-                        <Button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white gap-2 h-8 px-4 text-[10px] font-bold shadow-md transition-all rounded-full border-none whitespace-nowrap disabled:opacity-60"
-                        >
-                            {saving
-                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                : <Save className="h-3.5 w-3.5" />}
-                            {saving ? "Saving..." : "Save Attendance"}
-                        </Button>
-                    </div>
-
-                    {/* Table */}
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-gray-50/70 hover:bg-transparent border-gray-100">
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-500 w-10 pl-4">#</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-500">Staff ID</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-500">Name</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-500">Role</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-500 min-w-[400px]">Attendance</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-500">Source</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-500">Entry Time</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-500">Exit Time</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-500">Note</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {attendanceData.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={9} className="h-24 text-center text-[10px] text-gray-400">
-                                            No staff found for the selected criteria.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : attendanceData.map((staff, idx) => (
-                                    <TableRow key={staff.id} className="text-[10px] border-b border-gray-50 hover:bg-indigo-50/20 transition-colors">
-                                        <TableCell className="py-2.5 pl-4 text-gray-400 font-medium">{idx + 1}</TableCell>
-                                        <TableCell className="py-2.5 text-gray-500 font-mono text-[10px]">{staff.staff_id}</TableCell>
-                                        <TableCell className="py-2.5 text-gray-800 font-semibold">{staff.name}</TableCell>
-                                        <TableCell className="py-2.5">
-                                            <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[13px] font-medium border border-indigo-100">
-                                                {staff.role}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="py-2.5">
-                                            <div className="flex items-center gap-1">
-                                                {/* Compact status badge */}
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-semibold mr-2 ${attendanceBadge[staff.attendance] ?? "bg-gray-50 text-gray-500 border-gray-200"}`}>
-                                                    {attendanceOptions.find(o => o.value === staff.attendance)?.label ?? staff.attendance}
-                                                </span>
-                                                <RadioGroup
-                                                    value={staff.attendance}
-                                                    onValueChange={val => handleIndividualChange(staff.id, "attendance", val)}
-                                                    className="flex flex-wrap gap-2"
-                                                >
-                                                    {attendanceOptions.map(opt => (
-                                                        <div key={opt.value} className="flex items-center gap-1">
-                                                            <RadioGroupItem
-                                                                value={opt.value}
-                                                                id={`${staff.id}-${opt.value}`}
-                                                                className="h-3 w-3 border-gray-300 text-indigo-600"
-                                                            />
-                                                            <Label
-                                                                htmlFor={`${staff.id}-${opt.value}`}
-                                                                className={`text-[10px] font-medium cursor-pointer leading-none ${opt.color}`}
-                                                            >
-                                                                {opt.label}
-                                                            </Label>
-                                                        </div>
-                                                    ))}
-                                                </RadioGroup>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="py-2.5 text-gray-400 text-[10px]">{staff.source}</TableCell>
-                                        <TableCell className="py-2.5">
-                                            <Input
-                                                type="time"
-                                                value={staff.entry_time}
-                                                onChange={e => handleIndividualChange(staff.id, "entry_time", e.target.value)}
-                                                className="h-7 w-28 text-[10px] bg-white border-gray-200 shadow-none focus-visible:ring-indigo-400"
-                                            />
-                                        </TableCell>
-                                        <TableCell className="py-2.5">
-                                            <Input
-                                                type="time"
-                                                value={staff.exit_time}
-                                                onChange={e => handleIndividualChange(staff.id, "exit_time", e.target.value)}
-                                                className="h-7 w-28 text-[10px] bg-white border-gray-200 shadow-none focus-visible:ring-indigo-400"
-                                            />
-                                        </TableCell>
-                                        <TableCell className="py-2.5">
-                                            <Input
-                                                type="text"
-                                                placeholder="Optional note"
-                                                value={staff.note}
-                                                onChange={e => handleIndividualChange(staff.id, "note", e.target.value)}
-                                                className="h-7 w-40 text-[10px] bg-white border-gray-200 shadow-none focus-visible:ring-indigo-400"
-                                            />
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    {/* Footer: count + save again */}
-                    {attendanceData.length > 0 && (
-                        <div className="flex justify-between items-center px-4 py-3 border-t border-gray-100 bg-gray-50/30">
-                            <p className="text-[10px] text-gray-400">
-                                {attendanceData.length} staff member{attendanceData.length !== 1 ? "s" : ""} &middot; {date}
-                            </p>
+                        <div className="flex items-center gap-3">
+                            <StaffCsvImportDialog onImport={handleCsvImport} />
                             <Button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white gap-2 h-8 px-4 text-[10px] font-bold shadow-md transition-all rounded-full border-none whitespace-nowrap disabled:opacity-60"
+                                variant="gradient"
+                                className="gap-2 h-9 px-6 text-[11px] font-bold uppercase tracking-widest rounded shadow-lg transition-transform hover:scale-105"
                             >
-                                {saving
-                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    : <Save className="h-3.5 w-3.5" />}
-                                {saving ? "Saving..." : "Save Attendance"}
+                                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                Save Attendance
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="px-4 pb-4">
+                        <div className="rounded-xl border border-gray-50 overflow-hidden shadow-sm">
+                            <Table>
+                                <TableHeader className="bg-gray-50/50">
+                                    <TableRow className="hover:bg-transparent border-gray-100">
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 w-12 pl-4 text-center">#</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600">Staff Info</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600">Role</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 min-w-[320px]">Attendance Status</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600">Entry/Exit</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600">Notes</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {attendanceData.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="h-32 text-center">
+                                                <div className="flex flex-col items-center justify-center text-gray-400">
+                                                    <AlertCircle className="h-8 w-8 mb-2 opacity-20" />
+                                                    <p className="text-xs italic">No staff records found for this selection.</p>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : attendanceData.map((staff, idx) => (
+                                        <TableRow key={staff.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
+                                            <TableCell className="py-4 pl-4 text-center text-gray-400 font-mono text-[10px]">{idx + 1}</TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[11px] font-bold text-gray-800 uppercase tracking-tight">{staff.name}</span>
+                                                    <span className="text-[9px] text-gray-400 font-mono">{staff.staff_id}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-tighter border border-indigo-100">
+                                                    {staff.role}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-20">
+                                                        <span className={cn(
+                                                            "inline-flex items-center justify-center w-full px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-tighter shadow-sm",
+                                                            attendanceBadge[staff.attendance] || "bg-gray-200 text-gray-600"
+                                                        )}>
+                                                            {attendanceOptions.find(o => o.value === staff.attendance)?.label ?? staff.attendance}
+                                                        </span>
+                                                    </div>
+                                                    <RadioGroup
+                                                        value={staff.attendance}
+                                                        onValueChange={val => handleIndividualChange(staff.id, "attendance", val)}
+                                                        className="flex flex-wrap gap-x-3"
+                                                    >
+                                                        {attendanceOptions.map(opt => (
+                                                            <div key={opt.value} className="flex items-center gap-1.5 group cursor-pointer">
+                                                                <RadioGroupItem
+                                                                    value={opt.value}
+                                                                    id={`${staff.id}-${opt.value}`}
+                                                                    className="h-3.5 w-3.5 border-gray-200 text-indigo-600 focus:ring-offset-0 focus:ring-0"
+                                                                />
+                                                                <Label
+                                                                    htmlFor={`${staff.id}-${opt.value}`}
+                                                                    className={cn("text-[9px] font-bold cursor-pointer leading-none uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity", staff.attendance === opt.value ? "opacity-100" : "")}
+                                                                >
+                                                                    {opt.label.split(' ')[0]}
+                                                                </Label>
+                                                            </div>
+                                                        ))}
+                                                    </RadioGroup>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex gap-2 items-center">
+                                                    <Input
+                                                        type="time"
+                                                        value={staff.entry_time}
+                                                        onChange={e => handleIndividualChange(staff.id, "entry_time", e.target.value)}
+                                                        className="h-7 w-24 text-[10px] bg-white border-gray-100 rounded-md focus-visible:ring-indigo-500 shadow-none px-2"
+                                                    />
+                                                    <span className="text-gray-300">—</span>
+                                                    <Input
+                                                        type="time"
+                                                        value={staff.exit_time}
+                                                        onChange={e => handleIndividualChange(staff.id, "exit_time", e.target.value)}
+                                                        className="h-7 w-24 text-[10px] bg-white border-gray-100 rounded-md focus-visible:ring-indigo-500 shadow-none px-2"
+                                                    />
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4 pr-4">
+                                                <Input
+                                                    type="text"
+                                                    placeholder="Add note..."
+                                                    value={staff.note}
+                                                    onChange={e => handleIndividualChange(staff.id, "note", e.target.value)}
+                                                    className="h-7 min-w-[120px] text-[10px] bg-white border-gray-100 rounded-md focus-visible:ring-indigo-500 shadow-none"
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+
+                    {/* Bottom Save Bar */}
+                    {attendanceData.length > 0 && (
+                        <div className="flex justify-between items-center px-6 py-4 border-t border-gray-50 bg-gray-50/50">
+                            <div className="flex items-center gap-2">
+                                <CalendarDays className="h-4 w-4 text-gray-400" />
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    {attendanceData.length} Staff Members &bull; {new Date(date).toDateString()}
+                                </p>
+                            </div>
+                            <Button
+                                onClick={handleSave}
+                                disabled={saving}
+                                variant="gradient"
+                                className="gap-2 h-10 px-10 text-[11px] font-bold uppercase tracking-widest rounded shadow-xl"
+                            >
+                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                Finalize & Save
                             </Button>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* Empty state before first search */}
+            {/* Empty state */}
             {!searched && attendanceData.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                    <Search className="h-10 w-10 mb-3 opacity-30" />
-                    <p className="text-[10px]">Select a role and date, then click <strong>Search</strong> to load staff.</p>
+                <div className="flex flex-col items-center justify-center py-24 text-gray-300 bg-white rounded-xl border border-dashed border-gray-200">
+                    <UserCheck className="h-16 w-16 mb-4 opacity-10" />
+                    <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">No Data Loaded</p>
+                    <p className="text-[11px] text-gray-400 mt-2 italic">Select a role and date, then click search to load the attendance sheet.</p>
                 </div>
             )}
         </div>
     );
 }
-

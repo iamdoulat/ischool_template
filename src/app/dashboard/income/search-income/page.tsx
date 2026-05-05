@@ -11,6 +11,8 @@ import Image from "next/image";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { DatePicker } from "@/components/ui/date-picker";
+import { formatDate } from "@/lib/utils";
 
 
 interface IncomeRecord {
@@ -112,11 +114,11 @@ export default function SearchIncomePage() {
                             <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                 <div className="space-y-2">
                                     <Label className="text-xs font-semibold text-gray-600">Start Date</Label>
-                                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                                    <DatePicker value={startDate} onChange={(val) => setStartDate(val)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs font-semibold text-gray-600">End Date</Label>
-                                    <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                                    <DatePicker value={endDate} onChange={(val) => setEndDate(val)} />
                                 </div>
                             </div>
                         )}
@@ -210,7 +212,7 @@ export default function SearchIncomePage() {
                                         <TableCell className="font-medium text-gray-700 py-3">{income.name}</TableCell>
                                         <TableCell className="text-gray-600">{income.invoice_number}</TableCell>
                                         <TableCell className="text-gray-600">{income.income_head_name}</TableCell>
-                                        <TableCell className="text-gray-600">{income.date}</TableCell>
+                                        <TableCell className="text-gray-600">{formatDate(income.date)}</TableCell>
                                         <TableCell className="text-gray-600 text-right font-semibold">{formatCurrency(income.amount)}</TableCell>
                                     </TableRow>
                                 ))

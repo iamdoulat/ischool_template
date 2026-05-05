@@ -20,7 +20,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -353,12 +354,9 @@ export default function FeesMasterPage() {
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
                                     Due Date
                                 </label>
-                                <Input
-                                    type="date"
-                                    required
-                                    className="h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                <DatePicker
                                     value={formData.due_date || ""}
-                                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                                    onChange={(val) => setFormData({ ...formData, due_date: val })}
                                 />
                             </div>
 
@@ -626,7 +624,7 @@ export default function FeesMasterPage() {
                                                                 {item.fine_type}
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-4 text-center text-xs text-muted-foreground font-bold tracking-tight">{item.due_date}</td>
+                                                        <td className="px-4 py-4 text-center text-xs text-muted-foreground font-bold tracking-tight">{formatDate(item.due_date)}</td>
                                                         <td className="px-4 py-4 text-center">
                                                             <span className={cn(
                                                                 "text-[10px] font-black uppercase tracking-widest",

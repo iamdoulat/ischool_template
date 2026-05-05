@@ -128,6 +128,20 @@
   }
 }
 
+@layer components {
+  .btn-gradient {
+    @apply bg-gradient-to-r from-amber-500 to-purple-600 hover:from-amber-600 hover:to-purple-700 text-white shadow-md shadow-amber-200/50 transition-all duration-300 border-none rounded-full;
+  }
+
+  .btn-action {
+    @apply h-7 w-7 p-0 rounded-md transition-all duration-200 flex items-center justify-center text-white shadow-sm hover:scale-105 active:scale-95;
+  }
+
+  .btn-emerald {
+    @apply bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-200/50 transition-all duration-300 border-none rounded-full;
+  }
+}
+
 /* Theme Skins */
 .skin-shadow .bg-card, 
 .skin-shadow .bg-background,

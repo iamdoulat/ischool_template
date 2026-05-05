@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -11,27 +13,42 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import {
     Plus,
     Search,
     Pencil,
-    List,
     Eye,
     ChevronLeft,
     ChevronRight,
     CircleSlash,
-    Calendar,
     Clock,
     MapPin,
-    ClipboardList
+    ClipboardList,
+    FileText,
+    Calendar as CalendarIcon
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface LessonPlanItem {
-    id: string;
+    id: string; // Timetable ID
     subject: string;
     subjectCode: string;
     className: string;
     timeRange: string;
     roomNo: string;
+    plan: {
+        id: string;
+        lesson: string;
+        topic: string;
+        sub_topic: string;
+    } | null;
     actions: ("add" | "edit" | "report" | "view")[];
 }
 
@@ -41,82 +58,127 @@ interface DayPlan {
     lessons: LessonPlanItem[];
 }
 
-const mockWeekPlan: DayPlan[] = [
-    {
-        day: "Monday",
-        date: "02/02/2026",
-        lessons: [
-            { id: "1", subject: "Computer", subjectCode: "00220", className: "Class 1(A)", timeRange: "03:45 PM - 04:45 PM", roomNo: "122", actions: ["add"] },
-            { id: "2", subject: "English", subjectCode: "210", className: "Class 1(B)", timeRange: "9:00 AM - 09:45 AM", roomNo: "153", actions: ["report", "edit", "add"] },
-            { id: "3", subject: "Hindi", subjectCode: "230", className: "Class 1(B)", timeRange: "10:30 AM - 11:15 AM", roomNo: "12", actions: ["report", "edit", "add"] },
-            { id: "4", subject: "English", subjectCode: "210", className: "Class 2(A)", timeRange: "9:00 AM - 09:45 AM", roomNo: "153", actions: ["report", "edit", "view"] },
-            { id: "5", subject: "Hindi", subjectCode: "230", className: "Class 2(A)", timeRange: "10:30 AM - 11:15 AM", roomNo: "153", actions: ["report", "edit", "add"] },
-        ]
-    },
-    {
-        day: "Tuesday",
-        date: "02/03/2026",
-        lessons: [
-            { id: "6", subject: "Hindi", subjectCode: "230", className: "Class 1(A)", timeRange: "9:00 AM - 09:45 AM", roomNo: "12", actions: ["report", "edit", "add"] },
-            { id: "7", subject: "English", subjectCode: "210", className: "Class 1(A)", timeRange: "10:30 AM - 11:15 AM", roomNo: "12", actions: ["add"] },
-            { id: "8", subject: "Hindi", subjectCode: "230", className: "Class 1(B)", timeRange: "9:00 AM - 09:45 AM", roomNo: "12", actions: ["report", "edit", "add"] },
-            { id: "9", subject: "English", subjectCode: "210", className: "Class 1(B)", timeRange: "10:30 AM - 11:15 AM", roomNo: "12", actions: ["add"] },
-            { id: "10", subject: "English", subjectCode: "210", className: "Class 2(A)", timeRange: "9:00 AM - 09:45 AM", roomNo: "153", actions: ["add"] },
-        ]
-    },
-    {
-        day: "Wednesday",
-        date: "02/04/2026",
-        lessons: [
-            { id: "11", subject: "English", subjectCode: "210", className: "Class 1(A)", timeRange: "9:00 AM - 09:45 AM", roomNo: "12", actions: ["report", "edit", "add"] },
-            { id: "12", subject: "Mathematics", subjectCode: "110", className: "Class 1(A)", timeRange: "10:30 AM - 11:15 AM", roomNo: "12", actions: ["add"] },
-            { id: "13", subject: "Drawing", subjectCode: "200", className: "Class 1(B)", timeRange: "09:45 AM - 10:30 AM", roomNo: "12", actions: ["add"] },
-            { id: "14", subject: "English", subjectCode: "210", className: "Class 1(B)", timeRange: "11:15 AM - 12:00 PM", roomNo: "12", actions: ["add"] },
-            { id: "15", subject: "Class 2(A)", subjectCode: "110", className: "Class 2(A)", timeRange: "9:00 AM - 09:45 AM", roomNo: "153", actions: ["add"] },
-        ]
-    },
-    {
-        day: "Thursday",
-        date: "02/05/2026",
-        lessons: [
-            { id: "16", subject: "Mathematics", subjectCode: "110", className: "Class 1(A)", timeRange: "09:45 AM - 10:30 AM", roomNo: "12", actions: ["report", "edit", "add"] },
-            { id: "17", subject: "Hindi", subjectCode: "230", className: "Class 1(A)", timeRange: "10:30 AM - 11:15 AM", roomNo: "12", actions: ["add"] },
-            { id: "18", subject: "English", subjectCode: "210", className: "Class 1(B)", timeRange: "9:00 AM - 09:45 AM", roomNo: "12", actions: ["add"] },
-            { id: "19", subject: "Hindi", subjectCode: "230", className: "Class 1(B)", timeRange: "10:30 AM - 11:15 AM", roomNo: "12", actions: ["add"] },
-            { id: "20", subject: "Class 2(A)", subjectCode: "110", className: "Class 2(A)", timeRange: "9:00 AM - 09:45 AM", roomNo: "153", actions: ["add"] },
-        ]
-    },
-    {
-        day: "Friday",
-        date: "02/06/2026",
-        lessons: [
-            { id: "21", subject: "English", subjectCode: "210", className: "Class 1(A)", timeRange: "9:00 AM - 09:45 AM", roomNo: "12", actions: ["report", "edit", "add"] },
-            { id: "22", subject: "Hindi", subjectCode: "230", className: "Class 1(A)", timeRange: "10:30 AM - 11:15 AM", roomNo: "12", actions: ["add"] },
-            { id: "23", subject: "Hindi", subjectCode: "230", className: "Class 1(B)", timeRange: "9:00 AM - 09:45 AM", roomNo: "12", actions: ["add"] },
-            { id: "24", subject: "Drawing", subjectCode: "200", className: "Class 1(B)", timeRange: "11:15 AM - 12:00 PM", roomNo: "12", actions: ["add"] },
-            { id: "25", subject: "Mathematics", subjectCode: "110", className: "Class 2(A)", timeRange: "9:00 AM - 09:45 AM", roomNo: "153", actions: ["add"] },
-        ]
-    },
-    {
-        day: "Saturday",
-        date: "02/07/2026",
-        lessons: [
-            { id: "26", subject: "Mathematics", subjectCode: "110", className: "Class 1(A)", timeRange: "9:00 AM - 09:45 AM", roomNo: "12", actions: ["report", "edit", "add"] },
-            { id: "27", subject: "English", subjectCode: "210", className: "Class 1(A)", timeRange: "10:30 AM - 11:15 AM", roomNo: "12", actions: ["add"] },
-            { id: "28", subject: "English", subjectCode: "210", className: "Class 1(B)", timeRange: "9:00 AM - 09:45 AM", roomNo: "12", actions: ["add"] },
-            { id: "29", subject: "English", subjectCode: "210", className: "Class 1(B)", timeRange: "10:30 AM - 11:15 AM", roomNo: "12", actions: ["add"] },
-            { id: "30", subject: "Hindi", subjectCode: "230", className: "Class 2(A)", timeRange: "9:00 AM - 09:45 AM", roomNo: "153", actions: ["add"] },
-        ]
-    },
-    {
-        day: "Sunday",
-        date: "02/08/2026",
-        lessons: []
-    }
-];
-
 export default function ManageLessonPlanPage() {
-    const [selectedTeacher, setSelectedTeacher] = useState("Shivam Verma (9002)");
+    const { toast } = useToast();
+    const [teachers, setTeachers] = useState<any[]>([]);
+    const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
+    const [startDate, setStartDate] = useState<Date>(() => {
+        const d = new Date();
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+        return new Date(d.setDate(diff));
+    });
+    const [weekPlan, setWeekPlan] = useState<DayPlan[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    // Form Dialog State
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [dialogMode, setDialogMode] = useState<"add" | "edit" | "view">("add");
+    const [selectedSlot, setSelectedSlot] = useState<any>(null);
+    const [formData, setFormData] = useState({
+        lesson: "",
+        topic: "",
+        sub_topic: "",
+        presentation: "",
+        objectives: ""
+    });
+
+    useEffect(() => {
+        fetchTeachers();
+    }, []);
+
+    const fetchTeachers = async () => {
+        try {
+            const response = await api.get('/hr/staff-directory?no_paginate=true');
+            const data = response.data?.data || response.data || [];
+            setTeachers(data);
+            if (data.length > 0) setSelectedTeacherId(data[0].id.toString());
+        } catch (error) {
+            console.error("Failed to fetch teachers", error);
+        }
+    };
+
+    const fetchWeekPlan = async () => {
+        if (!selectedTeacherId) return;
+        setLoading(true);
+        try {
+            const endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 6);
+            
+            const response = await api.get('/lesson-plan/manage-lesson-plan', {
+                params: {
+                    staff_id: selectedTeacherId,
+                    start_date: startDate.toISOString().split('T')[0],
+                    end_date: endDate.toISOString().split('T')[0]
+                }
+            });
+            setWeekPlan(response.data);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to fetch lesson plan", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedTeacherId) fetchWeekPlan();
+    }, [selectedTeacherId, startDate]);
+
+    const handleNavigate = (direction: 'next' | 'prev') => {
+        const newDate = new Date(startDate);
+        newDate.setDate(startDate.getDate() + (direction === 'next' ? 7 : -7));
+        setStartDate(newDate);
+    };
+
+    const openDialog = (mode: "add" | "edit" | "view", dayPlan: DayPlan, lesson: LessonPlanItem) => {
+        setDialogMode(mode);
+        setSelectedSlot({ dayPlan, lesson });
+        if (mode === "add") {
+            setFormData({ lesson: "", topic: "", sub_topic: "", presentation: "", objectives: "" });
+        } else {
+            setFormData({
+                lesson: lesson.plan?.lesson || "",
+                topic: lesson.plan?.topic || "",
+                sub_topic: lesson.plan?.sub_topic || "",
+                presentation: "", // Fetch full details if needed
+                objectives: ""
+            });
+        }
+        setIsDialogOpen(true);
+    };
+
+    const handleSave = async () => {
+        if (!formData.lesson || !formData.topic) {
+            toast({ title: "Validation Error", description: "Lesson and Topic are required", variant: "destructive" });
+            return;
+        }
+
+        try {
+            const payload = {
+                ...formData,
+                class_timetable_id: selectedSlot.lesson.id,
+                date: new Date(selectedSlot.dayPlan.date).toISOString().split('T')[0]
+            };
+
+            if (dialogMode === "edit" && selectedSlot.lesson.plan?.id) {
+                await api.put(`/lesson-plan/manage-lesson-plan/${selectedSlot.lesson.plan.id}`, payload);
+            } else {
+                await api.post('/lesson-plan/manage-lesson-plan', payload);
+            }
+
+            toast({ title: "Success", description: "Lesson plan saved successfully" });
+            setIsDialogOpen(false);
+            fetchWeekPlan();
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to save lesson plan", variant: "destructive" });
+        }
+    };
+
+    const getWeekRangeString = () => {
+        const end = new Date(startDate);
+        end.setDate(startDate.getDate() + 6);
+        return `${startDate.toLocaleDateString()} To ${end.toLocaleDateString()}`;
+    };
 
     return (
         <div className="p-4 space-y-6 font-sans bg-gray-50/30 min-h-screen">
@@ -124,115 +186,201 @@ export default function ManageLessonPlanPage() {
                 <h1 className="text-xl font-medium text-gray-800">Manage Lesson Plan</h1>
             </div>
 
-            <div className="bg-white p-4 rounded-lg border shadow-sm space-y-4">
-                <div className="space-y-2 max-w-2xl">
-                    <Label className="text-xs font-bold text-gray-600 uppercase">
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <div className="space-y-3 max-w-2xl">
+                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                         Teachers <span className="text-red-500">*</span>
                     </Label>
-                    <div className="flex gap-2 items-center">
-                        <Select defaultValue={selectedTeacher} onValueChange={setSelectedTeacher}>
-                            <SelectTrigger className="w-full h-9 border-gray-200 text-sm">
+                    <div className="flex gap-3 items-center">
+                        <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                            <SelectTrigger className="w-full h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500">
                                 <SelectValue placeholder="Select Teacher" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Shivam Verma (9002)">Shivam Verma (9002)</SelectItem>
-                                <SelectItem value="Joe Black (9000)">Joe Black (9000)</SelectItem>
+                                {teachers.map(t => (
+                                    <SelectItem key={t.id} value={t.id.toString()}>{t.first_name} {t.last_name} ({t.staff_id})</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
-                        <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white gap-2 h-9 px-6 text-xs transition-all shadow-sm">
+                        <Button onClick={fetchWeekPlan} className="btn-gradient text-white gap-2 h-11 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full">
                             <Search className="h-4 w-4" /> Search
                         </Button>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg border shadow-sm p-4 overflow-x-auto">
-                <div className="flex justify-center items-center gap-6 mb-6">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 rounded-full hover:bg-gray-100">
-                        <ChevronLeft className="h-5 w-5" />
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-x-auto">
+                <div className="flex justify-center items-center gap-8 mb-8 bg-gray-50/50 p-4 rounded-2xl border border-gray-50">
+                    <Button onClick={() => handleNavigate('prev')} variant="ghost" size="icon" className="h-10 w-10 text-gray-400 rounded-full hover:bg-white hover:text-indigo-600 transition-all shadow-sm bg-white">
+                        <ChevronLeft className="h-6 w-6" />
                     </Button>
-                    <div className="text-sm font-semibold text-gray-700">
-                        02/02/2026 To 02/08/2026
+                    <div className="text-sm font-bold text-gray-700 uppercase tracking-widest flex items-center gap-3">
+                        <CalendarIcon className="h-5 w-5 text-indigo-500" />
+                        {getWeekRangeString()}
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 rounded-full hover:bg-gray-100">
-                        <ChevronRight className="h-5 w-5" />
+                    <Button onClick={() => handleNavigate('next')} variant="ghost" size="icon" className="h-10 w-10 text-gray-400 rounded-full hover:bg-white hover:text-indigo-600 transition-all shadow-sm bg-white">
+                        <ChevronRight className="h-6 w-6" />
                     </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3 min-w-[1200px]">
-                    {mockWeekPlan.map((dayPlan) => (
-                        <div key={dayPlan.day} className="space-y-3">
-                            <div className="bg-gray-50/80 p-2 rounded border border-gray-100 text-center">
-                                <div className="text-xs font-bold text-gray-800">{dayPlan.day}</div>
-                                <div className="text-[10px] text-gray-500 uppercase tracking-tight">{dayPlan.date}</div>
+                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 min-w-[1400px]">
+                    {weekPlan.map((dayPlan) => (
+                        <div key={dayPlan.day} className="space-y-4">
+                            <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100 text-center shadow-sm">
+                                <div className="text-[11px] font-bold text-gray-800 uppercase tracking-wider">{dayPlan.day}</div>
+                                <div className="text-[10px] text-indigo-400 font-bold mt-1 tracking-tighter">{dayPlan.date}</div>
                             </div>
 
                             {dayPlan.lessons.length > 0 ? (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     {dayPlan.lessons.map((lesson) => (
-                                        <div key={lesson.id} className="bg-white border border-gray-100 rounded shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                                            <div className="absolute top-0 right-0 p-1 flex gap-0.5">
-                                                {lesson.actions.includes("report") && (
-                                                    <div className="h-5 w-5 bg-indigo-500 rounded-sm flex items-center justify-center text-white cursor-pointer hover:bg-indigo-600">
-                                                        <ClipboardList className="h-3 w-3" />
-                                                    </div>
-                                                )}
-                                                {lesson.actions.includes("edit") && (
-                                                    <div className="h-5 w-5 bg-indigo-500 rounded-sm flex items-center justify-center text-white cursor-pointer hover:bg-indigo-600">
-                                                        <Pencil className="h-3 w-3" />
-                                                    </div>
-                                                )}
-                                                {lesson.actions.includes("add") && (
-                                                    <div className="h-5 w-5 bg-indigo-500 rounded-sm flex items-center justify-center text-white cursor-pointer hover:bg-indigo-600">
-                                                        <Plus className="h-3 w-3" />
-                                                    </div>
-                                                )}
-                                                {lesson.actions.includes("view") && (
-                                                    <div className="h-5 w-5 bg-indigo-500 rounded-sm flex items-center justify-center text-white cursor-pointer hover:bg-indigo-600">
-                                                        <Eye className="h-3 w-3" />
-                                                    </div>
+                                        <div key={lesson.id} className="bg-white border border-gray-50 rounded-2xl shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 relative overflow-hidden group border-l-4 border-l-indigo-500">
+                                            <div className="absolute top-0 right-0 p-2 flex gap-1 transform translate-y-[-100%] group-hover:translate-y-0 transition-transform duration-300">
+                                                {lesson.plan ? (
+                                                    <>
+                                                        <Button onClick={() => openDialog("edit", dayPlan, lesson)} size="icon" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button onClick={() => openDialog("view", dayPlan, lesson)} size="icon" className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md">
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </>
+                                                ) : (
+                                                    <Button onClick={() => openDialog("add", dayPlan, lesson)} size="icon" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
+                                                        <Plus className="h-3.5 w-3.5" />
+                                                    </Button>
                                                 )}
                                             </div>
 
-                                            <div className="p-3 pt-6 space-y-2">
-                                                <div className="flex items-start gap-1.5">
-                                                    <ClipboardList className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                    <div className="text-[11px] leading-tight">
-                                                        <span className="font-semibold text-gray-700">Subject:</span>{" "}
-                                                        <span className="text-gray-600">{lesson.subject} ({lesson.subjectCode})</span>
+                                            <div className="p-4 pt-6 space-y-3">
+                                                <div className="flex items-start gap-2">
+                                                    <div className="bg-indigo-50 p-1.5 rounded-lg">
+                                                        <ClipboardList className="h-4 w-4 text-indigo-500" />
+                                                    </div>
+                                                    <div className="text-[11px] leading-tight pt-1">
+                                                        <div className="font-bold text-gray-800 uppercase tracking-tight">{lesson.subject}</div>
+                                                        <div className="text-indigo-400 font-bold text-[9px]">{lesson.subjectCode}</div>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-start gap-1.5">
-                                                    <Clock className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                    <div className="text-[11px] leading-tight">
-                                                        <span className="font-semibold text-gray-700">Class:</span>{" "}
-                                                        <span className="text-gray-600">{lesson.className}</span>
-                                                        <div className="text-gray-500 mt-0.5">{lesson.timeRange}</div>
+                                                <div className="flex items-start gap-2">
+                                                    <div className="bg-emerald-50 p-1.5 rounded-lg">
+                                                        <Clock className="h-4 w-4 text-emerald-500" />
+                                                    </div>
+                                                    <div className="text-[11px] leading-tight pt-1">
+                                                        <div className="font-bold text-gray-700">{lesson.className}</div>
+                                                        <div className="text-gray-400 font-medium mt-1">{lesson.timeRange}</div>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-start gap-1.5 pt-1">
-                                                    <MapPin className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                    <div className="text-[11px] leading-tight">
-                                                        <span className="font-semibold text-gray-700">Room No:</span>{" "}
-                                                        <span className="text-gray-600">{lesson.roomNo}</span>
+                                                <div className="flex items-start gap-2">
+                                                    <div className="bg-rose-50 p-1.5 rounded-lg">
+                                                        <MapPin className="h-4 w-4 text-rose-500" />
+                                                    </div>
+                                                    <div className="text-[11px] leading-tight pt-1">
+                                                        <span className="font-bold text-gray-700">Room:</span>{" "}
+                                                        <span className="text-rose-500 font-bold">{lesson.roomNo}</span>
                                                     </div>
                                                 </div>
+
+                                                {lesson.plan && (
+                                                    <div className="mt-2 pt-2 border-t border-dashed border-gray-100">
+                                                        <div className="flex items-center gap-1.5 text-[10px] text-indigo-600 font-bold">
+                                                            <div className="h-1.5 w-1.5 rounded-full bg-indigo-600 animate-pulse" />
+                                                            PLAN ADDED
+                                                        </div>
+                                                        <div className="text-[9px] text-gray-400 mt-1 truncate italic">
+                                                            {lesson.plan.topic}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <div className="bg-red-50/50 border border-red-100 rounded p-3 flex flex-col items-center justify-center gap-2 text-center min-h-[100px]">
-                                    <CircleSlash className="h-5 w-5 text-red-500" />
-                                    <div className="text-[10px] font-bold text-red-600 uppercase tracking-widest">Not Scheduled</div>
+                                <div className="bg-red-50/30 border border-dashed border-red-100 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 text-center min-h-[150px]">
+                                    <CircleSlash className="h-6 w-6 text-red-300" />
+                                    <div className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Off Day</div>
                                 </div>
                             )}
                         </div>
                     ))}
                 </div>
             </div>
+
+            {/* Add/Edit Lesson Plan Dialog */}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="max-w-2xl rounded-3xl border-0 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 btn-gradient text-white">
+                        <DialogTitle className="text-xl font-bold uppercase tracking-widest flex items-center gap-3">
+                            <FileText className="h-6 w-6" />
+                            {dialogMode === "view" ? "View Lesson Plan" : dialogMode === "edit" ? "Edit Lesson Plan" : "Add Lesson Plan"}
+                        </DialogTitle>
+                        <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-tighter mt-1 opacity-80">
+                            {selectedSlot?.dayPlan.day}, {selectedSlot?.dayPlan.date} | {selectedSlot?.lesson.subject} | {selectedSlot?.lesson.className}
+                        </p>
+                    </DialogHeader>
+
+                    <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto bg-white">
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Lesson <span className="text-red-500">*</span></Label>
+                                <Input 
+                                    readOnly={dialogMode === "view"}
+                                    value={formData.lesson} 
+                                    onChange={(e) => setFormData({...formData, lesson: e.target.value})}
+                                    placeholder="Enter lesson name" 
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Topic <span className="text-red-500">*</span></Label>
+                                <Input 
+                                    readOnly={dialogMode === "view"}
+                                    value={formData.topic} 
+                                    onChange={(e) => setFormData({...formData, topic: e.target.value})}
+                                    placeholder="Enter topic name" 
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Sub Topic</Label>
+                            <Input 
+                                readOnly={dialogMode === "view"}
+                                value={formData.sub_topic} 
+                                onChange={(e) => setFormData({...formData, sub_topic: e.target.value})}
+                                placeholder="Enter sub topic" 
+                                className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Lesson Summary / Objectives</Label>
+                            <Textarea 
+                                readOnly={dialogMode === "view"}
+                                value={formData.objectives} 
+                                onChange={(e) => setFormData({...formData, objectives: e.target.value})}
+                                placeholder="What should students achieve?" 
+                                className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-2xl focus:ring-indigo-500 p-4"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="p-6 bg-gray-50/50 flex justify-end gap-3">
+                        <Button onClick={() => setIsDialogOpen(false)} variant="outline" className="h-11 px-8 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-200">
+                            Close
+                        </Button>
+                        {dialogMode !== "view" && (
+                            <Button onClick={handleSave} className="btn-gradient text-white h-11 px-12 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-orange-200/50">
+                                Save Plan
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

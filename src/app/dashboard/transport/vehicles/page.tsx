@@ -66,6 +66,7 @@ export default function VehiclePage() {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [staffList, setStaffList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -90,11 +91,15 @@ export default function VehiclePage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await api.get("/transport/vehicles");
-            setVehicles(response.data.data);
+            const [vehiclesRes, staffRes] = await Promise.all([
+                api.get("/transport/vehicles"),
+                api.get("/hr/staff-directory")
+            ]);
+            setVehicles(vehiclesRes.data.data);
+            setStaffList(staffRes.data.data);
         } catch (error) {
-            console.error("Error fetching vehicles:", error);
-            toast("error", "Failed to load vehicles");
+            console.error("Error fetching data:", error);
+            toast("error", "Failed to load data");
         } finally {
             setLoading(false);
         }
@@ -251,7 +256,6 @@ export default function VehiclePage() {
 
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1.5 mr-2">
-                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{itemsPerPage}</span>
                                 <Select
                                     value={itemsPerPage.toString()}
                                     onValueChange={(val) => {
@@ -270,19 +274,19 @@ export default function VehiclePage() {
                                 </Select>
                             </div>
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={copyToClipboard}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
                                     <Copy className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={exportToExcel}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
                                     <FileSpreadsheet className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={exportToPDF}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
                                     <FileText className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={() => window.print()}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
                                     <Printer className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
                                     <Columns className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
@@ -328,12 +332,12 @@ export default function VehiclePage() {
                                             <TableCell className="py-3 text-center text-gray-500">{v.driver_license}</TableCell>
                                             <TableCell className="py-3 text-center text-gray-500">{v.driver_contact}</TableCell>
                                             <TableCell className="py-3 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <Button onClick={() => handleEdit(v)} size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
-                                                        <Pencil className="h-3 w-3" />
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <Button onClick={() => handleEdit(v)} size="icon" variant="ghost" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors shadow-sm">
+                                                        <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
-                                                    <Button onClick={() => handleDelete(v.id)} size="icon" variant="ghost" className="h-6 w-6 bg-red-500 hover:bg-red-600 text-white rounded">
-                                                        <Trash2 className="h-3 w-3" />
+                                                    <Button onClick={() => handleDelete(v.id)} size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm">
+                                                        <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </div>
                                             </TableCell>
@@ -345,7 +349,7 @@ export default function VehiclePage() {
                     </div>
 
                     {/* Pagination UI */}
-                    <div className="flex justify-center items-center gap-2 py-4 border-t border-gray-50">
+                    <div className="flex justify-end items-center gap-2 py-4 border-t border-gray-50">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -444,11 +448,30 @@ export default function VehiclePage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Driver Name</Label>
-                                <Input
+                                <Select
                                     value={formState.driver_name}
-                                    onChange={(e) => setFormState({ ...formState, driver_name: e.target.value })}
-                                    className="h-9 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg text-xs"
-                                />
+                                    onValueChange={(val) => {
+                                        const selectedStaff = staffList.find(s => s.name === val);
+                                        if (selectedStaff) {
+                                            setFormState({ 
+                                                ...formState, 
+                                                driver_name: selectedStaff.name,
+                                                driver_contact: selectedStaff.phone || formState.driver_contact
+                                            });
+                                        } else {
+                                            setFormState({ ...formState, driver_name: val });
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger className="h-9 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg text-xs">
+                                        <SelectValue placeholder="Select Driver" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[200px]">
+                                        {staffList.map((staff) => (
+                                            <SelectItem key={staff.id} value={staff.name}>{staff.name} {staff.role === 'Driver' ? '(Driver)' : ''}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Driver License</Label>

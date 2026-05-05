@@ -9,6 +9,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useCurrency } from "@/components/providers/currency-provider";
+import { DatePicker } from "@/components/ui/date-picker";
 
 const monthsList = [
     "April", "May", "June", "July", "August", "September",
@@ -25,6 +27,9 @@ interface MonthlyFee {
 
 export default function TransportFeesMasterPage() {
     const { toast } = useToast();
+    const { selectedCurrency } = useCurrency();
+    const currencySymbol = selectedCurrency?.symbol || "₹";
+    
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
     const [copyAll, setCopyAll] = useState(false);
@@ -50,7 +55,7 @@ export default function TransportFeesMasterPage() {
                     if (existing) {
                         return {
                             month,
-                            due_date: existing.due_date ? existing.due_date.split('-').reverse().join('/') : "",
+                            due_date: existing.due_date || "",
                             fine_type: existing.fine_type || "none",
                             fine_percentage: existing.fine_percentage || "",
                             fine_amount: existing.fine_amount || ""
@@ -150,11 +155,10 @@ export default function TransportFeesMasterPage() {
                             {/* Due Date */}
                             <div className="flex-1 max-w-xs space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Due Date</Label>
-                                <Input
+                                <DatePicker
                                     value={fee.due_date}
-                                    onChange={(e) => handleChange(idx, 'due_date', e.target.value)}
+                                    onChange={(val) => handleChange(idx, 'due_date', val)}
                                     className="h-8 border-gray-200 text-[11px] focus-visible:ring-indigo-500 rounded shadow-none"
-                                    placeholder="DD/MM/YYYY"
                                 />
                             </div>
 
@@ -199,7 +203,7 @@ export default function TransportFeesMasterPage() {
                                         <RadioGroup value={fee.fine_type} onValueChange={(val) => handleChange(idx, 'fine_type', val)}>
                                             <RadioGroupItem value="fix" id={`${fee.month}-fix`} className="h-3 w-3" />
                                         </RadioGroup>
-                                        <Label htmlFor={`${fee.month}-fix`} className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Fix Amount (₹)</Label>
+                                        <Label htmlFor={`${fee.month}-fix`} className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Fix Amount ({currencySymbol})</Label>
                                     </div>
                                     <Input
                                         disabled={fee.fine_type !== 'fix'}

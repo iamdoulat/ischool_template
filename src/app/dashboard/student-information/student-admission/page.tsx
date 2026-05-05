@@ -28,8 +28,9 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
     Dialog,
     DialogContent,
@@ -376,7 +377,7 @@ export default function StudentAdmissionPage() {
                                 { label: "Other", value: "Other" }
                             ]}
                         />
-                        <InputField label="Date Of Birth" type="date" required value={formData.dob} onChange={(val) => handleChange("dob", val)} />
+                        <DateField label="Date Of Birth" required value={formData.dob} onChange={(val) => handleChange("dob", val)} />
 
                         <SelectField
                             label="Category"
@@ -398,7 +399,7 @@ export default function StudentAdmissionPage() {
                             ]}
                         />
                         <InputField label="Email" type="email" value={formData.email} onChange={(val) => handleChange("email", val)} />
-                        <InputField label="Admission Date" type="date" value={formData.admission_date} onChange={(val) => handleChange("admission_date", val)} />
+                        <DateField label="Admission Date" value={formData.admission_date} onChange={(val) => handleChange("admission_date", val)} />
                         <div className="lg:col-span-2">
                             <FileUploadField
                                 label="Student Photo (100px X 100px)"
@@ -423,7 +424,7 @@ export default function StudentAdmissionPage() {
                         <InputField label="Height" value={formData.height} onChange={(val) => handleChange("height", val)} />
                         <InputField label="Weight" value={formData.weight} onChange={(val) => handleChange("weight", val)} />
 
-                        <InputField label="Measurement Date" type="date" value={formData.measurement_date} onChange={(val) => handleChange("measurement_date", val)} />
+                        <DateField label="Measurement Date" value={formData.measurement_date} onChange={(val) => handleChange("measurement_date", val)} />
                         
                         {/* Sibling Section Matching Screenshot */}
                         <div className="lg:col-span-4 mt-6">
@@ -765,6 +766,20 @@ function SectionCard({ title, icon: Icon, children }: { title: string, icon: any
                 {children}
             </CardContent>
         </Card>
+    );
+}
+
+function DateField({ label, required, value = "", onChange }: { label: string, required?: boolean, value?: string, onChange: (val: string) => void }) {
+    return (
+        <div className="space-y-2 group">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                {label} {required && <span className="text-destructive">*</span>}
+            </label>
+            <DatePicker 
+                value={value} 
+                onChange={onChange} 
+            />
+        </div>
     );
 }
 

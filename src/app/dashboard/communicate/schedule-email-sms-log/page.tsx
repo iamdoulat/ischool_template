@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
 import {
     Table,
     TableBody,
@@ -46,73 +48,67 @@ interface ScheduledLog {
     isClass: boolean;
 }
 
-const mockScheduledLogs: ScheduledLog[] = [
-    {
-        id: "1",
-        title: "Online Classes",
-        message: "Be very punctual in log in time, screen off time, activity time table etc. Be ready with necessary text books, note books, pen, pencil and other accessories before class begins. Make sure the device is sufficiently charged before the beginning of the class.",
-        date: "02/04/2025 06:02 pm",
-        scheduleDate: "02/12/2025 05:02 pm",
-        isEmail: true,
-        isSms: false,
-        isGroup: true,
-        isIndividual: false,
-        isClass: false
-    },
-    {
-        id: "2",
-        title: "New Academic admission start (2025-26)",
-        message: "NEW ADMISSIONS FOR THE NEXT SESSION 2025-26 ARE OPEN FROM CLASSES NURSERY TO CLASS-VIII FROM 1ST APRIL 2025.",
-        date: "04/04/2025 01:27 pm",
-        scheduleDate: "04/05/2025 11:27 am",
-        isEmail: true,
-        isSms: false,
-        isGroup: true,
-        isIndividual: false,
-        isClass: false
-    },
-    {
-        id: "3",
-        title: "International Yoga Day",
-        message: "International Yoga Day, celebrated annually on June 21st, offers schools a valuable opportunity to promote physical and mental well-being. Schools often organize yoga sessions, demonstrations of asanas, and awareness campaigns to introduce students to the benefits of yoga.",
-        date: "06/03/2025 08:33 pm",
-        scheduleDate: "06/21/2025 07:00 am",
-        isEmail: true,
-        isSms: false,
-        isGroup: true,
-        isIndividual: false,
-        isClass: false
-    },
-    {
-        id: "4",
-        title: "Annual Day Celebration",
-        message: "A day in School - In this theme the program can showcase what all goes in school. The ringing of bell, the class, the love of teachers, happy-go-lucky punishments, all pranks, PTM, sports etc.",
-        date: "01/06/2026 01:15 pm",
-        scheduleDate: "12/02/2025 03:39 pm",
-        isEmail: true,
-        isSms: false,
-        isGroup: false,
-        isIndividual: false,
-        isClass: true
-    },
-    {
-        id: "5",
-        title: "Sports Day Events",
-        message: "Games that are played on school sports days can be wide and varied. They can include straightforward sprints and longer races for all age groups as well as egg and spoon races.",
-        date: "01/22/2026 02:48 pm",
-        scheduleDate: "01/22/2026 01:47 pm",
-        isEmail: false,
-        isSms: true,
-        isGroup: true,
-        isIndividual: false,
-        isClass: false
-    }
-];
+// Mock data removed in favor of real API
 
 export default function ScheduleEmailSmsLogPage() {
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
+    const [logs, setLogs] = useState<ScheduledLog[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const filteredLogs = mockScheduledLogs.filter(log =>
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    const handleCopy = () => {
+        const text = logs.map(l => `${l.title}\t${l.message}\t${l.date}\t${l.scheduleDate}`).join('\n');
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copied", description: "Data copied to clipboard" });
+    };
+
+    const handleExportCSV = () => {
+        const headers = ["Title", "Message", "Date", "Schedule Date", "Email", "SMS", "Group", "Individual", "Class"];
+        const rows = logs.map(l => [l.title, l.message, l.date, l.scheduleDate, l.isEmail ? 'Yes' : 'No', l.isSms ? 'Yes' : 'No', l.isGroup ? 'Yes' : 'No', l.isIndividual ? 'Yes' : 'No', l.isClass ? 'Yes' : 'No']);
+        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "scheduled_logs.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const toolbarActions = [
+        { Icon: Copy, onClick: handleCopy, title: "Copy" },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
+        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
+        { Icon: Printer, onClick: () => window.print(), title: "Print" },
+        { Icon: Columns, onClick: () => {}, title: "Columns" },
+    ];
+
+    const fetchLogs = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('/communicate/scheduled-logs');
+            setLogs(response.data);
+        } catch (error) {
+            console.error('Failed to fetch logs', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: string, isEmail: boolean) => {
+        // Not implemented on backend yet, but ready for UI
+        if(confirm("Are you sure you want to delete this log?")) {
+            setLogs(logs.filter(log => log.id !== id));
+        }
+    };
+
+    const filteredLogs = logs.filter(log =>
         log.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         log.message.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -139,9 +135,8 @@ export default function ScheduleEmailSmsLogPage() {
 
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold">50</span>
                             <Select defaultValue="50">
-                                <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none">
+                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 bg-transparent shadow-none rounded-md px-2">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -153,9 +148,16 @@ export default function ScheduleEmailSmsLogPage() {
                             <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                         </div>
                         <div className="flex items-center gap-1 text-gray-400">
-                            {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, i) => (
-                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
-                                    <Icon className="h-3.5 w-3.5" />
+                            {toolbarActions.map((action, i) => (
+                                <Button 
+                                    key={i} 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={action.onClick}
+                                    title={action.title}
+                                    className="h-7 w-7 hover:bg-gray-100 rounded"
+                                >
+                                    <action.Icon className="h-3.5 w-3.5" />
                                 </Button>
                             ))}
                         </div>
@@ -208,12 +210,9 @@ export default function ScheduleEmailSmsLogPage() {
                                         {log.isClass ? <Check className="h-3.5 w-3.5 mx-auto text-gray-800" /> : <X className="h-3 w-3 mx-auto text-gray-300" />}
                                     </TableCell>
                                     <TableCell className="py-3.5 text-right align-top">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                            <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
-                                                <Columns className="h-3 w-3" />
+                                        <div className="flex items-center justify-end gap-1.5">
+                                            <Button size="icon" variant="ghost" onClick={() => handleDelete(log.id, log.isEmail)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-all shadow-sm">
+                                                <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     </TableCell>
@@ -223,17 +222,33 @@ export default function ScheduleEmailSmsLogPage() {
                     </Table>
                 </div>
 
-                {/* Pagination Info */}
-                <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2">
+                {/* Footer / Pagination */}
+                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50">
                     <div>
-                        Showing 1 to {filteredLogs.length} of {mockScheduledLogs.length} entries
+                        Showing 1 to {filteredLogs.length} of {logs.length} entries
                     </div>
-                    <div className="flex gap-1 items-center">
-                        <span className="text-gray-400 mr-2 cursor-pointer hover:text-gray-600">‹</span>
-                        <Button variant="default" size="sm" className="h-7 w-7 p-0 bg-indigo-500 hover:bg-indigo-600 text-white border-0">
+                    <div className="flex gap-2 items-center">
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            disabled={true}
+                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
+                        >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button 
+                            className="h-7 w-7 p-0 text-[11px] font-bold rounded-lg shadow-sm transition-all duration-300 btn-gradient"
+                        >
                             1
                         </Button>
-                        <span className="text-gray-400 ml-2 cursor-pointer hover:text-gray-600">›</span>
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            disabled={true}
+                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
+                        >
+                            <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
                     </div>
                 </div>
             </div>

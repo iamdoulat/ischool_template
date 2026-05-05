@@ -1,9 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { formatDate } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import {
     Table,
     TableBody,
@@ -35,17 +45,29 @@ import {
 import { cn } from "@/lib/utils";
 
 interface StudentMember {
-    id: string;
-    memberId: string;
-    libraryCardNo: string;
-    admissionNo: string;
-    studentName: string;
-    class: string;
-    fatherName: string;
+    id: number;
+    name: string;
+    admission_no: string;
+    father_name: string;
     dob: string;
     gender: string;
-    mobile: string;
-    isMember: boolean;
+    phone: string;
+    school_class?: { class: string };
+    section?: { section: string };
+    library_member?: {
+        id: number;
+        member_id: string;
+        library_card_no: string;
+        active: boolean;
+    };
+}
+
+interface PaginationData {
+    current_page: number;
+    last_page: number;
+    total: number;
+    from: number;
+    to: number;
 }
 
 const mockStudents: StudentMember[] = [
@@ -65,49 +87,192 @@ const mockStudents: StudentMember[] = [
 ];
 
 export default function AddStudentLibraryPage() {
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
+    const [students, setStudents] = useState<StudentMember[]>([]);
+    const [pagination, setPagination] = useState<PaginationData | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [limit, setLimit] = useState("50");
 
-    const filteredStudents = mockStudents.filter((student) =>
-        student.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.admissionNo.includes(searchTerm)
-    );
+    const [classes, setClasses] = useState<any[]>([]);
+    const [sections, setSections] = useState<any[]>([]);
+    const [selectedClass, setSelectedClass] = useState("");
+    const [selectedSection, setSelectedSection] = useState("");
+
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState<StudentMember | null>(null);
+    const [memberFormData, setMemberFormData] = useState({
+        library_card_no: "",
+        member_id: ""
+    });
+
+    const fetchClasses = async () => {
+        try {
+            const response = await api.get('/classes');
+            setClasses(response.data);
+        } catch (error) {
+            console.error("Error fetching classes:", error);
+        }
+    };
+
+    const fetchSections = async (classId: string) => {
+        if (!classId) return;
+        try {
+            const response = await api.get(`/sections?class_id=${classId}`);
+            setSections(response.data);
+        } catch (error) {
+            console.error("Error fetching sections:", error);
+        }
+    };
+
+    const fetchStudents = async (page = 1) => {
+        setLoading(true);
+        try {
+            const response = await api.get(`/library/members?type=student&page=${page}&search=${searchTerm}&limit=${limit}&class_id=${selectedClass}&section_id=${selectedSection}`);
+            setStudents(response.data.data);
+            setPagination({
+                current_page: response.data.current_page,
+                last_page: response.data.last_page,
+                total: response.data.total,
+                from: response.data.from,
+                to: response.data.to
+            });
+        } catch (error) {
+            console.error("Error fetching students:", error);
+            toast({ title: "Error", description: "Failed to fetch student records", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchClasses();
+        fetchStudents();
+    }, [limit]);
+
+    useEffect(() => {
+        if (selectedClass) {
+            fetchSections(selectedClass);
+        }
+    }, [selectedClass]);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        fetchStudents(1);
+    };
+
+    const handleAddMembership = (student: StudentMember) => {
+        setSelectedStudent(student);
+        setMemberFormData({
+            library_card_no: "",
+            member_id: student.admission_no || ""
+        });
+        setIsDialogOpen(true);
+    };
+
+    const saveMembership = async () => {
+        if (!memberFormData.member_id) {
+            toast({ title: "Error", description: "Library Member ID is required", variant: "destructive" });
+            return;
+        }
+
+        try {
+            await api.post('/library/members', {
+                user_id: selectedStudent?.id,
+                member_type: 'student',
+                ...memberFormData
+            });
+            toast({ title: "Success", description: "Library membership assigned successfully" });
+            setIsDialogOpen(false);
+            fetchStudents();
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.response?.data?.message || "Failed to assign membership",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const handleRemoveMembership = async (userId: number) => {
+        if (confirm("Are you sure you want to remove this library membership?")) {
+            try {
+                await api.delete(`/library/members/${userId}`);
+                toast({ title: "Success", description: "Membership removed successfully" });
+                fetchStudents();
+            } catch (error) {
+                toast({ title: "Error", description: "Failed to remove membership", variant: "destructive" });
+            }
+        }
+    };
+
+    const handleCopy = () => {
+        const text = students.map(s => `${s.name}\t${s.admission_no}\t${s.library_member ? 'Member' : 'Not Member'}`).join('\n');
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copied", description: "Data copied to clipboard" });
+    };
+
+    const handleExportCSV = () => {
+        const headers = ["Name", "Admission No", "Class", "Member ID", "Card No", "Status"];
+        const rows = students.map(s => [s.name, s.admission_no, `${s.school_class?.class}(${s.section?.section})`, s.library_member?.member_id || "-", s.library_member?.library_card_no || "-", s.library_member ? 'Active' : 'Inactive']);
+        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "library_students.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const toolbarActions = [
+        { Icon: Copy, onClick: handleCopy, title: "Copy" },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
+        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
+        { Icon: Printer, onClick: () => window.print(), title: "Print" },
+        { Icon: Columns, onClick: () => {}, title: "Columns" },
+    ];
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
             {/* Select Criteria Section */}
-            <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4">
+             <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4">
                 <h2 className="text-sm font-medium text-gray-800 border-b pb-2">Select Criteria</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                             Class <span className="text-red-500 font-bold">*</span>
                         </Label>
-                        <Select defaultValue="class1">
+                        <Select value={selectedClass} onValueChange={setSelectedClass}>
                             <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="class1">Class 1</SelectItem>
-                                <SelectItem value="class2">Class 2</SelectItem>
+                                {classes.map((cls) => (
+                                    <SelectItem key={cls.id} value={String(cls.id)}>{cls.class}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">Section</Label>
-                        <Select defaultValue="a">
+                        <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
                             <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="a">A</SelectItem>
-                                <SelectItem value="b">B</SelectItem>
+                                {sections.map((sec) => (
+                                    <SelectItem key={sec.id} value={String(sec.id)}>{sec.section}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
                 <div className="flex justify-end pt-2">
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white gap-2 h-8 px-6 text-[11px] font-bold uppercase transition-all rounded shadow-sm">
+                    <Button onClick={() => fetchStudents(1)} className="btn-gradient gap-2 h-8 px-6 text-[11px] font-bold uppercase transition-all rounded shadow-sm">
                         <Search className="h-3.5 w-3.5" /> Search
                     </Button>
                 </div>
@@ -117,36 +282,50 @@ export default function AddStudentLibraryPage() {
             <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
                 <h2 className="text-sm font-medium text-gray-800">Student Members List</h2>
 
-                {/* Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="relative w-full md:w-64">
-                        <Input
-                            placeholder="Search"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
-                        />
-                    </div>
+                 {/* Toolbar */}
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
+                    <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-fit">
+                        <div className="relative w-full md:w-64">
+                            <Input
+                                placeholder="Search"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-3 h-9 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50"
+                            />
+                        </div>
+                        <Button type="submit" className="btn-gradient h-9 px-6 text-[11px] font-bold flex items-center gap-2">
+                            <Search className="h-4 w-4" />
+                            Search
+                        </Button>
+                    </form>
 
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">50</span>
-                            <Select defaultValue="50">
-                                <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none rounded">
+                            <Select value={limit} onValueChange={setLimit}>
+                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 bg-transparent shadow-none rounded-md px-2 flex gap-1 items-center justify-between">
                                     <SelectValue />
+                                    <ChevronLeft className="h-2 w-2 text-gray-400 rotate-90" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="10">10</SelectItem>
                                     <SelectItem value="25">25</SelectItem>
                                     <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
                                 </SelectContent>
                             </Select>
                             <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                         </div>
                         <div className="flex items-center gap-1 text-gray-400">
-                            {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, i) => (
-                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded text-gray-400">
-                                    <Icon className="h-3.5 w-3.5" />
+                            {toolbarActions.map((action, i) => (
+                                <Button 
+                                    key={i} 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={action.onClick}
+                                    title={action.title}
+                                    className="h-7 w-7 hover:bg-gray-100 rounded"
+                                >
+                                    <action.Icon className="h-3.5 w-3.5" />
                                 </Button>
                             ))}
                         </div>
@@ -179,31 +358,43 @@ export default function AddStudentLibraryPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredStudents.map((student) => (
+                             {students.map((student) => (
                                 <TableRow
                                     key={student.id}
                                     className={cn(
                                         "text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap",
-                                        student.isMember && "bg-[#e8f5e9]/60 hover:bg-[#c8e6c9]/60" // Light green for members
+                                        student.library_member && "bg-[#e8f5e9]/60 hover:bg-[#c8e6c9]/60" // Light green for members
                                     )}
                                 >
-                                    <TableCell className="py-3 text-gray-500">{student.memberId}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{student.libraryCardNo}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{student.admissionNo}</TableCell>
-                                    <TableCell className="py-3 text-gray-700 font-medium">{student.studentName}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{student.class}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{student.fatherName}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{student.dob}</TableCell>
+                                    <TableCell className="py-3 text-gray-500">{student.library_member?.member_id || "-"}</TableCell>
+                                    <TableCell className="py-3 text-gray-500">{student.library_member?.library_card_no || "-"}</TableCell>
+                                    <TableCell className="py-3 text-gray-500">{student.admission_no}</TableCell>
+                                    <TableCell className="py-3 text-gray-700 font-medium">{student.name}</TableCell>
+                                    <TableCell className="py-3 text-gray-500">{student.school_class?.class} ({student.section?.section})</TableCell>
+                                    <TableCell className="py-3 text-gray-500">{student.father_name}</TableCell>
+                                    <TableCell className="py-3 text-gray-500">{student.dob ? formatDate(student.dob) : "-"}</TableCell>
                                     <TableCell className="py-3 text-gray-500">{student.gender}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{student.mobile || "-"}</TableCell>
+                                    <TableCell className="py-3 text-gray-500">{student.phone || "-"}</TableCell>
                                     <TableCell className="py-3 text-right">
-                                        <Button size="icon" variant="ghost" className="h-6 w-6 bg-[#6366f1] hover:bg-[#5558dd] text-white rounded shadow-sm">
-                                            {student.isMember ? (
+                                        {student.library_member ? (
+                                            <Button 
+                                                size="icon" 
+                                                onClick={() => handleRemoveMembership(student.id)}
+                                                className="h-6 w-6 bg-rose-500 hover:bg-rose-600 text-white rounded shadow-sm"
+                                                title="Remove Membership"
+                                            >
                                                 <RotateCcw className="h-3 w-3" />
-                                            ) : (
-                                                <Plus className="h-3.5 w-3.5 font-bold" />
-                                            )}
-                                        </Button>
+                                            </Button>
+                                        ) : (
+                                            <Button 
+                                                size="icon" 
+                                                onClick={() => handleAddMembership(student)}
+                                                className="h-7 w-7 btn-gradient text-white rounded-full shadow-md"
+                                                title="Add to Library"
+                                            >
+                                                <Plus className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -211,19 +402,87 @@ export default function AddStudentLibraryPage() {
                     </Table>
                 </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2 border-t border-gray-50">
+                 {/* Footer / Pagination */}
+                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50">
                     <div>
-                        Showing 1 to {filteredStudents.length} of {mockStudents.length} entries
+                        Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
                     </div>
-                    <div className="flex gap-1 items-center">
-                        <span className="text-gray-400 mr-2 cursor-pointer hover:text-gray-600 text-[10px]">‹</span>
-                        <Button variant="default" size="sm" className="h-6 w-6 p-0 bg-indigo-500 hover:bg-indigo-600 text-white border-0 text-[10px] rounded">
-                            1
+                    <div className="flex gap-2 items-center">
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            disabled={pagination?.current_page === 1}
+                            onClick={() => fetchStudents(pagination!.current_page - 1)}
+                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
+                        >
+                            <ChevronLeft className="h-3.5 w-3.5" />
                         </Button>
-                        <span className="text-gray-400 ml-2 cursor-pointer hover:text-gray-600 text-[10px]">›</span>
+                        {[...Array(pagination?.last_page || 0)].map((_, i) => (
+                            <Button 
+                                key={i + 1}
+                                onClick={() => fetchStudents(i + 1)}
+                                className={cn(
+                                    "h-7 w-7 p-0 text-[11px] font-bold rounded-lg shadow-sm transition-all duration-300",
+                                    pagination?.current_page === i + 1 
+                                        ? "btn-gradient" 
+                                        : "bg-white text-gray-400 hover:bg-gray-50 border border-gray-100"
+                                )}
+                            >
+                                {i + 1}
+                            </Button>
+                        ))}
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            disabled={pagination?.current_page === pagination?.last_page}
+                            onClick={() => fetchStudents(pagination!.current_page + 1)}
+                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
+                        >
+                            <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
                     </div>
                 </div>
+
+                {/* Add Membership Dialog */}
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle className="text-lg font-bold text-gray-800">Add Library Member</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Student Name</Label>
+                                <Input value={selectedStudent?.name || ""} disabled className="h-9 bg-gray-50 border-gray-200 text-xs shadow-none" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Library Card No.</Label>
+                                    <Input 
+                                        value={memberFormData.library_card_no}
+                                        onChange={(e) => setMemberFormData({ ...memberFormData, library_card_no: e.target.value })}
+                                        className="h-9 border-gray-200 text-xs shadow-none"
+                                        placeholder="Optional"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">
+                                        Member ID <span className="text-red-500 font-bold">*</span>
+                                    </Label>
+                                    <Input 
+                                        value={memberFormData.member_id}
+                                        onChange={(e) => setMemberFormData({ ...memberFormData, member_id: e.target.value })}
+                                        className="h-9 border-gray-200 text-xs shadow-none"
+                                        placeholder="Required"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">Cancel</Button>
+                            <Button onClick={saveMembership} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">Add Member</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
     );

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 import {
     Popover,
     PopoverContent,
@@ -14,6 +16,19 @@ import { useLanguage } from "@/components/providers/language-provider";
 export function CurrencySwitcher() {
     const { selectedCurrency, setSelectedCurrency, availableCurrencies, loading } = useCurrency();
     const { t } = useLanguage();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!mounted) {
+        return (
+            <div className="h-10 w-10 flex items-center justify-center">
+                <CircleDollarSign className="h-5 w-5 text-muted-foreground/20" />
+            </div>
+        );
+    }
 
     return (
         <div className="relative group flex items-center justify-center">

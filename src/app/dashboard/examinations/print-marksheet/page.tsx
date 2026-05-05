@@ -1,197 +1,340 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Download, Printer } from "lucide-react";
+import { Search, Download, Printer, GraduationCap, ClipboardList, UserCircle, Calendar, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 interface Student {
     id: string;
-    admissionNo: string;
-    studentName: string;
-    fatherName: string;
-    dateOfBirth: string;
+    admission_no: string;
+    name: string;
+    last_name: string;
+    father_name: string;
+    dob: string;
     gender: string;
     category: string;
-    mobileNumber: string;
+    phone: string;
 }
 
-const mockStudents: Student[] = [
-    { id: "1", admissionNo: "120038", studentName: "Ayan Desai", fatherName: "Abhinand", dateOfBirth: "10/15/2015", gender: "Male", category: "General", mobileNumber: "9087875674" },
-    { id: "2", admissionNo: "96302", studentName: "Jacob Bethell", fatherName: "Brydon", dateOfBirth: "06/19/2016", gender: "Male", category: "General", mobileNumber: "065758879" },
-    { id: "3", admissionNo: "2152", studentName: "Kaylan", fatherName: "Lyndon", dateOfBirth: "05/19/2019", gender: "Female", category: "", mobileNumber: "54180185420" },
-    { id: "4", admissionNo: "410020", studentName: "kristian clarke", fatherName: "", dateOfBirth: "05/13/2009", gender: "Male", category: "General", mobileNumber: "90078684" },
-    { id: "5", admissionNo: "032002", studentName: "Liam Dawson", fatherName: "John", dateOfBirth: "06/17/2020", gender: "Male", category: "Special", mobileNumber: "80678456" },
-    { id: "6", admissionNo: "8000", studentName: "Rocky Flintoff", fatherName: "Jordan", dateOfBirth: "04/20/2012", gender: "Male", category: "General", mobileNumber: "800905673" },
-];
-
 export default function PrintMarksheetPage() {
-    return (
-        <div className="space-y-6">
-            {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border p-4 space-y-6">
-                <h2 className="text-lg font-medium text-gray-800 border-b pb-2">Select Criteria</h2>
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(false);
+    const [searching, setSearching] = useState(false);
+    
+    // Criteria Data
+    const [classes, setClasses] = useState<any[]>([]);
+    const [sections, setSections] = useState<any[]>([]);
+    const [examGroups, setExamGroups] = useState<any[]>([]);
+    const [exams, setExams] = useState<any[]>([]);
+    const [templates, setTemplates] = useState<any[]>([]);
+    const [sessions, setSessions] = useState<any[]>([]);
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-                    <div className="space-y-2 lg:col-span-1">
-                        <Label htmlFor="examGroup" className="text-xs font-semibold text-gray-600">
+    // Selected Criteria
+    const [selectedCriteria, setSelectedCriteria] = useState({
+        exam_group_id: "",
+        exam_id: "",
+        session_id: "",
+        school_class_id: "",
+        section_id: "",
+        template_id: ""
+    });
+
+    // Student List
+    const [students, setStudents] = useState<Student[]>([]);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        fetchInitialData();
+    }, []);
+
+    const fetchInitialData = async () => {
+        setLoading(true);
+        try {
+            const [criteriaRes, classesRes, sectionsRes] = await Promise.all([
+                api.get('/examination/print-marksheet/criteria'),
+                api.get('/academics/classes?no_paginate=true'),
+                api.get('/academics/sections?no_paginate=true')
+            ]);
+            
+            setExamGroups(criteriaRes.data.exam_groups || []);
+            setTemplates(criteriaRes.data.marksheet_templates || []);
+            setSessions(criteriaRes.data.sessions || []);
+            setClasses(classesRes.data.data || classesRes.data || []);
+            setSections(sectionsRes.data.data || sectionsRes.data || []);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to load criteria data", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedCriteria.exam_group_id) {
+            const group = examGroups.find(g => g.id.toString() === selectedCriteria.exam_group_id);
+            setExams(group?.exams || []);
+        } else {
+            setExams([]);
+        }
+    }, [selectedCriteria.exam_group_id, examGroups]);
+
+    const handleSearch = async () => {
+        if (!selectedCriteria.school_class_id || !selectedCriteria.section_id || !selectedCriteria.exam_id) {
+            toast({ title: "Validation Error", description: "Please select all required fields", variant: "destructive" });
+            return;
+        }
+
+        setSearching(true);
+        try {
+            const response = await api.post('/examination/print-marksheet/search', {
+                school_class_id: selectedCriteria.school_class_id,
+                section_id: selectedCriteria.section_id
+            });
+            setStudents(response.data || []);
+            setSelectedIds([]);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to fetch students", variant: "destructive" });
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === students.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(students.map(s => s.id));
+        }
+    };
+
+    const toggleSelect = (id: string) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
+
+    return (
+        <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
+            {/* Header Section */}
+            <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                <div>
+                    <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
+                        <Printer className="h-6 w-6 text-indigo-500" />
+                        Print Marksheet
+                    </h1>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Generate and print academic student reports</p>
+                </div>
+            </div>
+
+            {/* Select Criteria Section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
+                    <ClipboardList className="h-5 w-5 text-indigo-500" />
+                    <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest">Select Criteria</h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+                    <div className="space-y-2">
+                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                             Exam Group <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="grading">
-                            <SelectTrigger id="examGroup">
-                                <SelectValue placeholder="Select" />
+                        <Select value={selectedCriteria.exam_group_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_group_id: val})}>
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                                <SelectValue placeholder="Select Group" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="grading">Grading System (School Based Grading System)</SelectItem>
+                                {examGroups.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name} ({g.exam_type})</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
 
-                    <div className="space-y-2 lg:col-span-1">
-                        <Label htmlFor="exam" className="text-xs font-semibold text-gray-600">
+                    <div className="space-y-2">
+                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                             Exam <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="periodic">
-                            <SelectTrigger id="exam">
-                                <SelectValue placeholder="Select" />
+                        <Select value={selectedCriteria.exam_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_id: val})}>
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                                <SelectValue placeholder="Select Exam" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="periodic">Periodic Weekly Test (January-2026)</SelectItem>
+                                {exams.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
 
-                    <div className="space-y-2 lg:col-span-1">
-                        <Label htmlFor="session" className="text-xs font-semibold text-gray-600">
+                    <div className="space-y-2">
+                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                             Session <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="2025-26">
-                            <SelectTrigger id="session">
-                                <SelectValue placeholder="Select" />
+                        <Select value={selectedCriteria.session_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, session_id: val})}>
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                                <SelectValue placeholder="Select Session" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="2025-26">2025-26</SelectItem>
+                                {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.year}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
 
-                    <div className="space-y-2 lg:col-span-1">
-                        <Label htmlFor="class" className="text-xs font-semibold text-gray-600">
+                    <div className="space-y-2">
+                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                             Class <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="class2">
-                            <SelectTrigger id="class">
-                                <SelectValue placeholder="Select" />
+                        <Select value={selectedCriteria.school_class_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, school_class_id: val})}>
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                                <SelectValue placeholder="Select Class" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="class2">Class 2</SelectItem>
+                                {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
 
-                    <div className="space-y-2 lg:col-span-1">
-                        <Label htmlFor="section" className="text-xs font-semibold text-gray-600">
+                    <div className="space-y-2">
+                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                             Section <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="a">
-                            <SelectTrigger id="section">
-                                <SelectValue placeholder="Select" />
+                        <Select value={selectedCriteria.section_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, section_id: val})}>
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                                <SelectValue placeholder="Select Section" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="a">A</SelectItem>
+                                {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
 
-                    <div className="space-y-2 lg:col-span-1">
-                        <Label htmlFor="template" className="text-xs font-semibold text-gray-600">
-                            Marksheet Template <span className="text-red-500">*</span>
+                    <div className="space-y-2">
+                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                            Template <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="school">
-                            <SelectTrigger id="template">
-                                <SelectValue placeholder="Select" />
+                        <Select value={selectedCriteria.template_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, template_id: val})}>
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                                <SelectValue placeholder="Select Template" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="school">school marksheet</SelectItem>
+                                {templates.map(t => <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
 
-                <div className="flex justify-end pt-2">
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-4 gap-2 text-xs">
-                        <Search className="h-3.5 w-3.5" /> Search
+                <div className="flex justify-end pt-4">
+                    <Button 
+                        onClick={handleSearch} 
+                        disabled={searching}
+                        className="btn-gradient text-white px-10 h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex gap-2"
+                    >
+                        {searching ? <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" /> : <Search className="h-4 w-4" />}
+                        Search Students
                     </Button>
                 </div>
             </div>
 
             {/* Student List Section */}
-            <div className="bg-white rounded-lg shadow-sm border p-4 space-y-4">
-                <div className="flex justify-between items-center border-b pb-2">
-                    <h2 className="text-lg font-medium text-gray-800">Student List</h2>
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-4 text-xs h-8">
-                        Bulk Download
-                    </Button>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+                <div className="flex justify-between items-center border-b border-gray-50 pb-4">
+                    <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
+                        <UserCircle className="h-5 w-5 text-indigo-500" />
+                        Student List
+                    </h2>
+                    {selectedIds.length > 0 && (
+                        <Button className="btn-gradient text-white h-10 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-indigo-100 flex gap-2">
+                            <Download className="h-3.5 w-3.5" /> Bulk Download ({selectedIds.length})
+                        </Button>
+                    )}
                 </div>
 
-                <div className="rounded-md border overflow-x-auto">
+                <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
                     <Table>
-                        <TableHeader className="bg-gray-50 text-xs uppercase">
-                            <TableRow>
-                                <TableHead className="w-[40px] px-4 text-center">
-                                    <Checkbox className="border-gray-400" />
+                        <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-500">
+                            <TableRow className="hover:bg-transparent border-gray-50">
+                                <TableHead className="w-[60px] px-6 text-center">
+                                    <Checkbox 
+                                        className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 transition-all" 
+                                        checked={students.length > 0 && selectedIds.length === students.length}
+                                        onCheckedChange={toggleSelectAll}
+                                    />
                                 </TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[120px]">Admission No</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[150px]">Student Name</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[150px]">Father Name</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[120px]">Date Of Birth</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[100px]">Gender</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[100px]">Category</TableHead>
-                                <TableHead className="font-semibold text-gray-600 min-w-[120px]">Mobile Number</TableHead>
-                                <TableHead className="font-semibold text-gray-600 text-right min-w-[100px]">Action</TableHead>
+                                <TableHead className="py-4 px-6">Admission No</TableHead>
+                                <TableHead className="py-4 px-6">Student Name</TableHead>
+                                <TableHead className="py-4 px-6">Father Name</TableHead>
+                                <TableHead className="py-4 px-6">Date Of Birth</TableHead>
+                                <TableHead className="py-4 px-6">Gender</TableHead>
+                                <TableHead className="py-4 px-6">Mobile</TableHead>
+                                <TableHead className="py-4 px-6 text-right">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {mockStudents.map((student) => (
-                                <TableRow key={student.id} className="text-sm hover:bg-gray-50">
-                                    <TableCell className="text-center px-4">
-                                        <Checkbox className="border-gray-400" />
-                                    </TableCell>
-                                    <TableCell className="text-gray-600 font-medium">{student.admissionNo}</TableCell>
-                                    <TableCell>
-                                        <Link href="#" className="font-medium text-blue-600 hover:underline">
-                                            {student.studentName}
-                                        </Link>
-                                    </TableCell>
-                                    <TableCell className="text-gray-600">{student.fatherName}</TableCell>
-                                    <TableCell className="text-gray-600">{student.dateOfBirth}</TableCell>
-                                    <TableCell className="text-gray-600">{student.gender}</TableCell>
-                                    <TableCell className="text-gray-600">{student.category}</TableCell>
-                                    <TableCell className="text-gray-600">{student.mobileNumber}</TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button
-                                                size="sm"
-                                                className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded p-0 shadow-sm"
-                                                title="Download"
-                                            >
-                                                <Download className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded p-0 shadow-sm"
-                                                title="Print"
-                                            >
-                                                <Printer className="h-4 w-4" />
-                                            </Button>
+                            {searching ? (
+                                <TableRow>
+                                    <TableCell colSpan={8} className="h-48 text-center">
+                                        <div className="flex flex-col items-center justify-center space-y-3">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Searching records...</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            ) : students.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={8} className="h-32 text-center text-gray-400 text-sm italic">
+                                        Please select criteria and click search to view students.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                students.map((student) => (
+                                    <TableRow key={student.id} className="text-[12px] text-gray-600 hover:bg-gray-50/30 group border-b last:border-0 border-gray-50 transition-colors">
+                                        <TableCell className="text-center px-6 py-4">
+                                            <Checkbox 
+                                                className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500" 
+                                                checked={selectedIds.includes(student.id)}
+                                                onCheckedChange={() => toggleSelect(student.id)}
+                                            />
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6 font-bold text-gray-700 bg-gray-50/30">{student.admission_no}</TableCell>
+                                        <TableCell className="py-4 px-6">
+                                            <Link href={`/dashboard/students/${student.id}`} className="font-bold text-indigo-600 hover:underline flex items-center gap-2">
+                                                <UserCircle className="h-3.5 w-3.5 text-gray-300" />
+                                                {student.name} {student.last_name}
+                                            </Link>
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6 font-medium">{student.father_name || "---"}</TableCell>
+                                        <TableCell className="py-4 px-6 text-[11px] font-bold">
+                                            <span className="flex items-center gap-2 text-gray-500"><Calendar className="h-3 w-3" /> {student.dob || "---"}</span>
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6">
+                                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${student.gender === 'Male' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                                                {student.gender}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6 font-medium text-gray-400">{student.phone || "---"}</TableCell>
+                                        <TableCell className="py-4 px-6 text-right">
+                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md transition-all"
+                                                    title="Download Marksheet"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-all"
+                                                    title="Print Marksheet"
+                                                >
+                                                    <Printer className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </div>

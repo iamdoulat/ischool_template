@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,8 +14,7 @@ import {
 } from "@/components/ui/table";
 import {
     Pencil,
-    X,
-    Search,
+    Trash2,
     Copy,
     FileSpreadsheet,
     FileText,
@@ -32,49 +31,162 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Designation {
-    id: string;
+    id: number;
     name: string;
 }
 
-const mockDesignations: Designation[] = [
-    { id: "1", name: "Faculty" },
-    { id: "2", name: "Accountant" },
-    { id: "3", name: "Admin" },
-    { id: "4", name: "Receptionist" },
-    { id: "5", name: "Principal" },
-    { id: "6", name: "Director" },
-    { id: "7", name: "Librarian" },
-    { id: "8", name: "Technical Head" },
-    { id: "9", name: "Vice Principal" },
-];
-
 export default function DesignationPage() {
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
+    const [designations, setDesignations] = useState<Designation[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentId, setCurrentId] = useState<number | null>(null);
+    const [name, setName] = useState("");
 
-    const filteredDesignations = mockDesignations.filter(des =>
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get("/hr/designation");
+            setDesignations(response.data.data);
+        } catch (error) {
+            console.error("Error fetching designations:", error);
+            toast("error", "Failed to load designations");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleSubmit = async () => {
+        if (!name.trim()) {
+            toast("error", "Name is required");
+            return;
+        }
+
+        try {
+            if (isEditing && currentId) {
+                await api.put(`/hr/designation/${currentId}`, { name });
+                toast("success", "Designation updated successfully");
+            } else {
+                await api.post("/hr/designation", { name });
+                toast("success", "Designation created successfully");
+            }
+            resetForm();
+            fetchData();
+        } catch (error: any) {
+            toast("error", error.response?.data?.message || "Failed to save designation");
+        }
+    };
+
+    const handleEdit = (des: Designation) => {
+        setIsEditing(true);
+        setCurrentId(des.id);
+        setName(des.name);
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this designation?")) return;
+        try {
+            await api.delete(`/hr/designation/${id}`);
+            toast("success", "Designation deleted successfully");
+            fetchData();
+        } catch (error) {
+            toast("error", "Failed to delete designation");
+        }
+    };
+
+    const resetForm = () => {
+        setName("");
+        setIsEditing(false);
+        setCurrentId(null);
+    };
+
+    const filteredDesignations = designations.filter(des =>
         des.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const totalPages = Math.ceil(filteredDesignations.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedData = filteredDesignations.slice(startIndex, startIndex + itemsPerPage);
+
+    // Export Functions
+    const exportToExcel = () => {
+        const ws = XLSX.utils.json_to_sheet(designations.map(d => ({ Designation: d.name })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Designations");
+        XLSX.writeFile(wb, "designations.xlsx");
+    };
+
+    const exportToPDF = () => {
+        const doc = new jsPDF();
+        doc.text("Designation List", 14, 15);
+        autoTable(doc, {
+            head: [['No', 'Designation']],
+            body: designations.map((d, idx) => [idx + 1, d.name]),
+            startY: 20,
+        });
+        doc.save("designations.pdf");
+    };
+
+    const copyToClipboard = () => {
+        const text = designations.map(d => d.name).join('\n');
+        navigator.clipboard.writeText(text);
+        toast("success", "Data copied to clipboard");
+    };
 
     return (
         <div className="flex flex-col lg:flex-row gap-6 p-4 font-sans bg-gray-50/10 min-h-screen">
             {/* Left Column: Add Designation Form */}
             <div className="w-full lg:w-1/3">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                    <h2 className="text-sm font-medium text-gray-800 border-b pb-2 mb-4">Add Designation</h2>
+                    <h2 className="text-sm font-medium text-gray-800 border-b pb-2 mb-4">
+                        {isEditing ? "Edit Designation" : "Add Designation"}
+                    </h2>
 
                     <div className="space-y-4">
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Name <span className="text-red-500">*</span>
                             </Label>
-                            <Input className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500" />
+                            <Input 
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500 rounded-lg" 
+                                placeholder="e.g. Faculty"
+                            />
                         </div>
 
-                        <div className="flex justify-end pt-2">
-                            <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-8 h-8 text-xs shadow-sm transition-all rounded">
-                                Save
+                        <div className="flex justify-end pt-2 gap-2">
+                            {isEditing && (
+                                <Button 
+                                    onClick={resetForm}
+                                    variant="outline"
+                                    className="px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
+                                >
+                                    Cancel
+                                </Button>
+                            )}
+                            <Button 
+                                onClick={handleSubmit}
+                                variant="gradient"
+                                className="px-8 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5"
+                            >
+                                {isEditing ? "Update" : "Save"}
                             </Button>
                         </div>
                     </div>
@@ -92,15 +204,20 @@ export default function DesignationPage() {
                                 placeholder="Search"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500"
+                                className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
                             />
                         </div>
 
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1.5 mr-2">
-                                <span className="text-[10px] text-gray-500 font-bold">50</span>
-                                <Select defaultValue="50">
-                                    <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none">
+                                <Select
+                                    value={itemsPerPage.toString()}
+                                    onValueChange={(val) => {
+                                        setItemsPerPage(parseInt(val));
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -109,29 +226,28 @@ export default function DesignationPage() {
                                         <SelectItem value="50">50</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                             </div>
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
                                     <Copy className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
                                     <FileSpreadsheet className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
                                     <FileText className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
                                     <Printer className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
                                     <Columns className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
                         </div>
                     </div>
 
-                    <div className="rounded-md border border-gray-50 overflow-hidden">
+                    <div className="rounded border border-gray-50 overflow-hidden">
                         <Table>
                             <TableHeader className="bg-gray-50/50">
                                 <TableRow className="hover:bg-transparent border-gray-100">
@@ -140,36 +256,69 @@ export default function DesignationPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredDesignations.map((des) => (
-                                    <TableRow key={des.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
-                                        <TableCell className="py-3.5 text-gray-700 font-medium">{des.name}</TableCell>
-                                        <TableCell className="py-3.5 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
-                                                    <Pencil className="h-3 w-3" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
-                                                    <X className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={2} className="text-center py-10 text-gray-400 italic">Loading designations...</TableCell>
                                     </TableRow>
-                                ))}
+                                ) : paginatedData.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={2} className="text-center py-10 text-gray-400 italic">No designations found</TableCell>
+                                    </TableRow>
+                                ) : (
+                                    paginatedData.map((des) => (
+                                        <TableRow key={des.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
+                                            <TableCell className="py-3.5 text-[12px] text-gray-700 font-medium">{des.name}</TableCell>
+                                            <TableCell className="py-3.5 text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <Button onClick={() => handleEdit(des)} size="icon" variant="ghost" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors shadow-sm">
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                    <Button onClick={() => handleDelete(des.id)} size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm">
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
                             </TableBody>
                         </Table>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2">
-                        <div>
-                            Showing 1 to {filteredDesignations.length} of {mockDesignations.length} entries
-                        </div>
-                        <div className="flex gap-1 items-center">
-                            <span className="text-gray-400 mr-2">‹</span>
-                            <Button variant="default" size="sm" className="h-7 w-7 p-0 bg-indigo-500 hover:bg-indigo-600 text-white border-0">
-                                1
+                    <div className="flex justify-end items-center gap-2 py-4">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                        >
+                            <ChevronLeft className="h-4 w-4 text-gray-600" />
+                        </Button>
+
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <Button
+                                key={page}
+                                variant={currentPage === page ? "gradient" : "outline"}
+                                onClick={() => setCurrentPage(page)}
+                                className={cn(
+                                    "h-8 w-8 rounded-xl text-[10px] font-bold p-0 transition-all",
+                                    currentPage === page ? "shadow-md scale-105" : "border-gray-100 text-gray-400 hover:text-indigo-600"
+                                )}
+                            >
+                                {page}
                             </Button>
-                            <span className="text-gray-400 ml-2">›</span>
-                        </div>
+                        ))}
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                        >
+                            <ChevronRight className="h-4 w-4 text-gray-600" />
+                        </Button>
                     </div>
                 </div>
             </div>

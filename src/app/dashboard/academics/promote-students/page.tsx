@@ -35,6 +35,7 @@ interface SchoolClass {
 interface Section {
     id: number;
     name: string;
+    school_class_id: number | null;
 }
 
 export default function PromoteStudentsPage() {
@@ -54,12 +55,17 @@ export default function PromoteStudentsPage() {
     const [promoteClassId, setPromoteClassId] = useState<string>("");
     const [promoteSectionId, setPromoteSectionId] = useState<string>("");
 
+    // Filtered sections by selected class
+    const filteredSections = sections.filter(s => s.school_class_id === parseInt(currentClassId));
+    const promoteFilteredSections = sections.filter(s => s.school_class_id === parseInt(promoteClassId));
+
     // Results
     const [students, setStudents] = useState<Student[]>([]);
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
     const [promoting, setPromoting] = useState(false);
+    const [hasSearched, setHasSearched] = useState(false);
 
     // Load prerequisites
     useEffect(() => {
@@ -69,7 +75,7 @@ export default function PromoteStudentsPage() {
                 const [sessionRes, classRes, sectionRes] = await Promise.all([
                     api.get("/system-setting/sessions"),
                     api.get("/academics/classes?no_paginate=true"),
-                    api.get("/academics/sections?no_paginate=true")
+                    api.get("/academics/sections?with_class=true")
                 ]);
                 setSessions(sessionRes.data.data || []);
                 setClasses(classRes.data.data?.data || classRes.data.data || []);
@@ -98,7 +104,7 @@ export default function PromoteStudentsPage() {
 
         setSearching(true);
         try {
-            const response = await api.get("/academics/promote-students", {
+            const response = await api.get("/academics/student-promotion", {
                 params: {
                     academic_session_id: currentSessionId,
                     school_class_id: currentClassId,
@@ -112,6 +118,7 @@ export default function PromoteStudentsPage() {
             }));
             setStudents(fetchedStudents);
             setSelectedStudentIds(fetchedStudents.map((s: any) => s.id));
+            setHasSearched(true);
         } catch (error) {
             console.error("Error searching students:", error);
             toast("error", "Failed to fetch students");
@@ -145,7 +152,7 @@ export default function PromoteStudentsPage() {
 
         setPromoting(true);
         try {
-            await api.post("/academics/promote-students", payload);
+            await api.post("/academics/student-promotion", payload);
             toast("success", "Students promoted successfully");
             setStudents([]);
             setSelectedStudentIds([]);
@@ -206,7 +213,7 @@ export default function PromoteStudentsPage() {
                         <Label className="text-xs font-semibold text-gray-600">
                             Class <span className="text-red-500">*</span>
                         </Label>
-                        <Select value={currentClassId} onValueChange={setCurrentClassId}>
+                        <Select value={currentClassId} onValueChange={(val) => { setCurrentClassId(val); setCurrentSectionId(""); }}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select Class" />
                             </SelectTrigger>
@@ -226,59 +233,7 @@ export default function PromoteStudentsPage() {
                                 <SelectValue placeholder="Select Section" />
                             </SelectTrigger>
                             <SelectContent>
-                                {sections.map(s => (
-                                    <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-            </div>
-
-            {/* Promote Students In Next Session Section */}
-            <div className="bg-white rounded-lg shadow-sm border p-4">
-                <h2 className="text-lg font-medium text-gray-800 border-b pb-2 mb-4">Promote Students In Next Session</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                    <div className="space-y-2">
-                        <Label className="text-xs font-semibold text-gray-600">
-                            Promote In Session <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={promoteSessionId} onValueChange={setPromoteSessionId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Session" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sessions.map(s => (
-                                    <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-semibold text-gray-600">
-                            Class <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={promoteClassId} onValueChange={setPromoteClassId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Class" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {classes.map(c => (
-                                    <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-semibold text-gray-600">
-                            Section <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={promoteSectionId} onValueChange={setPromoteSectionId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Section" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sections.map(s => (
+                                {filteredSections.map(s => (
                                     <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -297,10 +252,76 @@ export default function PromoteStudentsPage() {
                 </div>
             </div>
 
+            {/* Empty State */}
+            {hasSearched && students.length === 0 && (
+                <div className="bg-white rounded-lg shadow-sm border p-8 flex flex-col items-center justify-center text-center animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="bg-orange-50 p-4 rounded-full mb-4">
+                        <Search className="h-8 w-8 text-orange-500" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-800 mb-1">No Students Found</h3>
+                    <p className="text-sm text-gray-500 max-w-sm">
+                        We couldn't find any active students for the selected Session, Class, and Section criteria. Please verify your selection and try again.
+                    </p>
+                </div>
+            )}
+
             {/* Student List Section */}
             {students.length > 0 && (
                 <div className="bg-white rounded-lg shadow-sm border p-4 space-y-4 font-sans animate-in fade-in slide-in-from-top-4 duration-500">
                     <h2 className="text-lg font-medium text-gray-800 border-b pb-2">Student List</h2>
+                    
+                    {/* Promotion Target Criteria */}
+                    <div className="bg-indigo-50/50 p-4 rounded-md border border-indigo-100 mb-4">
+                        <h3 className="text-sm font-medium text-indigo-800 mb-3">Target For Promotion</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold text-gray-600">
+                                    Promote In Session <span className="text-red-500">*</span>
+                                </Label>
+                                <Select value={promoteSessionId} onValueChange={setPromoteSessionId}>
+                                    <SelectTrigger className="bg-white">
+                                        <SelectValue placeholder="Select Session" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {sessions.map(s => (
+                                            <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold text-gray-600">
+                                    Promote To Class <span className="text-red-500">*</span>
+                                </Label>
+                                <Select value={promoteClassId} onValueChange={(val) => { setPromoteClassId(val); setPromoteSectionId(""); }}>
+                                    <SelectTrigger className="bg-white">
+                                        <SelectValue placeholder="Select Class" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {classes.map(c => (
+                                            <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold text-gray-600">
+                                    Promote To Section <span className="text-red-500">*</span>
+                                </Label>
+                                <Select value={promoteSectionId} onValueChange={setPromoteSectionId}>
+                                    <SelectTrigger className="bg-white">
+                                        <SelectValue placeholder="Select Section" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {promoteFilteredSections.map(s => (
+                                            <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="rounded-md border overflow-x-auto">
                         <Table>
                             <TableHeader className="bg-gray-50 text-[11px] uppercase">

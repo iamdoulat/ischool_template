@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import {
     Select,
@@ -20,6 +22,12 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle
+} from "@/components/ui/card";
+import {
     Search,
     Settings,
     Copy,
@@ -31,185 +39,284 @@ import {
     ChevronRight,
     LayoutList,
     ArrowUpDown,
+    RefreshCw,
+    GraduationCap,
+    Layers,
+    Info,
+    FileJson
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Student {
-    admissionNo: string;
-    studentName: string;
-    dateOfBirth: string;
+    id: string;
+    admission_no: string;
+    name: string;
+    dob: string;
     gender: string;
     category: string;
-    mobileNumber: string;
+    phone: string;
 }
 
-const students: Student[] = [
-    { admissionNo: "10024", studentName: "Steven Taylor", dateOfBirth: "08/17/2017", gender: "Male", category: "General", mobileNumber: "8905672345" },
-    { admissionNo: "120020", studentName: "Ashwani Kumar", dateOfBirth: "09/25/2009", gender: "Male", category: "General", mobileNumber: "9006784563" },
-    { admissionNo: "125005", studentName: "Nehal Wadhera", dateOfBirth: "11/23/2005", gender: "Male", category: "General", mobileNumber: "8907867654" },
-    { admissionNo: "18001", studentName: "Edward Thomas", dateOfBirth: "10/24/2013", gender: "Male", category: "General", mobileNumber: "8208785675" },
-    { admissionNo: "19001", studentName: "Edward Thomas", dateOfBirth: "11/03/2014", gender: "Male", category: "", mobileNumber: "8233366513" },
-    { admissionNo: "25001", studentName: "Georgia Wareham", dateOfBirth: "05/10/2021", gender: "Female", category: "General", mobileNumber: "9808908777" },
-    { admissionNo: "520039", studentName: "xavier bartlett", dateOfBirth: "05/13/2009", gender: "Male", category: "", mobileNumber: "0800789657" },
-    { admissionNo: "650000", studentName: "James Bennett", dateOfBirth: "05/05/2000", gender: "Male", category: "General", mobileNumber: "8978788888" },
-    { admissionNo: "7856", studentName: "RAM", dateOfBirth: "01/07/2020", gender: "Male", category: "General", mobileNumber: "" },
-    { admissionNo: "9001", studentName: "Niharika", dateOfBirth: "01/07/2020", gender: "Female", category: "General", mobileNumber: "" },
-    { admissionNo: "90034", studentName: "Nidhi Verma", dateOfBirth: "09/02/2021", gender: "Female", category: "", mobileNumber: "78785683785" },
-    { admissionNo: "9004", studentName: "AVYAAN", dateOfBirth: "10/14/2020", gender: "Male", category: "General", mobileNumber: "78546736767" },
-    { admissionNo: "96001", studentName: "Matthew Bacon", dateOfBirth: "12/31/2018", gender: "Male", category: "", mobileNumber: "08909789" },
-];
-
 export default function BuildCVPage() {
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [searching, setSearching] = useState(false);
+    const [criteria, setCriteria] = useState<any[]>([]);
+    const [students, setStudents] = useState<Student[]>([]);
+    const [mounted, setMounted] = useState(false);
+
+    // Selection State
+    const [selectedClass, setSelectedClass] = useState("");
+    const [selectedSection, setSelectedSection] = useState("");
+    const [sections, setSections] = useState<any[]>([]);
+
+    useEffect(() => {
+        setMounted(true);
+        fetchCriteria();
+    }, []);
+
+    useEffect(() => {
+        if (selectedClass) {
+            const cls = criteria.find(c => c.id.toString() === selectedClass);
+            setSections(cls?.sections || []);
+            setSelectedSection("");
+        } else {
+            setSections([]);
+        }
+    }, [selectedClass, criteria]);
+
+    const fetchCriteria = async () => {
+        try {
+            const response = await api.get('/student-cv/criteria');
+            setCriteria(response.data.data || []);
+        } catch (error) {
+            console.error("Failed to fetch criteria");
+        }
+    };
+
+    const handleSearch = async () => {
+        if (!selectedClass || !selectedSection) {
+            toast({ title: "Validation Error", description: "Please identify a target class and section node.", variant: "destructive" });
+            return;
+        }
+
+        setSearching(true);
+        try {
+            const response = await api.get('/student-cv/students', {
+                params: { school_class_id: selectedClass, section_id: selectedSection }
+            });
+            setStudents(response.data.data || []);
+            toast({ title: "Matrix Synchronized", description: "Student registry nodes successfully re-indexed." });
+        } catch (error) {
+            toast({ title: "Lookup Failure", description: "Failed to locate students in specified sector.", variant: "destructive" });
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const filteredStudents = students.filter(s =>
+        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.admission_no.includes(searchTerm)
+    );
+
+    if (!mounted) return null;
 
     return (
-        <div className="p-6 space-y-6 bg-[#f8f9fa] min-h-screen font-sans text-xs">
-            {/* Select Criteria Section */}
-            <div className="bg-white rounded shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-4 border-b border-gray-50 flex justify-between items-center">
-                    <h2 className="text-sm font-medium text-gray-700 tracking-tight">Select Criteria</h2>
-                    <Button variant="ghost" size="sm" className="h-7 bg-indigo-500 hover:bg-indigo-600 text-white flex items-center gap-1.5 text-[10px] font-bold uppercase rounded px-3">
-                        Setting
+        <div className="space-y-8 animate-in fade-in duration-700 pb-20 font-sans text-slate-800">
+            {/* Strategy Hub - Criteria Selection */}
+            <Card className="border-none shadow-[0_8px_40px_rgb(0,0,0,0.02)] bg-white/50 backdrop-blur-sm rounded-[2.5rem] overflow-hidden">
+                <CardHeader className="px-10 py-8 border-b border-gray-100 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-6">
+                        <div className="h-16 w-16 rounded-[2rem] bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner transform -rotate-3 transition-transform hover:rotate-0 duration-500">
+                            <GraduationCap className="h-8 w-8" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-2xl font-black tracking-tight text-slate-800 uppercase tracking-widest">Select Criteria</CardTitle>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.25em] mt-1.5 flex items-center gap-2">
+                                <Info className="h-3 w-3 text-indigo-400" /> Specify institutional parameters to index curriculum vitae nodes
+                            </p>
+                        </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="h-11 px-6 rounded-2xl border-gray-100 bg-white shadow-sm text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 hover:text-indigo-600 transition-all flex gap-2">
+                        <Settings className="h-4 w-4" />
+                        Registry Config
                     </Button>
-                </div>
-                <div className="p-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                        <div className="space-y-1.5 text-gray-400">
-                            <Label className="text-[11px] font-bold uppercase tracking-tight">
-                                Class <span className="text-red-500">*</span>
+                </CardHeader>
+                <CardContent className="p-10 space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-end">
+                        <div className="space-y-4 group">
+                            <Label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-indigo-500 transition-colors">
+                                Target Class <span className="text-rose-500">*</span>
                             </Label>
-                            <Select defaultValue="class-1">
-                                <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded shadow-none text-gray-600 font-medium">
-                                    <SelectValue placeholder="Select" />
+                            <Select value={selectedClass} onValueChange={setSelectedClass}>
+                                <SelectTrigger className="h-14 rounded-2xl border-gray-100 bg-white shadow-sm font-bold text-sm px-6 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all">
+                                    <SelectValue placeholder="Identify Class Node" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="class-1">Class 1</SelectItem>
-                                    <SelectItem value="class-2">Class 2</SelectItem>
+                                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                                    {criteria.map(cls => <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-1.5 text-gray-400">
-                            <Label className="text-[11px] font-bold uppercase tracking-tight">Section</Label>
-                            <Select defaultValue="a">
-                                <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded shadow-none text-gray-600 font-medium">
-                                    <SelectValue placeholder="Select" />
+                        <div className="space-y-4 group">
+                            <Label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-indigo-500 transition-colors">
+                                Target Section
+                            </Label>
+                            <Select value={selectedSection} onValueChange={setSelectedSection}>
+                                <SelectTrigger className="h-14 rounded-2xl border-gray-100 bg-white shadow-sm font-bold text-sm px-6 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all">
+                                    <SelectValue placeholder="Identify Section Node" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="a">A</SelectItem>
-                                    <SelectItem value="b">B</SelectItem>
+                                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                                    {sections.map(sec => <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
-                    <div className="mt-6 flex justify-end">
-                        <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-8 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-md flex items-center gap-1.5">
-                            <Search className="h-3 w-3" />
-                            Search
+                    <div className="mt-8 flex justify-end">
+                        <Button 
+                            onClick={handleSearch}
+                            disabled={searching}
+                            className="h-14 px-12 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[11px] font-black uppercase tracking-[0.25em] shadow-2xl shadow-orange-200/50 hover:shadow-orange-300/60 active:scale-95 transition-all flex items-center gap-3"
+                        >
+                            {searching ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+                            Execute Search
                         </Button>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
-            {/* Student List Section */}
-            <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
-                <h2 className="text-sm font-medium text-gray-700 tracking-tight">Student List</h2>
-
-                {/* Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
-                    <div className="relative w-full md:w-64">
-                        <Input
-                            placeholder="Search"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
-                        />
+            {/* Matrix Results - Student List */}
+            <Card className="border-none shadow-[0_8px_40px_rgb(0,0,0,0.02)] bg-white/50 backdrop-blur-sm rounded-[2.5rem] overflow-hidden">
+                <CardHeader className="px-10 py-8 border-b border-gray-100 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-6">
+                        <div className="h-14 w-14 rounded-[1.5rem] bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
+                            <Layers className="h-7 w-7" />
+                        </div>
+                        <CardTitle className="text-xl font-black tracking-tight text-slate-700 uppercase tracking-widest">Student List</CardTitle>
                     </div>
+                    <div className="flex items-center gap-3">
+                        {[Copy, FileSpreadsheet, FileJson, FileText, Printer, Columns].map((Icon, i) => (
+                            <Button key={i} variant="outline" size="icon" className="h-11 w-11 rounded-xl border-gray-100 bg-white text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 hover:border-indigo-100 active:scale-95 transition-all shadow-sm">
+                                <Icon className="h-4 w-4" />
+                            </Button>
+                        ))}
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    {/* Integrated Toolbar */}
+                    <div className="px-10 py-8 flex flex-col lg:flex-row justify-between items-center gap-6 border-b border-gray-50 bg-slate-50/30">
+                        <div className="relative w-full lg:w-96 group">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                            <input
+                                placeholder="Identify nodal asset..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-12 pr-6 h-12 rounded-2xl border-2 border-gray-100 bg-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-xs shadow-inner"
+                            />
+                        </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">50</span>
+                        <div className="flex items-center gap-6">
                             <Select defaultValue="50">
-                                <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none rounded">
+                                <SelectTrigger className="h-11 w-20 text-[11px] font-black border-gray-200 bg-white shadow-sm rounded-xl focus:ring-indigo-500/10">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="rounded-xl border-gray-100 shadow-2xl">
                                     <SelectItem value="10">10</SelectItem>
                                     <SelectItem value="25">25</SelectItem>
                                     <SelectItem value="50">50</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
-                        </div>
-                        <div className="flex items-center gap-1 text-gray-400">
-                            {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, i) => (
-                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                    <Icon className="h-3.5 w-3.5" />
-                                </Button>
-                            ))}
                         </div>
                     </div>
-                </div>
 
-                {/* Table */}
-                <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
-                    <Table className="min-w-[1000px]">
-                        <TableHeader className="bg-gray-50/30">
-                            <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-400 py-3">
-                                    <div className="flex items-center gap-1 cursor-pointer">Admission No <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-400 py-3">
-                                    <div className="flex items-center gap-1 cursor-pointer">Student Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-400 py-3">
-                                    <div className="flex items-center gap-1 cursor-pointer">Date Of Birth <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-400 py-3">
-                                    <div className="flex items-center gap-1 cursor-pointer text-gray-400">Gender <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-400 py-3 whitespace-nowrap">
-                                    <div className="flex items-center gap-1 cursor-pointer">Category <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-400 py-3">
-                                    <div className="flex items-center gap-1 cursor-pointer">Mobile Number <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-400 py-3 text-right">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {students.map((student) => (
-                                <TableRow key={student.admissionNo} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap group">
-                                    <TableCell className="py-3.5 text-gray-700 font-medium">{student.admissionNo}</TableCell>
-                                    <TableCell className="py-3.5 text-indigo-500 underline underline-offset-2 decoration-indigo-200 cursor-pointer font-medium">{student.studentName}</TableCell>
-                                    <TableCell className="py-3.5 text-gray-500">{student.dateOfBirth}</TableCell>
-                                    <TableCell className="py-3.5 text-gray-500">{student.gender}</TableCell>
-                                    <TableCell className="py-3.5 text-gray-500">{student.category || "—"}</TableCell>
-                                    <TableCell className="py-3.5 text-gray-500">{student.mobileNumber || "—"}</TableCell>
-                                    <TableCell className="py-3.5 text-right">
-                                        <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm">
-                                            <LayoutList className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </TableCell>
+                    <div className="overflow-x-auto min-h-[400px]">
+                        <Table>
+                            <TableHeader className="bg-slate-50/50">
+                                <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
+                                    <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] py-6 pl-10">Admission No <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] py-6">Student Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] py-6 text-center">Date Of Birth <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] py-6 text-center">Gender <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] py-6 whitespace-nowrap">Category <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] py-6">Mobile Number <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] py-6 pr-10 text-right">Action</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                            </TableHeader>
+                            <TableBody>
+                                {searching ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="h-64 text-center">
+                                            <div className="flex flex-col items-center justify-center space-y-4">
+                                                <div className="h-16 w-16 rounded-[2rem] bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner animate-pulse">
+                                                    <RefreshCw className="h-8 w-8 animate-spin" />
+                                                </div>
+                                                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-600 animate-pulse">Synchronizing Matrix...</p>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filteredStudents.length === 0 ? (
+                                    <TableRow className="hover:bg-transparent border-none">
+                                        <TableCell colSpan={7} className="h-64 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-6">
+                                                <div className="p-12 rounded-[3rem] bg-slate-50 text-slate-300 transform rotate-3 shadow-inner">
+                                                    <RefreshCw className="h-16 w-16 opacity-20" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500 bg-rose-50 px-8 py-3 rounded-full border border-rose-100 shadow-sm">No analytical nodes identified</span>
+                                                    <p className="text-[9px] uppercase font-black text-gray-400 tracking-tighter italic">Execute search to populate student matrix.</p>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredStudents.map((student, index) => (
+                                        <TableRow key={student.id} className={cn(
+                                            "hover:bg-indigo-50/20 border-b border-gray-50 transition-all group text-[11px]",
+                                            index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'
+                                        )}>
+                                            <TableCell className="py-5 pl-10 font-black text-slate-500 tabular-nums uppercase tracking-widest">{student.admission_no}</TableCell>
+                                            <TableCell className="py-5">
+                                                <span className="text-indigo-500 underline underline-offset-4 decoration-indigo-200 cursor-pointer font-black uppercase tracking-tight hover:text-indigo-600 transition-colors">{student.name}</span>
+                                            </TableCell>
+                                            <TableCell className="py-5 text-center text-slate-500 font-bold tabular-nums tracking-widest">{student.dob || "—"}</TableCell>
+                                            <TableCell className="py-5 text-center">
+                                                <span className="bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-full font-black text-[9px] border border-indigo-100 uppercase tracking-widest shadow-sm">
+                                                    {student.gender}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="py-5 text-slate-500 font-black uppercase tracking-widest whitespace-nowrap">{student.category || "—"}</TableCell>
+                                            <TableCell className="py-5 text-slate-600 font-bold tabular-nums tracking-[0.15em]">{student.phone || "—"}</TableCell>
+                                            <TableCell className="py-5 pr-10 text-right">
+                                                <Button size="icon" className="h-10 w-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-100 transition-all active:scale-90">
+                                                    <LayoutList className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between text-[10px] text-gray-400 font-bold pt-4 border-t border-gray-50">
-                    <div>
-                        Showing 1 to {students.length} of {students.length} entries
+                    {/* Premium Pagination Matrix */}
+                    <div className="px-10 py-10 bg-slate-50/50 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                            Matrix Analytics: <span className="text-indigo-600">{filteredStudents.length}</span> active nodes identified
+                        </p>
+                        <div className="flex items-center gap-3">
+                            <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-gray-100 bg-white text-slate-400 hover:text-indigo-500 active:scale-95 transition-all shadow-sm">
+                                <ChevronLeft className="h-5 w-5" />
+                            </Button>
+                            <Button className="h-12 w-12 rounded-2xl border-none p-0 text-white font-black text-xs active:scale-95 transition-all shadow-xl shadow-indigo-200/50 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
+                                1
+                            </Button>
+                            <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-gray-100 bg-white text-slate-400 hover:text-indigo-500 active:scale-95 transition-all shadow-sm">
+                                <ChevronRight className="h-5 w-5" />
+                            </Button>
+                        </div>
                     </div>
-                    <div className="flex gap-1 items-center">
-                        <span className="text-gray-300 mr-2 cursor-pointer hover:text-gray-500 text-sm">‹</span>
-                        <Button variant="default" size="sm" className="h-6 w-6 p-0 bg-indigo-500 hover:bg-indigo-600 text-white border-0 text-[10px] rounded shadow-sm">
-                            1
-                        </Button>
-                        <span className="text-gray-300 ml-2 cursor-pointer hover:text-gray-500 text-sm">›</span>
-                    </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

@@ -62,10 +62,11 @@ export default function RoutePage() {
         setLoading(true);
         try {
             const response = await api.get("/transport/routes");
-            setRoutes(response.data.data);
+            setRoutes(response.data.data || []);
         } catch (error) {
             console.error("Error fetching routes:", error);
-            toast("error", "Failed to load routes");
+            // Fallback to empty if API fails for now to avoid crashes during development
+            setRoutes([]);
         } finally {
             setLoading(false);
         }
@@ -76,7 +77,7 @@ export default function RoutePage() {
     }, []);
 
     const handleSubmit = async () => {
-        if (!formState.title) {
+        if (!formState.title.trim()) {
             toast("error", "Route title is required");
             return;
         }
@@ -116,7 +117,7 @@ export default function RoutePage() {
     };
 
     const filteredRoutes = routes.filter((r) =>
-        r.title.toLowerCase().includes(searchTerm.toLowerCase())
+        r.title?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const totalPages = Math.ceil(filteredRoutes.length / itemsPerPage);
@@ -149,46 +150,47 @@ export default function RoutePage() {
     };
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <div className="flex flex-col lg:flex-row gap-6">
+        <div className="p-6 space-y-6 bg-gray-50/10 min-h-screen font-sans">
+            <div className="flex flex-col lg:flex-row gap-8">
                 {/* Left Section: Create/Edit Route Form */}
                 <div className="w-full lg:w-1/3 xl:w-1/4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-4 border-b border-gray-100">
-                            <h2 className="text-sm font-medium text-gray-800 tracking-tight">
+                    <div className="bg-white rounded-2xl shadow-xl shadow-black/5 border border-gray-100 overflow-hidden sticky top-6">
+                        <div className="p-5 border-b border-gray-100 bg-gray-50/50">
+                            <h2 className="text-base font-semibold text-gray-800 tracking-tight">
                                 {isEditing ? "Edit Route" : "Create Route"}
                             </h2>
+                            <p className="text-xs text-gray-400 mt-1">Configure your transport routes</p>
                         </div>
-                        <div className="p-4 space-y-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                        <div className="p-6 space-y-6">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                                     Route Title <span className="text-red-500 font-bold">*</span>
                                 </Label>
                                 <Input
                                     value={formState.title}
                                     onChange={(e) => setFormState({ title: e.target.value })}
-                                    className="h-8 border-gray-200 text-[11px] focus-visible:ring-indigo-500 rounded shadow-none"
+                                    className="h-11 border-gray-200 text-sm focus-visible:ring-primary rounded-xl shadow-none transition-all focus:border-primary"
                                     placeholder="Enter route title"
                                 />
                             </div>
 
-                            <div className="flex justify-end gap-2 pt-2">
+                            <div className="flex flex-col gap-3 pt-2">
+                                <Button
+                                    onClick={handleSubmit}
+                                    variant="primary"
+                                    className="w-full h-11 text-xs font-bold uppercase tracking-widest transition-all rounded-xl shadow-lg shadow-primary/20"
+                                >
+                                    {isEditing ? "Update Route" : "Save Route"}
+                                </Button>
                                 {isEditing && (
                                     <Button
                                         onClick={() => { setIsEditing(false); setFormState({ title: "" }); }}
                                         variant="outline"
-                                        className="px-6 h-8 text-[11px] font-bold uppercase rounded shadow-sm"
+                                        className="w-full h-11 text-xs font-bold uppercase tracking-widest rounded-xl border-gray-200 text-gray-500 hover:bg-gray-50"
                                     >
                                         Cancel
                                     </Button>
                                 )}
-                                <Button
-                                    onClick={handleSubmit}
-                                    variant="gradient"
-                                    className="px-8 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
-                                >
-                                    {isEditing ? "Update" : "Save"}
-                                </Button>
                             </div>
                         </div>
                     </div>
@@ -196,91 +198,119 @@ export default function RoutePage() {
 
                 {/* Right Section: Route List */}
                 <div className="flex-1 min-w-0">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
-                        <h2 className="text-sm font-medium text-gray-800 tracking-tight">Route List</h2>
+                    <div className="bg-white rounded-2xl shadow-xl shadow-black/5 border border-gray-100 p-6 space-y-6 overflow-hidden">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-base font-semibold text-gray-800 tracking-tight">Route List</h2>
+                            <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-bold uppercase tracking-widest border border-indigo-100">
+                                {filteredRoutes.length} Total
+                            </span>
+                        </div>
 
                         {/* Toolbar */}
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
-                            <div className="relative w-full md:w-64">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-6">
+                            <div className="relative w-full md:w-80 group">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder="Search routes..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                                    className="pl-4 h-10 text-xs border-gray-200 focus-visible:ring-primary rounded-xl shadow-none transition-all focus:border-primary pr-10"
                                 />
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors">
+                                    <Plus className="h-4 w-4 rotate-45" />
+                                </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1.5 mr-2">
-                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{itemsPerPage}</span>
-                                    <Select
-                                        value={itemsPerPage.toString()}
-                                        onValueChange={(val) => {
-                                            setItemsPerPage(parseInt(val));
-                                            setCurrentPage(1);
-                                        }}
-                                    >
-                                        <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="10">10</SelectItem>
-                                            <SelectItem value="25">25</SelectItem>
-                                            <SelectItem value="50">50</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex items-center gap-1 text-gray-400">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={copyToClipboard}>
-                                        <Copy className="h-3.5 w-3.5" />
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm transition-all rounded-lg text-gray-500" onClick={copyToClipboard}>
+                                        <Copy className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={exportToExcel}>
-                                        <FileSpreadsheet className="h-3.5 w-3.5" />
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm transition-all rounded-lg text-gray-500" onClick={exportToExcel}>
+                                        <FileSpreadsheet className="h-4 w-4 text-green-600" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={exportToPDF}>
-                                        <FileText className="h-3.5 w-3.5" />
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm transition-all rounded-lg text-gray-500" onClick={exportToPDF}>
+                                        <FileText className="h-4 w-4 text-red-600" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={() => window.print()}>
-                                        <Printer className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                        <Columns className="h-3.5 w-3.5" />
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm transition-all rounded-lg text-gray-500" onClick={() => window.print()}>
+                                        <Printer className="h-4 w-4" />
                                     </Button>
                                 </div>
+                                <div className="h-8 w-px bg-gray-100" />
+                                <Select
+                                    value={itemsPerPage.toString()}
+                                    onValueChange={(val) => {
+                                        setItemsPerPage(parseInt(val));
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <SelectTrigger className="h-10 w-20 text-xs border-gray-200 focus:ring-primary rounded-xl shadow-none bg-white">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="25">25</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
                         {/* Table */}
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-2xl border border-gray-100 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[600px]">
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                            <div className="flex items-center gap-1 cursor-pointer">Route Title <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                        <TableHead className="text-xs font-bold uppercase text-gray-500 py-4 px-6">
+                                            <div className="flex items-center gap-2 cursor-pointer group">
+                                                Route Title 
+                                                <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            </div>
                                         </TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase text-gray-500 py-4 px-6 text-right">Action</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {loading ? (
                                         <TableRow>
-                                            <TableCell colSpan={2} className="text-center py-10 text-gray-400 italic">Loading routes...</TableCell>
+                                            <TableCell colSpan={2} className="text-center py-20">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                                                    <p className="text-xs text-gray-400 font-medium">Loading routes...</p>
+                                                </div>
+                                            </TableCell>
                                         </TableRow>
                                     ) : paginatedData.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={2} className="text-center py-10 text-gray-400 italic">No routes found</TableCell>
+                                            <TableCell colSpan={2} className="text-center py-20">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <div className="bg-gray-50 p-4 rounded-full">
+                                                        <FileText className="h-8 w-8 text-gray-300" />
+                                                    </div>
+                                                    <p className="text-xs text-gray-400 font-medium">No routes found</p>
+                                                </div>
+                                            </TableCell>
                                         </TableRow>
                                     ) : (
                                         paginatedData.map((route) => (
-                                            <TableRow key={route.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
-                                                <TableCell className="py-3 text-gray-700 font-medium">{route.title}</TableCell>
-                                                <TableCell className="py-3 text-right">
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        <Button onClick={() => handleEdit(route)} size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
-                                                            <Pencil className="h-3 w-3" />
+                                            <TableRow key={route.id} className="text-sm border-b border-gray-50 hover:bg-gray-50/30 transition-colors group">
+                                                <TableCell className="py-4 px-6 text-gray-700 font-medium">{route.title}</TableCell>
+                                                <TableCell className="py-4 px-6 text-right">
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button 
+                                                            onClick={() => handleEdit(route)} 
+                                                            size="icon" 
+                                                            variant="ghost" 
+                                                            className="h-8 w-8 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-colors"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
                                                         </Button>
-                                                        <Button onClick={() => handleDelete(route.id)} size="icon" variant="ghost" className="h-6 w-6 bg-red-500 hover:bg-red-600 text-white rounded">
-                                                            <Trash2 className="h-3 w-3" />
+                                                        <Button 
+                                                            onClick={() => handleDelete(route.id)} 
+                                                            size="icon" 
+                                                            variant="ghost" 
+                                                            className="h-8 w-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 </TableCell>
@@ -292,40 +322,49 @@ export default function RoutePage() {
                         </div>
 
                         {/* Pagination UI */}
-                        <div className="flex justify-center items-center gap-2 py-4 border-t border-gray-50">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={currentPage === 1}
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
-                            >
-                                <ChevronLeft className="h-4 w-4 text-gray-600" />
-                            </Button>
-
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 py-4 border-t border-gray-50">
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                Showing {Math.min(startIndex + 1, filteredRoutes.length)} to {Math.min(startIndex + itemsPerPage, filteredRoutes.length)} of {filteredRoutes.length} Entries
+                            </p>
+                            <div className="flex items-center gap-2">
                                 <Button
-                                    key={page}
-                                    variant={currentPage === page ? "gradient" : "outline"}
-                                    onClick={() => setCurrentPage(page)}
-                                    className={cn(
-                                        "h-8 w-8 rounded-xl text-[10px] font-bold p-0 transition-all",
-                                        currentPage === page ? "shadow-md scale-105" : "border-gray-100 text-gray-400 hover:text-indigo-600"
-                                    )}
+                                    variant="outline"
+                                    size="icon"
+                                    disabled={currentPage === 1}
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    className="h-9 w-9 rounded-xl border-gray-100 hover:bg-gray-50 hover:border-primary/20 disabled:opacity-30 transition-all shadow-sm"
                                 >
-                                    {page}
+                                    <ChevronLeft className="h-4 w-4 text-gray-600" />
                                 </Button>
-                            ))}
 
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={currentPage === totalPages}
-                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
-                            >
-                                <ChevronRight className="h-4 w-4 text-gray-600" />
-                            </Button>
+                                <div className="flex items-center gap-1.5 px-2">
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                        <Button
+                                            key={page}
+                                            variant={currentPage === page ? "primary" : "outline"}
+                                            onClick={() => setCurrentPage(page)}
+                                            className={cn(
+                                                "h-9 min-w-[36px] rounded-xl text-xs font-bold transition-all",
+                                                currentPage === page 
+                                                    ? "shadow-lg shadow-primary/20 scale-105" 
+                                                    : "border-gray-100 text-gray-400 hover:text-primary hover:border-primary/20 hover:bg-primary/5"
+                                            )}
+                                        >
+                                            {page}
+                                        </Button>
+                                    ))}
+                                </div>
+
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    disabled={currentPage === totalPages || totalPages === 0}
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    className="h-9 w-9 rounded-xl border-gray-100 hover:bg-gray-50 hover:border-primary/20 disabled:opacity-30 transition-all shadow-sm"
+                                >
+                                    <ChevronRight className="h-4 w-4 text-gray-600" />
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>

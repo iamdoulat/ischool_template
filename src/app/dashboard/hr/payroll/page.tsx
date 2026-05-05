@@ -42,8 +42,12 @@ import {
     History,
     DollarSign,
     Eye,
+    X,
 } from "lucide-react";
 import api from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
+import * as XLSX from 'xlsx';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -101,14 +105,12 @@ const currentYear = new Date().getFullYear();
 const currentMonth = new Date().getMonth() + 1;
 
 const statusColors: Record<string, string> = {
-    Generated: "bg-orange-500 text-white",
-    Paid: "bg-emerald-500 text-white",
-    Unpaid: "bg-red-500 text-white",
+    Generated: "bg-orange-500 text-white shadow-sm",
+    Paid: "bg-green-600 text-white shadow-sm",
+    Unpaid: "bg-red-600 text-white shadow-sm",
 };
 
-const gradBtn = "bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white font-bold shadow-md transition-all rounded-full border-none disabled:opacity-60";
-
-// ─── Payslip Print Component ─────────────────────────────────────────────────
+// ─── Payslip Component ───────────────────────────────────────────────────────
 
 function Payslip({ row, month, year, school }: {
     row: PayrollRow;
@@ -121,116 +123,122 @@ function Payslip({ row, month, year, school }: {
     const cur = school.currency || "$";
 
     return (
-        <div id="payslip-content" className="bg-white text-black p-6 text-[11px] font-sans w-full max-w-2xl mx-auto">
+        <div id="payslip-content" className="bg-white text-black p-8 text-[11px] font-sans w-full max-w-2xl mx-auto shadow-sm">
             {/* Header */}
-            <div className="flex justify-between items-start mb-4 border-b pb-3">
+            <div className="flex justify-between items-start mb-6 border-b pb-4 border-gray-100">
                 <div>
                     {school.logo && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={school.logo} alt="Logo" className="h-10 mb-1 object-contain" />
+                        <img src={school.logo} alt="Logo" className="h-12 mb-2 object-contain" />
                     )}
-                    <p className="text-[18px] font-bold text-gray-900">{school.school_name || "Your School Name Here"}</p>
+                    <p className="text-[20px] font-bold text-indigo-900 tracking-tight">{school.school_name || "iSchool Management"}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Payroll Management System</p>
                 </div>
-                <div className="text-right text-[10px] text-gray-600 space-y-0.5">
-                    {school.address && <p>Address: {school.address}</p>}
-                    {school.phone && <p>Phone No.: {school.phone}</p>}
+                <div className="text-right text-[10px] text-gray-500 space-y-1">
+                    {school.address && <p>{school.address}</p>}
+                    {school.phone && <p>Tel: {school.phone}</p>}
                     {school.email && <p>Email: {school.email}</p>}
-                    {school.website && <p>Website: {school.website}</p>}
+                    {school.website && <p>{school.website}</p>}
                 </div>
             </div>
 
             {/* Title bar */}
-            <div className="bg-gray-900 text-white text-center py-1 text-[11px] font-bold mb-3">
-                Payslip
+            <div className="bg-indigo-600 text-white text-center py-1.5 text-[12px] font-bold mb-4 rounded uppercase tracking-wider">
+                Salary Payslip
             </div>
-            <p className="text-center text-[13px] font-semibold text-gray-800 mb-4">
-                Payslip For The Period Of {monthName} {year}
-            </p>
-
-            {/* Slip # and date */}
-            <div className="flex justify-between mb-4 text-[10px]">
-                <span className="font-semibold">Payslip #{row.payroll_id ?? "—"}</span>
-                <span className="font-semibold">
-                    {row.paid_on
-                        ? `Payment Date: ${new Date(row.paid_on).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}`
-                        : row.status === "Generated" ? "Payment Date: Pending" : ""}
-                </span>
+            
+            <div className="flex justify-between items-center mb-6">
+                <p className="text-[14px] font-semibold text-gray-800">
+                    Period: <span className="text-indigo-600">{monthName} {year}</span>
+                </p>
+                <div className="text-right">
+                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest mb-0.5">Payslip ID</span>
+                    <span className="font-bold text-gray-800">#{row.payroll_id ?? "—"}</span>
+                </div>
             </div>
 
             {/* Staff info */}
-            <table className="w-full mb-4 text-[10px]">
-                <tbody>
-                    <tr>
-                        <td className="font-semibold pr-2 py-0.5 w-28">Staff ID</td>
-                        <td className="pr-6">{row.staff_id}</td>
-                        <td className="font-semibold pr-2 w-24">Name</td>
-                        <td>{row.name}</td>
-                    </tr>
-                    <tr>
-                        <td className="font-semibold pr-2 py-0.5">Department</td>
-                        <td>{row.department || "—"}</td>
-                        <td className="font-semibold pr-2">Designation</td>
-                        <td>{row.designation || "—"}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-8 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                <div className="space-y-1">
+                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Staff ID</span>
+                    <span className="text-gray-800 font-semibold">{row.staff_id}</span>
+                </div>
+                <div className="space-y-1">
+                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Name</span>
+                    <span className="text-gray-800 font-semibold">{row.name}</span>
+                </div>
+                <div className="space-y-1">
+                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Department</span>
+                    <span className="text-gray-800">{row.department || "—"}</span>
+                </div>
+                <div className="space-y-1">
+                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Designation</span>
+                    <span className="text-gray-800">{row.designation || "—"}</span>
+                </div>
+            </div>
 
             {/* Earnings & Deductions table */}
-            <table className="w-full mb-4 border-collapse text-[10px]">
-                <thead>
-                    <tr className="border-b border-t border-gray-900">
-                        <th className="py-1 text-left font-bold">Earning</th>
-                        <th className="py-1 text-right font-bold">Amount ({cur})</th>
-                        <th className="py-1 text-left font-bold pl-6">Deduction</th>
-                        <th className="py-1 text-right font-bold">Amount ({cur})</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td className="py-0.5">Basic Salary</td>
-                        <td className="text-right">{row.basic_salary.toFixed(2)}</td>
-                        <td className="py-0.5 pl-6">Deductions</td>
-                        <td className="text-right">{row.deductions.toFixed(2)}</td>
-                    </tr>
-                    {row.allowances > 0 && (
-                        <tr>
-                            <td className="py-0.5">Allowances</td>
-                            <td className="text-right">{row.allowances.toFixed(2)}</td>
-                            <td></td>
-                            <td></td>
-                        </tr>
-                    )}
-                    <tr className="border-t border-gray-900 font-bold">
-                        <td className="py-1">Total Earning</td>
-                        <td className="text-right">{grossSalary.toFixed(2)}</td>
-                        <td className="pl-6">Total Deduction</td>
-                        <td className="text-right">{row.deductions.toFixed(2)}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div className="grid grid-cols-2 gap-0 mb-6 border border-gray-200 rounded-lg overflow-hidden">
+                <div className="border-r border-gray-200">
+                    <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 uppercase tracking-widest text-[9px]">Earnings</div>
+                    <div className="p-4 space-y-3">
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">Basic Salary</span>
+                            <span className="font-semibold">{cur}{row.basic_salary.toLocaleString()}</span>
+                        </div>
+                        {row.allowances > 0 && (
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Allowances</span>
+                                <span className="font-semibold text-green-600">+{cur}{row.allowances.toLocaleString()}</span>
+                            </div>
+                        )}
+                        <div className="pt-2 border-t border-gray-100 flex justify-between font-bold text-gray-800">
+                            <span>Gross Earnings</span>
+                            <span>{cur}{grossSalary.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 uppercase tracking-widest text-[9px]">Deductions</div>
+                    <div className="p-4 space-y-3">
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">General Deductions</span>
+                            <span className="font-semibold text-red-500">-{cur}{row.deductions.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between opacity-0">
+                            <span className="text-gray-600">—</span>
+                            <span className="font-semibold">—</span>
+                        </div>
+                        <div className="pt-2 border-t border-gray-100 flex justify-between font-bold text-gray-800">
+                            <span>Total Deductions</span>
+                            <span>{cur}{row.deductions.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            {/* Summary */}
-            <table className="w-full mb-4 text-[10px]">
-                <tbody className="divide-y divide-gray-100">
-                    {[
-                        { label: "Payment Mode", value: "Bank Transfer" },
-                        { label: `Basic Salary (${cur})`, value: row.basic_salary.toFixed(2) },
-                        { label: `Gross Salary (${cur})`, value: grossSalary.toFixed(2) },
-                        { label: `Deductions (${cur})`, value: row.deductions.toFixed(2) },
-                        { label: `Net Salary (${cur})`, value: row.net_salary.toFixed(2) },
-                    ].map(item => (
-                        <tr key={item.label}>
-                            <td className="py-0.5 font-medium">{item.label}</td>
-                            <td className="text-right">{item.value}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            {/* Final Summary */}
+            <div className="bg-indigo-900 text-white rounded-xl p-6 flex justify-between items-center shadow-lg">
+                <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-[.2em]">Net Salary Payable</span>
+                    <p className="text-[24px] font-bold tracking-tight">{cur}{row.net_salary.toLocaleString()}</p>
+                </div>
+                <div className="text-right space-y-1">
+                    <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest">Payment Status</span>
+                    <p className="text-[11px] font-bold bg-white/20 px-3 py-1 rounded-full">{row.status}</p>
+                </div>
+            </div>
 
             {/* Footer */}
-            <p className="text-[9px] text-gray-500 border-t pt-2 mt-2">
-                This payslip is computer generated hence no signature is required.
-            </p>
+            <div className="mt-10 pt-4 border-t border-gray-100 flex justify-between items-end">
+                <div className="space-y-1">
+                    <p className="text-[9px] text-gray-400 italic">Generated on {new Date().toLocaleDateString()}</p>
+                    <p className="text-[9px] text-gray-500 font-medium">This is a computer-generated document.</p>
+                </div>
+                <div className="text-center w-32">
+                    <div className="h-px bg-gray-300 w-full mb-2"></div>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Accounts Manager</p>
+                </div>
+            </div>
         </div>
     );
 }
@@ -238,6 +246,8 @@ function Payslip({ row, month, year, school }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PayrollPage() {
+    const { toast } = useToast();
+    
     // Criteria
     const [role, setRole] = useState("all");
     const [month, setMonth] = useState(currentMonth);
@@ -245,7 +255,7 @@ export default function PayrollPage() {
 
     // Table
     const [keyword, setKeyword] = useState("");
-    const [perPage, setPerPage] = useState(10);
+    const [perPage, setPerPage] = useState(50);
     const [page, setPage] = useState(1);
     const [rows, setRows] = useState<PayrollRow[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
@@ -254,7 +264,7 @@ export default function PayrollPage() {
 
     // School info
     const [school, setSchool] = useState<SchoolInfo>({
-        school_name: "", address: "", phone: "", email: "", website: "", logo: "", currency: "$"
+        school_name: "iSchool Management", address: "", phone: "", email: "", website: "", logo: "", currency: "$"
     });
 
     // Dialogs
@@ -269,19 +279,12 @@ export default function PayrollPage() {
     const [slipRow, setSlipRow] = useState<PayrollRow | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
-    // Toast
-    const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-    const showToast = (type: "success" | "error", msg: string) => {
-        setToast({ type, msg });
-        setTimeout(() => setToast(null), 3500);
-    };
-
     // ── Fetch school settings ──────────────────────────────────────────────────
     useEffect(() => {
         api.get("/system-setting/general-setting").then(res => {
             const d = res.data?.data ?? res.data ?? {};
             setSchool({
-                school_name: d.school_name ?? d.institute_name ?? "",
+                school_name: d.school_name ?? d.institute_name ?? "iSchool Management",
                 address: d.address ?? d.institute_address ?? "",
                 phone: d.phone ?? d.institute_phone ?? "",
                 email: d.email ?? d.institute_email ?? "",
@@ -293,25 +296,27 @@ export default function PayrollPage() {
     }, []);
 
     // ── Fetch payroll ──────────────────────────────────────────────────────────
-    const fetchPayroll = useCallback(async (pg = 1, kw = keyword) => {
+    const fetchPayroll = useCallback(async (pg = page, limit = perPage, kw = keyword) => {
         try {
             setLoading(true);
-            const params: Record<string, string | number> = { month, year, per_page: perPage, page: pg };
+            const params: Record<string, string | number> = { month, year, per_page: limit, page: pg };
             if (role && role !== "all") params.role = role;
             if (kw) params.keyword = kw;
+            
             const res = await api.get("/hr/payroll", { params });
-            setRows(res.data.data ?? []);
-            setMeta(res.data.meta ?? null);
-            setPage(pg);
-            setSearched(true);
+            if (res.data?.success) {
+                setRows(res.data.data ?? []);
+                setMeta(res.data.meta ?? null);
+                setSearched(true);
+            }
         } catch {
-            showToast("error", "Failed to load payroll data.");
+            toast("error", "Failed to load payroll data.");
         } finally {
             setLoading(false);
         }
-    }, [month, year, role, perPage, keyword]);
+    }, [month, year, role, perPage, page, keyword, toast]);
 
-    const handleSearch = () => { setPage(1); fetchPayroll(1, keyword); };
+    const handleSearch = () => { setPage(1); fetchPayroll(1, perPage, keyword); };
 
     // ── Generate ───────────────────────────────────────────────────────────────
     const openGenerate = (row: PayrollRow) => {
@@ -329,7 +334,7 @@ export default function PayrollPage() {
         if (!genRow) return;
         try {
             setGenSaving(true);
-            await api.post("/hr/payroll", {
+            const payload = {
                 user_id: genRow.id,
                 month,
                 year,
@@ -337,12 +342,16 @@ export default function PayrollPage() {
                 allowances: parseFloat(genForm.allowances) || 0,
                 deductions: parseFloat(genForm.deductions) || 0,
                 note: genForm.note || null,
-            });
-            showToast("success", `Payroll generated for ${genRow.name}`);
-            setGenOpen(false);
-            fetchPayroll(page);
-        } catch {
-            showToast("error", "Failed to generate payroll.");
+            };
+            
+            const res = await api.post("/hr/payroll", payload);
+            if (res.data?.success) {
+                toast("success", `Payroll generated for ${genRow.name}`);
+                setGenOpen(false);
+                fetchPayroll();
+            }
+        } catch (e: any) {
+            toast("error", e.response?.data?.message || "Failed to generate payroll.");
         } finally {
             setGenSaving(false);
         }
@@ -353,12 +362,14 @@ export default function PayrollPage() {
         if (!payRow?.payroll_id) return;
         try {
             setPayLoading(true);
-            await api.put(`/hr/payroll/${payRow.payroll_id}/pay`);
-            showToast("success", `${payRow.name} marked as Paid.`);
-            setPayRow(null);
-            fetchPayroll(page);
+            const res = await api.put(`/hr/payroll/${payRow.payroll_id}/pay`);
+            if (res.data?.success) {
+                toast("success", `${payRow.name} marked as Paid.`);
+                setPayRow(null);
+                fetchPayroll();
+            }
         } catch {
-            showToast("error", "Failed to mark as paid.");
+            toast("error", "Failed to mark as paid.");
         } finally {
             setPayLoading(false);
         }
@@ -367,117 +378,72 @@ export default function PayrollPage() {
     // ── Print ─────────────────────────────────────────────────────────────────
     const handlePrint = () => {
         const content = printRef.current?.innerHTML ?? "";
-        const win = window.open("", "_blank", "width=800,height=900");
+        const win = window.open("", "_blank", "width=850,height=900");
         if (!win) return;
         win.document.write(`
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Payslip</title>
+                <title>Payslip - ${slipRow?.name}</title>
+                <script src="https://cdn.tailwindcss.com"></script>
                 <style>
-                    * { box-sizing: border-box; margin: 0; padding: 0; }
-                    body { font-family: Arial, sans-serif; font-size: 11px; color: #111; padding: 20px; }
-                    table { width: 100%; border-collapse: collapse; }
-                    th { text-align: left; border-top: 1.5px solid #111; border-bottom: 1.5px solid #111; padding: 4px 0; }
-                    td { padding: 3px 0; }
-                    .text-right { text-align: right; }
-                    .font-bold { font-weight: bold; }
-                    .border-top { border-top: 1.5px solid #111; }
-                    .center { text-align: center; }
-                    @media print { body { padding: 0; } }
+                    @media print {
+                        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        .no-print { display: none !important; }
+                    }
                 </style>
             </head>
-            <body>
+            <body class="bg-white">
                 ${content}
             </body>
             </html>
         `);
         win.document.close();
         win.focus();
-        setTimeout(() => { win.print(); win.close(); }, 400);
+        setTimeout(() => { win.print(); win.close(); }, 700);
     };
 
     // ── Export Functions ───────────────────────────────────────────────────────
     const handleCopy = () => {
-        const text = rows.map(r => `${r.staff_id}\t${r.name}\t${r.role}\t${r.phone || ""}\t${r.status || "Not Generated"}`).join("\n");
-        navigator.clipboard.writeText("Staff ID\tName\tRole\tPhone\tStatus\n" + text);
-        showToast("success", "Table copied to clipboard");
+        const text = rows.map(r => `${r.staff_id}\t${r.name}\t${r.role}\t${r.status || "Not Generated"}`).join("\n");
+        navigator.clipboard.writeText("Staff ID\tName\tRole\tStatus\n" + text);
+        toast("success", "Copied to clipboard!");
     };
 
     const handleExportCSV = () => {
-        const csv = ["Staff ID,Name,Role,Department,Designation,Phone,Status"];
-        rows.forEach(r => {
-            csv.push(`"${r.staff_id}","${r.name}","${r.role}","${r.department || ""}","${r.designation || ""}","${r.phone || ""}","${r.status || "Not Generated"}"`);
-        });
-        const blob = new Blob([csv.join("\n")], { type: "text/csv" });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `Payroll_${month}_${year}.csv`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-    };
-
-    const handlePrintTable = () => {
-        const win = window.open("", "_blank");
-        if (!win) return;
-
-        let html = `
-        <html><head><title>Payroll Report</title>
-        <style>
-            body { font-family: sans-serif; padding: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f3f4f6; }
-        </style>
-        </head><body>
-        <h2>Payroll Report - ${MONTHS.find(m => m.value === month)?.label} ${year}</h2>
-        <table>
-            <tr><th>Staff ID</th><th>Name</th><th>Role</th><th>Department</th><th>Phone</th><th>Status</th></tr>
-        `;
-
-        rows.forEach(r => {
-            html += `<tr><td>${r.staff_id}</td><td>${r.name}</td><td>${r.role}</td><td>${r.department || "-"}</td><td>${r.phone || "-"}</td><td>${r.status || "Not Generated"}</td></tr>`;
-        });
-
-        html += `</table></body></html>`;
-        win.document.write(html);
-        win.document.close();
-        win.focus();
-        setTimeout(() => { win.print(); win.close(); }, 250);
+        const ws = XLSX.utils.json_to_sheet(rows.map(r => ({
+            "Staff ID": r.staff_id,
+            "Name": r.name,
+            "Role": r.role,
+            "Status": r.status || "Not Generated",
+            "Net Salary": r.net_salary
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Payroll");
+        XLSX.writeFile(wb, `Payroll_${month}_${year}.xlsx`);
     };
 
     const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-
-            {/* Toast */}
-            {toast && (
-                <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-[10px] font-medium
-                    ${toast.type === "success" ? "bg-emerald-600 text-white" : "bg-red-600 text-white"}`}>
-                    {toast.type === "success"
-                        ? <CheckCircle2 className="h-4 w-4 shrink-0" />
-                        : <AlertCircle className="h-4 w-4 shrink-0" />}
-                    {toast.msg}
-                </div>
-            )}
-
-            <h1 className="text-[16px] font-medium text-gray-800">Payroll</h1>
+        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
+            <h1 className="text-xl font-medium text-gray-800">Payroll</h1>
 
             {/* ── Select Criteria ─────────────────────────────────────────────── */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                <h2 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-3">Select Criteria</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
-                            Role <span className="text-red-500">*</span>
-                        </Label>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-50">
+                    <div className="h-4 w-1 bg-indigo-500 rounded-full"></div>
+                    <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Search Payroll Records</h2>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Role <span className="text-red-500">*</span></Label>
                         <Select value={String(role)} onValueChange={setRole}>
-                            <SelectTrigger className="h-9 border-gray-200 text-[10px] focus:ring-indigo-500 bg-white">
+                            <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
                                 <SelectValue placeholder="All Roles" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="rounded-xl border-gray-100">
                                 <SelectItem value="all">All Roles</SelectItem>
                                 <SelectItem value="Admin">Admin</SelectItem>
                                 <SelectItem value="Teacher">Teacher</SelectItem>
@@ -489,15 +455,13 @@ export default function PayrollPage() {
                         </Select>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
-                            Month <span className="text-red-500">*</span>
-                        </Label>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Month <span className="text-red-500">*</span></Label>
                         <Select value={String(month)} onValueChange={v => setMonth(Number(v))}>
-                            <SelectTrigger className="h-9 border-gray-200 text-[10px] focus:ring-indigo-500 bg-white">
+                            <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="rounded-xl border-gray-100">
                                 {MONTHS.map(m => (
                                     <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
                                 ))}
@@ -505,15 +469,13 @@ export default function PayrollPage() {
                         </Select>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
-                            Year <span className="text-red-500">*</span>
-                        </Label>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Year <span className="text-red-500">*</span></Label>
                         <Select value={String(year)} onValueChange={v => setYear(Number(v))}>
-                            <SelectTrigger className="h-9 border-gray-200 text-[10px] focus:ring-indigo-500 bg-white">
+                            <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="rounded-xl border-gray-100">
                                 {years.map(y => (
                                     <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                                 ))}
@@ -521,133 +483,142 @@ export default function PayrollPage() {
                         </Select>
                     </div>
                 </div>
-                <div className="flex justify-end pt-3">
+
+                <div className="flex justify-end pt-2">
                     <Button
                         onClick={handleSearch}
                         disabled={loading}
-                        className={`${gradBtn} gap-2 h-9 px-6 text-[10px]`}
+                        variant="gradient"
+                        className="gap-2 h-10 px-8 text-[11px] font-bold uppercase tracking-widest rounded shadow-md"
                     >
-                        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                        {loading ? "Searching..." : "Search"}
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                        Search
                     </Button>
                 </div>
             </div>
 
             {/* ── Staff List ──────────────────────────────────────────────────── */}
             {searched && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                    {/* Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-3 px-4 py-3 border-b border-gray-100">
-                        <h2 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Staff List</h2>
-                        <div className="flex items-center gap-2">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="flex items-center gap-2 w-full md:w-auto">
                             <Input
-                                placeholder="Search name or ID..."
+                                placeholder="Search staff..."
                                 value={keyword}
-                                onChange={e => { setKeyword(e.target.value); fetchPayroll(1, e.target.value); }}
-                                className="h-8 w-44 text-[10px] border-gray-200 focus-visible:ring-indigo-400"
+                                onChange={e => setKeyword(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && handleSearch()}
+                                className="h-8 w-64 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
                             />
-                            <div className="flex items-center gap-1">
-                                <span className="text-[10px] text-gray-400">Show</span>
-                                <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); fetchPayroll(1); }}>
-                                    <SelectTrigger className="h-7 w-14 text-[10px] border-gray-200 bg-transparent shadow-none">
+                            <Button
+                                onClick={handleSearch}
+                                disabled={loading}
+                                variant="gradient"
+                                className="h-8 px-6 text-[10px] font-bold uppercase rounded shadow-sm"
+                            >
+                                Search
+                            </Button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 mr-2">
+                                <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); setPage(1); fetchPayroll(1, Number(v)); }}>
+                                    <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {[10, 25, 50].map(n => (
+                                        {[10, 25, 50, 100].map(n => (
                                             <SelectItem key={n} value={String(n)}>{n}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="flex items-center gap-0.5 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" onClick={handleCopy} title="Copy Table">
+                            <div className="flex items-center gap-1 text-gray-400">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={handleCopy}>
                                     <Copy className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" onClick={handleExportCSV} title="Export CSV">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={handleExportCSV}>
                                     <FileSpreadsheet className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" onClick={handlePrintTable} title="Export PDF">
-                                    <FileText className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" onClick={handlePrintTable} title="Print">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
                                     <Printer className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
                                     <Columns className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="overflow-x-auto">
+                    <div className="rounded border border-gray-50 overflow-hidden">
                         <Table>
-                            <TableHeader>
-                                <TableRow className="bg-gray-50/70 hover:bg-transparent border-gray-100">
+                            <TableHeader className="bg-gray-50/50">
+                                <TableRow className="hover:bg-transparent border-gray-100">
                                     {["Staff ID", "Name", "Role", "Department", "Designation", "Phone", "Status", "Action"].map(h => (
-                                        <TableHead key={h} className={`text-[10px] font-bold uppercase text-gray-500 py-3 ${h === "Action" ? "text-right pr-4" : ""}`}>{h}</TableHead>
+                                        <TableHead key={h} className={`text-[10px] font-bold uppercase text-gray-600 py-3 ${h === "Action" ? "text-right" : ""}`}>{h}</TableHead>
                                     ))}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {rows.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={8} className="h-24 text-center text-[10px] text-gray-400">
-                                            No staff found for the selected criteria.
-                                        </TableCell>
-                                    </TableRow>
+                                    <TableRow><TableCell colSpan={8} className="h-24 text-center text-gray-400 text-[11px] italic">No staff found.</TableCell></TableRow>
                                 ) : rows.map(row => (
-                                    <TableRow key={row.id} className="border-b border-gray-50 hover:bg-indigo-50/20 transition-colors">
-                                        <TableCell className="py-3 text-[10px] text-gray-500 font-mono">{row.staff_id}</TableCell>
-                                        <TableCell className="py-3 text-[10px] text-gray-800 font-semibold">{row.name}</TableCell>
-                                        <TableCell className="py-3 text-[10px] text-gray-500">{row.role}</TableCell>
-                                        <TableCell className="py-3 text-[10px] text-gray-500">{row.department || "—"}</TableCell>
-                                        <TableCell className="py-3 text-[10px] text-gray-500">{row.designation || "—"}</TableCell>
-                                        <TableCell className="py-3 text-[10px] text-gray-500">{row.phone || "—"}</TableCell>
+                                    <TableRow key={row.id} className="border-b border-gray-50 hover:bg-gray-50/20 transition-colors text-[11px]">
+                                        <TableCell className="py-3 text-gray-500 font-mono">{row.staff_id}</TableCell>
+                                        <TableCell className="py-3 text-gray-800 font-medium">{row.name}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{row.role}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{row.department || "—"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{row.designation || "—"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{row.phone || "—"}</TableCell>
                                         <TableCell className="py-3">
                                             {row.status ? (
-                                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${statusColors[row.status] ?? "bg-gray-200 text-gray-700"}`}>
+                                                <span className={cn(
+                                                    "text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm",
+                                                    statusColors[row.status]
+                                                )}>
                                                     {row.status}
                                                 </span>
                                             ) : (
-                                                <span className="text-[9px] text-gray-400 italic">Not Generated</span>
+                                                <span className="text-[10px] text-gray-300 italic">Not Generated</span>
                                             )}
                                         </TableCell>
-                                        <TableCell className="py-3 text-right pr-4">
-                                            <div className="flex items-center justify-end gap-1">
-                                                {/* Generate / Edit */}
+                                        <TableCell className="py-3 text-right">
+                                            <div className="flex items-center justify-end gap-1.5">
                                                 <Button
                                                     size="icon"
+                                                    variant="ghost"
                                                     onClick={() => openGenerate(row)}
-                                                    className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded border-none"
+                                                    className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded transition-colors shadow-sm"
                                                     title={row.status ? "Edit Payroll" : "Generate Payroll"}
                                                 >
-                                                    <Pencil className="h-3 w-3" />
+                                                    <Pencil className="h-3.5 w-3.5" />
                                                 </Button>
-                                                {/* History */}
-                                                <Button
-                                                    size="icon"
-                                                    className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded border-none"
-                                                    title="Payroll History"
-                                                >
-                                                    <History className="h-3 w-3" />
-                                                </Button>
-                                                {/* View Payslip — beside history */}
+                                                
                                                 {row.status && (
                                                     <Button
                                                         size="icon"
+                                                        variant="ghost"
                                                         onClick={() => setSlipRow(row)}
-                                                        className="h-6 w-6 bg-white border border-gray-200 text-indigo-500 hover:bg-indigo-50 hover:text-indigo-600 rounded shadow-sm"
+                                                        className="h-7 w-7 bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors shadow-sm"
                                                         title="View Payslip"
                                                     >
-                                                        <Eye className="h-3 w-3" />
+                                                        <Eye className="h-3.5 w-3.5" />
                                                     </Button>
                                                 )}
-                                                {/* Proceed to Pay */}
+
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-7 w-7 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded transition-colors"
+                                                    title="Payroll History"
+                                                >
+                                                    <History className="h-3.5 w-3.5" />
+                                                </Button>
+
                                                 {row.status && row.status !== "Paid" && (
                                                     <Button
                                                         onClick={() => setPayRow(row)}
-                                                        className={`h-6 px-3 text-[9px] font-bold uppercase rounded-full border-none ${gradBtn}`}
+                                                        variant="gradient"
+                                                        className="h-7 px-4 text-[10px] font-bold uppercase rounded-full shadow-md"
                                                     >
                                                         Proceed to Pay
                                                     </Button>
@@ -660,119 +631,162 @@ export default function PayrollPage() {
                         </Table>
                     </div>
 
-                    {/* ── Pagination ─────────────────────────────────────────────── */}
-                    {meta && (
-                        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/30">
-                            <p className="text-[10px] text-gray-400">
-                                Showing {rows.length === 0 ? 0 : (meta.page - 1) * meta.per_page + 1} to{" "}
-                                {Math.min(meta.page * meta.per_page, meta.total)} of {meta.total} entries
-                            </p>
-                            <div className="flex items-center gap-1">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-100"
-                                    disabled={page <= 1 || loading}
-                                    onClick={() => fetchPayroll(page - 1)}
-                                >
-                                    <ChevronLeft className="h-3.5 w-3.5" />
-                                </Button>
-                                {Array.from({ length: meta.last_page }, (_, i) => i + 1).map(p => (
-                                    <Button
-                                        key={p}
-                                        size="icon"
-                                        onClick={() => fetchPayroll(p)}
-                                        disabled={loading}
-                                        className={`h-7 w-7 rounded-full text-[10px] font-bold border-none transition-all
-                                            ${p === page
-                                                ? "bg-gradient-to-br from-orange-400 to-indigo-500 text-white shadow-md shadow-orange-500/20 scale-[1.05]"
-                                                : "bg-transparent text-gray-500 hover:bg-gray-100"
-                                            }`}
-                                    >
-                                        {p}
-                                    </Button>
-                                ))}
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-100"
-                                    disabled={page >= (meta?.last_page ?? 1) || loading}
-                                    onClick={() => fetchPayroll(page + 1)}
-                                >
-                                    <ChevronRight className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
+                    {/* Pagination */}
+                    <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2">
+                        <div>
+                            Showing {rows.length === 0 ? 0 : (page - 1) * perPage + 1} to {Math.min(page * perPage, meta?.total || 0)} of {meta?.total || 0} entries
                         </div>
-                    )}
+                        <div className="flex gap-2 items-center">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-xl border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm"
+                                disabled={page === 1}
+                                onClick={() => { setPage(page - 1); fetchPayroll(page - 1); }}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+
+                            {Array.from({ length: meta?.last_page || 1 }).map((_, i) => {
+                                const p = i + 1;
+                                const isCurrent = p === page;
+                                const isAdjacent = Math.abs(p - page) <= 1;
+                                const isEdge = p === 1 || p === (meta?.last_page || 1);
+
+                                if (isCurrent || isAdjacent || isEdge) {
+                                    return (
+                                        <Button
+                                            key={p}
+                                            variant={isCurrent ? "gradient" : "outline"}
+                                            size="sm"
+                                            className={cn(
+                                                "h-8 w-8 rounded-xl font-bold shadow-sm transition-all",
+                                                !isCurrent && "border-transparent bg-transparent hover:bg-gray-100 text-gray-600"
+                                            )}
+                                            onClick={() => { setPage(p); fetchPayroll(p); }}
+                                        >
+                                            {p}
+                                        </Button>
+                                    );
+                                } else if (p === 2 && page > 4) {
+                                    return <span key={p} className="text-gray-400">...</span>;
+                                } else if (p === (meta?.last_page || 1) - 1 && page < (meta?.last_page || 1) - 3) {
+                                    return <span key={p} className="text-gray-400">...</span>;
+                                }
+                                return null;
+                            })}
+
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-xl border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm"
+                                disabled={page === (meta?.last_page || 1) || !meta}
+                                onClick={() => { setPage(page + 1); fetchPayroll(page + 1); }}
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
 
             {/* Empty state */}
             {!searched && (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                    <DollarSign className="h-10 w-10 mb-3 opacity-30" />
-                    <p className="text-[10px]">Select role, month and year, then click <strong>Search</strong>.</p>
+                <div className="flex flex-col items-center justify-center py-20 text-gray-300 bg-white rounded-xl border border-dashed border-gray-200">
+                    <DollarSign className="h-16 w-16 mb-4 opacity-10" />
+                    <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">No Data Selected</p>
+                    <p className="text-[11px] text-gray-400 mt-2 italic">Select role, month and year, then click search.</p>
                 </div>
             )}
 
             {/* ── Generate Payroll Dialog ──────────────────────────────────────── */}
             <Dialog open={genOpen} onOpenChange={setGenOpen}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-[13px] font-bold">
-                            {genRow?.payroll_id ? "Edit" : "Generate"} Payroll — {genRow?.name}
-                        </DialogTitle>
-                        <p className="text-[10px] text-gray-400">
-                            {MONTHS.find(m => m.value === month)?.label} {year}
-                        </p>
+                <DialogContent className="sm:max-w-[450px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-2xl">
+                    <DialogHeader className="bg-gradient-to-r from-orange-400 to-indigo-500 p-5 text-white">
+                        <div className="flex justify-between items-center w-full pr-6">
+                            <div className="space-y-0.5">
+                                <DialogTitle className="text-sm font-bold uppercase tracking-wider">
+                                    {genRow?.payroll_id ? "Edit" : "Generate"} Payroll
+                                </DialogTitle>
+                                <p className="text-[10px] opacity-80 font-medium">{genRow?.name} • {MONTHS.find(m => m.value === month)?.label} {year}</p>
+                            </div>
+                            <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                                <DollarSign className="h-5 w-5 text-white" />
+                            </div>
+                        </div>
                     </DialogHeader>
-                    <div className="grid grid-cols-2 gap-3 py-2">
-                        {[
-                            { label: "Basic Salary *", key: "basic_salary" },
-                            { label: "Allowances", key: "allowances" },
-                            { label: "Deductions", key: "deductions" },
-                        ].map(f => (
-                            <div key={f.key} className={f.key === "basic_salary" ? "col-span-2" : ""}>
-                                <Label className="text-[10px] font-bold text-gray-500 uppercase">{f.label}</Label>
+                    
+                    <div className="p-6 space-y-5">
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Basic Salary <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={genForm[f.key as keyof typeof genForm]}
-                                    onChange={e => setGenForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                                    className="mt-1 h-9 text-[10px] border-gray-200 focus-visible:ring-indigo-400"
+                                    value={genForm.basic_salary}
+                                    onChange={e => setGenForm(prev => ({ ...prev, basic_salary: e.target.value }))}
+                                    className="h-10 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
+                                    placeholder="Enter amount"
                                 />
                             </div>
-                        ))}
-                        <div className="col-span-2 flex items-center justify-between bg-indigo-50 rounded-lg px-3 py-2">
-                            <span className="text-[10px] font-bold text-indigo-700 uppercase">Net Salary</span>
-                            <span className="text-[13px] font-bold text-indigo-700">
-                                {(
-                                    (parseFloat(genForm.basic_salary) || 0) +
-                                    (parseFloat(genForm.allowances) || 0) -
-                                    (parseFloat(genForm.deductions) || 0)
-                                ).toFixed(2)}
-                            </span>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1 text-green-600">Allowances</Label>
+                                    <Input
+                                        type="number"
+                                        value={genForm.allowances}
+                                        onChange={e => setGenForm(prev => ({ ...prev, allowances: e.target.value }))}
+                                        className="h-10 text-xs border-gray-100 bg-green-50/30 focus-visible:ring-green-500 rounded-lg shadow-none"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1 text-red-500">Deductions</Label>
+                                    <Input
+                                        type="number"
+                                        value={genForm.deductions}
+                                        onChange={e => setGenForm(prev => ({ ...prev, deductions: e.target.value }))}
+                                        className="h-10 text-xs border-gray-100 bg-red-50/30 focus-visible:ring-red-500 rounded-lg shadow-none"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
                         </div>
-                        <div className="col-span-2">
-                            <Label className="text-[10px] font-bold text-gray-500 uppercase">Note</Label>
+
+                        <div className="bg-indigo-900 rounded-2xl p-4 flex justify-between items-center shadow-inner overflow-hidden relative">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12"></div>
+                            <div className="space-y-0.5">
+                                <span className="text-[9px] font-bold text-indigo-300 uppercase tracking-[.2em]">Net Calculated</span>
+                                <p className="text-[20px] font-bold text-white tracking-tight">
+                                    {school.currency || "$"}{(
+                                        (parseFloat(genForm.basic_salary) || 0) +
+                                        (parseFloat(genForm.allowances) || 0) -
+                                        (parseFloat(genForm.deductions) || 0)
+                                    ).toLocaleString()}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Notes</Label>
                             <Input
-                                placeholder="Optional note"
                                 value={genForm.note}
                                 onChange={e => setGenForm(prev => ({ ...prev, note: e.target.value }))}
-                                className="mt-1 h-9 text-[10px] border-gray-200 focus-visible:ring-indigo-400"
+                                className="h-10 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
+                                placeholder="Optional remark"
                             />
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" className="h-9 text-[10px]" onClick={() => setGenOpen(false)}>Cancel</Button>
+
+                    <DialogFooter className="bg-gray-50 p-4 border-t border-gray-100">
+                        <Button variant="ghost" className="h-10 text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-gray-600 hover:bg-transparent" onClick={() => setGenOpen(false)}>Cancel</Button>
                         <Button
                             onClick={handleGenerate}
                             disabled={genSaving || !genForm.basic_salary}
-                            className={`${gradBtn} h-9 px-6 text-[10px] gap-2`}
+                            variant="gradient"
+                            className="h-10 px-8 text-xs font-bold uppercase tracking-widest rounded-lg shadow-md gap-2"
                         >
-                            {genSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                            {genRow?.payroll_id ? "Update" : "Generate"}
+                            {genSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {genRow?.payroll_id ? "Update Payroll" : "Generate Now"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -780,46 +794,61 @@ export default function PayrollPage() {
 
             {/* ── Confirm Pay Dialog ───────────────────────────────────────────── */}
             <Dialog open={!!payRow} onOpenChange={() => setPayRow(null)}>
-                <DialogContent className="max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle className="text-[13px] font-bold">Confirm Payment</DialogTitle>
-                    </DialogHeader>
-                    <p className="text-[10px] text-gray-600 py-2">
-                        Mark <strong>{payRow?.name}</strong>&apos;s payroll as <strong>Paid</strong>?
-                        Net salary: <strong>{payRow?.net_salary?.toFixed(2)}</strong>
-                    </p>
-                    <DialogFooter>
-                        <Button variant="outline" className="h-9 text-[10px]" onClick={() => setPayRow(null)}>Cancel</Button>
-                        <Button
-                            onClick={handlePay}
-                            disabled={payLoading}
-                            className={`${gradBtn} h-9 px-6 text-[10px] gap-2`}
-                        >
-                            {payLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                            Confirm Pay
-                        </Button>
-                    </DialogFooter>
+                <DialogContent className="sm:max-w-[400px] p-6 rounded-2xl border-0 shadow-2xl">
+                    <div className="flex flex-col items-center text-center space-y-4">
+                        <div className="h-16 w-16 bg-green-50 rounded-full flex items-center justify-center mb-2">
+                            <DollarSign className="h-8 w-8 text-green-600" />
+                        </div>
+                        <div className="space-y-1">
+                            <DialogTitle className="text-lg font-bold text-gray-800">Confirm Payment</DialogTitle>
+                            <p className="text-xs text-gray-500 max-w-[280px]">
+                                Are you sure you want to mark <strong>{payRow?.name}</strong>&apos;s payroll as Paid?
+                            </p>
+                        </div>
+                        
+                        <div className="w-full bg-gray-50 rounded-xl p-4 space-y-2 border border-gray-100">
+                            <div className="flex justify-between text-[11px] text-gray-500">
+                                <span>Period</span>
+                                <span className="font-bold text-gray-800">{MONTHS.find(m => m.value === month)?.label} {year}</span>
+                            </div>
+                            <div className="flex justify-between text-[11px] text-gray-500">
+                                <span>Net Salary</span>
+                                <span className="font-bold text-indigo-600">{school.currency || "$"}{payRow?.net_salary?.toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 w-full pt-4">
+                            <Button variant="outline" className="h-11 text-xs font-bold uppercase tracking-widest rounded-xl border-gray-200" onClick={() => setPayRow(null)}>No, Cancel</Button>
+                            <Button
+                                onClick={handlePay}
+                                disabled={payLoading}
+                                variant="gradient"
+                                className="h-11 text-xs font-bold uppercase tracking-widest rounded-xl shadow-lg gap-2"
+                            >
+                                {payLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Yes, Confirm
+                            </Button>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* ── View Payslip Dialog ──────────────────────────────────────────── */}
             <Dialog open={!!slipRow} onOpenChange={() => setSlipRow(null)}>
-                <DialogContent className="max-w-2xl p-0 overflow-hidden">
-                    {/* Dialog title bar */}
-                    <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600">
-                        <DialogTitle className="text-white text-[13px] font-bold">Details</DialogTitle>
+                <DialogContent className="max-w-2xl p-0 overflow-hidden border-0 shadow-2xl rounded-2xl">
+                    <div className="flex items-center justify-between px-6 py-4 bg-indigo-900 text-white">
+                        <DialogTitle className="text-sm font-bold uppercase tracking-[.2em]">Salary Payslip Details</DialogTitle>
                         <Button
                             size="icon"
-                            onClick={handlePrint}
-                            className="h-7 w-7 bg-white/20 hover:bg-white/30 text-white border-none rounded"
-                            title="Print Payslip"
+                            variant="ghost"
+                            onClick={() => setSlipRow(null)}
+                            className="h-8 w-8 hover:bg-white/10 text-white border-none rounded-full"
                         >
-                            <Printer className="h-3.5 w-3.5" />
+                            <X className="h-5 w-5" />
                         </Button>
                     </div>
 
-                    {/* Payslip content */}
-                    <div ref={printRef} className="overflow-y-auto max-h-[75vh]">
+                    <div ref={printRef} className="overflow-y-auto max-h-[70vh] bg-white">
                         {slipRow && (
                             <Payslip
                                 row={slipRow}
@@ -830,15 +859,19 @@ export default function PayrollPage() {
                         )}
                     </div>
 
-                    <div className="flex justify-end gap-2 px-4 py-3 border-t border-gray-100 bg-gray-50/30">
-                        <Button variant="outline" className="h-8 text-[10px]" onClick={() => setSlipRow(null)}>Close</Button>
-                        <Button
-                            onClick={handlePrint}
-                            className={`${gradBtn} h-8 px-5 text-[10px] gap-2`}
-                        >
-                            <Printer className="h-3.5 w-3.5" />
-                            Print Payslip
-                        </Button>
+                    <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100 bg-gray-50">
+                        <p className="text-[10px] text-gray-400 font-medium">Verify all details before printing or sending.</p>
+                        <div className="flex gap-2">
+                            <Button variant="outline" className="h-10 px-6 text-[11px] font-bold uppercase tracking-widest rounded-lg" onClick={() => setSlipRow(null)}>Close</Button>
+                            <Button
+                                onClick={handlePrint}
+                                variant="gradient"
+                                className="h-10 px-8 text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-md gap-2"
+                            >
+                                <Printer className="h-4 w-4" />
+                                Print Payslip
+                            </Button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

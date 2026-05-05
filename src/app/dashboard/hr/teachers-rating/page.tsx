@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,8 +13,7 @@ import {
 } from "@/components/ui/table";
 import {
     Star,
-    X,
-    Search,
+    Trash2,
     Copy,
     FileSpreadsheet,
     FileText,
@@ -22,7 +21,7 @@ import {
     Columns,
     ChevronLeft,
     ChevronRight,
-    Check
+    CheckCircle
 } from "lucide-react";
 import {
     Select,
@@ -32,35 +31,79 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Rating {
-    id: string;
-    staffId: string;
-    staffName: string;
+    id: number;
+    staff_id: string;
+    staff_name: string;
     rating: number;
     comment: string;
     status: "Pending" | "Approved";
-    studentName: string;
+    student_name: string;
 }
 
-const mockRatings: Rating[] = [
-    { id: "1", staffId: "9002", staffName: "Shivam Verma (9002)", rating: 5, comment: "Motivates students to progress", status: "Pending", studentName: "Saurabh Shah (900875)" },
-    { id: "2", staffId: "9002", staffName: "Shivam Verma (9002)", rating: 3, comment: "good", status: "Pending", studentName: "Gian Stark (18005)" },
-    { id: "3", staffId: "9002", staffName: "Shivam Verma (9002)", rating: 5, comment: "Excellent", status: "Approved", studentName: "Robin Peterson (18002)" },
-    { id: "4", staffId: "9002", staffName: "Shivam Verma (9002)", rating: 4, comment: "no comment", status: "Pending", studentName: "Edward Thomas (1800011)" },
-    { id: "5", staffId: "9002", staffName: "Shivam Verma (9002)", rating: 3, comment: "nice", status: "Pending", studentName: "Edward Thomas (18001)" },
-    { id: "6", staffId: "9002", staffName: "Shivam Verma (9002)", rating: 2, comment: "good teaching and learning", status: "Pending", studentName: "Vinay Singh (6422)" },
-    { id: "7", staffId: "90008", staffName: "Jason Sharlton (90008)", rating: 5, comment: "Solidifies a positive relationship or connection with your students", status: "Approved", studentName: "Saurabh Shah (900875)" },
-    { id: "8", staffId: "90008", staffName: "Jason Sharlton (90008)", rating: 4, comment: "good team teacher learning and best regards", status: "Approved", studentName: "MANISH RAJPUT (1101)" },
-    { id: "9", staffId: "90008", staffName: "Jason Sharlton (90008)", rating: 2, comment: "yddyy", status: "Approved", studentName: "Kavya Roy (18009)" },
-    { id: "10", staffId: "90008", staffName: "Jason Sharlton (90008)", rating: 4, comment: "Very Good", status: "Approved", studentName: "Robin Peterson (18002)" },
-    { id: "11", staffId: "90008", staffName: "Jason Sharlton (90008)", rating: 2, comment: "Very nice", status: "Approved", studentName: "Devin Coinneach (18014)" },
-    { id: "12", staffId: "90008", staffName: "Jason Sharlton (90008)", rating: 2, comment: "sfd", status: "Pending", studentName: "Vinay Singh (6422)" },
-    { id: "13", staffId: "90008", staffName: "Jason Sharlton (90008)", rating: 3, comment: "good", status: "Pending", studentName: "RKS Kumar (RK8001)" },
-];
-
 export default function TeachersRatingPage() {
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
+    const [ratings, setRatings] = useState<Rating[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get("/hr/teacher-ratings");
+            setRatings(response.data.data);
+        } catch (error) {
+            console.error("Error fetching ratings:", error);
+            toast("error", "Failed to load teacher ratings");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleApprove = async (id: number) => {
+        try {
+            await api.put(`/hr/teacher-ratings/${id}/approve`);
+            toast("success", "Rating approved successfully");
+            fetchData();
+        } catch (error) {
+            toast("error", "Failed to approve rating");
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this rating?")) return;
+        try {
+            await api.delete(`/hr/teacher-ratings/${id}`);
+            toast("success", "Rating deleted successfully");
+            fetchData();
+        } catch (error) {
+            toast("error", "Failed to delete rating");
+        }
+    };
+
+    const filteredRatings = ratings.filter(item =>
+        item.staff_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.staff_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.student_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const totalPages = Math.ceil(filteredRatings.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedData = filteredRatings.slice(startIndex, startIndex + itemsPerPage);
 
     const StarRating = ({ count }: { count: number }) => (
         <div className="flex gap-0.5 items-center">
@@ -77,26 +120,63 @@ export default function TeachersRatingPage() {
         </div>
     );
 
+    // Export Functions
+    const exportToExcel = () => {
+        const ws = XLSX.utils.json_to_sheet(ratings.map(r => ({
+            "Staff ID": r.staff_id,
+            "Staff Name": r.staff_name,
+            "Rating": r.rating,
+            "Comment": r.comment,
+            "Status": r.status,
+            "Student Name": r.student_name
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Teacher Ratings");
+        XLSX.writeFile(wb, "teacher_ratings.xlsx");
+    };
+
+    const exportToPDF = () => {
+        const doc = new jsPDF();
+        doc.text("Teacher Ratings List", 14, 15);
+        autoTable(doc, {
+            head: [['Staff ID', 'Staff Name', 'Rating', 'Status', 'Student Name']],
+            body: ratings.map(r => [r.staff_id, r.staff_name, r.rating, r.status, r.student_name]),
+            startY: 20,
+        });
+        doc.save("teacher_ratings.pdf");
+    };
+
+    const copyToClipboard = () => {
+        const text = ratings.map(r => `${r.staff_id} - ${r.staff_name} (${r.rating}*): ${r.status}`).join('\n');
+        navigator.clipboard.writeText(text);
+        toast("success", "Data copied to clipboard");
+    };
+
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                <h2 className="text-sm font-medium text-gray-800 border-b pb-2">Teachers Rating List</h2>
+                <h2 className="text-sm font-medium text-gray-800 border-b pb-2">Teacher Ratings List</h2>
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="relative w-full md:w-64">
                         <Input
-                            placeholder="Search"
+                            placeholder="Search by Staff ID, Name or Student..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500"
+                            className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
                         />
                     </div>
 
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold">50</span>
-                            <Select defaultValue="50">
-                                <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none">
+                            <Select
+                                value={itemsPerPage.toString()}
+                                onValueChange={(val) => {
+                                    setItemsPerPage(parseInt(val));
+                                    setCurrentPage(1);
+                                }}
+                            >
+                                <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -105,24 +185,33 @@ export default function TeachersRatingPage() {
                                     <SelectItem value="50">50</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                         </div>
                         <div className="flex items-center gap-1 text-gray-400">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100"><Copy className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100"><FileText className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100"><Printer className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100"><Columns className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
+                                <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
+                                <FileSpreadsheet className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
+                                <FileText className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
+                                <Printer className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
+                                <Columns className="h-3.5 w-3.5" />
+                            </Button>
                         </div>
                     </div>
                 </div>
 
-                <div className="rounded-md border border-gray-50 overflow-hidden">
+                <div className="rounded border border-gray-50 overflow-hidden">
                     <Table>
                         <TableHeader className="bg-gray-50/50">
                             <TableRow className="hover:bg-transparent border-gray-100">
                                 <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Staff ID</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Name</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Staff Name</TableHead>
                                 <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Rating</TableHead>
                                 <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Comment</TableHead>
                                 <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Status</TableHead>
@@ -131,48 +220,93 @@ export default function TeachersRatingPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {mockRatings.map((item) => (
-                                <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
-                                    <TableCell className="py-3.5 text-gray-500">{item.staffId}</TableCell>
-                                    <TableCell className="py-3.5 text-indigo-500 font-medium cursor-pointer hover:underline">{item.staffName}</TableCell>
-                                    <TableCell className="py-3.5"><StarRating count={item.rating} /></TableCell>
-                                    <TableCell className="py-3.5 text-gray-500 italic max-w-xs">{item.comment}</TableCell>
-                                    <TableCell className="py-3.5">
-                                        <span className={cn(
-                                            "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase",
-                                            item.status === "Pending" ? "bg-orange-500 text-white" : "bg-green-600 text-white"
-                                        )}>
-                                            {item.status}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell className="py-3.5 text-gray-500">{item.studentName}</TableCell>
-                                    <TableCell className="py-3.5 text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            {item.status === "Pending" && (
-                                                <Button className="h-6 px-3 bg-[#6366f1] hover:bg-[#5558dd] text-white text-[9px] font-bold uppercase rounded shadow-sm">
-                                                    Approve
-                                                </Button>
-                                            )}
-                                            <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-10 text-gray-400 italic">Loading teacher ratings...</TableCell>
                                 </TableRow>
-                            ))}
+                            ) : paginatedData.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-10 text-gray-400 italic">No ratings found</TableCell>
+                                </TableRow>
+                            ) : (
+                                paginatedData.map((item) => (
+                                    <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
+                                        <TableCell className="py-3.5 text-gray-500">{item.staff_id}</TableCell>
+                                        <TableCell className="py-3.5 text-indigo-500 font-medium cursor-pointer hover:underline">{item.staff_name}</TableCell>
+                                        <TableCell className="py-3.5"><StarRating count={item.rating} /></TableCell>
+                                        <TableCell className="py-3.5 text-gray-500 italic max-w-[200px] truncate" title={item.comment}>{item.comment || "—"}</TableCell>
+                                        <TableCell className="py-3.5">
+                                            <span className={cn(
+                                                "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase",
+                                                item.status === "Pending" ? "bg-orange-500 text-white" : "bg-green-600 text-white"
+                                            )}>
+                                                {item.status}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="py-3.5 text-gray-500">{item.student_name || "—"}</TableCell>
+                                        <TableCell className="py-3.5 text-right">
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                {item.status === "Pending" && (
+                                                    <Button 
+                                                        onClick={() => handleApprove(item.id)}
+                                                        variant="gradient"
+                                                        className="h-7 px-3 text-[9px] font-bold uppercase rounded shadow-sm flex items-center gap-1"
+                                                    >
+                                                        <CheckCircle className="h-3 w-3" />
+                                                        Approve
+                                                    </Button>
+                                                )}
+                                                <Button 
+                                                    onClick={() => handleDelete(item.id)} 
+                                                    size="icon" 
+                                                    variant="ghost" 
+                                                    className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2">
-                    <div>Showing 1 to {mockRatings.length} of {mockRatings.length} entries</div>
-                    <div className="flex gap-1 items-center">
-                        <span className="text-gray-400 mr-2">‹</span>
-                        <Button variant="default" size="sm" className="h-7 w-7 p-0 bg-indigo-500 hover:bg-indigo-600 text-white border-0">
-                            1
+                <div className="flex justify-end items-center gap-2 py-4">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                    >
+                        <ChevronLeft className="h-4 w-4 text-gray-600" />
+                    </Button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                            key={page}
+                            variant={currentPage === page ? "gradient" : "outline"}
+                            onClick={() => setCurrentPage(page)}
+                            className={cn(
+                                "h-8 w-8 rounded-xl text-[10px] font-bold p-0 transition-all",
+                                currentPage === page ? "shadow-md scale-105" : "border-gray-100 text-gray-400 hover:text-indigo-600"
+                            )}
+                        >
+                            {page}
                         </Button>
-                        <span className="text-gray-400 ml-2">›</span>
-                    </div>
+                    ))}
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                    >
+                        <ChevronRight className="h-4 w-4 text-gray-600" />
+                    </Button>
                 </div>
             </div>
         </div>

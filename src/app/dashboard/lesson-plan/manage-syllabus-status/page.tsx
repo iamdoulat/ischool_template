@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -11,121 +13,161 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, FileSpreadsheet, FileText } from "lucide-react";
+import { Search, FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TopicStatus {
     id: string;
     name: string;
-    completionDate?: string;
+    completionDate?: string | null;
     isCompleted: boolean;
 }
 
 interface LessonStatus {
     id: string;
-    name: string;
+    className: string;
+    section: string;
+    subjectGroup: string;
+    subject: string;
+    lesson: string;
     topics: TopicStatus[];
 }
 
-const mockSyllabusData: LessonStatus[] = [
-    {
-        id: "1",
-        name: "First Day at School",
-        topics: [
-            { id: "1.1", name: "School Life", completionDate: "04/19/2025", isCompleted: true },
-            { id: "1.2", name: "School Day's", completionDate: "05/22/2025", isCompleted: true },
-            { id: "1.3", name: "Chapter-2", completionDate: "12/20/2025", isCompleted: true },
-        ]
-    },
-    {
-        id: "2",
-        name: "The Wind and the Sun",
-        topics: [
-            { id: "2.1", name: "The Wind", completionDate: "08/25/2025", isCompleted: true },
-        ]
-    },
-    {
-        id: "3",
-        name: "Storm in the Garden",
-        topics: [
-            { id: "3.1", name: "My Garden", completionDate: "04/25/2025", isCompleted: true },
-            { id: "3.2", name: "Chapter 2", completionDate: "11/20/2025", isCompleted: true },
-        ]
-    },
-    {
-        id: "4",
-        name: "The Grahshopper and the Ant",
-        topics: [
-            { id: "4.1", name: "The Ant", completionDate: "06/20/2025", isCompleted: true },
-            { id: "4.2", name: "Chapter-4", completionDate: "10/25/2025", isCompleted: true },
-            { id: "4.3", name: "Chapter-5", isCompleted: false },
-        ]
-    },
-    {
-        id: "5",
-        name: "First Day at School",
-        topics: [
-            { id: "5.1", name: "School Life", completionDate: "01/22/2026", isCompleted: true },
-        ]
-    },
-    {
-        id: "6",
-        name: "The Wind and the Sun",
-        topics: [
-            { id: "6.1", name: "The Wind", completionDate: "02/02/2026", isCompleted: true },
-        ]
-    },
-    {
-        id: "7",
-        name: "Storm in the Garden",
-        topics: [
-            { id: "7.1", name: "My Garden", isCompleted: false },
-        ]
-    },
-    {
-        id: "8",
-        name: "The Grahshopper and the Ant",
-        topics: [
-            { id: "8.1", name: "The Ant", isCompleted: false },
-        ]
-    },
-    {
-        id: "9",
-        name: "First Day at School",
-        topics: [
-            { id: "9.1", name: "School Life", isCompleted: false },
-            { id: "9.2", name: "School Day's", isCompleted: false },
-            { id: "9.3", name: "Chapter-2", isCompleted: false },
-        ]
-    },
-    {
-        id: "10",
-        name: "The Wind and the Sun",
-        topics: [
-            { id: "10.1", name: "The Wind", isCompleted: false },
-        ]
-    },
-];
-
 export default function ManageSyllabusStatusPage() {
+    const { toast } = useToast();
+    const [classes, setClasses] = useState<any[]>([]);
+    const [sections, setSections] = useState<any[]>([]);
+    const [subjectGroups, setSubjectGroups] = useState<any[]>([]);
+    const [subjects, setSubjects] = useState<any[]>([]);
+    const [syllabusData, setSyllabusData] = useState<LessonStatus[]>([]);
+    const [loading, setLoading] = useState(false);
+    
+    // Form State
+    const [criteria, setCriteria] = useState({
+        class_name: "",
+        section: "",
+        subject_group: "",
+        subject: ""
+    });
+
+    useEffect(() => {
+        fetchInitialData();
+    }, []);
+
+    const fetchInitialData = async () => {
+        try {
+            const [classesRes, sectionsRes, groupsRes, subjectsRes] = await Promise.all([
+                api.get('/academics/classes?no_paginate=true').catch(() => ({ data: [] })),
+                api.get('/academics/sections?no_paginate=true').catch(() => ({ data: [] })),
+                api.get('/academics/subject-groups?no_paginate=true').catch(() => ({ data: [] })),
+                api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] }))
+            ]);
+            
+            const extractData = (res: any) => {
+                if (Array.isArray(res.data)) return res.data;
+                if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
+                return [];
+            };
+
+            setClasses(extractData(classesRes));
+            setSections(extractData(sectionsRes));
+            setSubjectGroups(extractData(groupsRes));
+            setSubjects(extractData(subjectsRes));
+        } catch (error) {
+            console.error("Failed to load initial dropdowns", error);
+        }
+    };
+
+    const handleSearch = async () => {
+        if (!criteria.class_name || !criteria.section || !criteria.subject_group || !criteria.subject) {
+            toast({ title: "Error", description: "Please select all criteria", variant: "destructive" });
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await api.get('/lesson-plan/topics');
+            const allTopics: any[] = response.data;
+            
+            // Filter based on criteria
+            const filtered = allTopics.filter(t => 
+                t.className === criteria.class_name &&
+                t.section === criteria.section &&
+                t.subjectGroup === criteria.subject_group &&
+                t.subject === criteria.subject
+            ).map(t => ({
+                id: t.id,
+                className: t.className,
+                section: t.section,
+                subjectGroup: t.subjectGroup,
+                subject: t.subject,
+                lesson: t.lesson,
+                topics: t.topics.map((topic: any) => ({
+                    id: topic.id,
+                    name: topic.name,
+                    completionDate: topic.completion_date,
+                    isCompleted: !!topic.is_completed
+                }))
+            }));
+
+            setSyllabusData(filtered);
+            if (filtered.length === 0) {
+                toast({ title: "Info", description: "No syllabus data found for selected criteria" });
+            }
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to fetch syllabus data", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleStatus = async (topicId: string, currentStatus: boolean) => {
+        try {
+            const newStatus = !currentStatus;
+            const completionDate = newStatus ? new Date().toISOString().split('T')[0] : null;
+
+            await api.put(`/lesson-plan/topics/${topicId}/status`, {
+                is_completed: newStatus,
+                completion_date: completionDate
+            });
+
+            // Update local state
+            setSyllabusData(prevData => 
+                prevData.map(lesson => ({
+                    ...lesson,
+                    topics: lesson.topics.map(topic => 
+                        topic.id === topicId 
+                            ? { ...topic, isCompleted: newStatus, completionDate: completionDate } 
+                            : topic
+                    )
+                }))
+            );
+
+            toast({ title: "Success", description: "Status updated successfully" });
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+        }
+    };
+
     return (
         <div className="space-y-6 p-4 font-sans bg-gray-50/10 min-h-screen">
             {/* Criteria Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                <h2 className="text-sm font-medium text-gray-800 mb-4">Select Criteria</h2>
+                <h2 className="text-sm font-medium text-gray-800 mb-4 uppercase tracking-tight">Select Criteria</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                             Class <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="class1">
-                            <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500">
+                        <Select value={criteria.class_name} onValueChange={(val) => setCriteria({...criteria, class_name: val})}>
+                            <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="class1">Class 1</SelectItem>
-                                <SelectItem value="class2">Class 2</SelectItem>
+                                {classes.map(c => (
+                                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
@@ -134,13 +176,14 @@ export default function ManageSyllabusStatusPage() {
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                             Section <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="a">
-                            <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500">
+                        <Select value={criteria.section} onValueChange={(val) => setCriteria({...criteria, section: val})}>
+                            <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="a">A</SelectItem>
-                                <SelectItem value="b">B</SelectItem>
+                                {sections.map(s => (
+                                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
@@ -149,12 +192,14 @@ export default function ManageSyllabusStatusPage() {
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                             Subject Group <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="group1">
-                            <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500">
+                        <Select value={criteria.subject_group} onValueChange={(val) => setCriteria({...criteria, subject_group: val})}>
+                            <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="group1">Class 1st Subject Group</SelectItem>
+                                {subjectGroups.map(g => (
+                                    <SelectItem key={g.id} value={g.name || g.group_name}>{g.name || g.group_name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
@@ -163,110 +208,134 @@ export default function ManageSyllabusStatusPage() {
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                             Subject <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="english">
-                            <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500">
+                        <Select value={criteria.subject} onValueChange={(val) => setCriteria({...criteria, subject: val})}>
+                            <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="english">English (210)</SelectItem>
+                                {subjects.map(s => (
+                                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
 
                 <div className="flex justify-end mt-4">
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white gap-2 h-8 px-6 text-xs shadow-sm transition-all rounded">
-                        <Search className="h-3.5 w-3.5" /> Search
+                    <Button 
+                        onClick={handleSearch} 
+                        disabled={loading}
+                        className="btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
+                    >
+                        {loading ? "Searching..." : <><Search className="h-4 w-4" /> Search</>}
                     </Button>
                 </div>
             </div>
 
-            <div className="text-sm font-medium text-gray-700 mt-6 mb-2">
-                Syllabus Status For: <span className="font-bold">English (210)</span>
-            </div>
+            {syllabusData.length > 0 && (
+                <>
+                    <div className="text-sm font-medium text-gray-700 mt-6 mb-2 flex items-center gap-2">
+                        Syllabus Status For: <span className="font-bold text-indigo-600">{criteria.subject}</span>
+                    </div>
 
-            {/* Syllabus Table Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                <div className="flex justify-end p-2 gap-1 border-b bg-gray-50/30">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600">
-                        <FileSpreadsheet className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600">
-                        <FileText className="h-4 w-4" />
-                    </Button>
-                </div>
+                    {/* Syllabus Table Section */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="flex justify-end p-2 gap-1 border-b bg-gray-50/30">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 cursor-pointer">
+                                <FileSpreadsheet className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 cursor-pointer">
+                                <FileText className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 cursor-pointer">
+                                <Printer className="h-4 w-4" />
+                            </Button>
+                        </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50/50 text-[11px] font-bold uppercase text-gray-600 border-b border-gray-100">
-                                <th className="p-3 text-left w-12">#</th>
-                                <th className="p-3 text-left">Lesson Topic</th>
-                                <th className="p-3 text-left">Topic Completion Date</th>
-                                <th className="p-3 text-left">Status</th>
-                                <th className="p-3 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {mockSyllabusData.map((lesson, idx) => (
-                                <tr key={lesson.id} className="group hover:bg-gray-50/30 transition-colors">
-                                    <td className="p-3 text-xs text-gray-400 align-top">{idx + 1}</td>
-                                    <td className="p-3 align-top">
-                                        <div className="space-y-2">
-                                            <div className="text-xs font-bold text-gray-800">{lesson.name}</div>
-                                            <div className="pl-4 space-y-1.5">
-                                                {lesson.topics.map((topic) => (
-                                                    <div key={topic.id} className="text-[12px] text-gray-500 flex gap-2">
-                                                        <span className="w-6 shrink-0">{topic.id}</span>
-                                                        <span>{topic.name}</span>
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50/50 text-[11px] font-bold uppercase text-gray-600 border-b border-gray-100">
+                                        <th className="p-4 text-left w-12">#</th>
+                                        <th className="p-4 text-left">Lesson Topic</th>
+                                        <th className="p-4 text-left">Topic Completion Date</th>
+                                        <th className="p-4 text-left">Status</th>
+                                        <th className="p-4 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {syllabusData.map((lesson, idx) => (
+                                        <tr key={lesson.id} className="group hover:bg-gray-50/30 transition-colors border-b border-gray-50">
+                                            <td className="p-4 text-[11px] text-gray-400 align-top font-medium">{idx + 1}</td>
+                                            <td className="p-4 align-top">
+                                                <div className="space-y-4">
+                                                    <div className="text-[12px] font-bold text-gray-800 uppercase tracking-tight">{lesson.lesson}</div>
+                                                    <div className="pl-4 space-y-3">
+                                                        {lesson.topics.map((topic, tIdx) => (
+                                                            <div key={topic.id} className="text-[12px] text-gray-500 flex gap-3 items-center">
+                                                                <span className="w-6 shrink-0 text-[10px] text-gray-300 font-bold">{idx + 1}.{tIdx + 1}</span>
+                                                                <span className="font-medium">{topic.name}</span>
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-3 align-top">
-                                        <div className="space-y-2 pt-6">
-                                            {lesson.topics.map((topic) => (
-                                                <div key={topic.id} className="h-[18px] text-[12px] text-gray-500 italic">
-                                                    {topic.completionDate || ""}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td className="p-3 align-top">
-                                        <div className="space-y-2 pt-6">
-                                            {lesson.topics.map((topic) => (
-                                                <div key={topic.id} className="h-[18px] flex items-center">
-                                                    <span className={cn(
-                                                        "px-2 py-0.5 rounded-[3px] text-[10px] font-medium tracking-tight",
-                                                        topic.isCompleted
-                                                            ? "bg-black text-white"
-                                                            : "bg-gray-200 text-gray-500"
-                                                    )}>
-                                                        {topic.isCompleted ? "Completed" : "Incomplete"}
-                                                    </span>
+                                            </td>
+                                            <td className="p-4 align-top">
+                                                <div className="space-y-3 mt-8">
+                                                    {lesson.topics.map((topic) => (
+                                                        <div key={topic.id} className="h-6 flex items-center text-[11px] text-gray-400 italic font-medium">
+                                                            {topic.completionDate || "---"}
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td className="p-3 align-top text-right">
-                                        <div className="space-y-2 pt-6 flex flex-col items-end">
-                                            {lesson.topics.map((topic) => (
-                                                <div key={topic.id} className="h-[18px] flex items-center">
-                                                    <Switch
-                                                        checked={topic.isCompleted}
-                                                        className="h-3.5 w-7 scale-75 data-[state=checked]:bg-indigo-600"
-                                                    />
+                                            </td>
+                                            <td className="p-4 align-top">
+                                                <div className="space-y-3 mt-8">
+                                                    {lesson.topics.map((topic) => (
+                                                        <div key={topic.id} className="h-6 flex items-center">
+                                                            <span className={cn(
+                                                                "px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all duration-300",
+                                                                topic.isCompleted
+                                                                    ? "bg-emerald-500 text-white shadow-sm shadow-emerald-100"
+                                                                    : "bg-gray-100 text-gray-400"
+                                                            )}>
+                                                                {topic.isCompleted ? "Completed" : "Incomplete"}
+                                                            </span>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                            </td>
+                                            <td className="p-4 align-top text-right">
+                                                <div className="space-y-3 mt-8 flex flex-col items-end">
+                                                    {lesson.topics.map((topic) => (
+                                                        <div key={topic.id} className="h-6 flex items-center">
+                                                            <Switch
+                                                                checked={topic.isCompleted}
+                                                                onCheckedChange={() => toggleStatus(topic.id, topic.isCompleted)}
+                                                                className="h-4 w-8 data-[state=checked]:bg-indigo-600 data-[state=unchecked]:bg-gray-200"
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {!loading && syllabusData.length === 0 && (
+                <div className="bg-white rounded-lg border border-dashed border-gray-200 p-20 flex flex-col items-center justify-center text-center">
+                    <div className="bg-gray-50 p-4 rounded-full mb-4">
+                        <Search className="h-8 w-8 text-gray-300" />
+                    </div>
+                    <h3 className="text-gray-400 text-sm font-medium">Select criteria to view syllabus status</h3>
+                    <p className="text-gray-300 text-[11px] uppercase tracking-widest mt-1">Class, Section, Subject Group, and Subject required</p>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

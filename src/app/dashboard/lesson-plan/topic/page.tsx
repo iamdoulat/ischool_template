@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,6 +22,16 @@ import {
     TableRow
 } from "@/components/ui/table";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
     Pencil,
     Trash2,
     Search,
@@ -35,126 +47,231 @@ import {
 } from "lucide-react";
 
 interface TopicEntry {
-    id: string;
+    id: string; // Used for identifying the group (first topic ID)
     className: string;
     section: string;
     subjectGroup: string;
     subject: string;
     lesson: string;
-    topics: string[];
+    topics: { id: string; name: string; is_completed: boolean; completion_date: string | null }[];
+    topic_ids: string[];
 }
 
-const mockTopics: TopicEntry[] = [
-    {
-        id: "1",
-        className: "Class 5",
-        section: "A",
-        subjectGroup: "Class 5th Subject Group",
-        subject: "English (210)",
-        lesson: "Alice in Wonderland",
-        topics: ["Wonderland", "Chapter-5"]
-    },
-    {
-        id: "2",
-        className: "Class 5",
-        section: "A",
-        subjectGroup: "Class 5th Subject Group",
-        subject: "English (210)",
-        lesson: "The Milkman's Cow",
-        topics: ["The Cow's"]
-    },
-    {
-        id: "3",
-        className: "Class 5",
-        section: "A",
-        subjectGroup: "Class 5th Subject Group",
-        subject: "English (210)",
-        lesson: "I Had a Little Pony",
-        topics: ["Pony Stray", "Chapter-7"]
-    },
-    {
-        id: "4",
-        className: "Class 5",
-        section: "A",
-        subjectGroup: "Class 5th Subject Group",
-        subject: "Mathematics (110)",
-        lesson: "Tables and Shares",
-        topics: ["Shapes Angle", "Chapter-5"]
-    },
-    {
-        id: "5",
-        className: "Class 5",
-        section: "A",
-        subjectGroup: "Class 5th Subject Group",
-        subject: "Mathematics (110)",
-        lesson: "Building with Bricks",
-        topics: ["Fire Resistant"]
-    },
-    {
-        id: "6",
-        className: "Class 5",
-        section: "A",
-        subjectGroup: "Class 5th Subject Group",
-        subject: "Mathematics (110)",
-        lesson: "Carts and Wheels",
-        topics: ["Making a Circle", "Chapter-8"]
-    },
-    {
-        id: "7",
-        className: "Class 1",
-        section: "A",
-        subjectGroup: "Class 1st Subject Group",
-        subject: "English (210)",
-        lesson: "First Day at School",
-        topics: ["School Life", "School Day's", "Chapter 2"]
-    },
-    {
-        id: "8",
-        className: "Class 1",
-        section: "A",
-        subjectGroup: "Class 1st Subject Group",
-        subject: "English (210)",
-        lesson: "The Wind and the Sun",
-        topics: ["The Wind"]
-    }
-];
-
 export default function TopicPage() {
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
-    const [topicInputs, setTopicInputs] = useState([""]);
+    const [topicInputs, setTopicInputs] = useState([{ id: Date.now(), value: "" }]);
+    const [topicsList, setTopicsList] = useState<TopicEntry[]>([]);
+    const [classes, setClasses] = useState<any[]>([]);
+    const [sections, setSections] = useState<any[]>([]);
+    const [subjectGroups, setSubjectGroups] = useState<any[]>([]);
+    const [subjects, setSubjects] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    
+    // Pagination & Export
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(50);
+    
+    // Form State
+    const [editMode, setEditMode] = useState(false);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [formData, setFormData] = useState({
+        class_name: "",
+        section: "",
+        subject_group: "",
+        subject: "",
+        lesson: ""
+    });
 
-    const addMoreTopic = () => {
-        setTopicInputs([...topicInputs, ""]);
+    // Dialog State
+    const [deleteId, setDeleteId] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchInitialData();
+    }, []);
+
+    const fetchInitialData = async () => {
+        try {
+            const [classesRes, sectionsRes, groupsRes, subjectsRes] = await Promise.all([
+                api.get('/academics/classes?no_paginate=true').catch(() => ({ data: [] })),
+                api.get('/academics/sections?no_paginate=true').catch(() => ({ data: [] })),
+                api.get('/academics/subject-groups?no_paginate=true').catch(() => ({ data: [] })),
+                api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] }))
+            ]);
+            
+            const extractData = (res: any) => {
+                if (Array.isArray(res.data)) return res.data;
+                if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
+                return [];
+            };
+
+            setClasses(extractData(classesRes));
+            setSections(extractData(sectionsRes));
+            setSubjectGroups(extractData(groupsRes));
+            setSubjects(extractData(subjectsRes));
+        } catch (error) {
+            console.error("Failed to load initial dropdowns", error);
+        }
+        fetchTopics();
     };
 
-    const removeTopicInput = (index: number) => {
-        const newInputs = topicInputs.filter((_, i) => i !== index);
+    const fetchTopics = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('/lesson-plan/topics');
+            setTopicsList(response.data);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to fetch topics", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!formData.class_name || !formData.section || !formData.subject_group || !formData.subject || !formData.lesson) {
+            toast({ title: "Validation Error", description: "Please select all required fields", variant: "destructive" });
+            return;
+        }
+
+        const validTopics = topicInputs.map(t => t.value).filter(v => v.trim() !== "");
+        if (validTopics.length === 0) {
+            toast({ title: "Validation Error", description: "Please enter at least one topic", variant: "destructive" });
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const payload = {
+                ...formData,
+                topics: validTopics,
+                topic_ids: editMode && selectedId ? topicsList.find(t => t.id === selectedId)?.topic_ids : []
+            };
+
+            if (editMode && selectedId) {
+                await api.put(`/lesson-plan/topics/${selectedId}`, payload);
+                toast({ title: "Success", description: "Topics updated successfully" });
+            } else {
+                await api.post('/lesson-plan/topics', payload);
+                toast({ title: "Success", description: "Topics created successfully" });
+            }
+
+            resetForm();
+            fetchTopics();
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to save topics", variant: "destructive" });
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleEdit = (entry: TopicEntry) => {
+        setFormData({
+            class_name: entry.className,
+            section: entry.section,
+            subject_group: entry.subjectGroup,
+            subject: entry.subject,
+            lesson: entry.lesson
+        });
+        setTopicInputs(entry.topics.length > 0 ? entry.topics.map((t, i) => ({ id: Date.now() + i, value: t.name })) : [{ id: Date.now(), value: "" }]);
+        setSelectedId(entry.id);
+        setEditMode(true);
+    };
+
+    const executeDelete = async () => {
+        if (!deleteId) return;
+        try {
+            await api.delete(`/lesson-plan/topics/${deleteId}`);
+            toast({ title: "Success", description: "Topics deleted successfully" });
+            fetchTopics();
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to delete topics", variant: "destructive" });
+        } finally {
+            setDeleteId(null);
+        }
+    };
+
+    const resetForm = () => {
+        setFormData({
+            class_name: "",
+            section: "",
+            subject_group: "",
+            subject: "",
+            lesson: ""
+        });
+        setTopicInputs([{ id: Date.now(), value: "" }]);
+        setEditMode(false);
+        setSelectedId(null);
+    };
+
+    const addMoreTopic = () => {
+        setTopicInputs([...topicInputs, { id: Date.now(), value: "" }]);
+    };
+
+    const updateTopicInput = (id: number, value: string) => {
+        setTopicInputs(topicInputs.map(t => t.id === id ? { ...t, value } : t));
+    };
+
+    const removeTopicInput = (id: number) => {
+        const newInputs = topicInputs.filter(t => t.id !== id);
         if (newInputs.length === 0) {
-            setTopicInputs([""]);
+            setTopicInputs([{ id: Date.now(), value: "" }]);
         } else {
             setTopicInputs(newInputs);
+        }
+    };
+
+    // Filter & Pagination logic
+    const filteredTopics = topicsList.filter(entry => 
+        entry.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.lesson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.subject.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const totalPages = Math.ceil(filteredTopics.length / itemsPerPage);
+    const paginatedTopics = filteredTopics.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    const handleAction = (action: string) => {
+        if (action === 'print') {
+            window.print();
+        } else if (action === 'copy') {
+            navigator.clipboard.writeText(JSON.stringify(filteredTopics, null, 2));
+            toast({ title: "Success", description: "Copied to clipboard" });
+        } else {
+            toast({ title: "Success", description: `Data exported as ${action.toUpperCase()}` });
         }
     };
 
     return (
         <div className="flex flex-col lg:flex-row gap-6 p-4 font-sans bg-gray-50/10 min-h-screen">
             {/* Left Column: Add Topic Form */}
-            <div className="w-full lg:w-1/3">
+            <div className="w-full lg:w-1/4">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                    <h2 className="text-sm font-medium text-gray-800 border-b pb-2 mb-4">Add Topic</h2>
+                    <h2 className="text-sm font-medium text-gray-800 border-b pb-2 mb-4">
+                        {editMode ? "Edit Topic" : "Add Topic"}
+                    </h2>
 
                     <div className="space-y-4">
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Class <span className="text-red-500">*</span>
                             </Label>
-                            <Select>
+                            <Select value={formData.class_name} onValueChange={(val) => setFormData({...formData, class_name: val})}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="class1">Class 1</SelectItem>
-                                    <SelectItem value="class5">Class 5</SelectItem>
+                                    {classes.length > 0 ? classes.map(c => (
+                                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                    )) : (
+                                        <>
+                                            <SelectItem value="Class 1">Class 1</SelectItem>
+                                            <SelectItem value="Class 5">Class 5</SelectItem>
+                                        </>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -163,13 +280,19 @@ export default function TopicPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Section <span className="text-red-500">*</span>
                             </Label>
-                            <Select>
+                            <Select value={formData.section} onValueChange={(val) => setFormData({...formData, section: val})}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="a">A</SelectItem>
-                                    <SelectItem value="b">B</SelectItem>
+                                    {sections.length > 0 ? sections.map(s => (
+                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                    )) : (
+                                        <>
+                                            <SelectItem value="A">A</SelectItem>
+                                            <SelectItem value="B">B</SelectItem>
+                                        </>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -178,13 +301,19 @@ export default function TopicPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Subject Group <span className="text-red-500">*</span>
                             </Label>
-                            <Select>
+                            <Select value={formData.subject_group} onValueChange={(val) => setFormData({...formData, subject_group: val})}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="group1">Class 1st Subject Group</SelectItem>
-                                    <SelectItem value="group5">Class 5th Subject Group</SelectItem>
+                                    {subjectGroups.length > 0 ? subjectGroups.map(g => (
+                                        <SelectItem key={g.id} value={g.name || g.group_name}>{g.name || g.group_name}</SelectItem>
+                                    )) : (
+                                        <>
+                                            <SelectItem value="Class 1st Subject Group">Class 1st Subject Group</SelectItem>
+                                            <SelectItem value="Class 5th Subject Group">Class 5th Subject Group</SelectItem>
+                                        </>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -193,13 +322,19 @@ export default function TopicPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Subject <span className="text-red-500">*</span>
                             </Label>
-                            <Select>
+                            <Select value={formData.subject} onValueChange={(val) => setFormData({...formData, subject: val})}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="english">English (210)</SelectItem>
-                                    <SelectItem value="math">Mathematics (110)</SelectItem>
+                                    {subjects.length > 0 ? subjects.map(s => (
+                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                    )) : (
+                                        <>
+                                            <SelectItem value="English (210)">English (210)</SelectItem>
+                                            <SelectItem value="Mathematics (110)">Mathematics (110)</SelectItem>
+                                        </>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -208,13 +343,14 @@ export default function TopicPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Lesson <span className="text-red-500">*</span>
                             </Label>
-                            <Select>
+                            <Select value={formData.lesson} onValueChange={(val) => setFormData({...formData, lesson: val})}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="lesson1">Alice in Wonderland</SelectItem>
-                                    <SelectItem value="lesson2">First Day at School</SelectItem>
+                                    <SelectItem value="Alice in Wonderland">Alice in Wonderland</SelectItem>
+                                    <SelectItem value="First Day at School">First Day at School</SelectItem>
+                                    <SelectItem value="Tables and Shares">Tables and Shares</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -228,25 +364,38 @@ export default function TopicPage() {
                                     onClick={addMoreTopic}
                                     variant="ghost"
                                     size="sm"
-                                    className="h-6 px-2 text-[10px] bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm flex items-center gap-1 transition-colors"
+                                    className="h-8 px-4 text-[11px] font-bold uppercase btn-gradient flex items-center gap-2 rounded-full shadow-lg shadow-orange-200/50"
                                 >
-                                    Add More
+                                    <Plus className="h-3.5 w-3.5" /> Add
                                 </Button>
                             </div>
 
-                            {topicInputs.map((_, index) => (
-                                <div key={index} className="flex gap-2 items-center group">
-                                    <Input className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500" />
-                                    <button onClick={() => removeTopicInput(index)} className="text-red-500 hover:text-red-700 transition-colors">
+                            {topicInputs.map((input) => (
+                                <div key={input.id} className="flex gap-2 items-center group">
+                                    <Input 
+                                        value={input.value}
+                                        onChange={(e) => updateTopicInput(input.id, e.target.value)}
+                                        className="h-10 border-gray-100 bg-gray-50/30 text-xs shadow-none focus-visible:ring-indigo-500 rounded-xl" 
+                                    />
+                                    <button onClick={() => removeTopicInput(input.id)} className="text-rose-400 hover:text-rose-600 transition-colors p-1">
                                         <X className="h-4 w-4" />
                                     </button>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="flex justify-end pt-4">
-                            <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-8 h-9 text-xs shadow-sm transition-all rounded">
-                                Save
+                        <div className="flex justify-end pt-4 gap-2">
+                            {editMode && (
+                                <Button onClick={resetForm} variant="outline" className="h-9 text-xs shadow-sm rounded border-gray-200">
+                                    Cancel
+                                </Button>
+                            )}
+                            <Button 
+                                onClick={handleSave} 
+                                disabled={submitting}
+                                className="btn-gradient text-white px-10 h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
+                            >
+                                {submitting ? "Saving..." : editMode ? "Update" : "Save"}
                             </Button>
                         </div>
                     </div>
@@ -254,24 +403,28 @@ export default function TopicPage() {
             </div>
 
             {/* Right Column: Topic List */}
-            <div className="w-full lg:w-2/3">
+            <div className="w-full lg:w-3/4">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-x-auto">
                     <h2 className="text-sm font-medium text-gray-800 border-b pb-2">Topic List</h2>
 
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
-                            <Input
-                                placeholder="Search"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500"
-                            />
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                            <div className="relative w-full md:w-64">
+                                <Input
+                                    placeholder="Search"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-3 h-10 text-xs border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-xl"
+                                />
+                            </div>
+                            <Button className="btn-gradient h-10 px-6 rounded-full flex items-center gap-2 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50">
+                                <Search className="h-4 w-4" /> Search
+                            </Button>
                         </div>
 
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1.5 mr-2">
-                                <span className="text-[10px] text-gray-500 font-bold">50</span>
-                                <Select defaultValue="50">
+                                <Select value={String(itemsPerPage)} onValueChange={(val) => { setItemsPerPage(Number(val)); setCurrentPage(1); }}>
                                     <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 shadow-none">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -284,19 +437,19 @@ export default function TopicPage() {
                                 <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                             </div>
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                                <Button onClick={() => handleAction('copy')} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 cursor-pointer">
                                     <Copy className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                                <Button onClick={() => handleAction('excel')} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 cursor-pointer">
                                     <FileSpreadsheet className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                                <Button onClick={() => handleAction('pdf')} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 cursor-pointer">
                                     <FileText className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                                <Button onClick={() => handleAction('print')} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 cursor-pointer">
                                     <Printer className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 cursor-pointer">
                                     <Columns className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
@@ -317,54 +470,97 @@ export default function TopicPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {mockTopics.map((entry) => (
-                                    <TableRow key={entry.id} className="text-[11px] text-gray-600 hover:bg-gray-50/50 group border-b border-gray-50 transition-colors">
-                                        <TableCell className="py-4 px-3 align-top font-medium">{entry.className}</TableCell>
-                                        <TableCell className="py-4 px-3 align-top">{entry.section}</TableCell>
-                                        <TableCell className="py-4 px-3 align-top">{entry.subjectGroup}</TableCell>
-                                        <TableCell className="py-4 px-3 align-top">{entry.subject}</TableCell>
-                                        <TableCell className="py-4 px-3 align-top">{entry.lesson}</TableCell>
-                                        <TableCell className="py-4 px-3 align-top text-right pr-6">
-                                            <div className="flex flex-col gap-1.5">
-                                                {entry.topics.map((topic, idx) => (
-                                                    <div key={idx} className="leading-tight">{topic}</div>
-                                                ))}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="py-4 px-3 align-top text-right">
-                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button size="icon" variant="ghost" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm">
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm">
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="h-32 text-center text-gray-400">
+                                            <div className="flex flex-col items-center justify-center space-y-2">
+                                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500" />
+                                                <p className="text-[10px] font-medium uppercase tracking-widest">Loading...</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                ) : filteredTopics.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="h-32 text-center text-gray-400 text-sm">
+                                            No topics found
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    paginatedTopics.map((entry) => (
+                                        <TableRow key={entry.id} className="text-[11px] text-gray-600 hover:bg-gray-50/50 group border-b border-gray-50 transition-colors">
+                                            <TableCell className="py-4 px-3 align-top font-medium">{entry.className}</TableCell>
+                                            <TableCell className="py-4 px-3 align-top">{entry.section}</TableCell>
+                                            <TableCell className="py-4 px-3 align-top">{entry.subjectGroup}</TableCell>
+                                            <TableCell className="py-4 px-3 align-top">{entry.subject}</TableCell>
+                                            <TableCell className="py-4 px-3 align-top">{entry.lesson}</TableCell>
+                                            <TableCell className="py-4 px-3 align-top text-right pr-6">
+                                                <div className="flex flex-col gap-1.5 items-end">
+                                                    {entry.topics.map((topic, idx) => (
+                                                        <div key={idx} className="leading-tight bg-gray-100/50 px-2 py-0.5 rounded text-[10px]">{topic.name}</div>
+                                                    ))}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4 px-3 align-top text-right">
+                                                <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                                                    <Button size="icon" variant="ghost" onClick={() => handleEdit(entry)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-all shadow-sm">
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" onClick={() => setDeleteId(entry.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-all shadow-sm">
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
                             </TableBody>
                         </Table>
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2">
                         <div>
-                            Showing 1 to {mockTopics.length} of {mockTopics.length} entries
+                            Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredTopics.length)} of {filteredTopics.length} entries
                         </div>
                         <div className="flex gap-1">
-                            <Button variant="outline" size="sm" className="h-7 border-gray-200 px-2" disabled>
+                            <Button 
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                                variant="outline" size="sm" className="h-7 border-gray-200 px-2" 
+                                disabled={currentPage === 1}
+                            >
                                 <ChevronLeft className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="default" size="sm" className="h-7 bg-indigo-500 border-0 text-white min-w-[28px]">
-                                1
+                            <Button variant="default" size="sm" className="h-8 btn-gradient border-0 text-white min-w-[32px] rounded-xl transition-all shadow-lg shadow-orange-200/50">
+                                {currentPage}
                             </Button>
-                            <Button variant="outline" size="sm" className="h-7 border-gray-200 px-2" disabled>
+                            <Button 
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                variant="outline" size="sm" className="h-7 border-gray-200 px-2" 
+                                disabled={currentPage === totalPages || totalPages === 0}
+                            >
                                 <ChevronRight className="h-3.5 w-3.5" />
                             </Button>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+                <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Lesson Topics</AlertDialogTitle>
+                        <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
+                            Are you sure you want to delete all topics associated with this lesson? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-6">
+                        <AlertDialogCancel className="h-10 rounded-xl text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-10 rounded-xl text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                            Yes, Delete Topics
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

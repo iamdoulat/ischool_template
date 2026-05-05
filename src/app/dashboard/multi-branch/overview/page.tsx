@@ -1,5 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import {
     Card,
     CardContent,
@@ -14,93 +17,113 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { 
+    Activity, LayoutDashboard, Wallet, Bus, 
+    UserCheck, Library, GraduationCap, Users,
+    RefreshCw, Info, Building2
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface OverviewData {
+    fees_details: any[];
+    transport_details: any[];
+    admission_details: any[];
+    library_details: any[];
+    alumni_details: any[];
+    payroll_details: any[];
+    attendance_details: any[];
+}
 
 export default function OverviewPage() {
-    // Fees Details Data
-    const feesData = [
-        { id: 1, branch: "Home Branch", session: "2025-26", students: 75, totalFees: "$17,112.02", paidFees: "$96,512.5", balanceFees: "$6,12,559.53" },
-        { id: 2, branch: "Smart School 1", session: "2025-26", students: 18, totalFees: "$42,750.00", paidFees: "$7,235.98", balanceFees: "$35,159.00" },
-        { id: 3, branch: "Smart School 2", session: "2025-26", students: 11, totalFees: "$21,750.00", paidFees: "$2,200.00", balanceFees: "$10,550.00" },
-        { id: 4, branch: "Smart School 3", session: "2025-26", students: 14, totalFees: "$48,850.00", paidFees: "$3,700.00", balanceFees: "$44,580.00" },
-    ];
+    const { toast } = useToast();
+    const [data, setData] = useState<OverviewData | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    // Transport Fees Details Data
-    const transportData = [
-        { id: 1, branch: "Home Branch", session: "2025-26", totalFees: "$32,800.00", paidFees: "$3,045.00", balanceFees: "$30,755.00" },
-        { id: 2, branch: "Smart School 1", session: "2025-26", totalFees: "$2,350.00", paidFees: "$00.00", balanceFees: "$2,350.00" },
-        { id: 3, branch: "Smart School 2", session: "2025-26", totalFees: "$4,550.00", paidFees: "$00.00", balanceFees: "$4,430.00" },
-        { id: 4, branch: "Smart School 3", session: "2025-26", totalFees: "$7,850.00", paidFees: "$50.00", balanceFees: "$2,800.00" },
-    ];
+    useEffect(() => {
+        fetchOverview();
+    }, []);
 
-    // Student Admission Data
-    const admissionData = [
-        { id: 1, branch: "Home Branch", session: "2025-26", offline: 28, online: 6 },
-        { id: 2, branch: "Smart School 1", session: "2025-26", offline: 3, online: 2 },
-        { id: 3, branch: "Smart School 2", session: "2025-26", offline: 3, online: 0 },
-        { id: 4, branch: "Smart School 3", session: "2025-26", offline: 3, online: 0 },
-    ];
+    const fetchOverview = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('/multi-branch/overview');
+            setData(response.data);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to fetch ecosystem overview", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    // Library Details Data
-    const libraryData = [
-        { id: 1, branch: "Home Branch", totalBooks: 20, members: 52, bookIssued: 220 },
-        { id: 2, branch: "Smart School 1", totalBooks: 12, members: 18, bookIssued: 40 },
-        { id: 3, branch: "Smart School 2", totalBooks: 11, members: 16, bookIssued: 45 },
-        { id: 4, branch: "Smart School 3", totalBooks: 8, members: 21, bookIssued: 37 },
-    ];
-
-    // Alumni Students Data
-    const alumniData = [
-        { id: 1, branch: "Home Branch", students: 4 },
-        { id: 2, branch: "Smart School 1", students: 2 },
-        { id: 3, branch: "Smart School 2", students: 5 },
-        { id: 4, branch: "Smart School 3", students: 2 },
-    ];
-
-    // Staff Payroll Data
-    const payrollData = [
-        { id: 1, branch: "Home Branch", totalStaff: 5, generated: 2, notGenerated: 0, paid: 7, netAmount: "$1,93,420.00", paidAmount: "$1,61,440.00" },
-        { id: 2, branch: "Smart School 1", totalStaff: 7, generated: 0, notGenerated: 7, paid: 0, netAmount: "$0.00", paidAmount: "$0.00" },
-        { id: 3, branch: "Smart School 2", totalStaff: 7, generated: 0, notGenerated: 7, paid: 0, netAmount: "$0.00", paidAmount: "$0.00" },
-        { id: 4, branch: "Smart School 3", totalStaff: 8, generated: 0, notGenerated: 8, paid: 0, netAmount: "$0.00", paidAmount: "$0.00" },
-    ];
-
-    // Staff Attendance Data
-    const attendanceData = [
-        { id: 1, branch: "Home Branch", totalStaff: 5, present: 0, absent: 4 },
-        { id: 2, branch: "Smart School 1", totalStaff: 7, present: 1, absent: 1 },
-        { id: 3, branch: "Smart School 2", totalStaff: 7, present: 1, absent: 1 },
-        { id: 4, branch: "Smart School 3", totalStaff: 8, present: 1, absent: 1 },
-    ];
+    if (loading) {
+        return (
+            <div className="h-[60vh] flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-700">
+                <div className="h-16 w-16 rounded-[2rem] bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-2xl shadow-indigo-100 animate-pulse">
+                    <LayoutDashboard className="h-8 w-8" />
+                </div>
+                <div className="flex flex-col items-center">
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-indigo-600 animate-bounce">Synchronizing Ecosystem Nodes</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1 italic">Aggregating cross-campus intelligence matrices...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+        <div className="space-y-8 animate-in fade-in duration-500 pb-24 font-sans">
+            {/* Strategy Header */}
+            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 text-indigo-600">
+                    <Activity className="h-48 w-48" />
+                </div>
+                <div className="flex items-center gap-6 relative z-10">
+                    <div className="h-16 w-16 rounded-[2rem] bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner transform -rotate-3">
+                        <Building2 className="h-8 w-8" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-black text-gray-800 uppercase tracking-widest flex items-center gap-4">
+                            Ecosystem Overview
+                        </h1>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.25em] mt-1.5 flex items-center gap-2">
+                            <Info className="h-3 w-3 text-indigo-400" /> Real-time analytical aggregation of multi-campus node performance
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             {/* Fees Details */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-6 py-4 border-b border-muted/50">
-                    <CardTitle className="text-lg font-bold tracking-tight text-slate-700">Fees Details</CardTitle>
+                <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-inner">
+                        <Wallet className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Institutional Fees Matrix</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <Table>
-                            <TableHeader>
+                            <TableHeader className="bg-gray-50/50">
                                 <TableRow className="hover:bg-transparent border-b border-muted/20">
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pl-6">Branch</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Current Session</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Total Students</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Total Fees</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Total Paid Fees</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pr-6">Total Balance Fees</TableHead>
+                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-widest py-5 pl-8">Branch Node</TableHead>
+                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-widest py-5 text-center">Session Index</TableHead>
+                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-widest py-5 text-center">Total Nodes</TableHead>
+                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-widest py-5">Total Valuation</TableHead>
+                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-widest py-5">Committed Value</TableHead>
+                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-widest py-5 pr-8 text-right">Node Balance</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {feesData.map((row) => (
-                                    <TableRow key={row.id} className="hover:bg-muted/30 border-b border-muted/10 transition-colors">
-                                        <TableCell className="text-slate-700 text-sm pl-6 py-4">{row.branch}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.session}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.students}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.totalFees}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.paidFees}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm pr-6 py-4">{row.balanceFees}</TableCell>
+                                {data?.fees_details.map((row, index) => (
+                                    <TableRow key={row.id} className={cn(
+                                        "hover:bg-emerald-50/20 border-b border-muted/10 transition-colors group",
+                                        index % 2 === 0 ? 'bg-white' : 'bg-muted/5'
+                                    )}>
+                                        <TableCell className="text-slate-700 text-[11px] font-black pl-8 py-5 uppercase tracking-tight">{row.branch}</TableCell>
+                                        <TableCell className="text-slate-500 text-[10px] font-bold py-5 text-center uppercase tracking-widest">{row.session}</TableCell>
+                                        <TableCell className="text-slate-500 text-[11px] font-black py-5 text-center tabular-nums">{row.students}</TableCell>
+                                        <TableCell className="text-slate-700 text-[11px] font-bold py-5 tabular-nums">{row.totalFees}</TableCell>
+                                        <TableCell className="text-emerald-600 text-[11px] font-black py-5 tabular-nums">{row.paidFees}</TableCell>
+                                        <TableCell className="text-rose-600 text-[11px] font-black pr-8 py-5 text-right tabular-nums tracking-widest">{row.balanceFees}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -109,157 +132,113 @@ export default function OverviewPage() {
                 </CardContent>
             </Card>
 
-            {/* Transport Fees Details */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-6 py-4 border-b border-muted/50">
-                    <CardTitle className="text-lg font-bold tracking-tight text-slate-700">Transport Fees Details</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent border-b border-muted/20">
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pl-6">Branch</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Current Session</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Total Fees</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Total Paid Fees</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pr-6">Total Balance Fees</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {transportData.map((row) => (
-                                    <TableRow key={row.id} className="hover:bg-muted/30 border-b border-muted/10 transition-colors">
-                                        <TableCell className="text-slate-700 text-sm pl-6 py-4">{row.branch}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.session}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.totalFees}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.paidFees}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm pr-6 py-4">{row.balanceFees}</TableCell>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Student Admission */}
+                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
+                    <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 shadow-inner">
+                            <UserCheck className="h-5 w-5" />
+                        </div>
+                        <CardTitle className="text-sm font-black tracking-tight text-slate-700 uppercase">Admission Flux Matrix</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-gray-50/50">
+                                    <TableRow className="hover:bg-transparent border-b border-muted/20 text-[9px] uppercase font-black text-gray-500 tracking-widest">
+                                        <TableHead className="py-4 pl-8">Branch Node</TableHead>
+                                        <TableHead className="py-4 text-center">Offline</TableHead>
+                                        <TableHead className="py-4 text-right pr-8">Online</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
+                                </TableHeader>
+                                <TableBody>
+                                    {data?.admission_details.map((row, idx) => (
+                                        <TableRow key={row.id} className={cn(
+                                            "hover:bg-blue-50/20 border-b border-muted/10 transition-colors group text-[11px]",
+                                            idx % 2 === 0 ? 'bg-white' : 'bg-muted/5'
+                                        )}>
+                                            <TableCell className="text-slate-700 font-black pl-8 py-4 uppercase tracking-tight">{row.branch}</TableCell>
+                                            <TableCell className="text-slate-500 font-black py-4 text-center tabular-nums">{row.offline}</TableCell>
+                                            <TableCell className="text-blue-600 font-black pr-8 py-4 text-right tabular-nums">{row.online}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
 
-            {/* Student Admission */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-6 py-4 border-b border-muted/50">
-                    <CardTitle className="text-lg font-bold tracking-tight text-slate-700">Student Admission</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent border-b border-muted/20">
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pl-6">Branch</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Current Session</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Offline Admission</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pr-6">Online Admission</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {admissionData.map((row) => (
-                                    <TableRow key={row.id} className="hover:bg-muted/30 border-b border-muted/10 transition-colors">
-                                        <TableCell className="text-slate-700 text-sm pl-6 py-4">{row.branch}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.session}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.offline}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm pr-6 py-4">{row.online}</TableCell>
+                {/* Library Details */}
+                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
+                    <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 shadow-inner">
+                            <Library className="h-5 w-5" />
+                        </div>
+                        <CardTitle className="text-sm font-black tracking-tight text-slate-700 uppercase">Knowledge Node Density</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-gray-50/50">
+                                    <TableRow className="hover:bg-transparent border-b border-muted/20 text-[9px] uppercase font-black text-gray-500 tracking-widest">
+                                        <TableHead className="py-4 pl-8">Branch Node</TableHead>
+                                        <TableHead className="py-4 text-center">Resources</TableHead>
+                                        <TableHead className="py-4 text-center">Members</TableHead>
+                                        <TableHead className="py-4 text-right pr-8">Circulation</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Library Details */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-6 py-4 border-b border-muted/50">
-                    <CardTitle className="text-lg font-bold tracking-tight text-slate-700">Library Details</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent border-b border-muted/20">
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pl-6">Branch</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Total Books</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Members</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pr-6">Book Issued</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {libraryData.map((row) => (
-                                    <TableRow key={row.id} className="hover:bg-muted/30 border-b border-muted/10 transition-colors">
-                                        <TableCell className="text-slate-700 text-sm pl-6 py-4">{row.branch}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.totalBooks}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.members}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm pr-6 py-4">{row.bookIssued}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Alumni Students */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-6 py-4 border-b border-muted/50">
-                    <CardTitle className="text-lg font-bold tracking-tight text-slate-700">Alumni Students</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent border-b border-muted/20">
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pl-6">Branch</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pr-6">Alumni Students</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {alumniData.map((row) => (
-                                    <TableRow key={row.id} className="hover:bg-muted/30 border-b border-muted/10 transition-colors">
-                                        <TableCell className="text-slate-700 text-sm pl-6 py-4">{row.branch}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm pr-6 py-4">{row.students}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
+                                </TableHeader>
+                                <TableBody>
+                                    {data?.library_details.map((row, idx) => (
+                                        <TableRow key={row.id} className={cn(
+                                            "hover:bg-amber-50/20 border-b border-muted/10 transition-colors group text-[11px]",
+                                            idx % 2 === 0 ? 'bg-white' : 'bg-muted/5'
+                                        )}>
+                                            <TableCell className="text-slate-700 font-black pl-8 py-4 uppercase tracking-tight">{row.branch}</TableCell>
+                                            <TableCell className="text-slate-500 font-black py-4 text-center tabular-nums">{row.totalBooks}</TableCell>
+                                            <TableCell className="text-slate-500 font-black py-4 text-center tabular-nums">{row.members}</TableCell>
+                                            <TableCell className="text-amber-600 font-black pr-8 py-4 text-right tabular-nums">{row.bookIssued}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* Staff Payroll */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-6 py-4 border-b border-muted/50">
-                    <CardTitle className="text-lg font-bold tracking-tight text-slate-700">Staff Payroll Of January</CardTitle>
+                <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+                        <Users className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Institutional Payroll Protocol</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent border-b border-muted/20">
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pl-6">Branch</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Total Staff</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Payroll Generated</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Payroll Not Generated</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Payroll Paid</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Net Amount</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pr-6">Paid Amount</TableHead>
+                            <TableHeader className="bg-gray-50/50">
+                                <TableRow className="hover:bg-transparent border-b border-muted/20 text-[10px] font-black uppercase text-gray-500 tracking-[0.15em]">
+                                    <TableHead className="py-5 pl-8">Branch Node</TableHead>
+                                    <TableHead className="py-5 text-center">Human Capital</TableHead>
+                                    <TableHead className="py-5 text-center">Gen Nodes</TableHead>
+                                    <TableHead className="py-5 text-center">Paid Nodes</TableHead>
+                                    <TableHead className="py-5">Aggregate Net</TableHead>
+                                    <TableHead className="py-5 pr-8 text-right">Aggregate Paid</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {payrollData.map((row) => (
-                                    <TableRow key={row.id} className="hover:bg-muted/30 border-b border-muted/10 transition-colors">
-                                        <TableCell className="text-slate-700 text-sm pl-6 py-4">{row.branch}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.totalStaff}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.generated}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.notGenerated}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.paid}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.netAmount}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm pr-6 py-4">{row.paidAmount}</TableCell>
+                                {data?.payroll_details.map((row, index) => (
+                                    <TableRow key={row.id} className={cn(
+                                        "hover:bg-indigo-50/20 border-b border-muted/10 transition-colors group text-[11px]",
+                                        index % 2 === 0 ? 'bg-white' : 'bg-muted/5'
+                                    )}>
+                                        <TableCell className="text-slate-700 font-black pl-8 py-5 uppercase tracking-tight">{row.branch}</TableCell>
+                                        <TableCell className="text-slate-500 font-black py-5 text-center tabular-nums">{row.totalStaff}</TableCell>
+                                        <TableCell className="text-slate-500 font-black py-5 text-center tabular-nums">{row.generated}</TableCell>
+                                        <TableCell className="text-emerald-600 font-black py-5 text-center tabular-nums">{row.paid}</TableCell>
+                                        <TableCell className="text-slate-700 font-bold py-5 tabular-nums tracking-widest">{row.netAmount}</TableCell>
+                                        <TableCell className="text-indigo-600 font-black pr-8 py-5 text-right tabular-nums tracking-widest">{row.paidAmount}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -268,36 +247,74 @@ export default function OverviewPage() {
                 </CardContent>
             </Card>
 
-            {/* Staff Attendance Details */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-6 py-4 border-b border-muted/50">
-                    <CardTitle className="text-lg font-bold tracking-tight text-slate-700">Staff Attendance Details At 02/06/2026</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
+            {/* Attendance & Transport Sub-Matrix */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
+                    <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 shadow-inner">
+                            <Activity className="h-5 w-5" />
+                        </div>
+                        <CardTitle className="text-sm font-black tracking-tight text-slate-700 uppercase">Human Capital Presence</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
                         <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent border-b border-muted/20">
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pl-6">Branch</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Total Staff</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4">Present</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-4 pr-6">Absent</TableHead>
+                            <TableHeader className="bg-gray-50/50">
+                                <TableRow className="hover:bg-transparent border-b border-muted/20 text-[9px] uppercase font-black text-gray-500 tracking-widest">
+                                    <TableHead className="py-4 pl-8">Branch Node</TableHead>
+                                    <TableHead className="py-4 text-center">Nodes</TableHead>
+                                    <TableHead className="py-4 text-center text-emerald-600">Present</TableHead>
+                                    <TableHead className="py-4 text-right pr-8 text-rose-600">Absent</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {attendanceData.map((row) => (
-                                    <TableRow key={row.id} className="hover:bg-muted/30 border-b border-muted/10 transition-colors">
-                                        <TableCell className="text-slate-700 text-sm pl-6 py-4">{row.branch}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.totalStaff}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm py-4">{row.present}</TableCell>
-                                        <TableCell className="text-slate-700 text-sm pr-6 py-4">{row.absent}</TableCell>
+                                {data?.attendance_details.map((row, idx) => (
+                                    <TableRow key={row.id} className={cn(
+                                        "hover:bg-rose-50/20 border-b border-muted/10 transition-colors group text-[11px]",
+                                        idx % 2 === 0 ? 'bg-white' : 'bg-muted/5'
+                                    )}>
+                                        <TableCell className="text-slate-700 font-black pl-8 py-4 uppercase tracking-tight">{row.branch}</TableCell>
+                                        <TableCell className="text-slate-500 font-black py-4 text-center tabular-nums">{row.totalStaff}</TableCell>
+                                        <TableCell className="text-emerald-600 font-black py-4 text-center tabular-nums">{row.present}</TableCell>
+                                        <TableCell className="text-rose-600 font-black pr-8 py-4 text-right tabular-nums">{row.absent}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
                         </Table>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
+                    <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+                            <Bus className="h-5 w-5" />
+                        </div>
+                        <CardTitle className="text-sm font-black tracking-tight text-slate-700 uppercase">Transport Logistics Matrix</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <Table>
+                            <TableHeader className="bg-gray-50/50">
+                                <TableRow className="hover:bg-transparent border-b border-muted/20 text-[9px] uppercase font-black text-gray-500 tracking-widest">
+                                    <TableHead className="py-4 pl-8">Branch Node</TableHead>
+                                    <TableHead className="py-4">Aggregate Valuation</TableHead>
+                                    <TableHead className="py-4 text-right pr-8 text-rose-600">Balance</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {data?.transport_details.map((row, idx) => (
+                                    <TableRow key={row.id} className={cn(
+                                        "hover:bg-indigo-50/20 border-b border-muted/10 transition-colors group text-[11px]",
+                                        idx % 2 === 0 ? 'bg-white' : 'bg-muted/5'
+                                    )}>
+                                        <TableCell className="text-slate-700 font-black pl-8 py-4 uppercase tracking-tight">{row.branch}</TableCell>
+                                        <TableCell className="text-slate-500 font-black py-4 tabular-nums">{row.totalFees}</TableCell>
+                                        <TableCell className="text-rose-600 font-black pr-8 py-4 text-right tabular-nums">{row.balanceFees}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

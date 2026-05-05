@@ -1,7 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
+import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -38,107 +50,236 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 interface HomeworkRecord {
-    id: string;
-    class: string;
-    section: string;
-    subjectGroup: string;
-    subject: string;
-    homeworkDate: string;
-    submissionDate: string;
-    evaluationDate: string;
-    createdBy: string;
+    id: number;
+    schoolClass?: { name: string };
+    section?: { name: string };
+    subjectGroup?: { name: string };
+    subject?: { name: string };
+    homework_date: string;
+    submission_date: string;
+    evaluation_date?: string;
+    creator?: { name: string };
+    description: string;
 }
 
-const mockHomework: HomeworkRecord[] = [
-    {
-        id: "1",
-        class: "Class 1",
-        section: "A",
-        subjectGroup: "Class 1st Subject Group",
-        subject: "Hindi (230)",
-        homeworkDate: "02/05/2026",
-        submissionDate: "02/10/2026",
-        evaluationDate: "",
-        createdBy: "Joe Black (9000)",
-    },
-];
+interface PaginationData {
+    current_page: number;
+    last_page: number;
+    total: number;
+    from: number;
+    to: number;
+}
 
 export default function AddHomeworkPage() {
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
+    const [homeworks, setHomeworks] = useState<HomeworkRecord[]>([]);
+    const [pagination, setPagination] = useState<PaginationData | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [limit, setLimit] = useState("50");
+
+    const [classes, setClasses] = useState<any[]>([]);
+    const [sections, setSections] = useState<any[]>([]);
+    const [subjectGroups, setSubjectGroups] = useState<any[]>([]);
+    const [subjects, setSubjects] = useState<any[]>([]);
+
+    const [filters, setFilters] = useState({
+        class_id: "",
+        section_id: "",
+        subject_group_id: "",
+        subject_id: "",
+    });
+
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [formData, setFormData] = useState({
+        class_id: "",
+        section_id: "",
+        subject_group_id: "",
+        subject_id: "",
+        homework_date: new Date().toISOString().split('T')[0],
+        submission_date: new Date().toISOString().split('T')[0],
+        description: "",
+    });
+
+    useEffect(() => {
+        fetchInitialData();
+    }, []);
+
+    const fetchInitialData = async () => {
+        try {
+            const [classesRes, sectionsRes, groupsRes, subjectsRes] = await Promise.all([
+                api.get('/academics/classes?no_paginate=true'),
+                api.get('/academics/sections?no_paginate=true'),
+                api.get('/academics/subject-groups?no_paginate=true'),
+                api.get('/academics/subjects?no_paginate=true')
+            ]);
+            setClasses(classesRes.data.data || []);
+            setSections(sectionsRes.data.data || []);
+            setSubjectGroups(groupsRes.data.data || []);
+            setSubjects(subjectsRes.data.data || []);
+        } catch (error) {
+            console.error("Error fetching initial data:", error);
+        }
+    };
+
+    const fetchHomeworks = async (page = 1) => {
+        setLoading(true);
+        try {
+            const params = new URLSearchParams({
+                page: String(page),
+                limit,
+                search: searchTerm,
+                ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
+            });
+            const response = await api.get(`/homework/homeworks?${params.toString()}`);
+            setHomeworks(response.data.data);
+            setPagination({
+                current_page: response.data.current_page,
+                last_page: response.data.last_page,
+                total: response.data.total,
+                from: response.data.from,
+                to: response.data.to
+            });
+        } catch (error) {
+            console.error("Error fetching homeworks:", error);
+            toast({ title: "Error", description: "Failed to fetch homeworks", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        fetchHomeworks(1);
+    };
+
+    const handleSave = async () => {
+        try {
+            await api.post('/homework/homeworks', formData);
+            toast({ title: "Success", description: "Homework added successfully" });
+            setIsDialogOpen(false);
+            fetchHomeworks();
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.response?.data?.message || "Failed to save homework",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (confirm("Are you sure you want to delete this homework?")) {
+            try {
+                await api.delete(`/homework/homeworks/${id}`);
+                toast({ title: "Success", description: "Homework deleted successfully" });
+                fetchHomeworks();
+            } catch (error) {
+                toast({ title: "Error", description: "Failed to delete homework", variant: "destructive" });
+            }
+        }
+    };
+
+    const handleCopy = () => {
+        const text = homeworks.map(h => `${h.schoolClass?.name}\t${h.subject?.name}\t${h.homework_date}`).join('\n');
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copied", description: "Data copied to clipboard" });
+    };
+
+    const handleExportCSV = () => {
+        const headers = ["Class", "Section", "Subject", "Homework Date", "Submission Date"];
+        const rows = homeworks.map(h => [h.schoolClass?.name, h.section?.name, h.subject?.name, h.homework_date, h.submission_date]);
+        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "homework_list.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const toolbarActions = [
+        { Icon: Copy, onClick: handleCopy, title: "Copy" },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
+        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
+        { Icon: Printer, onClick: () => window.print(), title: "Print" },
+        { Icon: Columns, onClick: () => {}, title: "Columns" },
+    ];
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
+             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
                 <h2 className="text-sm font-medium text-gray-800 border-b pb-2">Select Criteria</h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                             Class <span className="text-red-500">*</span>
                         </Label>
-                        <Select defaultValue="class1">
+                        <Select value={filters.class_id} onValueChange={(v) => setFilters({ ...filters, class_id: v })}>
                             <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="class1">Class 1</SelectItem>
-                                <SelectItem value="class2">Class 2</SelectItem>
+                                {classes.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">Section</Label>
-                        <Select defaultValue="a">
+                        <Select value={filters.section_id} onValueChange={(v) => setFilters({ ...filters, section_id: v })}>
                             <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="a">A</SelectItem>
-                                <SelectItem value="b">B</SelectItem>
+                                {sections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">Subject Group</Label>
-                        <Select defaultValue="group1">
+                        <Select value={filters.subject_group_id} onValueChange={(v) => setFilters({ ...filters, subject_group_id: v })}>
                             <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="group1">Class 1st Subject Group</SelectItem>
+                                {subjectGroups.map(sg => <SelectItem key={sg.id} value={String(sg.id)}>{sg.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">Subject</Label>
-                        <Select defaultValue="hindi">
+                        <Select value={filters.subject_id} onValueChange={(v) => setFilters({ ...filters, subject_id: v })}>
                             <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="hindi">Hindi (230)</SelectItem>
+                                {subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
-                </div>
 
-                <div className="flex justify-end">
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white gap-2 h-8 px-6 text-[11px] font-bold uppercase transition-all rounded shadow-sm">
-                        <Search className="h-3.5 w-3.5" /> Search
-                    </Button>
-                </div>
+                    <div className="flex justify-end md:col-span-4">
+                        <Button type="submit" className="btn-gradient gap-2 h-9 px-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-md">
+                            <Search className="h-3.5 w-3.5" /> Search
+                        </Button>
+                    </div>
+                </form>
             </div>
 
             {/* Homework List Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 pt-6">
-                <div className="flex justify-between items-center mb-6">
+                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-sm font-medium text-gray-800">Homework List</h2>
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white gap-2 h-7 px-3 text-[10px] font-bold uppercase transition-all rounded shadow-sm">
-                        <Plus className="h-3 w-3" /> Add
+                    <Button onClick={() => setIsDialogOpen(true)} className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
+                        <Plus className="h-3.5 w-3.5" /> Add Homework
                     </Button>
                 </div>
 
@@ -158,23 +299,23 @@ export default function AddHomeworkPage() {
                         </TabsTrigger>
                     </TabsList>
 
-                    {/* Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+                     {/* Toolbar */}
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4 border-b border-gray-50 pb-4">
                         <div className="relative w-full md:w-64">
                             <Input
-                                placeholder="Search"
+                                placeholder="Search results..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                                className="pl-3 h-9 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50"
                             />
                         </div>
 
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1.5 mr-2">
-                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">50</span>
-                                <Select defaultValue="50">
-                                    <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none rounded">
+                                <Select value={limit} onValueChange={setLimit}>
+                                    <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 bg-transparent shadow-none rounded-md px-2 flex gap-1 items-center justify-between">
                                         <SelectValue />
+                                        <ChevronLeft className="h-2 w-2 text-gray-400 rotate-90" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="10">10</SelectItem>
@@ -185,9 +326,16 @@ export default function AddHomeworkPage() {
                                 <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                             </div>
                             <div className="flex items-center gap-1 text-gray-400">
-                                {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, i) => (
-                                    <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                        <Icon className="h-3.5 w-3.5" />
+                                {toolbarActions.map((action, i) => (
+                                    <Button 
+                                        key={i} 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={action.onClick}
+                                        title={action.title}
+                                        className="h-7 w-7 hover:bg-gray-100 rounded"
+                                    >
+                                        <action.Icon className="h-3.5 w-3.5" />
                                     </Button>
                                 ))}
                             </div>
@@ -211,27 +359,27 @@ export default function AddHomeworkPage() {
                                     <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
-                            <TableBody>
-                                {mockHomework.map((item) => (
-                                    <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
-                                        <TableCell className="py-3 text-gray-700 font-medium">{item.class}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{item.section}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{item.subjectGroup}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{item.subject}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{item.homeworkDate}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{item.submissionDate}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{item.evaluationDate || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{item.createdBy}</TableCell>
+                             <TableBody>
+                                {homeworks.map((item) => (
+                                    <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
+                                        <TableCell className="py-3 text-gray-700 font-medium">{item.schoolClass?.name}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{item.section?.name}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{item.subjectGroup?.name || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{item.subject?.name}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{formatDate(item.homework_date)}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{formatDate(item.submission_date)}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{item.evaluation_date ? formatDate(item.evaluation_date) : "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{item.creator?.name}</TableCell>
                                         <TableCell className="py-3 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
-                                                    <Eye className="h-3 w-3" />
+                                                <Button size="icon" variant="ghost" className="h-7 w-7 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-full">
+                                                    <Eye className="h-3.5 w-3.5" />
                                                 </Button>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
-                                                    <Pencil className="h-3 w-3" />
+                                                <Button size="icon" variant="ghost" className="h-7 w-7 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-full">
+                                                    <Pencil className="h-3.5 w-3.5" />
                                                 </Button>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
-                                                    <Trash2 className="h-3 w-3" />
+                                                <Button size="icon" variant="ghost" onClick={() => handleDelete(item.id)} className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-full shadow-sm">
+                                                    <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -241,18 +389,128 @@ export default function AddHomeworkPage() {
                         </Table>
                     </div>
 
-                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 mt-2">
+                     {/* Footer / Pagination */}
+                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50">
                         <div>
-                            Showing 1 to {mockHomework.length} of {mockHomework.length} entries
+                            Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
                         </div>
-                        <div className="flex gap-1 items-center">
-                            <span className="text-gray-400 mr-2 cursor-pointer hover:text-gray-600 text-sm">‹</span>
-                            <Button variant="default" size="sm" className="h-6 w-6 p-0 bg-indigo-500 hover:bg-indigo-600 text-white border-0 text-[10px] rounded">
-                                1
+                        <div className="flex gap-2 items-center">
+                            <Button 
+                                variant="outline" 
+                                size="icon" 
+                                disabled={pagination?.current_page === 1}
+                                onClick={() => fetchHomeworks(pagination!.current_page - 1)}
+                                className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
+                            >
+                                <ChevronLeft className="h-3.5 w-3.5" />
                             </Button>
-                            <span className="text-gray-400 ml-2 cursor-pointer hover:text-gray-600 text-sm">›</span>
+                            {[...Array(pagination?.last_page || 0)].map((_, i) => (
+                                <Button 
+                                    key={i + 1}
+                                    onClick={() => fetchHomeworks(i + 1)}
+                                    className={cn(
+                                        "h-7 w-7 p-0 text-[11px] font-bold rounded-lg shadow-sm transition-all duration-300",
+                                        pagination?.current_page === i + 1 
+                                            ? "btn-gradient" 
+                                            : "bg-white text-gray-400 hover:bg-gray-50 border border-gray-100"
+                                    )}
+                                >
+                                    {i + 1}
+                                </Button>
+                            ))}
+                            <Button 
+                                variant="outline" 
+                                size="icon" 
+                                disabled={pagination?.current_page === pagination?.last_page}
+                                onClick={() => fetchHomeworks(pagination!.current_page + 1)}
+                                className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
+                            >
+                                <ChevronRight className="h-3.5 w-3.5" />
+                            </Button>
                         </div>
                     </div>
+
+                    {/* Add Homework Dialog */}
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        <DialogContent className="sm:max-w-[600px]">
+                            <DialogHeader>
+                                <DialogTitle className="text-lg font-bold text-gray-800">Add Homework</DialogTitle>
+                            </DialogHeader>
+                            <div className="grid grid-cols-2 gap-4 py-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase">Class <span className="text-red-500">*</span></Label>
+                                    <Select value={formData.class_id} onValueChange={(v) => setFormData({ ...formData, class_id: v })}>
+                                        <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
+                                            <SelectValue placeholder="Select Class" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {classes.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase">Section <span className="text-red-500">*</span></Label>
+                                    <Select value={formData.section_id} onValueChange={(v) => setFormData({ ...formData, section_id: v })}>
+                                        <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
+                                            <SelectValue placeholder="Select Section" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {sections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase">Subject Group</Label>
+                                    <Select value={formData.subject_group_id} onValueChange={(v) => setFormData({ ...formData, subject_group_id: v })}>
+                                        <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
+                                            <SelectValue placeholder="Select Group" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {subjectGroups.map(sg => <SelectItem key={sg.id} value={String(sg.id)}>{sg.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase">Subject <span className="text-red-500">*</span></Label>
+                                    <Select value={formData.subject_id} onValueChange={(v) => setFormData({ ...formData, subject_id: v })}>
+                                        <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
+                                            <SelectValue placeholder="Select Subject" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase">Homework Date <span className="text-red-500">*</span></Label>
+                                    <DatePicker 
+                                        date={new Date(formData.homework_date)}
+                                        setDate={(date) => setFormData({ ...formData, homework_date: date?.toISOString().split('T')[0] || "" })}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase">Submission Date <span className="text-red-500">*</span></Label>
+                                    <DatePicker 
+                                        date={new Date(formData.submission_date)}
+                                        setDate={(date) => setFormData({ ...formData, submission_date: date?.toISOString().split('T')[0] || "" })}
+                                    />
+                                </div>
+                                <div className="space-y-1.5 col-span-2">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase">Description</Label>
+                                    <Textarea 
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                        className="border-gray-200 text-xs shadow-none min-h-[80px]"
+                                        placeholder="Enter homework instructions..."
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">Cancel</Button>
+                                <Button onClick={handleSave} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">Save Homework</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </Tabs>
             </div>
         </div>

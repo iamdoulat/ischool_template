@@ -11,6 +11,8 @@ import { Search, Upload, Copy, FileSpreadsheet, FileText, Printer, Columns, Penc
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { DatePicker } from "@/components/ui/date-picker";
+import { formatDate } from "@/lib/utils";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -294,11 +296,10 @@ export default function AddIncomePage() {
                             <Label htmlFor="date" className="text-xs font-semibold text-gray-600">
                                 Date <span className="text-red-500">*</span>
                             </Label>
-                            <Input 
-                                id="date" 
-                                type="date" 
+                            <DatePicker 
                                 value={formData.date}
-                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                onChange={(val) => setFormData({ ...formData, date: val })}
+                                className="h-11 border-gray-200"
                             />
                         </div>
 
@@ -470,7 +471,7 @@ export default function AddIncomePage() {
                                             <TableCell className="font-medium text-gray-700 py-3">{item.name}</TableCell>
                                             <TableCell className="text-gray-600 text-xs">{item.description}</TableCell>
                                             <TableCell className="text-gray-600">{item.invoice_number}</TableCell>
-                                            <TableCell className="text-gray-600">{item.date}</TableCell>
+                                            <TableCell className="text-gray-600">{formatDate(item.date)}</TableCell>
                                             <TableCell className="text-gray-600">{item.income_head_name}</TableCell>
                                             <TableCell className="text-gray-600 text-right">{formatCurrency(item.amount)}</TableCell>
                                             <TableCell className="text-right">
