@@ -65,13 +65,13 @@ interface PaginationData {
 }
 
 const mockItems: InventoryItem[] = [
-    { id: "1", item: "Cricket Bat", description: "", itemCategory: "Sports", unit: "Piece", availableQuantity: 221 },
-    { id: "2", item: "Uniform", description: "", itemCategory: "Staff Dress", unit: "Piece", availableQuantity: 28 },
-    { id: "3", item: "Table chair", description: "", itemCategory: "Furniture", unit: "Piece", availableQuantity: 4 },
-    { id: "4", item: "Staff Uniform", description: "", itemCategory: "Staff Dress", unit: "Piece", availableQuantity: -5 },
-    { id: "5", item: "Benches", description: "", itemCategory: "Furniture", unit: "Piece", availableQuantity: 27 },
-    { id: "6", item: "Football", description: "", itemCategory: "Sports", unit: "Piece", availableQuantity: 104 },
-    { id: "7", item: "Class Board", description: "", itemCategory: "Books Stationery", unit: "Piece", availableQuantity: 288 },
+    { id: 1, item_name: "Cricket Bat", description: "", item_category_id: 1, unit: "Piece", item_category: { id: 1, item_category: "Sports" } },
+    { id: 2, item_name: "Uniform", description: "", item_category_id: 2, unit: "Piece", item_category: { id: 2, item_category: "Staff Dress" } },
+    { id: 3, item_name: "Table chair", description: "", item_category_id: 3, unit: "Piece", item_category: { id: 3, item_category: "Furniture" } },
+    { id: 4, item_name: "Staff Uniform", description: "", item_category_id: 2, unit: "Piece", item_category: { id: 2, item_category: "Staff Dress" } },
+    { id: 5, item_name: "Benches", description: "", item_category_id: 3, unit: "Piece", item_category: { id: 3, item_category: "Furniture" } },
+    { id: 6, item_name: "Football", description: "", item_category_id: 1, unit: "Piece", item_category: { id: 1, item_category: "Sports" } },
+    { id: 7, item_name: "Class Board", description: "", item_category_id: 4, unit: "Piece", item_category: { id: 4, item_category: "Books Stationery" } },
     { id: "8", item: "Desk", description: "", itemCategory: "Furniture", unit: "Piece", availableQuantity: 233 },
     { id: "9", item: "Lab Equipment", description: "", itemCategory: "Chemistry Lab Apparatus", unit: "Piece", availableQuantity: 40 },
     { id: "10", item: "Notebooks", description: "", itemCategory: "Books Stationery", unit: "Piece", availableQuantity: 15 },

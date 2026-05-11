@@ -506,8 +506,8 @@ export default function BookListPage() {
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-400 uppercase">Post Date</Label>
                                 <DatePicker 
-                                    date={formData.post_date ? new Date(formData.post_date) : undefined}
-                                    setDate={(date) => setFormData({ ...formData, post_date: date?.toISOString().split('T')[0] || "" })}
+                                    value={formData.post_date}
+                                    onChange={(date) => setFormData({ ...formData, post_date: date })}
                                 />
                             </div>
                         </div>

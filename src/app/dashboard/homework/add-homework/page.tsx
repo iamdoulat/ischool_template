@@ -483,16 +483,16 @@ export default function AddHomeworkPage() {
                                 </div>
                                 <div className="space-y-1.5">
                                     <Label className="text-[11px] font-bold text-gray-400 uppercase">Homework Date <span className="text-red-500">*</span></Label>
-                                    <DatePicker 
-                                        date={new Date(formData.homework_date)}
-                                        setDate={(date) => setFormData({ ...formData, homework_date: date?.toISOString().split('T')[0] || "" })}
+                                    <DatePicker
+                                        value={formData.homework_date}
+                                        onChange={(date) => setFormData({ ...formData, homework_date: date })}
                                     />
                                 </div>
                                 <div className="space-y-1.5">
                                     <Label className="text-[11px] font-bold text-gray-400 uppercase">Submission Date <span className="text-red-500">*</span></Label>
-                                    <DatePicker 
-                                        date={new Date(formData.submission_date)}
-                                        setDate={(date) => setFormData({ ...formData, submission_date: date?.toISOString().split('T')[0] || "" })}
+                                    <DatePicker
+                                        value={formData.submission_date}
+                                        onChange={(date) => setFormData({ ...formData, submission_date: date })}
                                     />
                                 </div>
                                 <div className="space-y-1.5 col-span-2">

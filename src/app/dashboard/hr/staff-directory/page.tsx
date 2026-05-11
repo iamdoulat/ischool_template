@@ -386,7 +386,7 @@ export default function StaffDirectoryPage() {
                                                 </div>
                                                 <div className="flex items-center gap-2 text-[10px] font-medium text-gray-400">
                                                     <MapPin className="h-3 w-3 text-indigo-400/70" />
-                                                    <span className="truncate">{person.department || "General"}, {person.designation || person.role}</span>
+                                                    <span className="truncate">{person.department || "General"} - {person.role}</span>
                                                 </div>
                                             </div>
 
@@ -394,11 +394,6 @@ export default function StaffDirectoryPage() {
                                                 <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] font-bold rounded-md uppercase tracking-tight">
                                                     {person.role}
                                                 </span>
-                                                {person.designation && (
-                                                    <span className="px-2 py-0.5 bg-violet-50 text-violet-600 text-[9px] font-bold rounded-md uppercase tracking-tight">
-                                                        {person.designation}
-                                                    </span>
-                                                )}
                                                 {(person.active === false || person.active === 0) && (
                                                     <span className="px-2 py-0.5 bg-red-100 text-red-600 text-[9px] font-bold rounded-md uppercase tracking-tight">
                                                         Disabled
@@ -533,7 +528,7 @@ export default function StaffDirectoryPage() {
                                                     <div className="text-sm text-gray-600">{person.department || "—"}</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-600">{person.designation || "—"}</div>
+                                                    <div className="text-sm text-gray-600">{person.role}</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right">
                                                     {(hasPerm("human-resource.staff.edit") || hasPerm("human-resource.staff.delete")) && (

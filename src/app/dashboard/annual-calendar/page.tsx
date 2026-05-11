@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface CalendarEntry {
     id: string;
@@ -428,20 +429,18 @@ export default function AnnualCalendarPage() {
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Start Date <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    type="date"
+                                <DatePicker 
                                     value={formData.start_date} 
-                                    onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500"
+                                    onChange={(val) => setFormData({...formData, start_date: val})}
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">End Date <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    type="date"
+                                <DatePicker 
                                     value={formData.end_date} 
-                                    onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500"
+                                    onChange={(val) => setFormData({...formData, end_date: val})}
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg"
                                 />
                             </div>
                         </div>
