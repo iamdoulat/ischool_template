@@ -125,7 +125,7 @@ export default function BannerImagesPage() {
                         {banners.map((banner) => (
                             <div
                                 key={banner.id}
-                                className="bg-[#f8f9fa] rounded-xl border border-gray-100 overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300 relative"
+                                className="bg-[#f8f9fa] rounded-lg border border-gray-100 overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300 relative"
                             >
                                 {/* Delete Button on Hover */}
                                 <button

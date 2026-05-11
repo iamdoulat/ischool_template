@@ -206,7 +206,7 @@ export default function LiveMeetingPage() {
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-6 py-4 border-b border-muted/50 flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 shadow-inner">
                             <Video className="h-5 w-5" />
                         </div>
                         <CardTitle className="text-lg font-bold tracking-tight text-slate-700 uppercase">Live Meeting</CardTitle>
@@ -227,16 +227,16 @@ export default function LiveMeetingPage() {
                                 placeholder="Filter records..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-10 rounded-xl bg-white border-muted/50 focus-visible:ring-blue-500/20 text-xs font-bold uppercase tracking-widest shadow-none"
+                                className="pl-10 h-10 rounded-lg bg-white border-muted/50 focus-visible:ring-blue-500/20 text-xs font-bold uppercase tracking-widest shadow-none"
                             />
                         </div>
                         <div className="flex items-center gap-2 ml-auto">
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-2">Temporal Density:</span>
                             <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                                <SelectTrigger className="h-9 w-20 text-[10px] font-bold bg-white border-muted/50 rounded-xl">
+                                <SelectTrigger className="h-9 w-20 text-[10px] font-bold bg-white border-muted/50 rounded-lg">
                                     <SelectValue placeholder="50" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-xl border-gray-100">
+                                <SelectContent className="rounded-lg border-gray-100">
                                     <SelectItem value="10">10</SelectItem>
                                     <SelectItem value="25">25</SelectItem>
                                     <SelectItem value="50">50</SelectItem>
@@ -310,7 +310,7 @@ export default function LiveMeetingPage() {
                                                     )}>
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border-gray-100">
+                                                    <SelectContent className="rounded-lg border-gray-100">
                                                         <SelectItem value="awaited">Awaited</SelectItem>
                                                         <SelectItem value="finished">Finished</SelectItem>
                                                         <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -319,13 +319,13 @@ export default function LiveMeetingPage() {
                                             </TableCell>
                                             <TableCell className="pr-6 py-4">
                                                 <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 duration-300">
-                                                    <Button size="icon" className="h-9 w-9 rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-200">
+                                                    <Button size="icon" className="h-9 w-9 rounded-lg bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-200">
                                                         <MonitorPlay className="h-4.5 w-4.5" />
                                                     </Button>
-                                                    <Button onClick={() => handleEdit(item)} size="icon" className="h-9 w-9 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-200">
+                                                    <Button onClick={() => handleEdit(item)} size="icon" className="h-9 w-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-200">
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
-                                                    <Button onClick={() => setDeleteId(item.id)} size="icon" className="h-9 w-9 rounded-xl bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-200">
+                                                    <Button onClick={() => setDeleteId(item.id)} size="icon" className="h-9 w-9 rounded-lg bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-200">
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -342,17 +342,17 @@ export default function LiveMeetingPage() {
                         <div className="flex items-center gap-2">
                             <Button 
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                variant="outline" size="icon" className="h-9 w-9 rounded-xl border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
+                                variant="outline" size="icon" className="h-9 w-9 rounded-lg border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
                                 disabled={currentPage === 1}
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" className="h-9 w-9 rounded-xl bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md font-bold">
+                            <Button size="icon" className="h-9 w-9 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md font-bold">
                                 {currentPage}
                             </Button>
                             <Button 
                                 onClick={() => setCurrentPage(p => p + 1)}
-                                variant="outline" size="icon" className="h-9 w-9 rounded-xl border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
+                                variant="outline" size="icon" className="h-9 w-9 rounded-lg border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
                                 disabled={meetings.length < itemsPerPage}
                             >
                                 <ChevronRight className="h-4 w-4" />
@@ -364,11 +364,11 @@ export default function LiveMeetingPage() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="rounded-[2rem] border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white">
+                <DialogContent className="rounded-lg border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white">
                     <div className="bg-blue-500/5 p-8 border-b border-blue-100 flex items-center justify-between">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-black text-gray-800 uppercase tracking-[0.2em] flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-2xl bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                                <div className="h-10 w-10 rounded-lg bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-200">
                                     <Video className="h-5 w-5" />
                                 </div>
                                 {editMode ? "Reschedule Session" : "Initiate Session"}
@@ -383,7 +383,7 @@ export default function LiveMeetingPage() {
                                 value={formData.title}
                                 onChange={(e) => setFormData({...formData, title: e.target.value})}
                                 placeholder="e.g. Technical Board Meeting"
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-blue-500 shadow-none text-sm font-bold tracking-tight px-6" 
+                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none text-sm font-bold tracking-tight px-6" 
                             />
                         </div>
 
@@ -393,7 +393,7 @@ export default function LiveMeetingPage() {
                                 type="datetime-local"
                                 value={formData.date_time}
                                 onChange={(e) => setFormData({...formData, date_time: e.target.value})}
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
+                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
                             />
                         </div>
 
@@ -405,7 +405,7 @@ export default function LiveMeetingPage() {
                                     value={formData.duration}
                                     onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
                                     placeholder="45"
-                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
+                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
                                 />
                             </div>
 
@@ -415,7 +415,7 @@ export default function LiveMeetingPage() {
                                     value={formData.meeting_url}
                                     onChange={(e) => setFormData({...formData, meeting_url: e.target.value})}
                                     placeholder="meet.google.com/..."
-                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
+                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
                                 />
                             </div>
                         </div>
@@ -426,7 +426,7 @@ export default function LiveMeetingPage() {
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                                 placeholder="Session coordination goals..."
-                                className="min-h-[100px] border-gray-100 bg-gray-50/50 rounded-[2rem] focus:ring-blue-500 shadow-none p-6 text-sm resize-none" 
+                                className="min-h-[100px] border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none p-6 text-sm resize-none" 
                             />
                         </div>
                     </div>
@@ -448,7 +448,7 @@ export default function LiveMeetingPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="rounded-[2.5rem] border-0 shadow-2xl p-10">
                     <AlertDialogHeader>
-                        <div className="h-16 w-16 rounded-3xl bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 mb-6">
+                        <div className="h-16 w-16 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 mb-6">
                             <ShieldCheck className="h-8 w-8 text-rose-400/50" />
                         </div>
                         <AlertDialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-tight">Expunge G-Meet Session</AlertDialogTitle>

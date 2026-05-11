@@ -149,14 +149,14 @@ export default function LoginCredentialsSendPage() {
     };
 
     const handleCopy = () => {
-        const text = students.map(s => `${s.admission_no}\t${s.first_name} ${s.last_name}\t${s.mobile_no}`).join('\n');
+        const text = students.map(s => `${s.admission_no}\t${s.name} ${s.last_name}\t${s.phone}`).join('\n');
         navigator.clipboard.writeText(text);
         toast({ title: "Copied", description: "Student data copied" });
     };
 
     const handleExportCSV = () => {
         const headers = ["Admission No", "Student Name", "Mobile"];
-        const rows = students.map(s => [s.admission_no, `${s.first_name} ${s.last_name}`, s.mobile_no]);
+        const rows = students.map(s => [s.admission_no, `${s.name} ${s.last_name}`, s.phone]);
         const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -180,7 +180,7 @@ export default function LoginCredentialsSendPage() {
                 <h1 className="text-sm font-medium text-gray-800 uppercase tracking-tight">Login Credentials Send</h1>
             </div>
 
-             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                 <div className="flex items-center gap-2 border-b pb-4">
                     <div className="h-5 w-1 bg-indigo-500 rounded-full" />
                     <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Select Criteria</h2>
@@ -223,7 +223,7 @@ export default function LoginCredentialsSendPage() {
             </div>
 
             {/* Dispatch Configuration Section */}
-             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 pt-8 mt-4 space-y-6">
+             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 pt-8 mt-4 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-start border-b border-gray-50 pb-8">
                     <div className="space-y-3">
                         <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Select All</Label>
@@ -242,7 +242,7 @@ export default function LoginCredentialsSendPage() {
                             Message To <span className="text-red-500">*</span>
                         </Label>
                         <Select value={messageTo} onValueChange={setMessageTo}>
-                            <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 rounded-xl bg-gray-50/20 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 rounded-lg bg-gray-50/20 shadow-none">
                                 <SelectValue placeholder="Recipient" />
                             </SelectTrigger>
                             <SelectContent>
@@ -257,7 +257,7 @@ export default function LoginCredentialsSendPage() {
                             Notification Type <span className="text-red-500">*</span>
                         </Label>
                         <Select value={notificationType} onValueChange={setNotificationType}>
-                            <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 rounded-xl bg-gray-50/20 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 rounded-lg bg-gray-50/20 shadow-none">
                                 <SelectValue placeholder="Method" />
                             </SelectTrigger>
                             <SelectContent>
@@ -299,7 +299,7 @@ export default function LoginCredentialsSendPage() {
                 </div>
 
                  {/* Student Credential Table */}
-                <div className="rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                <div className="rounded-lg border border-gray-100 overflow-hidden shadow-sm">
                     <Table>
                         <TableHeader className="bg-gray-50/50">
                             <TableRow className="hover:bg-transparent border-gray-100">

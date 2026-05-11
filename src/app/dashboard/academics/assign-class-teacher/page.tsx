@@ -84,25 +84,37 @@ export default function AssignClassTeacherPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
 
-    // Load prerequisites
+    // Load prerequisites (classes, teachers, assignments)
     const fetchPrerequisites = async () => {
         setLoading(true);
         try {
-            const [classRes, sectionRes, staffRes, assignRes] = await Promise.all([
+            const [classRes, staffRes, assignRes] = await Promise.all([
                 api.get("/academics/classes?no_paginate=true"),
-                api.get("/academics/sections?no_paginate=true"),
-                api.get("/users", { params: { role: "Staff", limit: 1000 } }),
+                api.get("/hr/staff-directory", { params: { role: 'Teacher', no_paginate: true, active: 'all' } }),
                 api.get("/academics/class-teachers")
             ]);
             setClasses(classRes.data.data?.data || classRes.data.data || []);
-            setSections(sectionRes.data.data?.data || sectionRes.data.data || []);
-            setStaffList(staffRes.data.data?.data || staffRes.data.data || []);
+            const teachers = (staffRes.data?.data || staffRes.data || []).filter((u: any) => u.role === 'Teacher');
+            setStaffList(teachers);
             setAssignments(assignRes.data.data || []);
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
             toast("error", "Failed to load prerequisite data");
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Fetch sections filtered by selected class ID
+    const fetchSectionsByClass = async (classId: string) => {
+        if (!classId) { setSections([]); return; }
+        try {
+            const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
+            const all: Section[] = res.data?.data || res.data || [];
+            const filtered = all.filter((s: any) => String(s.school_class_id) === String(classId));
+            setSections(filtered);
+        } catch {
+            setSections([]);
         }
     };
 
@@ -143,6 +155,7 @@ export default function AssignClassTeacherPage() {
 
     const handleEdit = (assignment: ClassTeacherAssignment) => {
         setSelectedClassId(assignment.class_id.toString());
+        fetchSectionsByClass(assignment.class_id.toString());
         setSelectedSectionId(assignment.section_id.toString());
         setSelectedStaffIds(assignment.teachers.map(t => t.id));
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -264,7 +277,14 @@ export default function AssignClassTeacherPage() {
                             <Label className="text-sm font-medium text-gray-700">
                                 Class <span className="text-red-500">*</span>
                             </Label>
-                            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                            <Select
+                                value={selectedClassId}
+                                onValueChange={(val) => {
+                                    setSelectedClassId(val);
+                                    setSelectedSectionId('');
+                                    fetchSectionsByClass(val);
+                                }}
+                            >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
@@ -280,9 +300,13 @@ export default function AssignClassTeacherPage() {
                             <Label className="text-sm font-medium text-gray-700">
                                 Section <span className="text-red-500">*</span>
                             </Label>
-                            <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
+                            <Select
+                                value={selectedSectionId}
+                                onValueChange={setSelectedSectionId}
+                                disabled={!selectedClassId}
+                            >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={!selectedClassId ? 'Select class first' : 'Select'} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(s => (

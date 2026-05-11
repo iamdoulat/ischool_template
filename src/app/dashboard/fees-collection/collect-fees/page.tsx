@@ -218,7 +218,7 @@ export default function CollectFeesPage() {
                                     <select
                                         value={classId}
                                         onChange={handleClassChange}
-                                        className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
+                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
                                     >
                                         <option value="">Select Class</option>
                                         {classes.map(c => (
@@ -236,7 +236,7 @@ export default function CollectFeesPage() {
                                     <select
                                         value={sectionId}
                                         onChange={(e) => setSectionId(e.target.value)}
-                                        className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
+                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
                                     >
                                         <option value="">Select Section</option>
                                         {sections.map(s => (
@@ -249,7 +249,7 @@ export default function CollectFeesPage() {
                             <div className="sm:col-span-2 flex justify-end">
                                 <Button
                                     variant="gradient"
-                                    className="h-11 px-8 rounded-xl font-bold"
+                                    className="h-11 px-8 rounded-lg font-bold"
                                     onClick={() => handleSearch('criteria')}
                                     disabled={loading}
                                 >
@@ -272,7 +272,7 @@ export default function CollectFeesPage() {
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                     <Input
                                         placeholder="Search By Student Name, Roll Number Etc."
-                                        className="h-11 pl-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                        className="h-11 pl-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                         value={keyword}
                                         onChange={(e) => setKeyword(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSearch('keyword')}
@@ -282,7 +282,7 @@ export default function CollectFeesPage() {
                             <div className="flex justify-end">
                                 <Button
                                     variant="gradient"
-                                    className="h-11 px-8 rounded-xl font-bold"
+                                    className="h-11 px-8 rounded-lg font-bold"
                                     onClick={() => handleSearch('keyword')}
                                     disabled={loading}
                                 >
@@ -360,7 +360,7 @@ export default function CollectFeesPage() {
                                         alt="No Data"
                                         className="h-24 w-24 object-contain opacity-80 drop-shadow-2xl grayscale group-hover:grayscale-0 transition-all duration-500"
                                     />
-                                    <div className="absolute -bottom-2 -right-2 p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-muted/50">
+                                    <div className="absolute -bottom-2 -right-2 p-3 bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-muted/50">
                                         <FolderSearch className="h-6 w-6 text-amber-500" />
                                     </div>
                                 </div>

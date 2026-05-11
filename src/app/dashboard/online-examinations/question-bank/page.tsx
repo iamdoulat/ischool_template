@@ -62,8 +62,8 @@ export default function QuestionBankPage() {
     
     // Criteria
     const [criteria, setCriteria] = useState({
-        class_name: "",
-        section: "",
+        class_id: "",
+        section_id: "",
         subject: "",
         question_type: "all",
         level: "all"
@@ -74,8 +74,8 @@ export default function QuestionBankPage() {
     const [dialogMode, setDialogMode] = useState<"add" | "edit" | "view">("add");
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
-        class_name: "",
-        section: "",
+        class_id: "",
+        section_id: "",
         subject: "",
         question_type: "Single Choice",
         level: "Low",
@@ -98,9 +98,8 @@ export default function QuestionBankPage() {
 
     const fetchInitialData = async () => {
         try {
-            const [classesRes, sectionsRes, subjectsRes] = await Promise.all([
+            const [classesRes, subjectsRes] = await Promise.all([
                 api.get('/academics/classes?no_paginate=true').catch(() => ({ data: [] })),
-                api.get('/academics/sections?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] }))
             ]);
             
@@ -111,10 +110,24 @@ export default function QuestionBankPage() {
             };
 
             setClasses(extractData(classesRes));
-            setSections(extractData(sectionsRes));
             setSubjects(extractData(subjectsRes));
         } catch (error) {
             console.error("Failed to fetch initial data", error);
+        }
+    };
+
+    const fetchSectionsByClass = async (classId: string, isDialog = false) => {
+        if (!classId) {
+            setSections([]);
+            return;
+        }
+        try {
+            const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
+            const all: any[] = res.data?.data || res.data || [];
+            const filtered = all.filter((s: any) => String(s.school_class_id) === String(classId));
+            setSections(filtered);
+        } catch (error) {
+            console.error("Failed to fetch sections", error);
         }
     };
 
@@ -126,8 +139,8 @@ export default function QuestionBankPage() {
                 per_page: itemsPerPage,
                 search: searchTerm
             };
-            if (criteria.class_name) params.class_name = criteria.class_name;
-            if (criteria.section) params.section = criteria.section;
+            if (criteria.class_id) params.class_id = criteria.class_id;
+            if (criteria.section_id) params.section_id = criteria.section_id;
             if (criteria.subject) params.subject = criteria.subject;
             if (criteria.question_type !== "all") params.question_type = criteria.question_type;
             if (criteria.level !== "all") params.level = criteria.level;
@@ -143,7 +156,7 @@ export default function QuestionBankPage() {
     };
 
     const handleSave = async () => {
-        if (!formData.class_name || !formData.section || !formData.subject || !formData.question) {
+        if (!formData.class_id || !formData.section_id || !formData.subject || !formData.question) {
             toast({ title: "Validation Error", description: "Please fill in all required fields", variant: "destructive" });
             return;
         }
@@ -163,12 +176,18 @@ export default function QuestionBankPage() {
         }
     };
 
-    const handleEdit = (q: any) => {
+    const handleEdit = async (q: any) => {
         setDialogMode("edit");
         setSelectedId(q.id);
+        
+        // Fetch sections for the specific class before setting form data
+        if (q.class_id) {
+            await fetchSectionsByClass(q.class_id);
+        }
+
         setFormData({
-            class_name: q.class_name,
-            section: q.section,
+            class_id: q.class_id?.toString() || "",
+            section_id: q.section_id?.toString() || "",
             subject: q.subject,
             question_type: q.question_type,
             level: q.level,
@@ -222,8 +241,8 @@ export default function QuestionBankPage() {
     const openAddDialog = () => {
         setDialogMode("add");
         setFormData({
-            class_name: "",
-            section: "",
+            class_id: "",
+            section_id: "",
             subject: "",
             question_type: "Single Choice",
             level: "Low",
@@ -237,7 +256,7 @@ export default function QuestionBankPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header Buttons */}
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex justify-between items-center bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <BrainCircuit className="h-6 w-6 text-indigo-500" />
@@ -261,30 +280,37 @@ export default function QuestionBankPage() {
             </div>
 
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                 <h2 className="text-sm font-bold text-gray-800 border-b border-gray-50 pb-3 uppercase tracking-widest">Select Criteria</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">Class</Label>
-                        <Select value={criteria.class_name} onValueChange={(val) => setCriteria({...criteria, class_name: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500 shadow-none">
+                        <Select value={criteria.class_id} onValueChange={(val) => {
+                            setCriteria({...criteria, class_id: val, section_id: ""});
+                            fetchSectionsByClass(val);
+                        }}>
+                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                                {classes.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                                {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">Section</Label>
-                        <Select value={criteria.section} onValueChange={(val) => setCriteria({...criteria, section: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500 shadow-none">
-                                <SelectValue placeholder="Select" />
+                        <Select 
+                            value={criteria.section_id} 
+                            onValueChange={(val) => setCriteria({...criteria, section_id: val})}
+                            disabled={!criteria.class_id}
+                        >
+                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500 shadow-none">
+                                <SelectValue placeholder={!criteria.class_id ? "Select Class First" : "Select"} />
                             </SelectTrigger>
                             <SelectContent>
-                                {sections.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                                {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
@@ -292,7 +318,7 @@ export default function QuestionBankPage() {
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">Subject</Label>
                         <Select value={criteria.subject} onValueChange={(val) => setCriteria({...criteria, subject: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -304,7 +330,7 @@ export default function QuestionBankPage() {
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">Question Type</Label>
                         <Select value={criteria.question_type} onValueChange={(val) => setCriteria({...criteria, question_type: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -320,7 +346,7 @@ export default function QuestionBankPage() {
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">Level</Label>
                         <Select value={criteria.level} onValueChange={(val) => setCriteria({...criteria, level: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -341,7 +367,7 @@ export default function QuestionBankPage() {
             </div>
 
             {/* Question Bank Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                 <h2 className="text-sm font-bold text-gray-800 border-b border-gray-50 pb-3 uppercase tracking-widest">Question Bank</h2>
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
@@ -349,18 +375,23 @@ export default function QuestionBankPage() {
                         <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
                         <Input
                             placeholder="Search questions..."
-                            className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                            className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1.5 mr-3 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">
-                            <span className="text-[11px] text-gray-400 font-bold uppercase tracking-tighter">Rows:</span>
-                            <span className="text-xs text-indigo-600 font-bold">50</span>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
-                        </div>
+                        <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(Number(v))}>
+                            <SelectTrigger className="h-9 w-24 bg-gray-50 border-gray-100 text-[11px] font-bold uppercase focus:ring-0">
+                                <SelectValue placeholder="Rows" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {[10, 25, 50, 100, 200].map(n => (
+                                    <SelectItem key={n} value={n.toString()} className="text-xs font-bold uppercase">Rows: {n}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <div className="flex items-center gap-1 text-gray-400">
                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                 <Copy className="h-4 w-4" />
@@ -381,7 +412,7 @@ export default function QuestionBankPage() {
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                     <Table>
                         <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                             <TableRow className="hover:bg-transparent border-gray-50">
@@ -505,43 +536,20 @@ export default function QuestionBankPage() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-3xl rounded-3xl border-0 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-6 btn-gradient text-white">
-                        <DialogTitle className="text-xl font-bold uppercase tracking-widest flex items-center gap-3">
-                            <BookOpen className="h-6 w-6" />
-                            {dialogMode === "edit" ? "Edit Question" : "Add Question"}
+                <DialogContent className="max-w-3xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-4 bg-[#6366f1] text-white flex-row items-center justify-between space-y-0">
+                        <DialogTitle className="text-base font-semibold tracking-wide">
+                            Question
                         </DialogTitle>
-                        <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-widest mt-1 opacity-80">Define academic questions for online examinations</p>
                     </DialogHeader>
 
-                    <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto bg-white">
-                        <div className="grid grid-cols-3 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Class <span className="text-red-500">*</span></Label>
-                                <Select value={formData.class_name} onValueChange={(val) => setFormData({...formData, class_name: val})}>
-                                    <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {classes.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Section <span className="text-red-500">*</span></Label>
-                                <Select value={formData.section} onValueChange={(val) => setFormData({...formData, section: val})}>
-                                    <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {sections.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Subject <span className="text-red-500">*</span></Label>
+                    <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto bg-white">
+                        {/* First Row: Subject, Type, Level */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="md:col-span-2 space-y-1.5">
+                                <Label className="text-xs font-medium text-gray-700">Subject <span className="text-red-500">*</span></Label>
                                 <Select value={formData.subject} onValueChange={(val) => setFormData({...formData, subject: val})}>
-                                    <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                                    <SelectTrigger className="h-10 border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500">
                                         <SelectValue placeholder="Select" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -549,13 +557,10 @@ export default function QuestionBankPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Question Type <span className="text-red-500">*</span></Label>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-gray-700">Question Type <span className="text-red-500">*</span></Label>
                                 <Select value={formData.question_type} onValueChange={(val) => setFormData({...formData, question_type: val})}>
-                                    <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                                    <SelectTrigger className="h-10 border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500">
                                         <SelectValue placeholder="Select" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -566,10 +571,10 @@ export default function QuestionBankPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Level <span className="text-red-500">*</span></Label>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-gray-700">Question Level <span className="text-red-500">*</span></Label>
                                 <Select value={formData.level} onValueChange={(val) => setFormData({...formData, level: val})}>
-                                    <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                                    <SelectTrigger className="h-10 border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500">
                                         <SelectValue placeholder="Select" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -581,13 +586,51 @@ export default function QuestionBankPage() {
                             </div>
                         </div>
 
+                        {/* Second Row: Class, Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-gray-700">Class <span className="text-red-500">*</span></Label>
+                                <Select value={formData.class_id} onValueChange={(val) => {
+                                    setFormData({...formData, class_id: val, section_id: ""});
+                                    fetchSectionsByClass(val);
+                                }}>
+                                    <SelectTrigger className="h-10 border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500">
+                                        <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-gray-700">Section <span className="text-red-500">*</span></Label>
+                                <Select 
+                                    value={formData.section_id} 
+                                    onValueChange={(val) => setFormData({...formData, section_id: val})}
+                                    disabled={!formData.class_id}
+                                >
+                                    <SelectTrigger className="h-10 border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500">
+                                        <SelectValue placeholder={!formData.class_id ? "Select Class First" : "Select"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">Question <span className="text-red-500">*</span></Label>
+                            <div className="flex justify-between items-center">
+                                <Label className="text-xs font-medium text-gray-700">Question <span className="text-red-500">*</span></Label>
+                                <Button size="sm" variant="outline" className="h-7 bg-[#6366f1] text-white border-0 hover:bg-[#5558e3] text-[10px] font-bold px-3">
+                                    + Add Image
+                                </Button>
+                            </div>
                             <Textarea 
                                 value={formData.question} 
                                 onChange={(e) => setFormData({...formData, question: e.target.value})}
                                 placeholder="Enter question text" 
-                                className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-2xl focus:ring-indigo-500 p-4"
+                                className="min-h-[200px] border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500 p-4"
                             />
                         </div>
 
@@ -606,7 +649,7 @@ export default function QuestionBankPage() {
                                                     setFormData({...formData, options: newOpts});
                                                 }}
                                                 placeholder={`Option ${String.fromCharCode(65 + idx)}`} 
-                                                className="h-10 border-gray-100 bg-gray-50/30 rounded-xl"
+                                                className="h-10 border-gray-100 bg-gray-50/30 rounded-lg"
                                             />
                                         </div>
                                     ))}
@@ -615,12 +658,9 @@ export default function QuestionBankPage() {
                         )}
                     </div>
 
-                    <DialogFooter className="p-6 bg-gray-50/50 flex justify-end gap-3">
-                        <Button onClick={() => setIsDialogOpen(false)} variant="outline" className="h-11 px-8 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-200">
-                            Cancel
-                        </Button>
-                        <Button onClick={handleSave} className="btn-gradient text-white h-11 px-12 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-orange-200/50">
-                            {dialogMode === "edit" ? "Update Question" : "Save Question"}
+                    <DialogFooter className="p-4 border-t flex justify-end gap-3 bg-white">
+                        <Button onClick={handleSave} className="bg-[#6366f1] hover:bg-[#5558e3] text-white h-9 px-8 rounded-md text-xs font-medium">
+                            Save
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -628,7 +668,7 @@ export default function QuestionBankPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Question</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">

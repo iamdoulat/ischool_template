@@ -217,7 +217,7 @@ export default function BulkDeletePage() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-3 bg-destructive/10 rounded-2xl">
+                    <div className="p-3 bg-destructive/10 rounded-lg">
                         <Trash2 className="h-6 w-6 text-destructive" />
                     </div>
                     <div>
@@ -240,7 +240,7 @@ export default function BulkDeletePage() {
                             </label>
                             <div className="relative">
                                 <select
-                                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     value={selectedClass}
                                     onChange={(e) => setSelectedClass(e.target.value)}
                                 >
@@ -257,7 +257,7 @@ export default function BulkDeletePage() {
                             </label>
                             <div className="relative">
                                 <select
-                                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     value={selectedSection}
                                     onChange={(e) => setSelectedSection(e.target.value)}
                                 >
@@ -270,7 +270,7 @@ export default function BulkDeletePage() {
                     </div>
 
                     <div className="flex justify-end mt-6">
-                        <Button variant="gradient" className="h-11 px-8 rounded-xl" onClick={() => { setCurrentPage(1); fetchStudents(); }} disabled={loading}>
+                        <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => { setCurrentPage(1); fetchStudents(); }} disabled={loading}>
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
                         </Button>
                     </div>
@@ -442,7 +442,7 @@ export default function BulkDeletePage() {
                         </CardContent>
                     </Card>
                 ) : !loading && (
-                    <div className="px-6 py-4 bg-red-100/80 border border-red-200 rounded-xl text-red-600 font-bold text-sm shadow-sm flex items-center gap-3 animate-in slide-in-from-top-2">
+                    <div className="px-6 py-4 bg-red-100/80 border border-red-200 rounded-lg text-red-600 font-bold text-sm shadow-sm flex items-center gap-3 animate-in slide-in-from-top-2">
                         <AlertCircle className="h-5 w-5 opacity-80" />
                         No Record Found
                     </div>
@@ -457,10 +457,10 @@ export default function BulkDeletePage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent className="rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
+                <AlertDialogContent className="rounded-lg border-none shadow-2xl p-0 overflow-hidden">
                     <AlertDialogHeader className="p-8 bg-destructive/5 border-b border-destructive/10">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-destructive text-white rounded-2xl shadow-lg shadow-destructive/20">
+                            <div className="p-3 bg-destructive text-white rounded-lg shadow-lg shadow-destructive/20">
                                 <Trash2 className="h-6 w-6" />
                             </div>
                             <div>
@@ -474,12 +474,12 @@ export default function BulkDeletePage() {
                         </div>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="p-8 bg-muted/20 flex gap-4">
-                        <AlertDialogCancel className="flex-1 h-12 rounded-2xl font-bold border-muted/50 mt-0">
+                        <AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-muted/50 mt-0">
                             Cancel, Keep Records
                         </AlertDialogCancel>
                         <AlertDialogAction 
                             onClick={confirmDelete}
-                            className="flex-1 h-12 rounded-2xl font-bold bg-destructive hover:bg-destructive/90 text-white shadow-lg shadow-destructive/20 border-none"
+                            className="flex-1 h-12 rounded-lg font-bold bg-destructive hover:bg-destructive/90 text-white shadow-lg shadow-destructive/20 border-none"
                         >
                             Yes, Delete Permanently
                         </AlertDialogAction>

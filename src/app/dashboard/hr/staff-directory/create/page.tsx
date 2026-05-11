@@ -17,6 +17,7 @@ import { ArrowLeft, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
 import api from "@/lib/api";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Role {
     name: string;
@@ -29,6 +30,7 @@ interface CommonData {
 
 export default function CreateStaffPage() {
     const router = useRouter();
+    const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
     const [roles, setRoles] = useState<Role[]>([]);
@@ -72,7 +74,11 @@ export default function CreateStaffPage() {
                     fetchDepartments()
                 ]);
             } else if (user) {
-                alert("Unauthorized. You do not have permission to create staff.");
+                toast({
+                    title: "Unauthorized",
+                    description: "You do not have permission to create staff.",
+                    variant: "destructive",
+                });
                 router.push("/dashboard/hr/staff-directory");
             }
             setPageLoading(false);
@@ -174,13 +180,21 @@ export default function CreateStaffPage() {
             const response = await api.post("/hr/staff-directory", formData);
 
             if (response.data.status === "Success") {
+                toast({
+                    title: "Success",
+                    description: "Staff created successfully.",
+                });
                 router.push("/dashboard/hr/staff-directory");
             }
         } catch (error: any) {
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             } else {
-                alert("Failed to create staff member. Please try again.");
+                toast({
+                    title: "Error",
+                    description: error.response?.data?.message || "Failed to create staff member. Please try again.",
+                    variant: "destructive",
+                });
             }
         } finally {
             setLoading(false);
@@ -229,7 +243,7 @@ export default function CreateStaffPage() {
             </div>
 
             {/* Form */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100">
                 <form onSubmit={handleSubmit} className="p-8 space-y-8">
                     {/* Basic Information Section */}
                     <div>

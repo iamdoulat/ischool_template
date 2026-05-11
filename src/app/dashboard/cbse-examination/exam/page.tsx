@@ -192,7 +192,7 @@ export default function ExamListPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <GraduationCap className="h-6 w-6 text-indigo-500" />
@@ -208,7 +208,7 @@ export default function ExamListPage() {
                 </Button>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="relative w-full md:w-72">
                         <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
@@ -216,14 +216,14 @@ export default function ExamListPage() {
                             placeholder="Search by exam name..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                            className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                         />
                     </div>
 
                     <div className="flex items-center gap-3">
                         <span className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">Rows:</span>
                         <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                            <SelectTrigger className="w-[100px] h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl shadow-none">
+                            <SelectTrigger className="w-[100px] h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg shadow-none">
                                 <SelectValue placeholder="50" />
                             </SelectTrigger>
                             <SelectContent>
@@ -241,7 +241,7 @@ export default function ExamListPage() {
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm overflow-x-auto">
+                <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm overflow-x-auto">
                     <Table>
                         <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-600">
                             <TableRow className="hover:bg-transparent border-gray-50">
@@ -356,7 +356,7 @@ export default function ExamListPage() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="rounded-3xl border-0 shadow-2xl max-w-lg">
+                <DialogContent className="rounded-lg border-0 shadow-2xl max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3 border-b pb-4">
                             <FileEdit className="h-6 w-6 text-indigo-500" />
@@ -370,13 +370,13 @@ export default function ExamListPage() {
                                 value={formData.name}
                                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                                 placeholder="e.g. Assessment Practice Test 2026"
-                                className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none" 
+                                className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
                             />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Examination Term <span className="text-red-500">*</span></Label>
                             <Select value={formData.term} onValueChange={(val) => setFormData({...formData, term: val})}>
-                                <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl shadow-none">
+                                <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg shadow-none">
                                     <SelectValue placeholder="Select Term" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -388,7 +388,7 @@ export default function ExamListPage() {
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Board Category</Label>
                             <Select value={formData.cbse_exam_category_id} onValueChange={(val) => setFormData({...formData, cbse_exam_category_id: val})}>
-                                <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl shadow-none">
+                                <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg shadow-none">
                                     <SelectValue placeholder="Select Category" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -396,7 +396,7 @@ export default function ExamListPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="flex items-center space-x-2 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                        <div className="flex items-center space-x-2 bg-indigo-50/50 p-4 rounded-lg border border-indigo-100">
                             <Checkbox 
                                 id="publish-exam" 
                                 checked={formData.is_published}
@@ -405,7 +405,7 @@ export default function ExamListPage() {
                             />
                             <Label htmlFor="publish-exam" className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 cursor-pointer">Publish Exam</Label>
                         </div>
-                        <div className="flex items-center space-x-2 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+                        <div className="flex items-center space-x-2 bg-emerald-50/50 p-4 rounded-lg border border-emerald-100">
                             <Checkbox 
                                 id="publish-result" 
                                 checked={formData.is_result_published}
@@ -420,7 +420,7 @@ export default function ExamListPage() {
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                                 placeholder="Internal administrative notes..."
-                                className="min-h-[80px] border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none resize-none" 
+                                className="min-h-[80px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none resize-none" 
                             />
                         </div>
                     </div>
@@ -439,7 +439,7 @@ export default function ExamListPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Expunge Exam Cycle</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">

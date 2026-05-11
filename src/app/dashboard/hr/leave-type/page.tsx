@@ -291,7 +291,7 @@ export default function LeaveTypePage() {
                             size="icon"
                             disabled={currentPage === 1}
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                            className="h-8 w-8 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
                         >
                             <ChevronLeft className="h-4 w-4 text-gray-600" />
                         </Button>
@@ -302,7 +302,7 @@ export default function LeaveTypePage() {
                                 variant={currentPage === page ? "gradient" : "outline"}
                                 onClick={() => setCurrentPage(page)}
                                 className={cn(
-                                    "h-8 w-8 rounded-xl text-[10px] font-bold p-0 transition-all",
+                                    "h-8 w-8 rounded-lg text-[10px] font-bold p-0 transition-all",
                                     currentPage === page ? "shadow-md scale-105" : "border-gray-100 text-gray-400 hover:text-indigo-600"
                                 )}
                             >
@@ -315,7 +315,7 @@ export default function LeaveTypePage() {
                             size="icon"
                             disabled={currentPage === totalPages}
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                            className="h-8 w-8 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
                         >
                             <ChevronRight className="h-4 w-4 text-gray-600" />
                         </Button>

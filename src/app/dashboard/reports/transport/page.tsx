@@ -42,6 +42,41 @@ export default function TransportReportPage() {
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
             <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Transport Report</h1>
 
+            {/* Report Links Grid */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {[
+                        { name: "Transport Report", icon: Bus, active: true }
+                    ].map((link) => {
+                        const isActive = link.active;
+                        return (
+                            <div 
+                                key={link.name}
+                                className={cn(
+                                    "flex items-center gap-3 p-3 px-4 rounded-lg border transition-all duration-300 cursor-pointer group relative overflow-hidden",
+                                    isActive 
+                                        ? "bg-white border-gray-300 shadow-[0_10px_25px_rgba(0,0,0,0.08)] ring-1 ring-gray-400/10 -translate-y-0.5" 
+                                        : "bg-white border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] hover:border-gray-200 hover:-translate-y-0.5"
+                                )}
+                            >
+                                <div className={cn(
+                                    "p-2 rounded-lg transition-all duration-300",
+                                    isActive ? "bg-gray-100 text-gray-900 shadow-inner" : "bg-gray-50 text-gray-400 group-hover:bg-gray-100 group-hover:text-gray-600"
+                                )}>
+                                    <link.icon className="h-4 w-4" />
+                                </div>
+                                <span className={cn(
+                                    "text-[10px] font-bold tracking-tight uppercase transition-colors duration-300",
+                                    isActive ? "text-gray-900" : "text-gray-500 group-hover:text-gray-700"
+                                )}>
+                                    {link.name}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
             {/* Select Criteria Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
                 <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
@@ -112,8 +147,8 @@ export default function TransportReportPage() {
                     </div>
                 </div>
                 <div className="flex justify-end pt-2">
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-4 h-7 text-[10px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5">
-                        <Search className="h-3 w-3" />
+                    <Button className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2">
+                        <Search className="h-4 w-4" />
                         Search
                     </Button>
                 </div>

@@ -93,9 +93,8 @@ export default function TopicPage() {
 
     const fetchInitialData = async () => {
         try {
-            const [classesRes, sectionsRes, groupsRes, subjectsRes] = await Promise.all([
+            const [classesRes, groupsRes, subjectsRes] = await Promise.all([
                 api.get('/academics/classes?no_paginate=true').catch(() => ({ data: [] })),
-                api.get('/academics/sections?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/academics/subject-groups?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] }))
             ]);
@@ -107,13 +106,25 @@ export default function TopicPage() {
             };
 
             setClasses(extractData(classesRes));
-            setSections(extractData(sectionsRes));
             setSubjectGroups(extractData(groupsRes));
             setSubjects(extractData(subjectsRes));
         } catch (error) {
             console.error("Failed to load initial dropdowns", error);
         }
         fetchTopics();
+    };
+
+    // Fetch sections filtered by selected class ID
+    const fetchSectionsByClass = async (classId: string) => {
+        if (!classId) { setSections([]); return; }
+        try {
+            const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
+            const all: any[] = res.data?.data || res.data || [];
+            const filtered = all.filter((s: any) => String(s.school_class_id) === String(classId));
+            setSections(filtered);
+        } catch {
+            setSections([]);
+        }
     };
 
     const fetchTopics = async () => {
@@ -166,6 +177,8 @@ export default function TopicPage() {
     };
 
     const handleEdit = (entry: TopicEntry) => {
+        const cls = classes.find((c: any) => c.name === entry.className);
+        if (cls) fetchSectionsByClass(cls.id.toString());
         setFormData({
             class_name: entry.className,
             section: entry.section,
@@ -259,7 +272,14 @@ export default function TopicPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Class <span className="text-red-500">*</span>
                             </Label>
-                            <Select value={formData.class_name} onValueChange={(val) => setFormData({...formData, class_name: val})}>
+                            <Select
+                                value={formData.class_name}
+                                onValueChange={(val) => {
+                                    const cls = classes.find((c: any) => c.name === val);
+                                    setFormData({ ...formData, class_name: val, section: '' });
+                                    fetchSectionsByClass(cls?.id?.toString() ?? '');
+                                }}
+                            >
                                 <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
@@ -280,7 +300,11 @@ export default function TopicPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Section <span className="text-red-500">*</span>
                             </Label>
-                            <Select value={formData.section} onValueChange={(val) => setFormData({...formData, section: val})}>
+                            <Select
+                                value={formData.section}
+                                onValueChange={(val) => setFormData({ ...formData, section: val })}
+                                disabled={!formData.class_name}
+                            >
                                 <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
@@ -375,7 +399,7 @@ export default function TopicPage() {
                                     <Input 
                                         value={input.value}
                                         onChange={(e) => updateTopicInput(input.id, e.target.value)}
-                                        className="h-10 border-gray-100 bg-gray-50/30 text-xs shadow-none focus-visible:ring-indigo-500 rounded-xl" 
+                                        className="h-10 border-gray-100 bg-gray-50/30 text-xs shadow-none focus-visible:ring-indigo-500 rounded-lg" 
                                     />
                                     <button onClick={() => removeTopicInput(input.id)} className="text-rose-400 hover:text-rose-600 transition-colors p-1">
                                         <X className="h-4 w-4" />
@@ -414,7 +438,7 @@ export default function TopicPage() {
                                     placeholder="Search"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-3 h-10 text-xs border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-xl"
+                                    className="pl-3 h-10 text-xs border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg"
                                 />
                             </div>
                             <Button className="btn-gradient h-10 px-6 rounded-full flex items-center gap-2 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50">
@@ -529,7 +553,7 @@ export default function TopicPage() {
                             >
                                 <ChevronLeft className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="default" size="sm" className="h-8 btn-gradient border-0 text-white min-w-[32px] rounded-xl transition-all shadow-lg shadow-orange-200/50">
+                            <Button variant="default" size="sm" className="h-8 btn-gradient border-0 text-white min-w-[32px] rounded-lg transition-all shadow-lg shadow-orange-200/50">
                                 {currentPage}
                             </Button>
                             <Button 
@@ -546,7 +570,7 @@ export default function TopicPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Lesson Topics</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
@@ -554,8 +578,8 @@ export default function TopicPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-10 rounded-xl text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-10 rounded-xl text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
                             Yes, Delete Topics
                         </AlertDialogAction>
                     </AlertDialogFooter>

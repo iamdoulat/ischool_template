@@ -344,7 +344,7 @@ export default function PostalReceivePage() {
                             </div>
 
                             {/* Table */}
-                            <div className="overflow-x-auto rounded-xl border border-muted/50">
+                            <div className="overflow-x-auto rounded-lg border border-muted/50">
                                 <table className="w-full text-left border-collapse">
                                     <thead className="bg-muted/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                         <tr>

@@ -134,9 +134,9 @@ export default function MarksDivisionPage() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Left Column: Add Marks Division Form */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6 sticky top-4">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6 sticky top-4">
                         <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
-                            <div className="bg-indigo-50 p-2 rounded-xl">
+                            <div className="bg-indigo-50 p-2 rounded-lg">
                                 <Award className="h-5 w-5 text-indigo-500" />
                             </div>
                             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest">
@@ -153,7 +153,7 @@ export default function MarksDivisionPage() {
                                     value={formData.name}
                                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                                     placeholder="e.g. First"
-                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500 shadow-none" 
+                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none" 
                                 />
                             </div>
 
@@ -167,7 +167,7 @@ export default function MarksDivisionPage() {
                                         value={formData.percent_from}
                                         onChange={(e) => setFormData({...formData, percent_from: e.target.value})}
                                         placeholder="0.00"
-                                        className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500 pl-4 pr-10" 
+                                        className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 pl-4 pr-10" 
                                     />
                                     <Percent className="absolute right-3.5 top-3.5 h-4 w-4 text-gray-300" />
                                 </div>
@@ -183,7 +183,7 @@ export default function MarksDivisionPage() {
                                         value={formData.percent_upto}
                                         onChange={(e) => setFormData({...formData, percent_upto: e.target.value})}
                                         placeholder="0.00"
-                                        className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500 pl-4 pr-10" 
+                                        className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 pl-4 pr-10" 
                                     />
                                     <Percent className="absolute right-3.5 top-3.5 h-4 w-4 text-gray-300" />
                                 </div>
@@ -209,7 +209,7 @@ export default function MarksDivisionPage() {
 
                 {/* Right Column: Division List */}
                 <div className="lg:col-span-3">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                         <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                                 <GraduationCap className="h-5 w-5 text-indigo-500" />
@@ -241,12 +241,12 @@ export default function MarksDivisionPage() {
                                     placeholder="Search divisions..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                                    className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                        <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                             <Table>
                                 <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                                     <TableRow className="hover:bg-transparent border-gray-50">
@@ -333,7 +333,7 @@ export default function MarksDivisionPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Division</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">

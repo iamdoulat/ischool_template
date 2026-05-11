@@ -149,7 +149,7 @@ export default function AssignObservationPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <ClipboardList className="h-6 w-6 text-indigo-500" />
@@ -165,7 +165,7 @@ export default function AssignObservationPage() {
                 </Button>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="relative w-full md:w-72">
                         <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
@@ -173,14 +173,14 @@ export default function AssignObservationPage() {
                             placeholder="Search by name or code..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                            className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                         />
                     </div>
 
                     <div className="flex items-center gap-3">
                         <span className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">Display:</span>
                         <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                            <SelectTrigger className="w-[100px] h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl shadow-none">
+                            <SelectTrigger className="w-[100px] h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg shadow-none">
                                 <SelectValue placeholder="100" />
                             </SelectTrigger>
                             <SelectContent>
@@ -198,7 +198,7 @@ export default function AssignObservationPage() {
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                     <Table>
                         <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                             <TableRow className="hover:bg-transparent border-gray-50">
@@ -287,7 +287,7 @@ export default function AssignObservationPage() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="rounded-3xl border-0 shadow-2xl max-w-lg">
+                <DialogContent className="rounded-lg border-0 shadow-2xl max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3 border-b pb-4">
                             <FileEdit className="h-6 w-6 text-indigo-500" />
@@ -301,13 +301,13 @@ export default function AssignObservationPage() {
                                 value={formData.name}
                                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                                 placeholder="e.g. Behavioral Analysis"
-                                className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none" 
+                                className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
                             />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Examination Term <span className="text-red-500">*</span></Label>
                             <Select value={formData.term} onValueChange={(val) => setFormData({...formData, term: val})}>
-                                <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl shadow-none">
+                                <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg shadow-none">
                                     <SelectValue placeholder="Select Term" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -322,7 +322,7 @@ export default function AssignObservationPage() {
                                 value={formData.code}
                                 onChange={(e) => setFormData({...formData, code: e.target.value})}
                                 placeholder="e.g. T015"
-                                className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none" 
+                                className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
                             />
                         </div>
                         <div className="col-span-2 space-y-2">
@@ -331,7 +331,7 @@ export default function AssignObservationPage() {
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                                 placeholder="Administrative notes..."
-                                className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none resize-none" 
+                                className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none resize-none" 
                             />
                         </div>
                     </div>
@@ -350,7 +350,7 @@ export default function AssignObservationPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Expunge Record</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">

@@ -44,6 +44,7 @@ export default function ManageSyllabusStatusPage() {
     
     // Form State
     const [criteria, setCriteria] = useState({
+        class_id: "",
         class_name: "",
         section: "",
         subject_group: "",
@@ -56,9 +57,8 @@ export default function ManageSyllabusStatusPage() {
 
     const fetchInitialData = async () => {
         try {
-            const [classesRes, sectionsRes, groupsRes, subjectsRes] = await Promise.all([
+            const [classesRes, groupsRes, subjectsRes] = await Promise.all([
                 api.get('/academics/classes?no_paginate=true').catch(() => ({ data: [] })),
-                api.get('/academics/sections?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/academics/subject-groups?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] }))
             ]);
@@ -70,11 +70,23 @@ export default function ManageSyllabusStatusPage() {
             };
 
             setClasses(extractData(classesRes));
-            setSections(extractData(sectionsRes));
             setSubjectGroups(extractData(groupsRes));
             setSubjects(extractData(subjectsRes));
         } catch (error) {
             console.error("Failed to load initial dropdowns", error);
+        }
+    };
+
+    // Fetch sections filtered by selected class
+    const fetchSectionsByClass = async (classId: string) => {
+        if (!classId) { setSections([]); return; }
+        try {
+            const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
+            const all: any[] = res.data?.data || res.data || [];
+            const filtered = all.filter((s: any) => String(s.school_class_id) === String(classId));
+            setSections(filtered);
+        } catch {
+            setSections([]);
         }
     };
 
@@ -160,7 +172,14 @@ export default function ManageSyllabusStatusPage() {
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                             Class <span className="text-red-500">*</span>
                         </Label>
-                        <Select value={criteria.class_name} onValueChange={(val) => setCriteria({...criteria, class_name: val})}>
+                        <Select
+                            value={criteria.class_name}
+                            onValueChange={(val) => {
+                                const cls = classes.find((c: any) => c.name === val);
+                                setCriteria({ ...criteria, class_name: val, class_id: cls?.id?.toString() ?? '', section: '' });
+                                fetchSectionsByClass(cls?.id?.toString() ?? '');
+                            }}
+                        >
                             <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
@@ -176,7 +195,11 @@ export default function ManageSyllabusStatusPage() {
                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                             Section <span className="text-red-500">*</span>
                         </Label>
-                        <Select value={criteria.section} onValueChange={(val) => setCriteria({...criteria, section: val})}>
+                        <Select
+                            value={criteria.section}
+                            onValueChange={(val) => setCriteria({ ...criteria, section: val })}
+                            disabled={!criteria.class_name}
+                        >
                             <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>

@@ -197,7 +197,7 @@ export default function DisableReasonPage() {
                                     Disable Reason <span className="text-destructive">*</span>
                                 </label>
                                 <Input
-                                    className="h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all border-indigo-200"
+                                    className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all border-indigo-200"
                                     value={newReason}
                                     onChange={(e) => setNewReason(e.target.value)}
                                     placeholder="Enter disable reason"
@@ -250,7 +250,7 @@ export default function DisableReasonPage() {
                             </div>
 
                             {/* Table */}
-                            <div className="overflow-hidden rounded-xl border border-muted/50">
+                            <div className="overflow-hidden rounded-lg border border-muted/50">
                                 <table className="w-full text-left border-collapse">
                                     <thead className="bg-muted/50 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                         <tr>

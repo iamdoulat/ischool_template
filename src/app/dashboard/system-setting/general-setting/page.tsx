@@ -811,7 +811,7 @@ export default function GeneralSettingPage() {
                                     <button
                                         onClick={() => handleChange('theme_mode', 'light')}
                                         className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center transition-all border-2",
+                                            "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.theme_mode === 'light'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                                                 : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
@@ -822,7 +822,7 @@ export default function GeneralSettingPage() {
                                     <button
                                         onClick={() => handleChange('theme_mode', 'dark')}
                                         className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center transition-all border-2",
+                                            "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.theme_mode === 'dark'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                                                 : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
@@ -840,7 +840,7 @@ export default function GeneralSettingPage() {
                                     <button
                                         onClick={() => handleChange('skins', 'shadow')}
                                         className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center transition-all border-2",
+                                            "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.skins === 'shadow'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                                                 : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
@@ -851,7 +851,7 @@ export default function GeneralSettingPage() {
                                     <button
                                         onClick={() => handleChange('skins', 'bordered')}
                                         className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center transition-all border-2",
+                                            "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.skins === 'bordered'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                                                 : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
@@ -869,7 +869,7 @@ export default function GeneralSettingPage() {
                                     <button
                                         onClick={() => handleChange('side_menu', 'expanded')}
                                         className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center transition-all border-2",
+                                            "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.side_menu === 'expanded'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                                                 : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
@@ -880,7 +880,7 @@ export default function GeneralSettingPage() {
                                     <button
                                         onClick={() => handleChange('side_menu', 'collapsed')}
                                         className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center transition-all border-2",
+                                            "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.side_menu === 'collapsed'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                                                 : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
@@ -935,7 +935,7 @@ export default function GeneralSettingPage() {
                                     <button
                                         onClick={() => handleChange('box_content', 'wide')}
                                         className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center transition-all border-2",
+                                            "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.box_content === 'wide'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                                                 : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
@@ -946,7 +946,7 @@ export default function GeneralSettingPage() {
                                     <button
                                         onClick={() => handleChange('box_content', 'compact')}
                                         className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center transition-all border-2",
+                                            "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.box_content === 'compact'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                                                 : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
@@ -1264,7 +1264,7 @@ export default function GeneralSettingPage() {
                                     {activeAttendanceTab === 'Staff' ? (
                                         <div className="space-y-10">
                                             {formData.staff_attendance_settings.map((roleGroup: any, roleIdx: number) => (
-                                                <div key={roleIdx} className="border border-gray-100 rounded-xl overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow">
+                                                <div key={roleIdx} className="border border-gray-100 rounded-lg overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow">
                                                     <div className="bg-gray-50/80 p-4 border-b border-gray-100 flex items-center justify-between">
                                                         <div className="text-[12px] font-bold text-gray-700 flex items-center gap-2">
                                                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
@@ -1386,7 +1386,7 @@ export default function GeneralSettingPage() {
 
                                                             <div className="grid grid-cols-1 gap-6">
                                                                 {classItem.sections.map((section: any, sectionIdx: number) => (
-                                                                    <div key={section.section_id} className="border border-gray-100 rounded-xl overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow">
+                                                                    <div key={section.section_id} className="border border-gray-100 rounded-lg overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow">
                                                                         <div className="bg-gray-50/50 p-3 border-b border-gray-100 flex items-center gap-2">
                                                                             <span className="text-[11px] font-bold text-gray-500 uppercase">Section:</span>
                                                                             <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{section.section_name}</span>
@@ -2289,7 +2289,7 @@ export default function GeneralSettingPage() {
 
             {/* Save Confirmation Dialog */}
             <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-                <DialogContent className="sm:max-w-[425px] border-none shadow-2xl p-0 overflow-hidden rounded-2xl bg-white">
+                <DialogContent className="sm:max-w-[425px] border-none shadow-2xl p-0 overflow-hidden rounded-lg bg-white">
                     <div className="bg-gradient-to-br from-indigo-50/50 to-white p-6 pt-8">
                         <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-6 animate-in zoom-in duration-300">
                             <Save className="h-8 w-8 text-indigo-600" />
@@ -2309,14 +2309,14 @@ export default function GeneralSettingPage() {
                             variant="ghost"
                             onClick={() => setIsSaveDialogOpen(false)}
                             disabled={saving}
-                            className="flex-1 h-11 font-bold text-gray-500 hover:bg-gray-100 rounded-xl"
+                            className="flex-1 h-11 font-bold text-gray-500 hover:bg-gray-100 rounded-lg"
                         >
                             Review
                         </Button>
                         <Button
                             onClick={handleSave}
                             disabled={saving}
-                            className="flex-1 h-11 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95"
+                            className="flex-1 h-11 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-lg shadow-lg shadow-indigo-200 transition-all active:scale-95"
                         >
                             {saving ? (
                                 <>

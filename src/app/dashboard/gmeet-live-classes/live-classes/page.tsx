@@ -231,10 +231,10 @@ export default function LiveClassesPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800 rounded-[2rem]">
+            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800 rounded-lg">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner">
+                        <div className="h-12 w-12 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner">
                             <BookOpen className="h-6 w-6" />
                         </div>
                         <div>
@@ -258,16 +258,16 @@ export default function LiveClassesPage() {
                                 placeholder="Filter curriculum sessions..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11 rounded-xl bg-white border-muted/50 focus-visible:ring-blue-500/20 text-[10px] font-bold uppercase tracking-[0.2em] shadow-none"
+                                className="pl-10 h-11 rounded-lg bg-white border-muted/50 focus-visible:ring-blue-500/20 text-[10px] font-bold uppercase tracking-[0.2em] shadow-none"
                             />
                         </div>
                         <div className="flex items-center gap-4 ml-auto">
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-2">Page Density:</span>
                             <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                                <SelectTrigger className="h-10 w-24 text-[10px] font-bold bg-white border-muted/50 rounded-xl uppercase tracking-widest">
+                                <SelectTrigger className="h-10 w-24 text-[10px] font-bold bg-white border-muted/50 rounded-lg uppercase tracking-widest">
                                     <SelectValue placeholder="50" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-xl border-gray-100">
+                                <SelectContent className="rounded-lg border-gray-100">
                                     <SelectItem value="10">10 Rows</SelectItem>
                                     <SelectItem value="25">25 Rows</SelectItem>
                                     <SelectItem value="50">50 Rows</SelectItem>
@@ -341,7 +341,7 @@ export default function LiveClassesPage() {
                                             </TableCell>
                                             <TableCell className="text-slate-700 text-[10px] py-5 font-bold uppercase tracking-tighter">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[9px] text-blue-600 font-bold uppercase shadow-inner">
+                                                    <div className="h-8 w-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[9px] text-blue-600 font-bold uppercase shadow-inner">
                                                         {item.staff?.name?.[0]}{item.staff?.last_name?.[0]}
                                                     </div>
                                                     <div className="flex flex-col">
@@ -360,7 +360,7 @@ export default function LiveClassesPage() {
                                                     )}>
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                                                    <SelectContent className="rounded-lg border-gray-100 shadow-xl">
                                                         <SelectItem value="awaited">Awaited</SelectItem>
                                                         <SelectItem value="finished">Finished</SelectItem>
                                                         <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -369,13 +369,13 @@ export default function LiveClassesPage() {
                                             </TableCell>
                                             <TableCell className="pr-8 py-5 text-center">
                                                 <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 duration-300">
-                                                    <Button size="icon" className="h-9 w-9 rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-xl shadow-blue-200 transition-all active:scale-90">
+                                                    <Button size="icon" className="h-9 w-9 rounded-lg bg-blue-500 hover:bg-blue-600 text-white shadow-xl shadow-blue-200 transition-all active:scale-90">
                                                         <MonitorPlay className="h-4.5 w-4.5" />
                                                     </Button>
-                                                    <Button onClick={() => handleEdit(item)} size="icon" className="h-9 w-9 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-200 transition-all active:scale-90">
+                                                    <Button onClick={() => handleEdit(item)} size="icon" className="h-9 w-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-200 transition-all active:scale-90">
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
-                                                    <Button onClick={() => setDeleteId(item.id)} size="icon" className="h-9 w-9 rounded-xl bg-rose-500 hover:bg-rose-600 text-white shadow-xl shadow-rose-200 transition-all active:scale-90">
+                                                    <Button onClick={() => setDeleteId(item.id)} size="icon" className="h-9 w-9 rounded-lg bg-rose-500 hover:bg-rose-600 text-white shadow-xl shadow-rose-200 transition-all active:scale-90">
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -392,17 +392,17 @@ export default function LiveClassesPage() {
                         <div className="flex items-center gap-2">
                             <Button 
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                variant="outline" size="icon" className="h-10 w-10 rounded-xl border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
+                                variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
                                 disabled={currentPage === 1}
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" className="h-10 w-10 rounded-xl bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg font-black text-xs">
+                            <Button size="icon" className="h-10 w-10 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg font-black text-xs">
                                 {currentPage}
                             </Button>
                             <Button 
                                 onClick={() => setCurrentPage(p => p + 1)}
-                                variant="outline" size="icon" className="h-10 w-10 rounded-xl border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
+                                variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
                                 disabled={classes.length < itemsPerPage}
                             >
                                 <ChevronRight className="h-4 w-4" />
@@ -438,7 +438,7 @@ export default function LiveClassesPage() {
                                 value={formData.title}
                                 onChange={(e) => setFormData({...formData, title: e.target.value})}
                                 placeholder="e.g. Advanced Calculus - Virtual Module"
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-blue-500 shadow-none text-sm font-bold tracking-tight px-6" 
+                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none text-sm font-bold tracking-tight px-6" 
                             />
                         </div>
 
@@ -448,17 +448,17 @@ export default function LiveClassesPage() {
                                 type="datetime-local"
                                 value={formData.date_time}
                                 onChange={(e) => setFormData({...formData, date_time: e.target.value})}
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
+                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
                             />
                         </div>
 
                         <div className="space-y-4">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Assigned Instructor <span className="text-red-500">*</span></Label>
                             <Select value={formData.staff_id} onValueChange={(val) => setFormData({...formData, staff_id: val})}>
-                                <SelectTrigger className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl shadow-none px-6 text-sm font-bold">
+                                <SelectTrigger className="h-14 border-gray-100 bg-gray-50/50 rounded-lg shadow-none px-6 text-sm font-bold">
                                     <SelectValue placeholder="Select Staff Member" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
                                     {formCriteria.staff.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name} {s.last_name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -467,10 +467,10 @@ export default function LiveClassesPage() {
                         <div className="space-y-4">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Institutional Class <span className="text-red-500">*</span></Label>
                             <Select value={formData.class_id} onValueChange={(val) => setFormData({...formData, class_id: val})}>
-                                <SelectTrigger className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl shadow-none px-6 text-sm font-bold">
+                                <SelectTrigger className="h-14 border-gray-100 bg-gray-50/50 rounded-lg shadow-none px-6 text-sm font-bold">
                                     <SelectValue placeholder="Select Target Class" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
                                     {formCriteria.classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -479,10 +479,10 @@ export default function LiveClassesPage() {
                         <div className="space-y-4">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Academic Section <span className="text-red-500">*</span></Label>
                             <Select value={formData.section_id} onValueChange={(val) => setFormData({...formData, section_id: val})}>
-                                <SelectTrigger className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl shadow-none px-6 text-sm font-bold">
+                                <SelectTrigger className="h-14 border-gray-100 bg-gray-50/50 rounded-lg shadow-none px-6 text-sm font-bold">
                                     <SelectValue placeholder="Select Section" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
                                     {formSections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -495,7 +495,7 @@ export default function LiveClassesPage() {
                                 value={formData.duration}
                                 onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
                                 placeholder="45"
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
+                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
                             />
                         </div>
 
@@ -505,7 +505,7 @@ export default function LiveClassesPage() {
                                 value={formData.meeting_url}
                                 onChange={(e) => setFormData({...formData, meeting_url: e.target.value})}
                                 placeholder="meet.google.com/..."
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
+                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
                             />
                         </div>
 
@@ -537,7 +537,7 @@ export default function LiveClassesPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="rounded-[3rem] border-0 shadow-2xl p-12">
                     <AlertDialogHeader>
-                        <div className="h-20 w-20 rounded-[2rem] bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 mb-8 transform -rotate-6 shadow-inner">
+                        <div className="h-20 w-20 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 mb-8 transform -rotate-6 shadow-inner">
                             <ShieldCheck className="h-10 w-10" />
                         </div>
                         <AlertDialogTitle className="text-3xl font-black text-gray-800 uppercase tracking-tight">Expunge Curriculum Session</AlertDialogTitle>

@@ -18,8 +18,8 @@ import {
     X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import axios from "axios";
-import { useToast } from "@/components/ui/toast";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 
 interface NotificationEvent {
     id: number;
@@ -34,7 +34,6 @@ interface NotificationEvent {
 
 const destinationOptions = ["Email", "SMS", "Mobile App", "WhatsApp"];
 const recipientOptions = ["Student", "Guardian", "Staff"];
-const API_BASE = "http://localhost:8000/api/v1/system-setting/notification-settings";
 
 // ─── Edit Modal ────────────────────────────────────────────────────────────────
 function EditModal({
@@ -60,14 +59,21 @@ function EditModal({
             const payload = {
                 settings: [{ id: item.id, ...form }],
             };
-            const res = await axios.post(`${API_BASE}/bulk-update`, payload);
+            const res = await api.post('/system-setting/notification-settings/bulk-update', payload);
             if (res.data.status === "success") {
-                toast("success", "Template updated successfully");
+                toast({
+                    title: "Success",
+                    description: "Template updated successfully",
+                });
                 onSaved({ ...item, ...form });
                 onClose();
             }
         } catch {
-            toast("error", "Failed to update template");
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to update template",
+            });
         } finally {
             setSaving(false);
         }
@@ -82,7 +88,7 @@ function EditModal({
             />
 
             {/* Modal card */}
-            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 bg-indigo-600">
                     <h2 className="text-white font-semibold text-sm tracking-tight">Template</h2>
@@ -146,9 +152,9 @@ function EditModal({
                         <p className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wide">You Can Use Variables</p>
                         <p className="text-[10px] text-indigo-500 leading-relaxed font-mono">
                             {/* Extract placeholders from the existing message */}
-                            {Array.from(item.sample_message.matchAll(/\{\{(\w+)\}\}/g))
+                            {item.sample_message ? Array.from(item.sample_message.matchAll(/\{\{(\w+)\}\}/g))
                                 .map((m) => `{{${m[1]}}}`)
-                                .join("  ")}
+                                .join("  ") : ""}
                         </p>
                     </div>
                 </div>
@@ -182,7 +188,7 @@ function ViewModal({
                 className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
                 onClick={onClose}
             />
-            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 bg-indigo-600">
                     <h2 className="text-white font-semibold text-sm tracking-tight">Sample Message</h2>
@@ -246,10 +252,14 @@ export default function NotificationSettingPage() {
 
     const fetchEvents = async () => {
         try {
-            const res = await axios.get(API_BASE);
+            const res = await api.get('/system-setting/notification-settings');
             if (res.data.status === "success") setEvents(res.data.data);
         } catch {
-            toast("error", "Failed to load notification settings");
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to load notification settings",
+            });
         } finally {
             setLoading(false);
         }
@@ -273,10 +283,19 @@ export default function NotificationSettingPage() {
     const handleBulkSave = async () => {
         setSaving(true);
         try {
-            const res = await axios.post(`${API_BASE}/bulk-update`, { settings: events });
-            if (res.data.status === "success") toast("success", "Notification settings saved");
+            const res = await api.post('/system-setting/notification-settings/bulk-update', { settings: events });
+            if (res.data.status === "success") {
+                toast({
+                    title: "Success",
+                    description: "Notification settings saved successfully",
+                });
+            }
         } catch {
-            toast("error", "Failed to save notification settings");
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to save notification settings",
+            });
         } finally {
             setSaving(false);
         }

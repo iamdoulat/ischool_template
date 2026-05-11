@@ -52,6 +52,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogBody,
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -192,30 +193,30 @@ export default function AnnualCalendarPage() {
     };
 
     return (
-        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
+        <div className="p-2 space-y-2 bg-transparent min-h-screen font-sans">
             {/* Header Section */}
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex justify-between items-center bg-transparent p-4 rounded-md border border-slate-200/60 shadow-none">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
-                        <CalendarIcon className="h-6 w-6 text-indigo-500" />
+                    <h1 className="text-lg font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
+                        <CalendarIcon className="h-5 w-5 text-indigo-500" />
                         Annual Calendar
                     </h1>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Manage school holidays, activities, and events</p>
                 </div>
-                <Button onClick={openAddDialog} className="btn-gradient text-white gap-2 h-11 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full">
+                <Button onClick={openAddDialog} className="btn-gradient text-white gap-2 h-9 px-6 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-md">
                     <Plus className="h-4 w-4" /> Add Entry
                 </Button>
             </div>
 
             {/* Filter Section */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-                <div className="space-y-3 max-w-2xl">
+            <div className="bg-transparent p-4 rounded-md border border-slate-200/60 shadow-none space-y-4">
+                <div className="space-y-2 max-w-2xl">
                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                         Filter By Type
                     </Label>
-                    <div className="flex gap-3 items-center">
+                    <div className="flex gap-2 items-center">
                         <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-full md:w-[300px] h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="w-full md:w-[250px] h-9 border-slate-200 bg-white/50 text-xs rounded-md focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -225,7 +226,7 @@ export default function AnnualCalendarPage() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Button onClick={fetchCalendarData} className="btn-gradient h-11 px-8 rounded-full flex items-center gap-2 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50">
+                        <Button onClick={fetchCalendarData} className="btn-gradient h-9 px-6 rounded-md flex items-center gap-2 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50">
                             <Search className="h-4 w-4" /> Search
                         </Button>
                     </div>
@@ -233,24 +234,38 @@ export default function AnnualCalendarPage() {
             </div>
 
             {/* Calendar List Section */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6 space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="relative w-full md:w-72">
-                        <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
+            <div className="bg-transparent rounded-md border border-slate-200/60 shadow-none overflow-hidden p-4 space-y-4">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="relative w-full md:w-64">
+                        <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
                         <Input
                             placeholder="Search description..."
-                            className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                            className="pl-9 h-9 text-xs border-slate-200 bg-white/50 rounded-md focus:ring-indigo-500 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1.5 mr-3 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">
-                            <span className="text-[11px] text-gray-400 font-bold uppercase tracking-tighter">Rows:</span>
-                            <span className="text-xs text-indigo-600 font-bold">50</span>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
-                        </div>
+                    <div className="flex items-center gap-2">
+                        <Select value={itemsPerPage.toString()} onValueChange={(val) => {
+                            setItemsPerPage(Number(val));
+                            setCurrentPage(1);
+                        }}>
+                            <SelectTrigger className="h-8 px-2 bg-white/50 border-slate-200 rounded-md focus:ring-0 focus:ring-offset-0 shadow-none min-w-[100px]">
+                                <SelectValue>
+                                    <div className="flex items-center gap-1.5 w-full">
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Rows:</span>
+                                        <span className="text-xs text-indigo-600 font-bold">{itemsPerPage}</span>
+                                    </div>
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="rounded-md">
+                                <SelectItem value="10">10</SelectItem>
+                                <SelectItem value="25">25</SelectItem>
+                                <SelectItem value="50">50</SelectItem>
+                                <SelectItem value="100">100</SelectItem>
+                            </SelectContent>
+                        </Select>
 
                         <div className="flex items-center gap-1 text-gray-400">
                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
@@ -272,7 +287,7 @@ export default function AnnualCalendarPage() {
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                     <Table>
                         <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                             <TableRow className="hover:bg-transparent border-gray-50">
@@ -309,7 +324,7 @@ export default function AnnualCalendarPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="py-4 px-6">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">
+                                            <span className="inline-flex items-center px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">
                                                 {item.holiday_type?.name}
                                             </span>
                                         </TableCell>
@@ -325,7 +340,7 @@ export default function AnnualCalendarPage() {
                                             ) : <span className="text-gray-300">---</span>}
                                         </TableCell>
                                         <TableCell className="py-4 px-6 text-center">
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${item.is_front_site ? "bg-emerald-500 text-white shadow-emerald-100" : "bg-gray-100 text-gray-400"
+                                            <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${item.is_front_site ? "bg-emerald-500 text-white shadow-emerald-100" : "bg-gray-100 text-gray-400"
                                                 } shadow-sm transition-all duration-300`}>
                                                 {item.is_front_site ? "Published" : "Private"}
                                             </span>
@@ -349,7 +364,7 @@ export default function AnnualCalendarPage() {
 
                 <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
                     <div>
-                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries
+                        Showing {totalEntries === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries
                     </div>
                     <div className="flex gap-2">
                         <Button 
@@ -359,13 +374,39 @@ export default function AnnualCalendarPage() {
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <Button variant="default" size="sm" className="h-8 w-8 p-0 btn-gradient text-white border-0 rounded-lg shadow-md">
-                            {currentPage}
-                        </Button>
+                        
+                        {/* Dynamic Pagination Buttons */}
+                        {Array.from({ length: Math.min(5, Math.ceil(totalEntries / itemsPerPage)) }, (_, i) => {
+                            const totalPages = Math.ceil(totalEntries / itemsPerPage);
+                            let pageNum = 1;
+                            if (totalPages <= 5) {
+                                pageNum = i + 1;
+                            } else if (currentPage <= 3) {
+                                pageNum = i + 1;
+                            } else if (currentPage >= totalPages - 2) {
+                                pageNum = totalPages - 4 + i;
+                            } else {
+                                pageNum = currentPage - 2 + i;
+                            }
+
+                            const isActive = currentPage === pageNum;
+
+                            return (
+                                <Button
+                                    key={pageNum}
+                                    onClick={() => setCurrentPage(pageNum)}
+                                    variant={isActive ? "pagination-active" : "pagination-inactive"}
+                                    className="h-8 w-8 p-0 text-[10px]"
+                                >
+                                    {pageNum}
+                                </Button>
+                            );
+                        })}
+
                         <Button 
                             onClick={() => setCurrentPage(p => p + 1)}
                             variant="outline" size="sm" className="h-8 w-8 p-0 border-gray-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600" 
-                            disabled={calendarData.length < itemsPerPage}
+                            disabled={currentPage >= Math.ceil(totalEntries / itemsPerPage) || totalEntries === 0}
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -375,7 +416,7 @@ export default function AnnualCalendarPage() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl rounded-3xl border-0 shadow-2xl p-0 overflow-hidden">
+                <DialogContent className="max-w-2xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 btn-gradient text-white">
                         <DialogTitle className="text-xl font-bold uppercase tracking-widest flex items-center gap-3">
                             <FileEdit className="h-6 w-6" />
@@ -392,7 +433,7 @@ export default function AnnualCalendarPage() {
                                     type="date"
                                     value={formData.start_date} 
                                     onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500"
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -401,7 +442,7 @@ export default function AnnualCalendarPage() {
                                     type="date"
                                     value={formData.end_date} 
                                     onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500"
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500"
                                 />
                             </div>
                         </div>
@@ -409,7 +450,7 @@ export default function AnnualCalendarPage() {
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Holiday Type <span className="text-red-500">*</span></Label>
                             <Select value={formData.holiday_type_id} onValueChange={(val) => setFormData({...formData, holiday_type_id: val})}>
-                                <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500 shadow-none">
+                                <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none">
                                     <SelectValue placeholder="Select Type" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -426,11 +467,11 @@ export default function AnnualCalendarPage() {
                                 value={formData.description} 
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                                 placeholder="Enter detailed description" 
-                                className="min-h-[120px] border-gray-100 bg-gray-50/30 rounded-2xl focus:ring-indigo-500 p-4"
+                                className="min-h-[120px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 p-4"
                             />
                         </div>
 
-                        <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-50">
+                        <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-lg border border-gray-50">
                             <div className="space-y-1">
                                 <Label className="text-[12px] font-bold text-gray-700 uppercase tracking-tight">Publish to Front Site</Label>
                                 <p className="text-[10px] text-gray-400 font-medium italic">Enable to show this entry on the public school website</p>
@@ -444,10 +485,10 @@ export default function AnnualCalendarPage() {
                     </div>
 
                     <DialogFooter className="p-6 bg-gray-50/50 flex justify-end gap-3">
-                        <Button onClick={() => setIsDialogOpen(false)} variant="outline" className="h-11 px-8 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-200">
+                        <Button onClick={() => setIsDialogOpen(false)} variant="outline" className="h-11 px-8 rounded-lg text-[11px] font-bold uppercase tracking-widest border-gray-200">
                             Cancel
                         </Button>
-                        <Button onClick={handleSave} className="btn-gradient text-white h-11 px-12 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-orange-200/50">
+                        <Button onClick={handleSave} className="btn-gradient text-white h-11 px-12 rounded-lg text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-orange-200/50">
                             {dialogMode === "add" ? "Save Entry" : "Update Entry"}
                         </Button>
                     </DialogFooter>
@@ -456,7 +497,7 @@ export default function AnnualCalendarPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Calendar Entry</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
@@ -464,8 +505,8 @@ export default function AnnualCalendarPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogCancel className="h-11 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 h-11 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
                             Yes, Delete Entry
                         </AlertDialogAction>
                     </AlertDialogFooter>

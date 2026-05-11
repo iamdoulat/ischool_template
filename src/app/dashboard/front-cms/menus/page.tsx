@@ -487,7 +487,7 @@ function DeleteConfirmationDialog({
 }) {
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[400px] border-none shadow-2xl p-0 overflow-hidden rounded-2xl">
+            <DialogContent className="sm:max-w-[400px] border-none shadow-2xl p-0 overflow-hidden rounded-lg">
                 <div className="bg-gradient-to-br from-red-50 to-white p-6">
                     <DialogHeader className="space-y-3">
                         <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-2">
@@ -507,14 +507,14 @@ function DeleteConfirmationDialog({
                         variant="ghost"
                         onClick={onClose}
                         disabled={loading}
-                        className="flex-1 h-10 font-bold text-gray-500 hover:bg-gray-100 rounded-xl"
+                        className="flex-1 h-10 font-bold text-gray-500 hover:bg-gray-100 rounded-lg"
                     >
                         Cancel
                     </Button>
                     <Button
                         onClick={onConfirm}
                         disabled={loading}
-                        className="flex-1 h-10 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-200 transition-all active:scale-95"
+                        className="flex-1 h-10 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg shadow-red-200 transition-all active:scale-95"
                     >
                         {loading ? (
                             <>

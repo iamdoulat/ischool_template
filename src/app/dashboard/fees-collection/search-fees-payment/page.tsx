@@ -83,14 +83,14 @@ export default function SearchFeesPaymentPage() {
                                     value={paymentId}
                                     onChange={(e) => setPaymentId(e.target.value)}
                                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                    className="h-12 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-bold text-lg"
+                                    className="h-12 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-bold text-lg"
                                 />
                             </div>
                         </div>
                         <Button
                             onClick={handleSearch}
                             disabled={loading}
-                            className="h-12 px-10 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2 border-none"
+                            className="h-12 px-10 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2 border-none"
                         >
                             {loading ? <Search className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                             Search Payment
@@ -98,7 +98,7 @@ export default function SearchFeesPaymentPage() {
                     </div>
 
                     {!results.length && (
-                        <div className="mt-8 p-6 rounded-2xl bg-primary/5 border border-primary/10 flex items-start gap-4 max-w-2xl animate-in slide-in-from-bottom-2 duration-700">
+                        <div className="mt-8 p-6 rounded-lg bg-primary/5 border border-primary/10 flex items-start gap-4 max-w-2xl animate-in slide-in-from-bottom-2 duration-700">
                             <div className="p-2 bg-primary/10 rounded-lg">
                                 <Info className="h-5 w-5 text-primary" />
                             </div>
@@ -118,7 +118,7 @@ export default function SearchFeesPaymentPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
                     {/* Main Receipt Card */}
                     {results.map((payment) => (
-                        <Card key={payment.id} className="lg:col-span-2 border-none shadow-2xl bg-card overflow-hidden rounded-3xl relative">
+                        <Card key={payment.id} className="lg:col-span-2 border-none shadow-2xl bg-card overflow-hidden rounded-lg relative">
                             <div className="absolute top-0 right-0 p-8 opacity-5">
                                 <Receipt className="h-32 w-32 rotate-12 text-primary" />
                             </div>
@@ -126,7 +126,7 @@ export default function SearchFeesPaymentPage() {
                             <CardHeader className="p-8 border-b border-muted/20 bg-muted/5">
                                 <div className="flex items-center justify-between relative z-10">
                                     <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                                        <div className="p-3 bg-primary/10 rounded-lg text-primary">
                                             <Receipt className="h-6 w-6" />
                                         </div>
                                         <div>
@@ -135,10 +135,10 @@ export default function SearchFeesPaymentPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Button variant="outline" size="sm" className="rounded-xl border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
+                                        <Button variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
                                             <Printer className="h-3.5 w-3.5 mr-2" /> Print
                                         </Button>
-                                        <Button variant="outline" size="sm" className="rounded-xl border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
+                                        <Button variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
                                             <Download className="h-3.5 w-3.5 mr-2" /> PDF
                                         </Button>
                                     </div>
@@ -164,7 +164,7 @@ export default function SearchFeesPaymentPage() {
                                 </div>
 
                                 {/* Payment Details Table */}
-                                <div className="rounded-2xl border border-muted/20 bg-muted/5 overflow-hidden">
+                                <div className="rounded-lg border border-muted/20 bg-muted/5 overflow-hidden">
                                     <table className="w-full text-left border-collapse">
                                         <thead>
                                             <tr className="bg-muted/10">
@@ -203,7 +203,7 @@ export default function SearchFeesPaymentPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                                     <div className="space-y-2">
                                         <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Payment Method</span>
-                                        <div className="inline-flex items-center px-4 py-2 rounded-xl bg-muted/20 border border-muted/50 text-sm font-bold">
+                                        <div className="inline-flex items-center px-4 py-2 rounded-lg bg-muted/20 border border-muted/50 text-sm font-bold">
                                             {payment.payment_mode}
                                         </div>
                                     </div>
@@ -214,7 +214,7 @@ export default function SearchFeesPaymentPage() {
                                 </div>
 
                                 {payment.note && (
-                                    <div className="p-4 rounded-2xl bg-amber-50/30 border border-amber-100 italic text-xs text-muted-foreground">
+                                    <div className="p-4 rounded-lg bg-amber-50/30 border border-amber-100 italic text-xs text-muted-foreground">
                                         <strong>Note:</strong> {payment.note}
                                     </div>
                                 )}
@@ -224,9 +224,9 @@ export default function SearchFeesPaymentPage() {
 
                     {/* Summary / Stats Card */}
                     <div className="space-y-6">
-                        <Card className="border-none shadow-xl bg-gradient-to-br from-primary to-indigo-600 text-white overflow-hidden rounded-3xl">
+                        <Card className="border-none shadow-xl bg-gradient-to-br from-primary to-indigo-600 text-white overflow-hidden rounded-lg">
                             <CardContent className="p-8 space-y-4">
-                                <div className="p-3 bg-white/20 rounded-2xl w-fit">
+                                <div className="p-3 bg-white/20 rounded-lg w-fit">
                                     <CheckCircle2 className="h-6 w-6 text-white" />
                                 </div>
                                 <div>
@@ -236,15 +236,15 @@ export default function SearchFeesPaymentPage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="border-none shadow-xl bg-card overflow-hidden rounded-3xl border border-muted/20">
+                        <Card className="border-none shadow-xl bg-card overflow-hidden rounded-lg border border-muted/20">
                             <CardHeader className="p-6 border-b border-muted/10 bg-muted/5">
                                 <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Action Center</CardTitle>
                             </CardHeader>
                             <CardContent className="p-6 space-y-3">
-                                <Button variant="outline" className="w-full h-11 rounded-xl border-muted/50 font-bold text-xs justify-start hover:bg-muted/10 group">
+                                <Button variant="outline" className="w-full h-11 rounded-lg border-muted/50 font-bold text-xs justify-start hover:bg-muted/10 group">
                                     <Eye className="h-4 w-4 mr-3 text-muted-foreground group-hover:text-primary transition-colors" /> View Student Profile
                                 </Button>
-                                <Button variant="outline" className="w-full h-11 rounded-xl border-muted/50 font-bold text-xs justify-start hover:bg-muted/10 group">
+                                <Button variant="outline" className="w-full h-11 rounded-lg border-muted/50 font-bold text-xs justify-start hover:bg-muted/10 group">
                                     <Calendar className="h-4 w-4 mr-3 text-muted-foreground group-hover:text-primary transition-colors" /> View All Student Fees
                                 </Button>
                             </CardContent>

@@ -315,7 +315,7 @@ export default function FeesMasterPage() {
                                 <div className="relative">
                                     <select
                                         required
-                                        className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
+                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
                                         value={formData.fee_group_id || ""}
                                         onChange={(e) => setFormData({ ...formData, fee_group_id: Number(e.target.value) })}
                                     >
@@ -336,7 +336,7 @@ export default function FeesMasterPage() {
                                 <div className="relative">
                                     <select
                                         required
-                                        className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
+                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
                                         value={formData.fee_type_id || ""}
                                         onChange={(e) => setFormData({ ...formData, fee_type_id: Number(e.target.value) })}
                                     >
@@ -368,7 +368,7 @@ export default function FeesMasterPage() {
                                 <Input
                                     placeholder="0.00"
                                     required
-                                    className="h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     value={formData.amount || ""}
                                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                                 />
@@ -387,7 +387,7 @@ export default function FeesMasterPage() {
                                         { id: "cumulative", label: "Cumulative" }
                                     ].map((type) => (
                                         <label key={type.id} className={cn(
-                                            "flex items-center gap-3 p-3 rounded-xl border cursor-pointer hover:bg-primary/5 transition-all group",
+                                            "flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-primary/5 transition-all group",
                                             formData.fine_type === type.id ? "bg-primary/10 border-primary" : "bg-muted/20 border-muted/50"
                                         )}>
                                             <input
@@ -439,7 +439,7 @@ export default function FeesMasterPage() {
                                                 </Button>
                                             </div>
 
-                                            <div className="rounded-xl border border-muted/50 overflow-hidden bg-muted/5">
+                                            <div className="rounded-lg border border-muted/50 overflow-hidden bg-muted/5">
                                                 <table className="w-full text-[10px]">
                                                     <thead className="bg-muted/30">
                                                         <tr>
@@ -523,11 +523,11 @@ export default function FeesMasterPage() {
 
                             <div className="pt-4 flex justify-end gap-2">
                                 {isEdit && (
-                                    <Button type="button" variant="outline" className="h-11 px-6 rounded-xl font-bold" onClick={resetForm}>
+                                    <Button type="button" variant="outline" className="h-11 px-6 rounded-lg font-bold" onClick={resetForm}>
                                         Cancel
                                     </Button>
                                 )}
-                                <Button type="submit" variant="gradient" className="h-11 px-10 rounded-xl font-bold tracking-tight shadow-lg shadow-primary/25">
+                                <Button type="submit" variant="gradient" className="h-11 px-10 rounded-lg font-bold tracking-tight shadow-lg shadow-primary/25">
                                     {isEdit ? "Update Master" : "Save Fees Master"}
                                 </Button>
                             </div>
@@ -555,7 +555,7 @@ export default function FeesMasterPage() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 <Input
                                     placeholder="Search by group or code..."
-                                    className="pl-10 h-10 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -569,7 +569,7 @@ export default function FeesMasterPage() {
                                     <IconButton icon={Printer} onClick={handlePrint} title="Print" />
                                 </div>
                                 <div className="h-8 w-px bg-muted/50 mx-2" />
-                                <select className="h-10 px-3 rounded-xl border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
+                                <select className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
                                     <option>50</option>
                                     <option>100</option>
                                     <option>All</option>
@@ -578,7 +578,7 @@ export default function FeesMasterPage() {
                         </div>
 
                         {/* Table */}
-                        <div className="rounded-2xl border border-muted/50 overflow-hidden bg-muted/10 shadow-inner">
+                        <div className="rounded-lg border border-muted/50 overflow-hidden bg-muted/10 shadow-inner">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>

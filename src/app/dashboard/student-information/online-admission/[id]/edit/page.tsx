@@ -194,15 +194,15 @@ export default function EditAdmissionPage() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted-foreground ml-1">First Name <span className="text-destructive">*</span></label>
-                                    <Input name="first_name" defaultValue={admission.first_name} required className="rounded-xl bg-muted/20 border-muted/50 focus:bg-background transition-all" />
+                                    <Input name="first_name" defaultValue={admission.first_name} required className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted-foreground ml-1">Middle Name</label>
-                                    <Input name="middle_name" defaultValue={admission.middle_name} className="rounded-xl bg-muted/20 border-muted/50 focus:bg-background transition-all" />
+                                    <Input name="middle_name" defaultValue={admission.middle_name} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted-foreground ml-1">Last Name</label>
-                                    <Input name="last_name" defaultValue={admission.last_name} className="rounded-xl bg-muted/20 border-muted/50 focus:bg-background transition-all" />
+                                    <Input name="last_name" defaultValue={admission.last_name} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                             </div>
 
@@ -218,7 +218,7 @@ export default function EditAdmissionPage() {
                                                 handleClassChange(e.target.value);
                                             }}
                                             required 
-                                            className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
+                                            className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
                                         >
                                             <option value="">Select Class</option>
                                             {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -234,7 +234,7 @@ export default function EditAdmissionPage() {
                                             value={admission.section_id || ""}
                                             onChange={(e) => setAdmission({...admission, section_id: e.target.value})}
                                             required 
-                                            className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
+                                            className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
                                         >
                                             <option value="">Select Section</option>
                                             {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -249,7 +249,7 @@ export default function EditAdmissionPage() {
                                         type="date" 
                                         defaultValue={admission.dob} 
                                         required 
-                                        className="rounded-xl bg-muted/20 border-muted/50 focus:bg-background transition-all" 
+                                        className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" 
                                     />
                                 </div>
                             </div>
@@ -258,7 +258,7 @@ export default function EditAdmissionPage() {
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted-foreground ml-1">Category</label>
                                     <div className="relative">
-                                        <select name="category" defaultValue={admission.category || ""} className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
+                                        <select name="category" defaultValue={admission.category || ""} className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
                                             <option value="">Select Category</option>
                                             {categories.map((cat: any) => (
                                                 <option key={cat.id} value={cat.id.toString()}>{cat.category_name || cat.name}</option>
@@ -270,7 +270,7 @@ export default function EditAdmissionPage() {
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted-foreground ml-1">Gender <span className="text-destructive">*</span></label>
                                     <div className="relative">
-                                        <select name="gender" defaultValue={admission.gender} required className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
+                                        <select name="gender" defaultValue={admission.gender} required className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
                                             <option value="Male">Male</option>
                                             <option value="Female">Female</option>
                                             <option value="Other">Other</option>
@@ -280,11 +280,11 @@ export default function EditAdmissionPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted-foreground ml-1">Mobile Number <span className="text-destructive">*</span></label>
-                                    <Input name="phone" defaultValue={admission.phone} required className="rounded-xl bg-muted/20 border-muted/50 focus:bg-background transition-all" />
+                                    <Input name="phone" defaultValue={admission.phone} required className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted-foreground ml-1">Email</label>
-                                    <Input name="email" type="email" defaultValue={admission.email} className="rounded-xl bg-muted/20 border-muted/50 focus:bg-background transition-all" />
+                                    <Input name="email" type="email" defaultValue={admission.email} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                             </div>
 
@@ -292,7 +292,7 @@ export default function EditAdmissionPage() {
                                 <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">Student Photo</label>
                                 <div className="flex flex-col md:flex-row items-center gap-6">
                                     <div className="relative group">
-                                        <div className="w-32 h-32 rounded-2xl bg-muted/20 border-2 border-dashed border-muted flex items-center justify-center overflow-hidden transition-all group-hover:border-primary/50">
+                                        <div className="w-32 h-32 rounded-lg bg-muted/20 border-2 border-dashed border-muted flex items-center justify-center overflow-hidden transition-all group-hover:border-primary/50">
                                             {admission.student_photo ? (
                                                 <img 
                                                     src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${admission.student_photo}`} 
@@ -309,7 +309,7 @@ export default function EditAdmissionPage() {
                                             name="student_photo" 
                                             type="file" 
                                             accept="image/*"
-                                            className="rounded-xl bg-muted/20 border-muted/50 focus:bg-background transition-all cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-primary file:text-white hover:file:bg-primary/90" 
+                                            className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-primary file:text-white hover:file:bg-primary/90" 
                                         />
                                         <p className="text-[10px] text-muted-foreground font-medium">
                                             Max size: 2MB. Format: JPG, PNG. Leave empty to keep the current photo.
@@ -337,21 +337,21 @@ export default function EditAdmissionPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted-foreground ml-1">Father Name <span className="text-destructive">*</span></label>
-                                    <Input name="father_name" defaultValue={admission.father_name} required className="rounded-xl bg-muted/20 border-muted/50 focus:bg-background transition-all" />
+                                    <Input name="father_name" defaultValue={admission.father_name} required className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted-foreground ml-1">Father Phone</label>
-                                    <Input name="father_phone" defaultValue={admission.father_phone} className="rounded-xl bg-muted/20 border-muted/50 focus:bg-background transition-all" />
+                                    <Input name="father_phone" defaultValue={admission.father_phone} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted-foreground ml-1">Mother Name</label>
-                                    <Input name="mother_name" defaultValue={admission.mother_name} className="rounded-xl bg-muted/20 border-muted/50 focus:bg-background transition-all" />
+                                    <Input name="mother_name" defaultValue={admission.mother_name} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted-foreground ml-1">Mother Phone</label>
-                                    <Input name="mother_phone" defaultValue={admission.mother_phone} className="rounded-xl bg-muted/20 border-muted/50 focus:bg-background transition-all" />
+                                    <Input name="mother_phone" defaultValue={admission.mother_phone} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                             </div>
                         </CardContent>
@@ -376,7 +376,7 @@ export default function EditAdmissionPage() {
                                 <textarea 
                                     name="current_address" 
                                     defaultValue={admission.current_address}
-                                    className="w-full min-h-[100px] rounded-xl bg-muted/20 border border-muted/50 p-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-background transition-all resize-none"
+                                    className="w-full min-h-[100px] rounded-lg bg-muted/20 border border-muted/50 p-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-background transition-all resize-none"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -384,7 +384,7 @@ export default function EditAdmissionPage() {
                                 <textarea 
                                     name="permanent_address" 
                                     defaultValue={admission.permanent_address}
-                                    className="w-full min-h-[100px] rounded-xl bg-muted/20 border border-muted/50 p-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-background transition-all resize-none"
+                                    className="w-full min-h-[100px] rounded-lg bg-muted/20 border border-muted/50 p-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-background transition-all resize-none"
                                 />
                             </div>
                         </CardContent>
@@ -405,7 +405,7 @@ export default function EditAdmissionPage() {
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">Form Status</label>
                                 <div className="relative">
-                                    <select name="form_status" defaultValue={admission.form_status} className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
+                                    <select name="form_status" defaultValue={admission.form_status} className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
                                         <option value="Submitted">Submitted</option>
                                         <option value="Paid">Paid</option>
                                         <option value="Enrolled">Enrolled</option>
@@ -417,7 +417,7 @@ export default function EditAdmissionPage() {
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">Payment Status</label>
                                 <div className="relative">
-                                    <select name="payment_status" defaultValue={admission.payment_status} className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
+                                    <select name="payment_status" defaultValue={admission.payment_status} className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
                                         <option value="Unpaid">Unpaid</option>
                                         <option value="Paid">Paid</option>
                                         <option value="Partial">Partial</option>

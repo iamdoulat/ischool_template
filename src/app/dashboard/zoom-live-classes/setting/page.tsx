@@ -71,9 +71,9 @@ export default function ZoomSettingPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-[#2d8cff]/10 flex items-center justify-center">
+                    <div className="h-12 w-12 rounded-lg bg-[#2d8cff]/10 flex items-center justify-center">
                         <Video className="h-6 w-6 text-[#2d8cff]" />
                     </div>
                     <div>
@@ -85,7 +85,7 @@ export default function ZoomSettingPage() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-3xl shadow-xl shadow-blue-100/20 border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-lg shadow-xl shadow-blue-100/20 border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <ShieldCheck className="h-5 w-5 text-blue-500" />
@@ -112,7 +112,7 @@ export default function ZoomSettingPage() {
                                     <Input
                                         value={settings.api_key}
                                         onChange={(e) => setSettings({...settings, api_key: e.target.value})}
-                                        className="pl-10 h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-[#2d8cff] shadow-none"
+                                        className="pl-10 h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-[#2d8cff] shadow-none"
                                     />
                                 </div>
                             </div>
@@ -127,7 +127,7 @@ export default function ZoomSettingPage() {
                                         type="password"
                                         value={settings.api_secret}
                                         onChange={(e) => setSettings({...settings, api_secret: e.target.value})}
-                                        className="pl-10 h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-[#2d8cff] shadow-none font-mono"
+                                        className="pl-10 h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-[#2d8cff] shadow-none font-mono"
                                     />
                                 </div>
                             </div>
@@ -157,7 +157,7 @@ export default function ZoomSettingPage() {
                                         className="flex gap-4"
                                     >
                                         <div className={cn(
-                                            "flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border transition-all cursor-pointer",
+                                            "flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border transition-all cursor-pointer",
                                             settings.staff_client_type === 'web' ? "bg-blue-50 border-blue-200" : "bg-gray-50/50 border-gray-100 opacity-60"
                                         )}>
                                             <RadioGroupItem value="web" id="staff-web" className="text-blue-600 border-blue-300" />
@@ -167,7 +167,7 @@ export default function ZoomSettingPage() {
                                             </div>
                                         </div>
                                         <div className={cn(
-                                            "flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border transition-all cursor-pointer",
+                                            "flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border transition-all cursor-pointer",
                                             settings.staff_client_type === 'app' ? "bg-blue-50 border-blue-200" : "bg-gray-50/50 border-gray-100 opacity-60"
                                         )}>
                                             <RadioGroupItem value="app" id="staff-app" className="text-blue-600 border-blue-300" />
@@ -191,7 +191,7 @@ export default function ZoomSettingPage() {
                                         className="flex gap-4"
                                     >
                                         <div className={cn(
-                                            "flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border transition-all cursor-pointer",
+                                            "flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border transition-all cursor-pointer",
                                             settings.student_client_type === 'web' ? "bg-blue-50 border-blue-200" : "bg-gray-50/50 border-gray-100 opacity-60"
                                         )}>
                                             <RadioGroupItem value="web" id="student-web" className="text-blue-600 border-blue-300" />
@@ -201,7 +201,7 @@ export default function ZoomSettingPage() {
                                             </div>
                                         </div>
                                         <div className={cn(
-                                            "flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border transition-all cursor-pointer",
+                                            "flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border transition-all cursor-pointer",
                                             settings.student_client_type === 'app' ? "bg-blue-50 border-blue-200" : "bg-gray-50/50 border-gray-100 opacity-60"
                                         )}>
                                             <RadioGroupItem value="app" id="student-app" className="text-blue-600 border-blue-300" />
@@ -231,7 +231,7 @@ export default function ZoomSettingPage() {
                     </div>
 
                     {/* Right Column - Info */}
-                    <div className="space-y-8 bg-blue-50/30 p-10 rounded-3xl border border-blue-100/50 flex flex-col justify-between">
+                    <div className="space-y-8 bg-blue-50/30 p-10 rounded-lg border border-blue-100/50 flex flex-col justify-between">
                         <div className="space-y-6">
                             <div className="text-5xl font-black text-[#2d8cff] tracking-tighter italic">zoom</div>
                             <div className="h-1.5 w-16 bg-blue-500 rounded-full" />
@@ -249,7 +249,7 @@ export default function ZoomSettingPage() {
                                     </Button>
                                 </div>
 
-                                <div className="space-y-3 bg-white/60 p-6 rounded-2xl border border-blue-100 shadow-sm shadow-blue-100/20">
+                                <div className="space-y-3 bg-white/60 p-6 rounded-lg border border-blue-100 shadow-sm shadow-blue-100/20">
                                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">OAuth Redirect URL</p>
                                     <div className="flex items-center gap-3">
                                         <div className="flex-1 text-[10px] font-bold text-blue-900 select-all break-all leading-tight">
@@ -263,7 +263,7 @@ export default function ZoomSettingPage() {
                             </div>
                         </div>
 
-                        <Button className="w-full h-14 bg-[#2d8cff] hover:bg-[#1e7bd8] text-white rounded-2xl shadow-xl shadow-blue-200/50 font-bold uppercase tracking-widest flex gap-3 text-[11px]">
+                        <Button className="w-full h-14 bg-[#2d8cff] hover:bg-[#1e7bd8] text-white rounded-lg shadow-xl shadow-blue-200/50 font-bold uppercase tracking-widest flex gap-3 text-[11px]">
                             <Zap className="h-4 w-4 fill-white" /> Authorize Institutional Account
                         </Button>
                     </div>

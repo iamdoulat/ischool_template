@@ -176,7 +176,7 @@ export default function OnlineExamPage() {
 
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex justify-between items-center bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <Laptop className="h-6 w-6 text-indigo-500" />
@@ -189,7 +189,7 @@ export default function OnlineExamPage() {
                 </Button>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                 <div className="px-6 pt-5 bg-gray-50/30">
                     <Tabs value={statusTab} onValueChange={setStatusTab} className="w-full">
                         <TabsList className="bg-transparent border-b border-gray-100 rounded-none w-full justify-start h-auto p-0 gap-8">
@@ -217,12 +217,12 @@ export default function OnlineExamPage() {
                                 placeholder="Search exams..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                                className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                             />
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1.5 mr-3 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">
+                            <div className="flex items-center gap-1.5 mr-3 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
                                 <span className="text-[11px] text-gray-400 font-bold uppercase tracking-tighter">Rows:</span>
                                 <span className="text-xs text-indigo-600 font-bold">50</span>
                                 <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
@@ -247,7 +247,7 @@ export default function OnlineExamPage() {
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                    <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                         <Table>
                             <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                                 <TableRow className="hover:bg-transparent border-gray-50">
@@ -370,7 +370,7 @@ export default function OnlineExamPage() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-3xl rounded-3xl border-0 shadow-2xl p-0 overflow-hidden">
+                <DialogContent className="max-w-3xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 btn-gradient text-white">
                         <DialogTitle className="text-xl font-bold uppercase tracking-widest flex items-center gap-3">
                             <Laptop className="h-6 w-6" />
@@ -387,10 +387,10 @@ export default function OnlineExamPage() {
                                     value={formData.title} 
                                     onChange={(e) => setFormData({...formData, title: e.target.value})}
                                     placeholder="e.g. Final Revision Test" 
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
-                            <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-50">
+                            <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-lg border border-gray-50">
                                 <div className="space-y-1">
                                     <Label className="text-[12px] font-bold text-gray-700 uppercase tracking-tight">Quiz Mode</Label>
                                     <p className="text-[10px] text-gray-400 font-medium italic">Enable for rapid evaluation</p>
@@ -410,7 +410,7 @@ export default function OnlineExamPage() {
                                     type="datetime-local"
                                     value={formData.exam_from} 
                                     onChange={(e) => setFormData({...formData, exam_from: e.target.value})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -419,7 +419,7 @@ export default function OnlineExamPage() {
                                     type="datetime-local"
                                     value={formData.exam_to} 
                                     onChange={(e) => setFormData({...formData, exam_to: e.target.value})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
                         </div>
@@ -430,7 +430,7 @@ export default function OnlineExamPage() {
                                 <Input 
                                     value={formData.duration} 
                                     onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -439,7 +439,7 @@ export default function OnlineExamPage() {
                                     type="number"
                                     value={formData.attempt} 
                                     onChange={(e) => setFormData({...formData, attempt: parseInt(e.target.value)})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -448,13 +448,13 @@ export default function OnlineExamPage() {
                                     type="number"
                                     value={formData.passing_percentage} 
                                     onChange={(e) => setFormData({...formData, passing_percentage: parseInt(e.target.value)})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-6">
-                            <div className="flex items-center justify-between p-4 bg-emerald-50/30 rounded-2xl border border-emerald-50">
+                            <div className="flex items-center justify-between p-4 bg-emerald-50/30 rounded-lg border border-emerald-50">
                                 <div className="space-y-1">
                                     <Label className="text-[12px] font-bold text-emerald-700 uppercase tracking-tight flex items-center gap-2"><CheckCircle2 className="h-3 w-3" /> Publish Exam</Label>
                                     <p className="text-[10px] text-emerald-600/70 font-medium italic">Make exam visible to students</p>
@@ -465,7 +465,7 @@ export default function OnlineExamPage() {
                                     className="data-[state=checked]:bg-emerald-500"
                                 />
                             </div>
-                            <div className="flex items-center justify-between p-4 bg-indigo-50/30 rounded-2xl border border-indigo-50">
+                            <div className="flex items-center justify-between p-4 bg-indigo-50/30 rounded-lg border border-indigo-50">
                                 <div className="space-y-1">
                                     <Label className="text-[12px] font-bold text-indigo-700 uppercase tracking-tight flex items-center gap-2"><Trophy className="h-3 w-3" /> Publish Result</Label>
                                     <p className="text-[10px] text-indigo-600/70 font-medium italic">Show marks after completion</p>
@@ -484,7 +484,7 @@ export default function OnlineExamPage() {
                                 value={formData.description} 
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                                 placeholder="Enter exam instructions or details" 
-                                className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-2xl focus:ring-indigo-500 p-4"
+                                className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 p-4"
                             />
                         </div>
                     </div>
@@ -502,7 +502,7 @@ export default function OnlineExamPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Online Exam</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">

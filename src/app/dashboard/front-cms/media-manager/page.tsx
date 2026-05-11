@@ -115,7 +115,7 @@ export default function MediaManagerPage() {
                                 onChange={(e) => handleFileUpload(e.target.files)}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                             />
-                            <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center gap-3 transition-all bg-gray-50/30 group-hover:bg-gray-100 group-hover:border-indigo-300">
+                            <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 flex flex-col items-center justify-center gap-3 transition-all bg-gray-50/30 group-hover:bg-gray-100 group-hover:border-indigo-300">
                                 <div className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
                                     <Upload className="h-6 w-6 text-indigo-500" />
                                 </div>
@@ -202,7 +202,7 @@ export default function MediaManagerPage() {
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-5">
                         {filteredMedia.map((item) => (
-                            <div key={item.id} className="group relative bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300">
+                            <div key={item.id} className="group relative bg-white rounded-lg border border-gray-100 overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300">
                                 {/* Thumbnail */}
                                 <div className="h-28 bg-[#f8f9fa] flex items-center justify-center overflow-hidden relative border-b border-gray-50">
                                     {item.file_type.includes('image') ? (

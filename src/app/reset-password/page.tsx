@@ -186,7 +186,7 @@ export default function ResetPasswordPage() {
                 </div>
 
                 {/* Footer */}
-                <div className="mt-8 text-center text-[11px] text-gray-400 font-medium uppercase tracking-widest animate-in fade-in duration-1000">
+                <div className="mt-8 text-center text-[12px] text-gray-400 font-medium animate-in fade-in duration-1000">
                     &copy; {new Date().getFullYear()} Smart School. All Rights Reserved.
                 </div>
             </div>

@@ -66,7 +66,7 @@ export default function CopyOldLessonsPage() {
                 api.get('/academics/sections?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/academics/subject-groups?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] })),
-                api.get('/system-setting/session-setting').catch(() => ({ data: [] }))
+                api.get('/system-setting/sessions').catch(() => ({ data: { data: [] } }))
             ]);
             
             const extractData = (res: any) => {
@@ -164,9 +164,9 @@ export default function CopyOldLessonsPage() {
     };
 
     return (
-        <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
+        <div className="space-y-2 font-sans p-2 bg-transparent min-h-screen">
             {/* Top Section: Select Old Session Details */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-transparent rounded-lg shadow-none border border-slate-200/60 p-6">
                 <h2 className="text-sm font-bold text-gray-800 mb-6 uppercase tracking-widest">Select Source Session Details</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -175,7 +175,7 @@ export default function CopyOldLessonsPage() {
                             Session <span className="text-red-500">*</span>
                         </Label>
                         <Select value={fromCriteria.session} onValueChange={(val) => setFromCriteria({...fromCriteria, session: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500">
+                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -193,7 +193,7 @@ export default function CopyOldLessonsPage() {
                             Class <span className="text-red-500">*</span>
                         </Label>
                         <Select value={fromCriteria.class_name} onValueChange={(val) => setFromCriteria({...fromCriteria, class_name: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500">
+                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -209,7 +209,7 @@ export default function CopyOldLessonsPage() {
                             Section <span className="text-red-500">*</span>
                         </Label>
                         <Select value={fromCriteria.section} onValueChange={(val) => setFromCriteria({...fromCriteria, section: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500">
+                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -225,7 +225,7 @@ export default function CopyOldLessonsPage() {
                             Subject Group <span className="text-red-500">*</span>
                         </Label>
                         <Select value={fromCriteria.subject_group} onValueChange={(val) => setFromCriteria({...fromCriteria, subject_group: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500">
+                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -241,7 +241,7 @@ export default function CopyOldLessonsPage() {
                             Subject <span className="text-red-500">*</span>
                         </Label>
                         <Select value={fromCriteria.subject} onValueChange={(val) => setFromCriteria({...fromCriteria, subject: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500">
+                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -270,10 +270,10 @@ export default function CopyOldLessonsPage() {
                         Source Lessons For: <span className="text-indigo-600 underline decoration-indigo-200 underline-offset-4">{fromCriteria.subject}</span>
                     </div>
 
-                    <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="flex flex-col lg:flex-row gap-4">
                         {/* Left Column: Lesson & Topics Selection */}
                         <div className="w-full lg:w-2/3">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="bg-transparent rounded-lg shadow-none border border-slate-200/60 overflow-hidden">
                                 <div className="p-4 border-b bg-gray-50/50">
                                     <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Available Lessons & Topics</h3>
                                 </div>
@@ -319,7 +319,7 @@ export default function CopyOldLessonsPage() {
 
                         {/* Right Column: Target Subject Selection */}
                         <div className="w-full lg:w-1/3">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6 sticky top-4">
+                            <div className="bg-transparent rounded-lg shadow-none border border-slate-200/60 p-6 space-y-4 sticky top-4">
                                 <h3 className="text-sm font-bold text-gray-800 border-b border-gray-50 pb-4 uppercase tracking-widest">Target Selection</h3>
 
                                 <div className="space-y-2">
@@ -327,7 +327,7 @@ export default function CopyOldLessonsPage() {
                                         Class <span className="text-red-500">*</span>
                                     </Label>
                                     <Select value={toCriteria.class_name} onValueChange={(val) => setToCriteria({...toCriteria, class_name: val})}>
-                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500">
+                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                             <SelectValue placeholder="Select" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -343,7 +343,7 @@ export default function CopyOldLessonsPage() {
                                         Section <span className="text-red-500">*</span>
                                     </Label>
                                     <Select value={toCriteria.section} onValueChange={(val) => setToCriteria({...toCriteria, section: val})}>
-                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500">
+                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                             <SelectValue placeholder="Select" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -359,7 +359,7 @@ export default function CopyOldLessonsPage() {
                                         Subject Group <span className="text-red-500">*</span>
                                     </Label>
                                     <Select value={toCriteria.subject_group} onValueChange={(val) => setToCriteria({...toCriteria, subject_group: val})}>
-                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500">
+                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                             <SelectValue placeholder="Select" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -375,7 +375,7 @@ export default function CopyOldLessonsPage() {
                                         Subject <span className="text-red-500">*</span>
                                     </Label>
                                     <Select value={toCriteria.subject} onValueChange={(val) => setToCriteria({...toCriteria, subject: val})}>
-                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-xl focus:ring-indigo-500">
+                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                             <SelectValue placeholder="Select" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -402,7 +402,7 @@ export default function CopyOldLessonsPage() {
             )}
 
             {!loading && sourceLessons.length === 0 && (
-                <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-20 flex flex-col items-center justify-center text-center mt-6">
+                <div className="bg-transparent rounded-lg border border-dashed border-slate-300 p-20 flex flex-col items-center justify-center text-center mt-6">
                     <div className="bg-gray-50 p-4 rounded-full mb-4">
                         <Search className="h-8 w-8 text-gray-300" />
                     </div>

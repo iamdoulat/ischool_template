@@ -44,7 +44,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCurrency } from "@/components/providers/currency-provider";
 import api from "@/lib/api";
 import { useEffect, useCallback } from "react";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/use-toast";
 
 
 // Initial field structure
@@ -125,7 +125,7 @@ export default function OnlineAdmissionPage() {
             }
         } catch (error) {
             console.error("Error fetching online admission settings:", error);
-            toast("error", "Failed to load settings. Please try again.");
+            toast({ variant: "destructive", title: "Error", description: "Failed to load settings. Please try again." });
         } finally {
             setLoading(false);
         }
@@ -137,38 +137,33 @@ export default function OnlineAdmissionPage() {
 
     const validateSettings = () => {
         if (!settings.online_admission_form_fees || isNaN(parseFloat(settings.online_admission_form_fees))) {
-            toast("error", "Please enter a valid numeric value for form fees.");
+            toast({ variant: "destructive", title: "Validation Error", description: "Please enter a valid numeric value for form fees." });
             return false;
         }
         if (parseFloat(settings.online_admission_form_fees) < 0) {
-            toast("error", "Form fees cannot be negative.");
+            toast({ variant: "destructive", title: "Validation Error", description: "Form fees cannot be negative." });
             return false;
         }
         if (!settings.instructions.trim()) {
-            toast("error", "Instructions are required.");
+            toast({ variant: "destructive", title: "Validation Error", description: "Instructions are required." });
             return false;
         }
         if (!settings.terms_conditions.trim()) {
-            toast("error", "Terms & conditions are required.");
+            toast({ variant: "destructive", title: "Validation Error", description: "Terms & conditions are required." });
             return false;
         }
         return true;
     };
 
     const handleSaveSettings = async () => {
-        if (!validateSettings()) {
-            return;
-        }
+        if (!validateSettings()) return;
 
-        if (!confirm("Are you sure you want to save the form settings?")) {
-            return;
-        }
         try {
             setSavingSettings(true);
 
             const formData = new FormData();
-            formData.append('online_admission', settings.online_admission.toString());
-            formData.append('online_admission_payment_option', settings.online_admission_payment_option.toString());
+            formData.append('online_admission', settings.online_admission ? '1' : '0');
+            formData.append('online_admission_payment_option', settings.online_admission_payment_option ? '1' : '0');
             formData.append('online_admission_form_fees', settings.online_admission_form_fees);
             formData.append('instructions', settings.instructions);
             formData.append('terms_conditions', settings.terms_conditions);
@@ -184,7 +179,7 @@ export default function OnlineAdmissionPage() {
             });
 
             if (response.data.success) {
-                toast("success", "Form settings updated successfully.");
+                toast({ title: "Saved", description: "Form settings updated successfully." });
                 // Clear the file after successful upload
                 setSettings(prev => ({
                     ...prev,
@@ -197,31 +192,27 @@ export default function OnlineAdmissionPage() {
         } catch (error: unknown) {
             console.error("Save settings error:", error);
             const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to update form settings.";
-            toast("error", errorMessage);
+            toast({ variant: "destructive", title: "Error", description: errorMessage });
         } finally {
             setSavingSettings(false);
         }
     };
 
     const handleSaveFields = async () => {
-        if (!confirm("Are you sure you want to update the fields visibility settings?")) {
-            return;
-        }
-
         try {
             setSavingFields(true);
             const response = await api.post("/system-setting/online-admission/fields", {
                 fields: fields.map(f => ({ id: f.id, is_active: f.active }))
             });
             if (response.data.success) {
-                toast("success", "Fields visibility updated successfully.");
+                toast({ title: "Saved", description: "Fields visibility updated successfully." });
             } else {
-                toast("error", response.data.message || "Failed to update fields visibility.");
+                toast({ variant: "destructive", title: "Error", description: response.data.message || "Failed to update fields visibility." });
             }
         } catch (error: unknown) {
             console.error("Save fields error:", error);
             const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to update fields visibility.";
-            toast("error", errorMessage);
+            toast({ variant: "destructive", title: "Error", description: errorMessage });
         } finally {
             setSavingFields(false);
         }
@@ -239,13 +230,13 @@ export default function OnlineAdmissionPage() {
             // Validate file type (PDF, DOC, DOCX)
             const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
             if (!allowedTypes.includes(file.type)) {
-                toast("error", "Please select a PDF or Word document file.");
+                toast({ variant: "destructive", title: "Invalid File", description: "Please select a PDF or Word document file." });
                 return;
             }
 
             // Validate file size (max 10MB)
             if (file.size > 10 * 1024 * 1024) {
-                toast("error", "File size must be less than 10MB.");
+                toast({ variant: "destructive", title: "File Too Large", description: "File size must be less than 10MB." });
                 return;
             }
 
@@ -345,7 +336,7 @@ export default function OnlineAdmissionPage() {
         if (type === 'copy') {
             const text = data.map(row => `${row.Name}\t${row.Status}`).join('\n');
             navigator.clipboard.writeText(text);
-            toast("success", "Table data copied to clipboard.");
+            toast({ title: "Copied", description: "Table data copied to clipboard." });
         } else if (type === 'csv') {
             const headers = "Name,Status\n";
             const rows = data.map(row => `${row.Name},${row.Status}`).join('\n');

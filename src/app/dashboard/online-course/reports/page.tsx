@@ -212,7 +212,7 @@ export default function OnlineCourseReportPage() {
 
                                                 <div className="relative group/folder cursor-help mb-4">
                                                     <div className="absolute -inset-4 bg-primary/5 rounded-full scale-0 group-hover/folder:scale-100 transition-transform duration-500" />
-                                                    <div className="relative p-6 bg-card rounded-2xl shadow-sm border border-muted/50">
+                                                    <div className="relative p-6 bg-card rounded-lg shadow-sm border border-muted/50">
                                                         <FileSearch className="h-16 w-16 text-muted-foreground/20 group-hover/folder:text-primary/40 transition-colors duration-500" />
                                                     </div>
                                                 </div>
@@ -286,7 +286,7 @@ function FilterSelect({ label, required, value, onChange, options }: { label: st
                 <select 
                     value={value} 
                     onChange={(e) => onChange(e.target.value)}
-                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer font-bold"
+                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer font-bold"
                 >
                     {options.map((opt) => (
                         <option key={opt.id} value={opt.id}>{opt.label}</option>

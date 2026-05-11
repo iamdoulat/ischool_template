@@ -126,7 +126,7 @@ export default function HolidayTypePage() {
         <div className="flex flex-col lg:flex-row gap-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Left Column: Add Holiday Type Form */}
             <div className="w-full lg:w-1/4">
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
                     <h2 className="text-sm font-bold text-gray-800 border-b border-gray-50 pb-3 mb-6 uppercase tracking-widest">
                         {editMode ? "Edit Holiday Type" : "Add Holiday Type"}
                     </h2>
@@ -140,7 +140,7 @@ export default function HolidayTypePage() {
                                 id="holidayTypeName" 
                                 value={formData.name}
                                 onChange={(e) => setFormData({ name: e.target.value })}
-                                className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500" 
+                                className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500" 
                                 placeholder="Enter name"
                             />
                         </div>
@@ -165,7 +165,7 @@ export default function HolidayTypePage() {
 
             {/* Right Column: Holiday Type List */}
             <div className="w-full lg:w-3/4">
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                     <h2 className="text-sm font-bold text-gray-800 border-b border-gray-50 pb-3 uppercase tracking-widest">Holiday Type List</h2>
 
                     <div className="flex flex-col md:flex-row justify-between items-center gap-6">
@@ -175,7 +175,7 @@ export default function HolidayTypePage() {
                                     placeholder="Search holiday types..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-4 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500"
+                                    className="pl-4 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500"
                                 />
                             </div>
                             <Button className="btn-gradient h-11 px-8 rounded-full flex items-center gap-2 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50">
@@ -184,7 +184,7 @@ export default function HolidayTypePage() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1.5 mr-3 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">
+                            <div className="flex items-center gap-1.5 mr-3 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
                                 <span className="text-[11px] text-gray-400 font-bold uppercase tracking-tighter">Rows:</span>
                                 <span className="text-xs text-indigo-600 font-bold">50</span>
                                 <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
@@ -209,7 +209,7 @@ export default function HolidayTypePage() {
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                    <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                         <Table>
                             <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                                 <TableRow className="hover:bg-transparent border-gray-50">
@@ -283,7 +283,7 @@ export default function HolidayTypePage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Holiday Type</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">

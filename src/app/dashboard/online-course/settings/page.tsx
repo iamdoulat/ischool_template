@@ -103,7 +103,7 @@ export default function SettingPage() {
     if (loading) {
         return (
             <div className="h-[60vh] flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-700">
-                <div className="h-16 w-16 rounded-[2rem] bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-2xl shadow-indigo-100 animate-pulse">
+                <div className="h-16 w-16 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-2xl shadow-indigo-100 animate-pulse">
                     <Settings className="h-8 w-8" />
                 </div>
                 <div className="flex flex-col items-center">
@@ -122,7 +122,7 @@ export default function SettingPage() {
                     <Settings className="h-48 w-48" />
                 </div>
                 <div className="flex items-center gap-6 relative z-10">
-                    <div className="h-16 w-16 rounded-[2rem] bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner transform -rotate-3">
+                    <div className="h-16 w-16 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner transform -rotate-3">
                         <Zap className="h-8 w-8" />
                     </div>
                     <div>
@@ -139,7 +139,7 @@ export default function SettingPage() {
             {/* Curriculum Setting Section */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
+                    <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
                         <Zap className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase tracking-widest">Course Curriculum Registry</CardTitle>
@@ -186,7 +186,7 @@ export default function SettingPage() {
             {/* AWS S3 Bucket Setting Section */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+                    <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
                         <Cloud className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase tracking-widest">Cloud Storage Infrastructure</CardTitle>
@@ -239,7 +239,7 @@ export default function SettingPage() {
             {/* Guest User Section */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-inner">
+                    <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-inner">
                         <UserCircle className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase tracking-widest">Guest Node Configuration</CardTitle>
@@ -302,7 +302,7 @@ export default function SettingPage() {
             <AlertDialog open={confirmSection !== null} onOpenChange={(open) => !open && setConfirmSection(null)}>
                 <AlertDialogContent className="rounded-[2.5rem] border-0 shadow-2xl p-10 max-w-lg bg-white">
                     <AlertDialogHeader>
-                        <div className="h-20 w-20 rounded-[2rem] bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-100 mb-8 shadow-inner transform rotate-3">
+                        <div className="h-20 w-20 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-100 mb-8 shadow-inner transform rotate-3">
                             <ShieldCheck className="h-10 w-10" />
                         </div>
                         <AlertDialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-tight leading-tight">Confirm Parameter Sync</AlertDialogTitle>
@@ -371,7 +371,7 @@ function InputField({ label, required, value, onChange, type = "text", icon }: {
                     type={type}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    className="h-14 rounded-2xl border-gray-100 bg-white focus-visible:ring-4 focus-visible:ring-indigo-500/10 focus-visible:border-indigo-500 transition-all font-bold text-sm px-6 shadow-sm"
+                    className="h-14 rounded-lg border-gray-100 bg-white focus-visible:ring-4 focus-visible:ring-indigo-500/10 focus-visible:border-indigo-500 transition-all font-bold text-sm px-6 shadow-sm"
                     placeholder={`Enter ${label.toLowerCase()}...`}
                 />
             </div>

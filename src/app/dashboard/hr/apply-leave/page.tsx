@@ -363,7 +363,7 @@ export default function ApplyLeavePage() {
                         size="icon"
                         disabled={page === 1}
                         onClick={() => setPage(page - 1)}
-                        className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                        className="h-8 w-8 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
                     >
                         <ChevronLeft className="h-4 w-4 text-gray-600" />
                     </Button>
@@ -374,7 +374,7 @@ export default function ApplyLeavePage() {
                             variant={page === i + 1 ? "gradient" : "outline"}
                             onClick={() => setPage(i + 1)}
                             className={cn(
-                                "h-8 w-8 rounded-xl text-[10px] font-bold p-0 transition-all",
+                                "h-8 w-8 rounded-lg text-[10px] font-bold p-0 transition-all",
                                 page === i + 1 ? "shadow-md scale-105" : "border-gray-100 text-gray-400 hover:text-indigo-600"
                             )}
                         >
@@ -387,7 +387,7 @@ export default function ApplyLeavePage() {
                         size="icon"
                         disabled={page === (meta?.last_page || 1) || !meta}
                         onClick={() => setPage(page + 1)}
-                        className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                        className="h-8 w-8 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
                     >
                         <ChevronRight className="h-4 w-4 text-gray-600" />
                     </Button>
@@ -396,7 +396,7 @@ export default function ApplyLeavePage() {
 
             {/* Add Leave Request Modal */}
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogContent className="sm:max-w-[700px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-xl">
+                <DialogContent className="sm:max-w-[700px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-lg">
                     <DialogHeader className="bg-gradient-to-r from-orange-400 to-indigo-500 p-4 text-white">
                         <DialogTitle className="text-sm font-bold uppercase tracking-wider">Apply Leave Request</DialogTitle>
                     </DialogHeader>
@@ -477,7 +477,7 @@ export default function ApplyLeavePage() {
                         <div className="grid grid-cols-2 gap-5 pt-2 border-t border-gray-100">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase">Attach Document</Label>
-                                <label className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:bg-indigo-50/30 hover:border-indigo-200 transition-all flex flex-col items-center justify-center gap-2">
+                                <label className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:bg-indigo-50/30 hover:border-indigo-200 transition-all flex flex-col items-center justify-center gap-2">
                                     <span className="text-[10px] text-gray-400 font-medium">☁️ DRAG AND DROP OR CLICK TO UPLOAD</span>
                                     <input type="file" className="hidden" />
                                 </label>
@@ -507,7 +507,7 @@ export default function ApplyLeavePage() {
 
             {/* View Details Modal */}
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <DialogContent className="sm:max-w-[450px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-xl">
+                <DialogContent className="sm:max-w-[450px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-lg">
                     <DialogHeader className="bg-gradient-to-r from-orange-400 to-indigo-500 p-4 text-white">
                         <DialogTitle className="text-sm font-bold uppercase tracking-wider">Leave Request Details</DialogTitle>
                     </DialogHeader>
@@ -552,14 +552,14 @@ export default function ApplyLeavePage() {
                             </div>
                             <div className="pt-4 border-t border-gray-100">
                                 <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest mb-2">Reason</span>
-                                <div className="text-[12px] text-gray-700 bg-gray-50 p-4 rounded-xl min-h-20 border border-gray-100 leading-relaxed italic shadow-inner">
+                                <div className="text-[12px] text-gray-700 bg-gray-50 p-4 rounded-lg min-h-20 border border-gray-100 leading-relaxed italic shadow-inner">
                                     {selectedRequest.reason || 'No reason provided.'}
                                 </div>
                             </div>
                             {selectedRequest.adminRemark && (
                                 <div className="pt-4 border-t border-gray-100">
                                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest mb-2">Admin Remark</span>
-                                    <div className="text-[12px] text-gray-700 bg-indigo-50/30 p-4 rounded-xl min-h-20 border border-indigo-100/50 leading-relaxed shadow-inner">
+                                    <div className="text-[12px] text-gray-700 bg-indigo-50/30 p-4 rounded-lg min-h-20 border border-indigo-100/50 leading-relaxed shadow-inner">
                                         {selectedRequest.adminRemark}
                                     </div>
                                 </div>

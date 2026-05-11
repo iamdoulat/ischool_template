@@ -206,7 +206,7 @@ export default function MultiClassStudentPage() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-3 bg-primary/10 rounded-2xl">
+                    <div className="p-3 bg-primary/10 rounded-lg">
                         <UserCircle className="h-6 w-6 text-primary" />
                     </div>
                     <div>
@@ -216,7 +216,7 @@ export default function MultiClassStudentPage() {
                 </div>
                 <Button 
                     variant="gradient" 
-                    className="h-12 px-6 rounded-2xl shadow-lg shadow-primary/20 font-bold"
+                    className="h-12 px-6 rounded-lg shadow-lg shadow-primary/20 font-bold"
                     onClick={() => setIsAddDialogOpen(true)}
                 >
                     <Plus className="h-5 w-5 mr-2" /> Add Multi-Class Enrollment
@@ -236,7 +236,7 @@ export default function MultiClassStudentPage() {
                             </label>
                             <div className="relative">
                                 <select
-                                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     value={selectedClass}
                                     onChange={(e) => setSelectedClass(e.target.value)}
                                 >
@@ -253,7 +253,7 @@ export default function MultiClassStudentPage() {
                             </label>
                             <div className="relative">
                                 <select
-                                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     value={selectedSection}
                                     onChange={(e) => setSelectedSection(e.target.value)}
                                 >
@@ -275,7 +275,7 @@ export default function MultiClassStudentPage() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <Button variant="gradient" className="h-11 px-8 rounded-xl" onClick={() => { setCurrentPage(1); fetchRecords(); }} disabled={loading}>
+                        <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => { setCurrentPage(1); fetchRecords(); }} disabled={loading}>
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
                         </Button>
                     </div>
@@ -415,7 +415,7 @@ export default function MultiClassStudentPage() {
                     </CardContent>
                 </Card>
             ) : !loading && (
-                <div className="px-6 py-4 bg-red-100/80 border border-red-200 rounded-xl text-red-600 font-bold text-sm shadow-sm flex items-center gap-3 animate-in slide-in-from-top-2">
+                <div className="px-6 py-4 bg-red-100/80 border border-red-200 rounded-lg text-red-600 font-bold text-sm shadow-sm flex items-center gap-3 animate-in slide-in-from-top-2">
                     <AlertCircle className="h-5 w-5 opacity-80" />
                     No Record Found
                 </div>
@@ -429,10 +429,10 @@ export default function MultiClassStudentPage() {
 
             {/* Add Enrollment Dialog */}
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-3xl border-none shadow-2xl">
+                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-lg border-none shadow-2xl">
                     <DialogHeader className="p-8 bg-primary/5 border-b border-primary/10 relative">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-primary text-white rounded-2xl shadow-lg">
+                            <div className="p-3 bg-primary text-white rounded-lg shadow-lg">
                                 <Plus className="h-6 w-6" />
                             </div>
                             <div>
@@ -458,14 +458,14 @@ export default function MultiClassStudentPage() {
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                             <Input
                                                 placeholder="Filter students by name or admission no..."
-                                                className="pl-10 h-11 rounded-xl bg-muted/30 border-muted/50 focus:bg-white"
+                                                className="pl-10 h-11 rounded-lg bg-muted/30 border-muted/50 focus:bg-white"
                                                 value={studentSearch}
                                                 onChange={(e) => setStudentSearch(e.target.value)}
                                             />
                                         </div>
                                         <div className="relative">
                                             <select
-                                                className="flex h-12 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                                className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                                 value={addFormData.user_id}
                                                 onChange={(e) => setAddFormData({ ...addFormData, user_id: e.target.value })}
                                                 required
@@ -495,7 +495,7 @@ export default function MultiClassStudentPage() {
                                         </label>
                                         <div className="relative">
                                             <select
-                                                className="flex h-12 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                                className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                                 value={addFormData.school_class_id}
                                                 onChange={(e) => setAddFormData({ ...addFormData, school_class_id: e.target.value })}
                                                 required
@@ -513,7 +513,7 @@ export default function MultiClassStudentPage() {
                                         </label>
                                         <div className="relative">
                                             <select
-                                                className="flex h-12 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                                className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                                 value={addFormData.section_id}
                                                 onChange={(e) => setAddFormData({ ...addFormData, section_id: e.target.value })}
                                                 required
@@ -532,7 +532,7 @@ export default function MultiClassStudentPage() {
                             <Button 
                                 type="button" 
                                 variant="outline" 
-                                className="flex-1 h-12 rounded-2xl font-bold border-muted/50" 
+                                className="flex-1 h-12 rounded-lg font-bold border-muted/50" 
                                 onClick={() => setIsAddDialogOpen(false)}
                             >
                                 Cancel
@@ -540,7 +540,7 @@ export default function MultiClassStudentPage() {
                             <Button 
                                 type="submit" 
                                 variant="gradient" 
-                                className="flex-1 h-12 rounded-2xl font-bold shadow-lg shadow-primary/20"
+                                className="flex-1 h-12 rounded-lg font-bold shadow-lg shadow-primary/20"
                                 disabled={loading}
                             >
                                 {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Plus className="h-5 w-5 mr-2" />}
@@ -568,7 +568,7 @@ function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () =>
         <button
             onClick={onClick}
             title={title}
-            className="p-2.5 hover:bg-card hover:text-primary rounded-xl transition-all border border-muted/50 bg-muted/10 text-muted-foreground shadow-sm active:scale-95 group"
+            className="p-2.5 hover:bg-card hover:text-primary rounded-lg transition-all border border-muted/50 bg-muted/10 text-muted-foreground shadow-sm active:scale-95 group"
         >
             <Icon className="h-4 w-4 group-hover:scale-110 transition-transform" />
         </button>

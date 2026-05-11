@@ -132,7 +132,7 @@ export default function AddonsPage() {
                                     {addon.icon}
                                 </div>
                             </div>
-                            <span className="text-[10px] text-gray-500 font-medium">Version {addon.version}</span>
+                            <span className="text-[12px] text-gray-500 font-medium">Version {addon.version}</span>
                         </div>
 
                         {/* Content Area */}

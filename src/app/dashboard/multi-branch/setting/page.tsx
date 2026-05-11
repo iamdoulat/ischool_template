@@ -159,7 +159,7 @@ export default function SettingPage() {
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-6 py-4 border-b border-muted/50 flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
                             <Globe className="h-5 w-5" />
                         </div>
                         <div>
@@ -183,16 +183,16 @@ export default function SettingPage() {
                                 placeholder="Filter institutional nodes..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11 rounded-xl bg-white border-muted/50 focus-visible:ring-indigo-500/20 text-[10px] font-bold uppercase tracking-[0.2em] shadow-none"
+                                className="pl-10 h-11 rounded-lg bg-white border-muted/50 focus-visible:ring-indigo-500/20 text-[10px] font-bold uppercase tracking-[0.2em] shadow-none"
                             />
                         </div>
                         <div className="flex items-center gap-4 ml-auto">
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-2">Page Density:</span>
                             <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                                <SelectTrigger className="h-10 w-24 text-[10px] font-bold bg-white border-muted/50 rounded-xl uppercase tracking-widest">
+                                <SelectTrigger className="h-10 w-24 text-[10px] font-bold bg-white border-muted/50 rounded-lg uppercase tracking-widest">
                                     <SelectValue placeholder="50" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-xl border-gray-100">
+                                <SelectContent className="rounded-lg border-gray-100">
                                     <SelectItem value="10">10 Rows</SelectItem>
                                     <SelectItem value="25">25 Rows</SelectItem>
                                     <SelectItem value="50">50 Rows</SelectItem>
@@ -291,11 +291,11 @@ export default function SettingPage() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="rounded-[2rem] border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white">
+                <DialogContent className="rounded-lg border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white">
                     <div className="bg-indigo-500/5 p-8 border-b border-indigo-100 flex items-center justify-between">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-black text-gray-800 uppercase tracking-[0.2em] flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                                <div className="h-10 w-10 rounded-lg bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
                                     <Building2 className="h-5 w-5" />
                                 </div>
                                 {editMode ? "Modify Node" : "Index New Node"}
@@ -310,7 +310,7 @@ export default function SettingPage() {
                                 value={formData.branch_name}
                                 onChange={(e) => setFormData({...formData, branch_name: e.target.value})}
                                 placeholder="e.g. Smart School - Campus Alpha"
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight px-6" 
+                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight px-6" 
                             />
                         </div>
 
@@ -321,7 +321,7 @@ export default function SettingPage() {
                                     value={formData.branch_url}
                                     onChange={(e) => setFormData({...formData, branch_url: e.target.value})}
                                     placeholder="https://campus-alpha.ischool.io"
-                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-indigo-500 shadow-none px-6 text-sm font-bold tracking-tight pr-12" 
+                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-indigo-500 shadow-none px-6 text-sm font-bold tracking-tight pr-12" 
                                 />
                                 <Link className="absolute right-5 top-4.5 h-5 w-5 text-gray-300" />
                             </div>
@@ -349,7 +349,7 @@ export default function SettingPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="rounded-[2.5rem] border-0 shadow-2xl p-10">
                     <AlertDialogHeader>
-                        <div className="h-16 w-16 rounded-3xl bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 mb-6 shadow-inner">
+                        <div className="h-16 w-16 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 mb-6 shadow-inner">
                             <ShieldCheck className="h-8 w-8 text-rose-400/50" />
                         </div>
                         <AlertDialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-tight">Expunge Institutional Node</AlertDialogTitle>

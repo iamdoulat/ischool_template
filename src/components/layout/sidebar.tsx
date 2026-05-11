@@ -58,6 +58,21 @@ import {
 import { useSettings } from "@/components/providers/settings-provider";
 import { useTranslation } from "@/hooks/use-translation";
 import { ThemeToggle } from "./theme-toggle";
+ 
+const formatLabel = (name: string) => {
+    return name
+        .split('_')
+        .map(word => {
+            const lowerWord = word.toLowerCase();
+            if (lowerWord === 'sms') return 'SMS';
+            if (lowerWord === 'cv') return 'CV';
+            if (lowerWord === 'qr') return 'QR';
+            if (lowerWord === 'cms') return 'CMS';
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ')
+        .replace(/\bSetting\b/g, 'Settings');
+};
 
 const menuItems = [
     {
@@ -664,22 +679,24 @@ export function Sidebar({
         if (fetchingSidebar || sidebarConfig.length === 0) {
             return menuItems; // Fallback during loading or if empty
         }
-
+ 
         // Create a map for quick lookup
         const configMap = new Map(sidebarConfig.map(c => [c.name, c]));
-
+ 
         return menuItems.map(group => {
             const filteredItems = group.items
-                .filter(item => {
+                .map(item => {
                     const config = configMap.get(item.name);
-                    return config ? config.is_visible : true; // Default to visible if not found (unexpected)
+                    return {
+                        ...item,
+                        label: config?.label,
+                        is_visible: config ? config.is_visible : true,
+                        sort_order: config?.sort_order ?? 0
+                    };
                 })
-                .sort((a, b) => {
-                    const configA = configMap.get(a.name);
-                    const configB = configMap.get(b.name);
-                    return (configA?.sort_order ?? 0) - (configB?.sort_order ?? 0);
-                });
-
+                .filter(item => item.is_visible)
+                .sort((a, b) => a.sort_order - b.sort_order);
+ 
             return { ...group, items: filteredItems };
         }).filter(group => group.items.length > 0);
     }, [sidebarConfig, fetchingSidebar]);
@@ -808,7 +825,9 @@ export function Sidebar({
                                                 </div>
                                                 {!collapsed && (
                                                     <>
-                                                        <span className="flex-1 text-left">{t(item.name)}</span>
+                                                        <span className="flex-1 text-left">
+                                                            {item.label || (t(item.name) !== item.name ? t(item.name) : formatLabel(item.name))}
+                                                        </span>
                                                         {item.submenus && item.submenus.length > 0 ? (
                                                             <ChevronRight className={cn(
                                                                 "h-3.5 w-3.5 transition-transform duration-300",
@@ -839,7 +858,9 @@ export function Sidebar({
                                                     >
                                                         <div className="space-y-1">
                                                             <div className="px-3 py-2 border-b border-muted/20 mb-1">
-                                                                <p className={cn("text-xs font-bold uppercase tracking-widest", colors.icon)}>{t(item.name)}</p>
+                                                                <p className={cn("text-xs font-bold uppercase tracking-widest", colors.icon)}>
+                                                                    {item.label || (t(item.name) !== item.name ? t(item.name) : formatLabel(item.name))}
+                                                                </p>
                                                             </div>
                                                             <Link
                                                                 href={item.href}
@@ -869,7 +890,7 @@ export function Sidebar({
                                                                                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                                                                             )}
                                                                         >
-                                                                            {submenu.name === "period_attendance" ? "Attendance by Subject" : t(submenu.name)}
+                                                                            {submenu.name === "period_attendance" ? "Attendance by Subject" : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name))}
                                                                         </Link>
                                                                     ))}
                                                                 </div>
@@ -904,7 +925,9 @@ export function Sidebar({
                                                                         isItemActive ? "text-white" : "transition-colors"
                                                                     )} />
                                                                 </div>
-                                                                <span className="flex-1 text-left">{t(item.name)}</span>
+                                                                <span className="flex-1 text-left">
+                                                            {item.label || (t(item.name) !== item.name ? t(item.name) : formatLabel(item.name))}
+                                                        </span>
                                                             </div>
                                                         </AccordionTrigger>
                                                         <AccordionContent className="pb-2 pt-1 pl-4 pr-1">
@@ -925,7 +948,7 @@ export function Sidebar({
                                                                                     : "text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
                                                                             )}
                                                                         >
-                                                                            <span className="flex-1">{submenu.name === "period_attendance" ? "Attendance by Subject" : t(submenu.name)}</span>
+                                                                            <span className="flex-1">{submenu.name === "period_attendance" ? "Attendance by Subject" : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name))}</span>
                                                                             {isSubActive && (
                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-in fade-in zoom-in duration-300 ml-2" />
                                                                             )}
@@ -949,14 +972,14 @@ export function Sidebar({
 
 
                 <div className={cn(
-                    "mt-auto border-t bg-muted/5 backdrop-blur-sm group hover:bg-muted/10 transition-all h-14 min-h-[56px]",
+                    "border-t bg-card/80 backdrop-blur-md group hover:bg-muted/10 transition-all h-14 min-h-[56px] flex-shrink-0 z-20",
                     collapsed ? "px-4 flex justify-center items-center" : "px-4 flex justify-between items-center"
                 )}>
-                    {mounted && (collapsed ? (
+                    {mounted ? (collapsed ? (
                         <Popover>
                             <PopoverTrigger asChild>
-                                <div className="h-8 w-8 rounded-xl border border-muted/50 cursor-pointer flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary transition-all shadow-sm">
-                                    <Settings className="h-4 w-4" />
+                                <div className="h-10 w-10 rounded-xl border border-muted/50 cursor-pointer flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary transition-all shadow-sm">
+                                    <Settings className="h-5 w-5" />
                                 </div>
                             </PopoverTrigger>
                             <PopoverContent side="right" align="end" className="w-56 p-2 rounded-xl shadow-xl">
@@ -995,8 +1018,8 @@ export function Sidebar({
                             </div>
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <div className="h-8 w-8 rounded-xl border border-muted/50 cursor-pointer flex items-center justify-center text-muted-foreground bg-card group-hover:text-primary group-hover:border-primary group-hover:shadow-lg transition-all duration-300">
-                                        <Settings className="h-4 w-4" />
+                                    <div className="h-9 w-9 rounded-xl border border-muted/50 cursor-pointer flex items-center justify-center text-muted-foreground bg-background group-hover:text-primary group-hover:border-primary group-hover:shadow-lg transition-all duration-300">
+                                        <Settings className="h-5 w-5" />
                                     </div>
                                 </PopoverTrigger>
                                 <PopoverContent side="top" align="end" className="w-56 p-2 rounded-xl shadow-xl border-none">
@@ -1026,7 +1049,9 @@ export function Sidebar({
                                 </PopoverContent>
                             </Popover>
                         </>
-                    ))}
+                    )) : (
+                        <div className="h-9 w-full bg-muted/20 animate-pulse rounded-lg" />
+                    )}
                 </div>
             </aside >
         </>

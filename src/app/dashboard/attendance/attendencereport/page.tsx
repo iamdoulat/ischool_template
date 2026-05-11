@@ -182,7 +182,8 @@ export default function AttendanceReportPage() {
                     <Button 
                         onClick={handleSearch}
                         disabled={loading}
-                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
+                        variant="gradient"
+                        className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
                     >
                         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                         Search
@@ -192,7 +193,7 @@ export default function AttendanceReportPage() {
 
             {/* Attendance Report Section */}
             {hasSearched && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div className="flex justify-between items-center border-b border-gray-50 pb-3">
                         <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-tight flex items-center gap-2">
                             <UserCheck className="h-4 w-4 text-indigo-500" />

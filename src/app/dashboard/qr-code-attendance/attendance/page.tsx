@@ -71,9 +71,9 @@ export default function QrCodeAttendancePage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                    <div className="h-12 w-12 rounded-lg bg-indigo-50 flex items-center justify-center">
                         <Scan className="h-6 w-6 text-indigo-500" />
                     </div>
                     <div>
@@ -113,7 +113,7 @@ export default function QrCodeAttendancePage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-[600px]">
                 {/* Scanner Section */}
-                <div className="lg:col-span-7 bg-white rounded-3xl border border-gray-100 shadow-xl shadow-indigo-100/20 overflow-hidden flex flex-col relative">
+                <div className="lg:col-span-7 bg-white rounded-lg border border-gray-100 shadow-xl shadow-indigo-100/20 overflow-hidden flex flex-col relative">
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500/10 overflow-hidden">
                         <div className={cn("h-full bg-indigo-500 transition-all duration-300", processing ? "w-full animate-pulse" : "w-0")} />
                     </div>
@@ -127,7 +127,7 @@ export default function QrCodeAttendancePage() {
                                 </div>
 
                                 <div className="relative group">
-                                    <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
+                                    <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
                                     <Input
                                         ref={inputRef}
                                         value={scanValue}
@@ -136,7 +136,7 @@ export default function QrCodeAttendancePage() {
                                             if (e.key === 'Enter') handleScan(scanValue);
                                         }}
                                         placeholder="INITIALIZING PERIPHERAL..."
-                                        className="relative h-16 text-center text-xl font-bold tracking-widest border-none bg-white rounded-2xl shadow-inner focus-visible:ring-0 uppercase"
+                                        className="relative h-16 text-center text-xl font-bold tracking-widest border-none bg-white rounded-lg shadow-inner focus-visible:ring-0 uppercase"
                                         autoFocus
                                     />
                                 </div>
@@ -147,7 +147,7 @@ export default function QrCodeAttendancePage() {
                             </div>
                         ) : (
                             <div className="w-full max-w-lg space-y-8">
-                                <div className="relative aspect-video bg-gray-900 rounded-3xl overflow-hidden border-4 border-gray-100 shadow-2xl">
+                                <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden border-4 border-gray-100 shadow-2xl">
                                     {/* Camera Placeholder */}
                                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white space-y-4">
                                         <div className="relative">
@@ -190,7 +190,7 @@ export default function QrCodeAttendancePage() {
                 <div className="lg:col-span-5 flex flex-col gap-6">
                     {/* User Card */}
                     <div className={cn(
-                        "flex-1 rounded-3xl border transition-all duration-500 flex flex-col p-10 items-center justify-center relative overflow-hidden",
+                        "flex-1 rounded-lg border transition-all duration-500 flex flex-col p-10 items-center justify-center relative overflow-hidden",
                         lastUser ? "bg-emerald-50 border-emerald-100 shadow-xl shadow-emerald-100/30" : "bg-white border-gray-100 shadow-lg shadow-gray-100/50"
                     )}>
                         {!lastUser && !error ? (
@@ -227,7 +227,7 @@ export default function QrCodeAttendancePage() {
 
                                 <div className="flex flex-col items-center text-center space-y-4">
                                     <div className="relative">
-                                        <div className="h-32 w-32 rounded-3xl bg-white border-4 border-emerald-200 shadow-xl overflow-hidden flex items-center justify-center">
+                                        <div className="h-32 w-32 rounded-lg bg-white border-4 border-emerald-200 shadow-xl overflow-hidden flex items-center justify-center">
                                             {lastUser.photo ? (
                                                 <img src={lastUser.photo} alt="Profile" className="w-full h-full object-cover" />
                                             ) : (
@@ -248,7 +248,7 @@ export default function QrCodeAttendancePage() {
                                     </div>
                                 </div>
 
-                                <div className="bg-white/60 p-6 rounded-2xl border border-emerald-100 flex justify-between items-center">
+                                <div className="bg-white/60 p-6 rounded-lg border border-emerald-100 flex justify-between items-center">
                                     <div className="space-y-1">
                                         <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Timestamp</p>
                                         <p className="text-xl font-black text-emerald-800 tracking-tight">{lastUser.time}</p>
@@ -263,10 +263,10 @@ export default function QrCodeAttendancePage() {
                     </div>
 
                     {/* Stats Widget */}
-                    <div className="bg-gray-900 rounded-3xl p-8 flex items-center justify-between group overflow-hidden relative">
+                    <div className="bg-gray-900 rounded-lg p-8 flex items-center justify-between group overflow-hidden relative">
                         <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         <div className="relative z-10 flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center text-white border border-white/10">
+                            <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center text-white border border-white/10">
                                 <Zap className="h-5 w-5 fill-white" />
                             </div>
                             <div className="space-y-0.5">
@@ -296,7 +296,7 @@ export default function QrCodeAttendancePage() {
 function MockIdCardIcon({ active }: { active?: boolean }) {
     return (
         <div className={cn(
-            "relative w-64 h-44 border-4 border-gray-800 rounded-2xl flex flex-col items-center justify-center bg-white transition-all duration-500",
+            "relative w-64 h-44 border-4 border-gray-800 rounded-lg flex flex-col items-center justify-center bg-white transition-all duration-500",
             active ? "scale-105 shadow-2xl shadow-indigo-100" : ""
         )}>
             {/* Lanyard Clip */}

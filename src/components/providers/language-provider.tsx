@@ -76,7 +76,41 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     };
 
     const t = (key: string): string => {
-        return translations[key] || key;
+        if (translations[key]) return translations[key];
+
+        // Built-in English fallbacks — shown when no translation file is loaded
+        const fallbacks: Record<string, string> = {
+            // General
+            name: "Name",
+            save: "Save",
+            cancel: "Cancel",
+            edit: "Edit",
+            delete: "Delete",
+            search: "Search",
+            active: "Active",
+            status: "Status",
+            action: "Action",
+            add: "Add",
+            // Languages page
+            language_list: "Language List",
+            language: "Language",
+            short_code: "Short Code",
+            country_code: "Country Code",
+            is_rtl: "RTL",
+            add_language: "Add Language",
+            search_languages: "Search languages...",
+            // Notifications
+            notification_settings: "Notification Settings",
+            // Sessions
+            session_settings: "Session Settings",
+            // WhatsApp / SMS
+            whatsapp_messaging: "WhatsApp Messaging",
+            // Common table labels
+            no_records: "No records found",
+            loading: "Loading...",
+        };
+
+        return fallbacks[key] ?? key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     };
 
     return (

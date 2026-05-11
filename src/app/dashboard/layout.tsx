@@ -75,7 +75,7 @@ function DashboardLayoutContent({
                 mobileOpen={isMobileOpen}
                 onClose={() => setIsMobileOpen(false)}
             />
-            <div className="flex flex-col flex-1 w-full h-full min-h-0 overflow-hidden shadow-2xl relative">
+            <div className="flex flex-col flex-1 h-screen min-h-0 overflow-hidden shadow-2xl relative">
                 <Header onToggleSidebar={toggleSidebar} />
                 <main className={cn(
                     "flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8",
@@ -83,13 +83,13 @@ function DashboardLayoutContent({
                 )}>
                     {children}
                 </main>
-                <footer className="border-t bg-card h-14 min-h-[56px] flex items-center justify-between px-4 md:px-8 z-20">
+                <footer className="h-14 flex-shrink-0 border-t bg-background flex items-center justify-between px-4 md:px-8 z-20">
                     <div className="flex items-center gap-4 hidden md:flex">
                         <p className="text-[12px] text-muted-foreground/60 font-medium">
-                            Version 5.1.0
+                            Version {settings?.app_version || "5.1.0"}
                         </p>
                     </div>
-                    <p className="text-[15px] text-muted-foreground">
+                    <p className="text-[12px] text-muted-foreground font-medium">
                         © 2026 {loading ? "" : (settings?.school_name || "Smart School")}. All rights reserved.
                     </p>
                 </footer>

@@ -616,41 +616,39 @@ export default function StudentInformationReportPage() {
             <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Student Information Report</h1>
 
             {/* Report Links Grid */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {reportLinks.map((col, idx) => (
-                        <div key={idx} className="space-y-1">
-                            {col.group.map((link) => {
-                                const isActive = activeReportTab === link.name;
-                                return (
-                                    <div
-                                        key={link.name}
-                                        onClick={() => {
-                                            if (link.name === "Student Report" || link.name === "Class & Section Report" || link.name === "Guardian Report" || link.name === "Student History" || link.name === "Student Login Credential" || link.name === "Parent Login Credential" || link.name === "Class Subject Report" || link.name === "Admission Report" || link.name === "Sibling Report" || link.name === "Student Profile" || link.name === "Student Gender Ratio Report" || link.name === "Student Teacher Ratio Report" || link.name === "Online Admission Report") {
-                                                setActiveReportTab(link.name);
-                                            } else {
-                                                toast({
-                                                    title: "Navigating",
-                                                    description: `Opening ${link.name}...`,
-                                                });
-                                            }
-                                        }}
-                                        className={cn(
-                                            "flex items-center gap-2 p-1.5 rounded cursor-pointer transition-colors group border",
-                                            isActive ? "bg-gray-100 border-gray-200 shadow-sm" : "border-transparent hover:bg-gray-50"
-                                        )}
-                                    >
-                                        <link.icon className={cn("h-3.5 w-3.5", isActive ? "text-gray-700" : "text-gray-400 group-hover:text-gray-600")} />
-                                        <span className={cn("text-[10px] font-medium tracking-tight", isActive ? "text-gray-800" : "text-gray-500 group-hover:text-gray-700")}>
-                                            {link.name}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ))}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {reportLinks.flatMap(col => col.group).map((link) => {
+                        const isActive = activeReportTab === link.name;
+                        return (
+                            <div 
+                                key={link.name}
+                                onClick={() => setActiveReportTab(link.name)}
+                                className={cn(
+                                    "flex items-center gap-3 p-3 px-4 rounded-lg border transition-all duration-300 cursor-pointer group relative overflow-hidden",
+                                    isActive 
+                                        ? "bg-white border-gray-300 shadow-[0_10px_25px_rgba(0,0,0,0.08)] ring-1 ring-gray-400/10 -translate-y-0.5" 
+                                        : "bg-white border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] hover:border-gray-200 hover:-translate-y-0.5"
+                                )}
+                            >
+                                <div className={cn(
+                                    "p-2 rounded-lg transition-all duration-300",
+                                    isActive ? "bg-gray-100 text-gray-900 shadow-inner" : "bg-gray-50 text-gray-400 group-hover:bg-gray-100 group-hover:text-gray-600"
+                                )}>
+                                    <link.icon className="h-4 w-4" />
+                                </div>
+                                <span className={cn(
+                                    "text-[10px] font-bold tracking-tight uppercase transition-colors duration-300",
+                                    isActive ? "text-gray-900" : "text-gray-500 group-hover:text-gray-700"
+                                )}>
+                                    {link.name}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
+
 
             {activeReportTab === "Student Report" && (
                 <>
@@ -732,7 +730,12 @@ export default function StudentInformationReportPage() {
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button onClick={() => handleSearch(1)} disabled={loading} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2">
+                            <Button 
+                                onClick={() => handleSearch(1)} 
+                                disabled={loading} 
+                                variant="gradient"
+                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                            >
                                 <Search className="h-4 w-4" />
                                 Search
                             </Button>
@@ -827,7 +830,7 @@ export default function StudentInformationReportPage() {
                                 <Button 
                                     variant="outline" 
                                     size="icon" 
-                                    className="h-8 w-8 rounded-xl border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
+                                    className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
                                     onClick={() => handleSearch(Math.max(1, currentPage - 1))}
                                     disabled={currentPage === 1 || loading}
                                 >
@@ -836,13 +839,7 @@ export default function StudentInformationReportPage() {
                                 {Array.from({ length: totalPages }).map((_, i) => (
                                     <Button
                                         key={i}
-                                        variant={currentPage === i + 1 ? "default" : "outline"}
-                                        className={cn(
-                                            "h-8 min-w-[32px] rounded-xl text-xs font-bold transition-all shadow-sm",
-                                            currentPage === i + 1 
-                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-indigo-500/30 border-0" 
-                                                : "bg-white border-gray-100 text-gray-500 hover:text-gray-700"
-                                        )}
+                                        variant={currentPage === i + 1 ? "pagination-active" : "pagination-inactive"}
                                         onClick={() => handleSearch(i + 1)}
                                         disabled={loading}
                                     >
@@ -852,7 +849,7 @@ export default function StudentInformationReportPage() {
                                 <Button 
                                     variant="outline" 
                                     size="icon" 
-                                    className="h-8 w-8 rounded-xl border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
+                                    className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
                                     onClick={() => handleSearch(Math.min(totalPages, currentPage + 1))}
                                     disabled={currentPage === totalPages || totalPages === 0 || loading}
                                 >
@@ -981,7 +978,12 @@ export default function StudentInformationReportPage() {
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button onClick={() => handleGuardianSearch(1)} disabled={guardianLoading} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2">
+                            <Button 
+                                onClick={() => handleGuardianSearch(1)} 
+                                disabled={guardianLoading} 
+                                variant="gradient"
+                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                            >
                                 <Search className="h-4 w-4" />
                                 Search
                             </Button>
@@ -1091,7 +1093,7 @@ export default function StudentInformationReportPage() {
                                 <Button 
                                     variant="outline" 
                                     size="icon" 
-                                    className="h-8 w-8 rounded-xl border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
+                                    className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
                                     onClick={() => handleGuardianSearch(Math.max(1, guardianCurrentPage - 1))}
                                     disabled={guardianCurrentPage === 1 || guardianLoading}
                                 >
@@ -1100,13 +1102,7 @@ export default function StudentInformationReportPage() {
                                 {Array.from({ length: guardianTotalPages }).map((_, i) => (
                                     <Button
                                         key={i}
-                                        variant={guardianCurrentPage === i + 1 ? "default" : "outline"}
-                                        className={cn(
-                                            "h-8 min-w-[32px] rounded-xl text-xs font-bold transition-all shadow-sm",
-                                            guardianCurrentPage === i + 1 
-                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-indigo-500/30 border-0" 
-                                                : "bg-white border-gray-100 text-gray-500 hover:text-gray-700"
-                                        )}
+                                        variant={guardianCurrentPage === i + 1 ? "pagination-active" : "pagination-inactive"}
                                         onClick={() => handleGuardianSearch(i + 1)}
                                         disabled={guardianLoading}
                                     >
@@ -1116,7 +1112,7 @@ export default function StudentInformationReportPage() {
                                 <Button 
                                     variant="outline" 
                                     size="icon" 
-                                    className="h-8 w-8 rounded-xl border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
+                                    className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
                                     onClick={() => handleGuardianSearch(Math.min(guardianTotalPages, guardianCurrentPage + 1))}
                                     disabled={guardianCurrentPage === guardianTotalPages || guardianTotalPages === 0 || guardianLoading}
                                 >
@@ -1165,7 +1161,12 @@ export default function StudentInformationReportPage() {
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button onClick={handleHistorySearch} disabled={historyLoading} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2">
+                            <Button 
+                                onClick={handleHistorySearch} 
+                                disabled={historyLoading} 
+                                variant="gradient"
+                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                            >
                                 <Search className="h-4 w-4" />
                                 Search
                             </Button>
@@ -1272,7 +1273,12 @@ export default function StudentInformationReportPage() {
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button onClick={handleCredentialSearch} disabled={credentialLoading} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2">
+                            <Button 
+                                onClick={handleCredentialSearch} 
+                                disabled={credentialLoading} 
+                                variant="gradient"
+                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                            >
                                 <Search className="h-4 w-4" />
                                 Search
                             </Button>
@@ -1367,7 +1373,12 @@ export default function StudentInformationReportPage() {
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button onClick={handleParentCredentialSearch} disabled={parentCredentialLoading} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2">
+                            <Button 
+                                onClick={handleParentCredentialSearch} 
+                                disabled={parentCredentialLoading} 
+                                variant="gradient"
+                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                            >
                                 <Search className="h-4 w-4" />
                                 Search
                             </Button>
@@ -1462,7 +1473,12 @@ export default function StudentInformationReportPage() {
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button onClick={handleClassSubjectSearch} disabled={classSubjectLoading} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2">
+                            <Button 
+                                onClick={handleClassSubjectSearch} 
+                                disabled={classSubjectLoading} 
+                                variant="gradient"
+                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                            >
                                 <Search className="h-4 w-4" />
                                 Search
                             </Button>
@@ -1577,7 +1593,12 @@ export default function StudentInformationReportPage() {
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button onClick={handleAdmissionSearch} disabled={admissionLoading} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2">
+                            <Button 
+                                onClick={handleAdmissionSearch} 
+                                disabled={admissionLoading} 
+                                variant="gradient"
+                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                            >
                                 <Search className="h-4 w-4" />
                                 Search
                             </Button>
@@ -1682,7 +1703,12 @@ export default function StudentInformationReportPage() {
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button onClick={handleSiblingSearch} disabled={siblingLoading} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2">
+                            <Button 
+                                onClick={handleSiblingSearch} 
+                                disabled={siblingLoading} 
+                                variant="gradient"
+                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                            >
                                 <Search className="h-4 w-4" />
                                 Search
                             </Button>
@@ -1831,7 +1857,12 @@ export default function StudentInformationReportPage() {
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button onClick={handleProfileSearch} disabled={profileLoading} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2">
+                            <Button 
+                                onClick={handleProfileSearch} 
+                                disabled={profileLoading} 
+                                variant="gradient"
+                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                            >
                                 <Search className="h-4 w-4" />
                                 Search
                             </Button>
@@ -2170,7 +2201,12 @@ export default function StudentInformationReportPage() {
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button onClick={handleOnlineAdmissionSearch} disabled={onlineAdmissionLoading} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2">
+                            <Button 
+                                onClick={handleOnlineAdmissionSearch} 
+                                disabled={onlineAdmissionLoading} 
+                                variant="gradient"
+                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                            >
                                 <Search className="h-4 w-4" />
                                 Search
                             </Button>

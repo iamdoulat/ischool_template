@@ -66,12 +66,12 @@ export default function LiveMeetingReportPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header section */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform duration-700 text-blue-600">
                     <BarChart3 className="h-32 w-32" />
                 </div>
                 <div className="flex items-center gap-4 relative z-10">
-                    <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-500 shadow-inner">
+                    <div className="h-12 w-12 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 shadow-inner">
                         <BarChart3 className="h-6 w-6" />
                     </div>
                     <div>
@@ -92,10 +92,10 @@ export default function LiveMeetingReportPage() {
                                 placeholder="Filter records..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11 text-[11px] border-gray-100 bg-gray-50/30 rounded-xl focus:ring-blue-500 shadow-none uppercase font-bold tracking-widest"
+                                className="pl-10 h-11 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-blue-500 shadow-none uppercase font-bold tracking-widest"
                             />
                         </div>
-                        <Button className="btn-gradient text-white h-11 px-6 rounded-xl text-[10px] font-bold uppercase shadow-lg shadow-orange-200/40">
+                        <Button className="btn-gradient text-white h-11 px-6 rounded-lg text-[10px] font-bold uppercase shadow-lg shadow-orange-200/40">
                             Execute
                         </Button>
                     </div>
@@ -103,7 +103,7 @@ export default function LiveMeetingReportPage() {
                     <div className="flex items-center gap-4">
                         <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Temporal Density:</span>
                         <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                            <SelectTrigger className="w-[110px] h-10 border-gray-100 bg-gray-50/30 text-[10px] font-bold uppercase rounded-xl shadow-none">
+                            <SelectTrigger className="w-[110px] h-10 border-gray-100 bg-gray-50/30 text-[10px] font-bold uppercase rounded-lg shadow-none">
                                 <SelectValue placeholder="50" />
                             </SelectTrigger>
                             <SelectContent>
@@ -114,14 +114,14 @@ export default function LiveMeetingReportPage() {
                             </SelectContent>
                         </Select>
                         <div className="flex items-center gap-1 text-gray-400">
-                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-xl"><Copy className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-xl"><FileSpreadsheet className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-xl"><Printer className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-lg"><Copy className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-lg"><FileSpreadsheet className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-lg"><Printer className="h-4 w-4" /></Button>
                         </div>
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm overflow-x-auto">
+                <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm overflow-x-auto">
                     <Table>
                         <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-600">
                             <TableRow className="hover:bg-transparent border-gray-50">
@@ -185,7 +185,7 @@ export default function LiveMeetingReportPage() {
                                         </TableCell>
                                         <TableCell className="py-5 px-6 text-right pr-10">
                                             <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                                                <Button size="icon" className="h-9 w-9 rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-xl shadow-blue-200 transition-all">
+                                                <Button size="icon" className="h-9 w-9 rounded-lg bg-blue-500 hover:bg-blue-600 text-white shadow-xl shadow-blue-200 transition-all">
                                                     <Eye className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -204,17 +204,17 @@ export default function LiveMeetingReportPage() {
                     <div className="flex gap-2">
                         <Button 
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 rounded-xl hover:bg-blue-50 hover:text-blue-600" 
+                            variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 rounded-lg hover:bg-blue-50 hover:text-blue-600" 
                             disabled={currentPage === 1}
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <Button variant="default" size="sm" className="h-9 w-9 p-0 btn-gradient text-white border-0 rounded-xl shadow-md">
+                        <Button variant="default" size="sm" className="h-9 w-9 p-0 btn-gradient text-white border-0 rounded-lg shadow-md">
                             {currentPage}
                         </Button>
                         <Button 
                             onClick={() => setCurrentPage(p => p + 1)}
-                            variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 rounded-xl hover:bg-blue-50 hover:text-blue-600" 
+                            variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 rounded-lg hover:bg-blue-50 hover:text-blue-600" 
                             disabled={reports.length < itemsPerPage}
                         >
                             <ChevronRight className="h-4 w-4" />

@@ -310,7 +310,7 @@ export default function OnlineAdmissionPage() {
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto rounded-xl border border-muted/50 relative min-h-[200px]">
+                    <div className="overflow-x-auto rounded-lg border border-muted/50 relative min-h-[200px]">
                         {loading && (
                             <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -454,7 +454,7 @@ export default function OnlineAdmissionPage() {
 
             {/* View Dialog */}
             <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto border-none shadow-2xl rounded-2xl bg-background/95 backdrop-blur-md">
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto border-none shadow-2xl rounded-lg bg-background/95 backdrop-blur-md">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
                             <Eye className="h-5 w-5 text-indigo-500" />
@@ -465,7 +465,7 @@ export default function OnlineAdmissionPage() {
                     {selectedAdmission && (
                         <div className="space-y-6 pt-4">
                             <div className="flex justify-center mb-6">
-                                <div className="w-40 h-40 rounded-2xl bg-slate-100 border-2 border-slate-200 flex items-center justify-center overflow-hidden shadow-lg">
+                                <div className="w-40 h-40 rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center overflow-hidden shadow-lg">
                                     {selectedAdmission.student_photo ? (
                                         <img 
                                             src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${selectedAdmission.student_photo}`} 
@@ -506,7 +506,7 @@ export default function OnlineAdmissionPage() {
 
             {/* Enroll Confirmation Dialog */}
             <Dialog open={enrollDialogOpen} onOpenChange={setEnrollDialogOpen}>
-                <DialogContent className="max-w-md border-none shadow-2xl rounded-2xl bg-background/95 backdrop-blur-md">
+                <DialogContent className="max-w-md border-none shadow-2xl rounded-lg bg-background/95 backdrop-blur-md">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
                             <div className="p-2 bg-green-100 rounded-lg text-green-600">
@@ -524,14 +524,14 @@ export default function OnlineAdmissionPage() {
                         <Button 
                             variant="outline" 
                             onClick={() => setEnrollDialogOpen(false)}
-                            className="rounded-xl border-muted/50 active:scale-95 transition-all"
+                            className="rounded-lg border-muted/50 active:scale-95 transition-all"
                         >
                             Cancel
                         </Button>
                         <Button 
                             onClick={handleEnroll} 
                             disabled={submitting}
-                            className="rounded-xl bg-green-500 hover:bg-green-600 active:scale-95 transition-all shadow-lg shadow-green-500/20"
+                            className="rounded-lg bg-green-500 hover:bg-green-600 active:scale-95 transition-all shadow-lg shadow-green-500/20"
                         >
                             {submitting ? (
                                 <>

@@ -165,7 +165,7 @@ export default function OfflinePaymentPage() {
             {/* Select Criteria Card */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
+                    <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
                         <GraduationCap className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Registry Criteria</CardTitle>
@@ -180,7 +180,7 @@ export default function OfflinePaymentPage() {
                                 <select 
                                     value={selectedClass}
                                     onChange={(e) => setSelectedClass(e.target.value)}
-                                    className="flex h-14 w-full rounded-2xl border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer shadow-sm"
+                                    className="flex h-14 w-full rounded-lg border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer shadow-sm"
                                 >
                                     <option value="">Select Class Node</option>
                                     {criteria.map(cls => <option key={cls.id} value={cls.id}>{cls.name}</option>)}
@@ -196,7 +196,7 @@ export default function OfflinePaymentPage() {
                                 <select 
                                     value={selectedSection}
                                     onChange={(e) => setSelectedSection(e.target.value)}
-                                    className="flex h-14 w-full rounded-2xl border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer shadow-sm"
+                                    className="flex h-14 w-full rounded-lg border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer shadow-sm"
                                 >
                                     <option value="">Select Section Node</option>
                                     {sections.map(sec => <option key={sec.id} value={sec.id}>{sec.name}</option>)}
@@ -212,7 +212,7 @@ export default function OfflinePaymentPage() {
                                 <select 
                                     value={selectedStudent}
                                     onChange={(e) => setSelectedStudent(e.target.value)}
-                                    className="flex h-14 w-full rounded-2xl border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer shadow-sm"
+                                    className="flex h-14 w-full rounded-lg border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer shadow-sm"
                                 >
                                     <option value="">Identify Student Node</option>
                                     {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.admission_no})</option>)}
@@ -237,7 +237,7 @@ export default function OfflinePaymentPage() {
             {/* Offline Payment Card */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+                    <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
                         <BookmarkCheck className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Available Virtual Assets</CardTitle>
@@ -282,7 +282,7 @@ export default function OfflinePaymentPage() {
                                         )}>
                                             <td className="px-8 py-6">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="h-9 w-9 rounded-xl bg-indigo-500 flex items-center justify-center text-white text-[11px] font-black shadow-lg shadow-indigo-100 uppercase tracking-tighter">
+                                                    <div className="h-9 w-9 rounded-lg bg-indigo-500 flex items-center justify-center text-white text-[11px] font-black shadow-lg shadow-indigo-100 uppercase tracking-tighter">
                                                         {course.title[0]}
                                                     </div>
                                                     <span className="font-black text-slate-700 text-[11px] uppercase tracking-tight">{course.title}</span>
@@ -302,7 +302,7 @@ export default function OfflinePaymentPage() {
                                                 <Button 
                                                     onClick={() => setConfirmId(course.id)}
                                                     disabled={submitting !== null}
-                                                    className="h-10 px-8 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] gap-2 shadow-xl shadow-indigo-100 transition-all active:scale-95"
+                                                    className="h-10 px-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] gap-2 shadow-xl shadow-indigo-100 transition-all active:scale-95"
                                                 >
                                                     {submitting === course.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
                                                     Commit
@@ -321,13 +321,13 @@ export default function OfflinePaymentPage() {
                             Displaying {courses.length > 0 ? 1 : 0} to {courses.length} of {courses.length} nodal assets
                         </p>
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" size="icon" className="h-11 w-11 rounded-2xl border-muted/50 text-muted-foreground hover:bg-white transition-all shadow-sm" disabled>
+                            <Button variant="outline" size="icon" className="h-11 w-11 rounded-lg border-muted/50 text-muted-foreground hover:bg-white transition-all shadow-sm" disabled>
                                 <ChevronDown className="h-5 w-5 rotate-90" />
                             </Button>
-                            <Button className="h-11 w-11 rounded-2xl border-none p-0 text-white font-black text-xs active:scale-95 transition-all shadow-xl shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
+                            <Button className="h-11 w-11 rounded-lg border-none p-0 text-white font-black text-xs active:scale-95 transition-all shadow-xl shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
                                 {courses.length > 0 ? 1 : 0}
                             </Button>
-                            <Button variant="outline" size="icon" className="h-11 w-11 rounded-2xl border-muted/50 text-muted-foreground hover:bg-white transition-all shadow-sm" disabled>
+                            <Button variant="outline" size="icon" className="h-11 w-11 rounded-lg border-muted/50 text-muted-foreground hover:bg-white transition-all shadow-sm" disabled>
                                 <ChevronDown className="h-5 w-5 -rotate-90" />
                             </Button>
                         </div>
@@ -339,7 +339,7 @@ export default function OfflinePaymentPage() {
             <AlertDialog open={confirmId !== null} onOpenChange={(open) => !open && setConfirmId(null)}>
                 <AlertDialogContent className="rounded-[2.5rem] border-0 shadow-2xl p-10 max-w-lg bg-white">
                     <AlertDialogHeader>
-                        <div className="h-20 w-20 rounded-[2rem] bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-100 mb-8 shadow-inner transform rotate-3">
+                        <div className="h-20 w-20 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-100 mb-8 shadow-inner transform rotate-3">
                             <ShieldCheck className="h-10 w-10" />
                         </div>
                         <AlertDialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-tight leading-tight">Confirm Asset Commitment</AlertDialogTitle>

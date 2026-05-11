@@ -99,9 +99,9 @@ export default function LiveClassesReportPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center">
+                    <div className="h-12 w-12 rounded-lg bg-blue-50 flex items-center justify-center">
                         <BarChart2 className="h-6 w-6 text-blue-500" />
                     </div>
                     <div>
@@ -114,7 +114,7 @@ export default function LiveClassesReportPage() {
             </div>
 
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 overflow-hidden relative">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 overflow-hidden relative">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
                     <GraduationCap className="h-24 w-24 text-blue-500" />
                 </div>
@@ -128,10 +128,10 @@ export default function LiveClassesReportPage() {
                         <div className="space-y-3">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Target Class <span className="text-red-500">*</span></Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                <SelectTrigger className="h-12 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-blue-500 shadow-none">
+                                <SelectTrigger className="h-12 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-blue-500 shadow-none">
                                     <SelectValue placeholder="Select Institutional Class" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-xl border-gray-100">
+                                <SelectContent className="rounded-lg border-gray-100">
                                     {classes.map(cls => <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -139,10 +139,10 @@ export default function LiveClassesReportPage() {
                         <div className="space-y-3">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Class Section <span className="text-red-500">*</span></Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                <SelectTrigger className="h-12 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-blue-500 shadow-none">
+                                <SelectTrigger className="h-12 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-blue-500 shadow-none">
                                     <SelectValue placeholder="Select Academic Section" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-xl border-gray-100">
+                                <SelectContent className="rounded-lg border-gray-100">
                                     {sections.map(sec => <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -160,7 +160,7 @@ export default function LiveClassesReportPage() {
             </div>
 
             {/* Report Section */}
-            <div className="bg-white rounded-3xl shadow-lg shadow-gray-100/50 border border-gray-100 p-8 space-y-8">
+            <div className="bg-white rounded-lg shadow-lg shadow-gray-100/50 border border-gray-100 p-8 space-y-8">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                     <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <BookOpen className="h-5 w-5 text-blue-500" />
@@ -174,18 +174,18 @@ export default function LiveClassesReportPage() {
                                 placeholder="Filter records..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11 text-[11px] border-gray-100 bg-gray-50/30 rounded-xl shadow-none"
+                                className="pl-10 h-11 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none"
                             />
                         </div>
                         <div className="flex items-center gap-1 text-gray-400">
-                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-xl"><Copy className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-xl"><FileSpreadsheet className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-xl"><Printer className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-lg"><Copy className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-lg"><FileSpreadsheet className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-lg"><Printer className="h-4 w-4" /></Button>
                         </div>
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm overflow-x-auto">
+                <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm overflow-x-auto">
                     <Table>
                         <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-600">
                             <TableRow className="hover:bg-transparent border-gray-50">
@@ -260,10 +260,10 @@ export default function LiveClassesReportPage() {
                                         </TableCell>
                                         <TableCell className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                                                <Button size="icon" variant="ghost" className="h-9 w-9 bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100" title="Join Session">
+                                                <Button size="icon" variant="ghost" className="h-9 w-9 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-lg shadow-blue-100" title="Join Session">
                                                     <MonitorPlay className="h-4.5 w-4.5" />
                                                 </Button>
-                                                <Button size="icon" variant="ghost" className="h-9 w-9 bg-gray-50 border border-gray-100 text-gray-400 hover:text-blue-600 rounded-xl shadow-sm">
+                                                <Button size="icon" variant="ghost" className="h-9 w-9 bg-gray-50 border border-gray-100 text-gray-400 hover:text-blue-600 rounded-lg shadow-sm">
                                                     <ExternalLink className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -282,17 +282,17 @@ export default function LiveClassesReportPage() {
                     <div className="flex gap-2">
                         <Button 
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 rounded-xl hover:bg-blue-50 hover:text-blue-600" 
+                            variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 rounded-lg hover:bg-blue-50 hover:text-blue-600" 
                             disabled={currentPage === 1}
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <Button variant="default" size="sm" className="h-9 w-9 p-0 btn-gradient text-white border-0 rounded-xl shadow-md">
+                        <Button variant="default" size="sm" className="h-9 w-9 p-0 btn-gradient text-white border-0 rounded-lg shadow-md">
                             {currentPage}
                         </Button>
                         <Button 
                             onClick={() => setCurrentPage(p => p + 1)}
-                            variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 rounded-xl hover:bg-blue-50 hover:text-blue-600" 
+                            variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 rounded-lg hover:bg-blue-50 hover:text-blue-600" 
                             disabled={reports.length < itemsPerPage}
                         >
                             <ChevronRight className="h-4 w-4" />

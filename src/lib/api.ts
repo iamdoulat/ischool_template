@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1',
@@ -21,16 +22,22 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Add a response interceptor to handle authentication errors
+// Add a response interceptor to handle authentication and general errors
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        const message = error.response?.data?.message || error.message || 'Something went wrong';
+        
         if (error.response?.status === 401) {
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('auth_token');
                 window.location.href = '/login';
             }
+        } else if (error.response?.status !== 422) {
+            // Show toast for non-validation errors (422 is usually handled per-form)
+            toast.error(message);
         }
+        
         return Promise.reject(error);
     }
 );

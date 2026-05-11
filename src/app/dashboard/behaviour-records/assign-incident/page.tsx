@@ -186,7 +186,7 @@ export default function AssignIncidentPage() {
             {/* Select Criteria Section */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+                    <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
                         <GraduationCap className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-xl font-black tracking-tight text-slate-700 uppercase">Behavioural Target Selection</CardTitle>
@@ -196,10 +196,10 @@ export default function AssignIncidentPage() {
                         <div className="space-y-3">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Academic Class <span className="text-red-500">*</span></label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                <SelectTrigger className="h-14 rounded-2xl bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
+                                <SelectTrigger className="h-14 rounded-lg bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
                                     <SelectValue placeholder="Select Institutional Class" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
                                     {criteria.classes.map(cls => <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -207,10 +207,10 @@ export default function AssignIncidentPage() {
                         <div className="space-y-3">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Class Section <span className="text-red-500">*</span></label>
                             <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                <SelectTrigger className="h-14 rounded-2xl bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
+                                <SelectTrigger className="h-14 rounded-lg bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
                                     <SelectValue placeholder="Select Academic Section" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
                                     {sections.map(sec => <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -233,7 +233,7 @@ export default function AssignIncidentPage() {
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
                             <Users className="h-5 w-5" />
                         </div>
                         <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Student Engagement Registry</CardTitle>
@@ -302,7 +302,7 @@ export default function AssignIncidentPage() {
                                             </TableCell>
                                             <TableCell className="py-5">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 font-bold text-[10px] shadow-inner">
+                                                    <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 font-bold text-[10px] shadow-inner">
                                                         {student.name?.[0]}
                                                     </div>
                                                     <span className="text-slate-700 text-[11px] font-black uppercase tracking-tight">{student.name}</span>
@@ -341,13 +341,13 @@ export default function AssignIncidentPage() {
                     <div className="p-8 border-t border-muted/20 flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-muted-foreground">
                         <span>Registry Summary: {students.length} nodes identified</span>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm" disabled>
+                            <Button variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm" disabled>
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" className="h-10 w-10 rounded-xl bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg font-black text-xs">
+                            <Button size="icon" className="h-10 w-10 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg font-black text-xs">
                                 1
                             </Button>
-                            <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm" disabled>
+                            <Button variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm" disabled>
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
@@ -357,11 +357,11 @@ export default function AssignIncidentPage() {
 
             {/* Assignment Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="rounded-[2rem] border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white">
+                <DialogContent className="rounded-lg border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white">
                     <div className="bg-indigo-500/5 p-8 border-b border-indigo-100 flex items-center justify-between">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-black text-gray-800 uppercase tracking-[0.2em] flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                                <div className="h-10 w-10 rounded-lg bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
                                     <ShieldAlert className="h-5 w-5" />
                                 </div>
                                 Assign Incident
@@ -370,7 +370,7 @@ export default function AssignIncidentPage() {
                     </div>
 
                     <div className="p-10 grid grid-cols-1 gap-8">
-                        <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50 flex items-center gap-4">
+                        <div className="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100/50 flex items-center gap-4">
                             <div className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-indigo-500 shadow-sm">
                                 <Users className="h-4 w-4" />
                             </div>
@@ -382,10 +382,10 @@ export default function AssignIncidentPage() {
                         <div className="space-y-3">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Incident Type <span className="text-red-500">*</span></Label>
                             <Select value={formData.incident_id} onValueChange={(val) => setFormData({...formData, incident_id: val})}>
-                                <SelectTrigger className="h-14 rounded-2xl bg-gray-50/50 border-gray-100 focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight px-6">
+                                <SelectTrigger className="h-14 rounded-lg bg-gray-50/50 border-gray-100 focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight px-6">
                                     <SelectValue placeholder="Select Incident Type" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
                                     {incidents.map(inc => (
                                         <SelectItem key={inc.id} value={inc.id.toString()}>
                                             {inc.title} ({inc.point > 0 ? '+' : ''}{inc.point})
@@ -403,7 +403,7 @@ export default function AssignIncidentPage() {
                                     type="date"
                                     value={formData.incident_date}
                                     onChange={(e) => setFormData({...formData, incident_date: e.target.value})}
-                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight pl-14 pr-6"
+                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight pl-14 pr-6"
                                 />
                             </div>
                         </div>
@@ -415,7 +415,7 @@ export default function AssignIncidentPage() {
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                                 placeholder="Details regarding this specific assignment..."
                                 rows={4}
-                                className="border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight px-6 py-4 resize-none"
+                                className="border-gray-100 bg-gray-50/50 rounded-lg focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight px-6 py-4 resize-none"
                             />
                         </div>
                     </div>

@@ -232,7 +232,7 @@ export default function DisabledStaffPage() {
             </div>
 
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                 <h2 className="text-sm font-semibold text-gray-800">Select Criteria</h2>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -285,7 +285,7 @@ export default function DisabledStaffPage() {
             </div>
 
             {/* Staff View Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                 <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "card" | "list")} className="w-full">
                     <div className="px-6 border-b border-gray-100 bg-white flex justify-between items-center">
                         <TabsList className="bg-transparent h-14 gap-8 p-0">
@@ -338,8 +338,8 @@ export default function DisabledStaffPage() {
                         ) : currentData.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {currentData.map((person) => (
-                                    <div key={person.id} className="bg-gray-50/50 border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all group relative overflow-hidden flex gap-4 opacity-80 hover:opacity-100 grayscale hover:grayscale-0">
-                                        <div className="relative h-20 w-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-sm">
+                                    <div key={person.id} className="bg-gray-50/50 border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all group relative overflow-hidden flex gap-4 opacity-80 hover:opacity-100 grayscale hover:grayscale-0">
+                                        <div className="relative h-20 w-20 shrink-0 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shadow-sm">
                                             {person.avatar ? (
                                                 <img
                                                     src={person.avatar}

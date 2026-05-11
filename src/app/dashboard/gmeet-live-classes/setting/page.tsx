@@ -71,12 +71,12 @@ export default function SettingPage() {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-4xl mx-auto">
             {/* Header section */}
-            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
+            <div className="bg-white p-8 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform duration-700">
                     <Video className="h-32 w-32 text-blue-600" />
                 </div>
                 <div className="relative z-10 flex items-center gap-5">
-                    <div className="h-16 w-16 rounded-[2rem] bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner">
+                    <div className="h-16 w-16 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner">
                         <Settings2 className="h-8 w-8" />
                     </div>
                     <div>
@@ -116,7 +116,7 @@ export default function SettingPage() {
                                         value={formData.api_key}
                                         onChange={(e) => setFormData({...formData, api_key: e.target.value})}
                                         placeholder="Enter your Google Cloud API Key"
-                                        className="h-14 bg-gray-50/50 border-gray-100 rounded-2xl px-6 text-sm font-bold tracking-tight focus:ring-blue-500 transition-all shadow-none"
+                                        className="h-14 bg-gray-50/50 border-gray-100 rounded-lg px-6 text-sm font-bold tracking-tight focus:ring-blue-500 transition-all shadow-none"
                                     />
                                     <Lock className="absolute right-5 top-4 h-5 w-5 text-gray-300" />
                                 </div>
@@ -130,7 +130,7 @@ export default function SettingPage() {
                                         value={formData.api_secret}
                                         onChange={(e) => setFormData({...formData, api_secret: e.target.value})}
                                         placeholder="••••••••••••••••••••••••"
-                                        className="h-14 bg-gray-50/50 border-gray-100 rounded-2xl px-6 text-sm font-bold tracking-tight focus:ring-blue-500 transition-all shadow-none"
+                                        className="h-14 bg-gray-50/50 border-gray-100 rounded-lg px-6 text-sm font-bold tracking-tight focus:ring-blue-500 transition-all shadow-none"
                                     />
                                     <ShieldCheck className="absolute right-5 top-4 h-5 w-5 text-gray-300" />
                                 </div>
@@ -140,7 +140,7 @@ export default function SettingPage() {
 
                     <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden p-10 flex justify-between items-center">
                         <div className="flex items-center gap-6">
-                            <div className="h-12 w-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500">
+                            <div className="h-12 w-12 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500">
                                 <Info className="h-6 w-6" />
                             </div>
                             <div>
@@ -180,14 +180,14 @@ export default function SettingPage() {
                                     className="grid grid-cols-2 gap-4"
                                 >
                                     <div className={cn(
-                                        "flex items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer",
+                                        "flex items-center justify-center p-3 rounded-lg border-2 transition-all cursor-pointer",
                                         !formData.use_calendar_api ? "border-blue-500 bg-blue-50/50" : "border-gray-50 bg-gray-50/30"
                                     )}>
                                         <RadioGroupItem value="disabled" id="cal-off" className="hidden" />
                                         <Label htmlFor="cal-off" className="text-[10px] font-black uppercase tracking-widest cursor-pointer">Disabled</Label>
                                     </div>
                                     <div className={cn(
-                                        "flex items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer",
+                                        "flex items-center justify-center p-3 rounded-lg border-2 transition-all cursor-pointer",
                                         formData.use_calendar_api ? "border-blue-500 bg-blue-50/50" : "border-gray-50 bg-gray-50/30"
                                     )}>
                                         <RadioGroupItem value="enabled" id="cal-on" className="hidden" />
@@ -207,14 +207,14 @@ export default function SettingPage() {
                                     className="grid grid-cols-2 gap-4"
                                 >
                                     <div className={cn(
-                                        "flex items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer",
+                                        "flex items-center justify-center p-3 rounded-lg border-2 transition-all cursor-pointer",
                                         !formData.forgot_live_class ? "border-orange-500 bg-orange-50/50" : "border-gray-50 bg-gray-50/30"
                                     )}>
                                         <RadioGroupItem value="disabled" id="forgot-off" className="hidden" />
                                         <Label htmlFor="forgot-off" className="text-[10px] font-black uppercase tracking-widest cursor-pointer">Disabled</Label>
                                     </div>
                                     <div className={cn(
-                                        "flex items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer",
+                                        "flex items-center justify-center p-3 rounded-lg border-2 transition-all cursor-pointer",
                                         formData.forgot_live_class ? "border-orange-500 bg-orange-50/50" : "border-gray-50 bg-gray-50/30"
                                     )}>
                                         <RadioGroupItem value="enabled" id="forgot-on" className="hidden" />

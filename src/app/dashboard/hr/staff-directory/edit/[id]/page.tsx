@@ -17,6 +17,7 @@ import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Save, Lock, ShieldCheck } f
 import FileUpload from "@/components/FileUpload";
 import api from "@/lib/api";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Role {
     name: string;
@@ -30,6 +31,7 @@ interface CommonData {
 export default function EditStaffPage() {
     const router = useRouter();
     const params = useParams();
+    const { toast } = useToast();
     const id = params.id;
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,7 +87,11 @@ export default function EditStaffPage() {
                     fetchStaffDetails()
                 ]);
             } else if (user) {
-                alert("Unauthorized. You do not have permission to edit staff.");
+                toast({
+                    title: "Unauthorized",
+                    description: "You do not have permission to edit staff.",
+                    variant: "destructive",
+                });
                 router.push("/dashboard/hr/staff-directory");
             }
             setLoading(false);
@@ -177,10 +183,18 @@ export default function EditStaffPage() {
         } catch (error: any) {
             console.error("Error fetching staff details:", error);
             if (error.response?.status === 404) {
-                alert("Staff member not found");
+                toast({
+                    title: "Not Found",
+                    description: "Staff member not found",
+                    variant: "destructive",
+                });
                 router.push("/dashboard/hr/staff-directory");
             } else {
-                alert("Failed to load staff details");
+                toast({
+                    title: "Error",
+                    description: "Failed to load staff details",
+                    variant: "destructive",
+                });
             }
         }
     };
@@ -233,14 +247,21 @@ export default function EditStaffPage() {
             const response = await api.put(`/hr/staff-directory/${id}`, formData);
 
             if (response.data.status === "Success") {
-                alert("Staff member updated successfully!");
+                toast({
+                    title: "Success",
+                    description: "Staff member updated successfully!",
+                });
                 router.push("/dashboard/hr/staff-directory");
             }
         } catch (error: any) {
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             } else {
-                alert(error.response?.data?.message || "Failed to update staff member. Please try again.");
+                toast({
+                    title: "Error",
+                    description: error.response?.data?.message || "Failed to update staff member. Please try again.",
+                    variant: "destructive",
+                });
             }
         } finally {
             setIsSubmitting(false);
@@ -273,7 +294,10 @@ export default function EditStaffPage() {
             });
 
             if (response.data.status === "Success") {
-                alert("Password updated successfully!");
+                toast({
+                    title: "Success",
+                    description: "Password updated successfully!",
+                });
                 setPasswordData({
                     current_password: "",
                     new_password: "",
@@ -284,7 +308,11 @@ export default function EditStaffPage() {
             if (error.response?.data?.errors) {
                 setPasswordErrors(error.response.data.errors);
             } else {
-                alert(error.response?.data?.message || "Failed to update password.");
+                toast({
+                    title: "Error",
+                    description: error.response?.data?.message || "Failed to update password.",
+                    variant: "destructive",
+                });
             }
         } finally {
             setIsChangingPassword(false);
@@ -327,7 +355,7 @@ export default function EditStaffPage() {
             </div>
 
             {/* Form */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100">
                 <form onSubmit={handleSubmit} className="p-8 space-y-8">
                     {/* Basic Information Section */}
                     <div>
@@ -658,7 +686,7 @@ export default function EditStaffPage() {
                                 <Lock className="h-5 w-5 text-amber-500" />
                                 Security & Password
                             </h2>
-                            <div className="bg-gray-50/50 rounded-xl p-6 border border-gray-100">
+                            <div className="bg-gray-50/50 rounded-lg p-6 border border-gray-100">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold text-gray-500 uppercase">Current Password</Label>

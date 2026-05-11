@@ -26,15 +26,15 @@ import {
     FileText,
     Printer,
     Columns,
-    Search,
     ArrowUpDown,
     ChevronLeft,
     ChevronRight,
     Loader2
 } from "lucide-react";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
+import { useToast } from "@/components/ui/toast";
 
 interface Module {
     id: number;
@@ -45,13 +45,24 @@ interface Module {
     is_active_parent: boolean;
 }
 
+type SortConfig = {
+    key: keyof Module;
+    direction: 'asc' | 'desc';
+} | null;
+
 export default function ModulesPage() {
     const { t } = useTranslation();
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState("system");
     const [moduleList, setModuleList] = useState<Module[]>([]);
     const [loading, setLoading] = useState(true);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+    // Pagination & Sorting State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(50);
+    const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'asc' });
 
     const fetchModules = useCallback(async () => {
         try {
@@ -62,10 +73,11 @@ export default function ModulesPage() {
             }
         } catch (error) {
             console.error("Failed to fetch modules", error);
+            toast("error", "Failed to fetch modules");
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [toast]);
 
     useEffect(() => {
         fetchModules();
@@ -80,31 +92,74 @@ export default function ModulesPage() {
             });
             if (response.data.success) {
                 setModuleList(prev => prev.map(m => m.id === id ? response.data.data : m));
+                toast("success", `${t("module")} ${t("updated_successfully")}`);
             }
         } catch (error) {
             console.error("Failed to update module", error);
+            toast("error", "Failed to update module status");
         } finally {
             setUpdatingId(null);
         }
     };
 
-    const filteredModules = moduleList.filter(m =>
-        m.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const handleSort = (key: keyof Module) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const filteredAndSortedModules = useMemo(() => {
+        let result = [...moduleList].filter(m =>
+            m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            m.alias.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        if (sortConfig) {
+            result.sort((a, b) => {
+                const aValue = a[sortConfig.key];
+                const bValue = b[sortConfig.key];
+                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        return result;
+    }, [moduleList, searchTerm, sortConfig]);
+
+    const totalPages = Math.ceil(filteredAndSortedModules.length / itemsPerPage);
+    const paginatedModules = filteredAndSortedModules.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
     );
+
+    const handleExport = (type: string) => {
+        // Implement export logic based on current filtered/sorted data
+        console.log(`Exporting as ${type}...`);
+        toast("success", `Exporting data as ${type.toUpperCase()}`);
+    };
 
     const renderTable = (scope: string) => (
         <div className="border border-gray-100 rounded overflow-hidden">
             <Table>
                 <TableHeader className="bg-gray-50/50">
                     <TableRow className="border-b border-gray-100 hover:bg-transparent text-[11px]">
-                        <TableHead className="h-9 px-4 font-bold text-gray-600 uppercase w-full cursor-pointer hover:text-indigo-600 transition-colors group">
-                            <div className="flex items-center gap-1">{t("name")} <ArrowUpDown className="h-3 w-3 opacity-30 group-hover:opacity-100" /></div>
+                        <TableHead
+                            className="h-9 px-4 font-bold text-gray-600 uppercase w-full cursor-pointer hover:text-indigo-600 transition-colors group"
+                            onClick={() => handleSort('name')}
+                        >
+                            <div className="flex items-center gap-1">
+                                {t("name")}
+                                <ArrowUpDown className={`h-3 w-3 ${sortConfig?.key === 'name' ? 'opacity-100 text-indigo-600' : 'opacity-30 group-hover:opacity-100'}`} />
+                            </div>
                         </TableHead>
                         <TableHead className="h-9 px-4 font-bold text-gray-600 text-right w-24 uppercase">{t("action")}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {filteredModules.map((module) => {
+                    {paginatedModules.map((module) => {
                         const isActive = scope === "system" ? module.is_active_system : scope === "student" ? module.is_active_student : module.is_active_parent;
                         return (
                             <TableRow key={module.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors h-10 group">
@@ -123,7 +178,7 @@ export default function ModulesPage() {
                             </TableRow>
                         );
                     })}
-                    {filteredModules.length === 0 && !loading && (
+                    {paginatedModules.length === 0 && !loading && (
                         <TableRow>
                             <TableCell colSpan={2} className="h-24 text-center text-[11px] text-gray-400">
                                 No matching records found
@@ -143,53 +198,65 @@ export default function ModulesPage() {
     );
 
     return (
-        <div className="p-4 bg-gray-50/10 min-h-screen font-sans space-y-4">
+        <div className="p-2 bg-transparent min-h-screen font-sans space-y-2">
 
             {/* Page Layout */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+            <div className="bg-transparent rounded-md border border-slate-200/60 shadow-none overflow-hidden flex flex-col">
 
                 {/* Header with Tabs */}
                 <div className="flex flex-col md:flex-row justify-between items-center px-4 py-2 border-b border-gray-100 relative">
-                    <h1 className="text-[16px] font-medium text-gray-700">Modules</h1>
+                    <h1 className="text-[16px] font-medium text-gray-700">{t("modules")}</h1>
 
-                    <Tabs defaultValue="system" className="w-full md:w-auto mt-2 md:mt-0" onValueChange={setActiveTab}>
+                    <Tabs value={activeTab} className="w-full md:w-auto mt-2 md:mt-0" onValueChange={(val) => {
+                        setActiveTab(val);
+                        setCurrentPage(1);
+                    }}>
                         <TabsList className="bg-transparent border-b-0 h-10 p-0 space-x-6">
                             <TabsTrigger
                                 value="system"
                                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-4 pb-2 h-full shadow-none bg-transparent"
                             >
-                                System
+                                {t("system")}
                             </TabsTrigger>
                             <TabsTrigger
                                 value="student"
                                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-4 pb-2 h-full shadow-none bg-transparent"
                             >
-                                Student
+                                {t("student")}
                             </TabsTrigger>
                             <TabsTrigger
                                 value="parent"
                                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-4 pb-2 h-full shadow-none bg-transparent"
                             >
-                                Parent
+                                {t("parent")}
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>
                 </div>
 
                 {/* Toolbar */}
-                <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 bg-white">
+                <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-100 bg-transparent">
                     <div className="relative w-full md:w-64">
                         <Input
-                            placeholder="Search..."
+                            placeholder={`${t("search")}...`}
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             className="h-8 text-[11px] pl-3 border-gray-200 shadow-none rounded bg-gray-50/50 focus:bg-white transition-colors"
                         />
                     </div>
 
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <Select defaultValue="50">
+                            <Select
+                                value={itemsPerPage.toString()}
+                                onValueChange={(val) => {
+                                    setItemsPerPage(Number(val));
+                                    setCurrentPage(1);
+                                }}
+                            >
                                 <SelectTrigger className="h-7 w-16 text-[11px] border-gray-200 shadow-none rounded">
                                     <SelectValue />
                                 </SelectTrigger>
@@ -203,16 +270,16 @@ export default function ModulesPage() {
                         </div>
 
                         <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Copy className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileText className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Printer className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('copy')}><Copy className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('excel')}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('pdf')}><FileText className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('print')}><Printer className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Columns className="h-3.5 w-3.5" /></Button>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-auto bg-white p-4">
+                <div className="flex-1 overflow-auto bg-transparent p-4">
                     {activeTab === "system" && renderTable("system")}
                     {activeTab === "student" && renderTable("student")}
                     {activeTab === "parent" && renderTable("parent")}
@@ -220,14 +287,53 @@ export default function ModulesPage() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between pt-4 px-1">
                         <p className="text-[10px] text-gray-500 font-medium">
-                            Showing 1 to {filteredModules.length} of {moduleList.length} entries
+                            {t("showing")} {filteredAndSortedModules.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} {t("to")} {Math.min(currentPage * itemsPerPage, filteredAndSortedModules.length)} {t("of")} {filteredAndSortedModules.length} {t("entries")}
                         </p>
                         <div className="flex items-center gap-1">
-                            <Button variant="outline" size="icon" className="h-6 w-6 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50" disabled>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                            >
                                 <ChevronLeft className="h-3 w-3" />
                             </Button>
-                            <Button className="h-6 w-6 p-0 text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 hover:text-indigo-700">1</Button>
-                            <Button variant="outline" size="icon" className="h-6 w-6 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50" disabled>
+
+                            {/* Dynamic Pagination Buttons */}
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum = 1;
+                                if (totalPages <= 5) {
+                                    pageNum = i + 1;
+                                } else if (currentPage <= 3) {
+                                    pageNum = i + 1;
+                                } else if (currentPage >= totalPages - 2) {
+                                    pageNum = totalPages - 4 + i;
+                                } else {
+                                    pageNum = currentPage - 2 + i;
+                                }
+
+                                const isActive = currentPage === pageNum;
+
+                                return (
+                                    <Button
+                                        key={pageNum}
+                                        onClick={() => setCurrentPage(pageNum)}
+                                        variant={isActive ? "pagination-active" : "pagination-inactive"}
+                                        className="h-6 w-6 p-0 text-[10px]"
+                                    >
+                                        {pageNum}
+                                    </Button>
+                                );
+                            })}
+
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages || totalPages === 0}
+                            >
                                 <ChevronRight className="h-3 w-3" />
                             </Button>
                         </div>

@@ -48,7 +48,7 @@
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
   --background: oklch(0.98 0 0);
   --foreground: oklch(0.2 0 0);
   --card: oklch(1 0 0);
@@ -130,7 +130,7 @@
 
 @layer components {
   .btn-gradient {
-    @apply bg-gradient-to-r from-amber-500 to-purple-600 hover:from-amber-600 hover:to-purple-700 text-white shadow-md shadow-amber-200/50 transition-all duration-300 border-none rounded-full;
+    @apply bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-md shadow-orange-200/50 transition-all duration-300 border-none rounded-full;
   }
 
   .btn-action {

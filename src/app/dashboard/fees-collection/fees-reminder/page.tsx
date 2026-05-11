@@ -70,7 +70,7 @@ export default function FeesReminderPage() {
             <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
                 <CardHeader className="border-b border-muted/20 bg-muted/5">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+                        <div className="p-2.5 bg-primary/10 rounded-lg text-primary">
                             <BellRing className="h-5 w-5" />
                         </div>
                         <div>

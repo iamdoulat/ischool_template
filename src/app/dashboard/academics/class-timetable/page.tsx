@@ -11,6 +11,8 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/components/providers/settings-provider";
+import { useMemo } from "react";
 
 interface TimetableEntry {
     id: number;
@@ -30,10 +32,19 @@ interface TimetableDay {
     entries: TimetableEntry[];
 }
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DEFAULT_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 export default function ClassTimetablePage() {
     const { toast } = useToast();
+    const { settings } = useSettings();
+
+    // Derived ordered days based on settings
+    const orderedDays = useMemo(() => {
+        const startDay = settings?.start_day_of_week?.toLowerCase() || "monday";
+        const startIndex = DEFAULT_DAYS.findIndex(d => d.toLowerCase() === startDay);
+        if (startIndex === -1) return DEFAULT_DAYS;
+        return [...DEFAULT_DAYS.slice(startIndex), ...DEFAULT_DAYS.slice(0, startIndex)];
+    }, [settings?.start_day_of_week]);
 
     // Prerequisite states
     const [classes, setClasses] = useState<any[]>([]);
@@ -46,26 +57,27 @@ export default function ClassTimetablePage() {
     const [selectedSubjectGroupId, setSelectedSubjectGroupId] = useState<string>("");
 
     // Timetable data
-    const [timetableData, setTimetableData] = useState<TimetableDay[]>(
-        DAYS.map(day => ({ day, entries: [] }))
-    );
+    const [timetableData, setTimetableData] = useState<TimetableDay[]>([]);
+
+    // Initialize/Update empty timetable grid when orderedDays changes
+    useEffect(() => {
+        setTimetableData(orderedDays.map(day => ({ day, entries: [] })));
+    }, [orderedDays]);
 
     // UI states
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
 
-    // Load prerequisites
+    // Load prerequisites (classes, subject groups)
     useEffect(() => {
         const fetchPrerequisites = async () => {
             setLoading(true);
             try {
-                const [classRes, sectionRes, subjectGroupRes] = await Promise.all([
+                const [classRes, subjectGroupRes] = await Promise.all([
                     api.get("/academics/classes?no_paginate=true"),
-                    api.get("/academics/sections?no_paginate=true"),
                     api.get("/academics/subject-groups?no_paginate=true"),
                 ]);
                 setClasses(classRes.data.data?.data || classRes.data.data || []);
-                setSections(sectionRes.data.data?.data || sectionRes.data.data || []);
                 setSubjectGroups(subjectGroupRes.data.data?.data || subjectGroupRes.data.data || []);
             } catch (error) {
                 console.error("Error fetching prerequisites:", error);
@@ -76,6 +88,19 @@ export default function ClassTimetablePage() {
         };
         fetchPrerequisites();
     }, []);
+
+    // Fetch sections filtered by selected class ID
+    const fetchSectionsByClass = async (classId: string) => {
+        if (!classId) { setSections([]); return; }
+        try {
+            const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
+            const all: any[] = res.data?.data || res.data || [];
+            const filtered = all.filter((s: any) => String(s.school_class_id) === String(classId));
+            setSections(filtered);
+        } catch {
+            setSections([]);
+        }
+    };
 
     const handleSearch = async () => {
         if (!selectedClassId || !selectedSectionId) {
@@ -94,8 +119,8 @@ export default function ClassTimetablePage() {
             });
             const entries = res.data.data || [];
 
-            // Group entries by day
-            const grouped = DAYS.map(day => ({
+            // Group entries by day in the correct order
+            const grouped = orderedDays.map(day => ({
                 day,
                 entries: entries.filter((e: any) => e.day === day)
             }));
@@ -151,7 +176,15 @@ export default function ClassTimetablePage() {
                         <Label className="text-xs font-semibold text-gray-600 uppercase">
                             Class <span className="text-red-500">*</span>
                         </Label>
-                        <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                        <Select 
+                            value={selectedClassId} 
+                            onValueChange={(val) => {
+                                setSelectedClassId(val);
+                                setSelectedSectionId('');
+                                setSelectedSubjectGroupId('');
+                                fetchSectionsByClass(val);
+                            }}
+                        >
                             <SelectTrigger className="h-10">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
@@ -165,9 +198,13 @@ export default function ClassTimetablePage() {
                         <Label className="text-xs font-semibold text-gray-600 uppercase">
                             Section <span className="text-red-500">*</span>
                         </Label>
-                        <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
+                        <Select 
+                            value={selectedSectionId} 
+                            onValueChange={setSelectedSectionId}
+                            disabled={!selectedClassId}
+                        >
                             <SelectTrigger className="h-10">
-                                <SelectValue placeholder="Select" />
+                                <SelectValue placeholder={!selectedClassId ? "Select class first" : "Select"} />
                             </SelectTrigger>
                             <SelectContent>
                                 {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
@@ -210,7 +247,7 @@ export default function ClassTimetablePage() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-[#6366f1]"
+                        className="h-8 w-8 bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white rounded shadow-sm p-0 border-0"
                         onClick={handlePrint}
                     >
                         <Printer className="h-5 w-5" />

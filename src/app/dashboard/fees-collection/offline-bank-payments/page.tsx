@@ -153,7 +153,7 @@ export default function OfflineBankPaymentsPage() {
                 <CardHeader className="border-b border-muted/20 bg-muted/5">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                            <div className="p-2 bg-primary/10 rounded-lg text-primary">
                                 <Wallet className="h-5 w-5" />
                             </div>
                             <div>
@@ -161,7 +161,7 @@ export default function OfflineBankPaymentsPage() {
                                 <CardDescription>Review receipts and reference numbers to approve student payments.</CardDescription>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 bg-muted/20 p-1 rounded-xl border border-muted/50">
+                        <div className="flex items-center gap-2 bg-muted/20 p-1 rounded-lg border border-muted/50">
                             {['all', 'pending', 'approved', 'rejected'].map((status) => (
                                 <Button
                                     key={status}
@@ -191,7 +191,7 @@ export default function OfflineBankPaymentsPage() {
                                 placeholder="Search by name, admission no or ref..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                className="pl-10 h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                             />
                         </div>
 
@@ -207,14 +207,14 @@ export default function OfflineBankPaymentsPage() {
                                         key={i}
                                         variant="ghost"
                                         size="icon"
-                                        className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-xl"
+                                        className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
                                     >
                                         <tool.icon className="h-4 w-4" />
                                     </Button>
                                 ))}
                             </div>
                             <div className="h-8 w-px bg-muted/50 mx-2" />
-                            <select className="h-11 px-4 rounded-xl border border-muted/50 bg-muted/30 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold text-muted-foreground">
+                            <select className="h-11 px-4 rounded-lg border border-muted/50 bg-muted/30 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold text-muted-foreground">
                                 <option>50</option>
                                 <option>100</option>
                                 <option>All</option>
@@ -223,7 +223,7 @@ export default function OfflineBankPaymentsPage() {
                     </div>
 
                     {/* Table */}
-                    <div className="rounded-2xl border border-muted/20 overflow-hidden bg-muted/5 shadow-inner">
+                    <div className="rounded-lg border border-muted/20 overflow-hidden bg-muted/5 shadow-inner">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
@@ -245,7 +245,7 @@ export default function OfflineBankPaymentsPage() {
                                         Array.from({ length: 3 }).map((_, i) => (
                                             <tr key={i} className="animate-pulse">
                                                 <td colSpan={6} className="px-6 py-8">
-                                                    <div className="h-12 bg-muted/20 rounded-xl" />
+                                                    <div className="h-12 bg-muted/20 rounded-lg" />
                                                 </td>
                                             </tr>
                                         ))
@@ -288,7 +288,7 @@ export default function OfflineBankPaymentsPage() {
                                                                 setRejectionReason("");
                                                                 setIsDetailsOpen(true);
                                                             }}
-                                                            className="h-9 w-9 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:scale-110 active:scale-95"
+                                                            className="h-9 w-9 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:scale-110 active:scale-95"
                                                         >
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
@@ -306,11 +306,11 @@ export default function OfflineBankPaymentsPage() {
 
             {/* Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                <DialogContent className="max-w-3xl border-none shadow-2xl rounded-3xl overflow-hidden p-0 bg-background/95 backdrop-blur-xl">
+                <DialogContent className="max-w-3xl border-none shadow-2xl rounded-lg overflow-hidden p-0 bg-background/95 backdrop-blur-xl">
                     <DialogHeader className="p-8 border-b border-muted/20 bg-muted/5">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                                <div className="p-3 bg-primary/10 rounded-lg text-primary">
                                     <Wallet className="h-6 w-6" />
                                 </div>
                                 <div>
@@ -349,13 +349,13 @@ export default function OfflineBankPaymentsPage() {
                                 </div>
                             </div>
 
-                            <div className="p-4 rounded-2xl bg-muted/20 border border-muted/50 space-y-2">
+                            <div className="p-4 rounded-lg bg-muted/20 border border-muted/50 space-y-2">
                                 <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Rejection Reason (Required for rejection)</span>
                                 <Textarea 
                                     placeholder="Provide a reason if rejecting this payment..."
                                     value={rejectionReason}
                                     onChange={(e) => setRejectionReason(e.target.value)}
-                                    className="min-h-[100px] bg-background/50 border-muted/50 rounded-xl text-xs font-medium resize-none focus:ring-primary/20"
+                                    className="min-h-[100px] bg-background/50 border-muted/50 rounded-lg text-xs font-medium resize-none focus:ring-primary/20"
                                 />
                             </div>
                         </div>
@@ -365,7 +365,7 @@ export default function OfflineBankPaymentsPage() {
                             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1.5">
                                 <FileText className="h-3 w-3" /> Payment Proof / Screenshot
                             </span>
-                            <div className="aspect-[4/3] rounded-2xl bg-muted/10 border-2 border-dashed border-muted/50 flex items-center justify-center overflow-hidden group/img relative">
+                            <div className="aspect-[4/3] rounded-lg bg-muted/10 border-2 border-dashed border-muted/50 flex items-center justify-center overflow-hidden group/img relative">
                                 {selectedPayment?.screenshot ? (
                                     <>
                                         <img 
@@ -393,7 +393,7 @@ export default function OfflineBankPaymentsPage() {
                         <Button
                             variant="outline"
                             onClick={() => setIsDetailsOpen(false)}
-                            className="flex-1 h-12 rounded-2xl font-bold uppercase tracking-widest text-[10px] border-muted/50 hover:bg-muted/10"
+                            className="flex-1 h-12 rounded-lg font-bold uppercase tracking-widest text-[10px] border-muted/50 hover:bg-muted/10"
                         >
                             Close
                         </Button>
@@ -402,7 +402,7 @@ export default function OfflineBankPaymentsPage() {
                                 <Button
                                     onClick={handleReject}
                                     disabled={processing}
-                                    className="flex-1 h-12 rounded-2xl bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-destructive/20 transition-all active:scale-95 flex items-center gap-2"
+                                    className="flex-1 h-12 rounded-lg bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-destructive/20 transition-all active:scale-95 flex items-center gap-2"
                                 >
                                     {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
                                     Reject Payment
@@ -410,7 +410,7 @@ export default function OfflineBankPaymentsPage() {
                                 <Button
                                     onClick={handleApprove}
                                     disabled={processing}
-                                    className="flex-[1.5] h-12 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2"
+                                    className="flex-[1.5] h-12 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2"
                                 >
                                     {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                                     Approve & Apply Fee

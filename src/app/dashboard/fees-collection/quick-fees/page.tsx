@@ -158,7 +158,7 @@ export default function QuickFeesPage() {
                             </label>
                             <div className="relative">
                                 <select 
-                                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                     value={selectedClass}
                                     onChange={(e) => { setSelectedClass(e.target.value); setSelectedStudentId(""); }}
                                 >
@@ -176,7 +176,7 @@ export default function QuickFeesPage() {
                             </label>
                             <div className="relative">
                                 <select 
-                                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                     value={selectedSection}
                                     onChange={(e) => { setSelectedSection(e.target.value); setSelectedStudentId(""); }}
                                 >
@@ -194,7 +194,7 @@ export default function QuickFeesPage() {
                             </label>
                             <div className="relative">
                                 <select 
-                                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                     value={selectedStudentId}
                                     onChange={(e) => setSelectedStudentId(e.target.value)}
                                     disabled={fetchingStudents}
@@ -209,7 +209,7 @@ export default function QuickFeesPage() {
                         <div className="md:col-span-3 flex justify-end">
                             <Button
                                 variant="gradient"
-                                className="h-11 px-10 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2"
+                                className="h-11 px-10 rounded-lg font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2"
                                 onClick={handleSearch}
                                 disabled={loading}
                             >
@@ -325,10 +325,10 @@ export default function QuickFeesPage() {
 
             {/* Payment Dialog */}
             <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-3xl border-none shadow-2xl">
+                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border-none shadow-2xl">
                     <DialogHeader className="p-8 bg-slate-900 text-white relative">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md border border-white/30">
+                            <div className="p-3 bg-white/20 rounded-lg backdrop-blur-md border border-white/30">
                                 <CreditCard className="h-6 w-6" />
                             </div>
                             <div>
@@ -351,7 +351,7 @@ export default function QuickFeesPage() {
                                         <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input 
                                             type="number" 
-                                            className="pl-11 h-12 rounded-xl bg-muted/30 border-muted/50 focus:bg-white font-bold"
+                                            className="pl-11 h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white font-bold"
                                             value={paymentData.amount}
                                             onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
                                             required
@@ -366,7 +366,7 @@ export default function QuickFeesPage() {
                                         <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input 
                                             type="date" 
-                                            className="pl-11 h-12 rounded-xl bg-muted/30 border-muted/50 focus:bg-white font-medium"
+                                            className="pl-11 h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white font-medium"
                                             value={paymentData.date}
                                             onChange={(e) => setPaymentData({ ...paymentData, date: e.target.value })}
                                             required
@@ -382,7 +382,7 @@ export default function QuickFeesPage() {
                                     </label>
                                     <Input 
                                         type="number" 
-                                        className="h-12 rounded-xl bg-muted/30 border-muted/50 focus:bg-white"
+                                        className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white"
                                         value={paymentData.discount}
                                         onChange={(e) => setPaymentData({ ...paymentData, discount: e.target.value })}
                                     />
@@ -393,7 +393,7 @@ export default function QuickFeesPage() {
                                     </label>
                                     <Input 
                                         type="number" 
-                                        className="h-12 rounded-xl bg-muted/30 border-muted/50 focus:bg-white"
+                                        className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white"
                                         value={paymentData.fine}
                                         onChange={(e) => setPaymentData({ ...paymentData, fine: e.target.value })}
                                     />
@@ -406,7 +406,7 @@ export default function QuickFeesPage() {
                                 </label>
                                 <div className="relative">
                                     <select 
-                                        className="flex h-12 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all font-medium"
+                                        className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all font-medium"
                                         value={paymentData.payment_mode}
                                         onChange={(e) => setPaymentData({ ...paymentData, payment_mode: e.target.value })}
                                     >
@@ -427,7 +427,7 @@ export default function QuickFeesPage() {
                                 <div className="relative">
                                     <FileText className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
                                     <textarea 
-                                        className="flex min-h-[100px] w-full rounded-xl border border-muted/50 bg-muted/30 px-11 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white transition-all resize-none"
+                                        className="flex min-h-[100px] w-full rounded-lg border border-muted/50 bg-muted/30 px-11 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white transition-all resize-none"
                                         placeholder="Add any specific instructions or notes..."
                                         value={paymentData.note}
                                         onChange={(e) => setPaymentData({ ...paymentData, note: e.target.value })}
@@ -440,7 +440,7 @@ export default function QuickFeesPage() {
                             <Button 
                                 type="button" 
                                 variant="outline" 
-                                className="flex-1 h-12 rounded-2xl font-bold border-muted/50" 
+                                className="flex-1 h-12 rounded-lg font-bold border-muted/50" 
                                 onClick={() => setIsPaymentDialogOpen(false)}
                             >
                                 Cancel
@@ -448,7 +448,7 @@ export default function QuickFeesPage() {
                             <Button 
                                 type="submit" 
                                 variant="gradient" 
-                                className="flex-1 h-12 rounded-2xl font-bold shadow-lg shadow-primary/20"
+                                className="flex-1 h-12 rounded-lg font-bold shadow-lg shadow-primary/20"
                                 disabled={loading}
                             >
                                 {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}

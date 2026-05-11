@@ -1103,7 +1103,7 @@ export default function OnlineAdmissionPage() {
             <footer className="bg-white dark:bg-slate-950 py-16 border-t border-slate-100 dark:border-slate-900 text-center">
                 <div className="max-w-6xl mx-auto px-6 flex flex-col items-center gap-6">
                     <div className="font-black text-indigo-600/30 uppercase tracking-[0.5em] text-xs">iSchool Enterprise 2026</div>
-                    <p className="text-slate-400 text-sm max-w-lg leading-relaxed">
+                    <p className="text-slate-400 text-[12px] max-w-lg leading-relaxed">
                         &copy; {new Date().getFullYear()} iSchool Management System. All rights reserved. 
                         Admission processes are subject to school policies and local regulations.
                     </p>

@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useSettings } from "@/components/providers/settings-provider";
+import { useMemo } from "react";
 
 interface TimetableEntry {
     class: string;
@@ -126,31 +128,46 @@ const mockTimetable: TimetableDay[] = [
     }
 ];
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DEFAULT_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 export default function TeachersTimetablePage() {
     const { toast } = useToast();
+    const { settings } = useSettings();
+
+    // Derived ordered days based on settings
+    const orderedDays = useMemo(() => {
+        const startDay = settings?.start_day_of_week?.toLowerCase() || "monday";
+        const startIndex = DEFAULT_DAYS.findIndex(d => d.toLowerCase() === startDay);
+        if (startIndex === -1) return DEFAULT_DAYS;
+        return [...DEFAULT_DAYS.slice(startIndex), ...DEFAULT_DAYS.slice(0, startIndex)];
+    }, [settings?.start_day_of_week]);
 
     // Prerequisite states
     const [staffList, setStaffList] = useState<any[]>([]);
     const [selectedStaffId, setSelectedStaffId] = useState<string>("");
 
     // Timetable data
-    const [timetableData, setTimetableData] = useState<any[]>(
-        DAYS.map(day => ({ day, entries: [] }))
-    );
+    const [timetableData, setTimetableData] = useState<any[]>([]);
+
+    // Initialize/Update empty timetable grid when orderedDays changes
+    useEffect(() => {
+        setTimetableData(orderedDays.map(day => ({ day, entries: [] })));
+    }, [orderedDays]);
 
     // UI states
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
 
-    // Load staff list
+    // Load staff list (Teachers only)
     useEffect(() => {
         const fetchStaff = async () => {
             setLoading(true);
             try {
-                const res = await api.get("/users", { params: { role: "Staff", limit: 1000 } });
-                setStaffList(res.data.data.data || []);
+                const res = await api.get("/hr/staff-directory", { 
+                    params: { role: 'Teacher', no_paginate: true, active: 'all' } 
+                });
+                const teachers = (res.data?.data || res.data || []).filter((u: any) => u.role === 'Teacher');
+                setStaffList(teachers);
             } catch (error) {
                 console.error("Error fetching staff:", error);
                 toast("error", "Failed to load staff list");
@@ -174,8 +191,8 @@ export default function TeachersTimetablePage() {
             });
             const entries = res.data.data || [];
 
-            // Group entries by day
-            const grouped = DAYS.map(day => ({
+            // Group entries by day in correct order
+            const grouped = orderedDays.map(day => ({
                 day,
                 entries: entries.filter((e: any) => e.day === day)
             }));
@@ -238,7 +255,7 @@ export default function TeachersTimetablePage() {
                     <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm p-0"
+                        className="h-8 w-8 bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white rounded shadow-sm p-0 border-0"
                         onClick={handlePrint}
                     >
                         <Printer className="h-4 w-4" />

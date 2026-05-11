@@ -65,7 +65,7 @@ export default function QrCodeSettingPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen flex flex-col items-center">
             {/* Header */}
-            <div className="w-full max-w-4xl bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex justify-between items-center relative overflow-hidden">
+            <div className="w-full max-w-4xl bg-white p-8 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
                     <QrCode className="h-24 w-24 text-indigo-500" />
                 </div>
@@ -78,7 +78,7 @@ export default function QrCodeSettingPage() {
                 </div>
             </div>
 
-            <div className="w-full max-w-4xl bg-white rounded-3xl shadow-xl shadow-indigo-100/20 border border-gray-100 overflow-hidden">
+            <div className="w-full max-w-4xl bg-white rounded-lg shadow-xl shadow-indigo-100/20 border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-50 bg-gray-50/30 flex items-center gap-3">
                     <ShieldCheck className="h-5 w-5 text-indigo-500" />
                     <h2 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em]">System Configuration</h2>
@@ -123,7 +123,7 @@ export default function QrCodeSettingPage() {
                             <div 
                                 onClick={() => setSettings({...settings, use_sensor_device: !settings.use_sensor_device})}
                                 className={cn(
-                                    "p-6 rounded-2xl border transition-all cursor-pointer flex flex-col gap-4",
+                                    "p-6 rounded-lg border transition-all cursor-pointer flex flex-col gap-4",
                                     settings.use_sensor_device ? "bg-indigo-50 border-indigo-200 shadow-md shadow-indigo-100" : "bg-gray-50/50 border-gray-100 opacity-60 hover:opacity-100"
                                 )}
                             >
@@ -140,7 +140,7 @@ export default function QrCodeSettingPage() {
                             <div 
                                 onClick={() => setSettings({...settings, use_camera_device: !settings.use_camera_device})}
                                 className={cn(
-                                    "p-6 rounded-2xl border transition-all cursor-pointer flex flex-col gap-4",
+                                    "p-6 rounded-lg border transition-all cursor-pointer flex flex-col gap-4",
                                     settings.use_camera_device ? "bg-indigo-50 border-indigo-200 shadow-md shadow-indigo-100" : "bg-gray-50/50 border-gray-100 opacity-60 hover:opacity-100"
                                 )}
                             >
@@ -172,14 +172,14 @@ export default function QrCodeSettingPage() {
                                 onValueChange={(val) => setSettings({...settings, camera_type: val})}
                                 className="flex flex-row gap-8"
                             >
-                                <div className="flex items-center space-x-3 bg-gray-50/50 px-6 py-4 rounded-xl border border-gray-100 hover:border-indigo-200 transition-all cursor-pointer">
+                                <div className="flex items-center space-x-3 bg-gray-50/50 px-6 py-4 rounded-lg border border-gray-100 hover:border-indigo-200 transition-all cursor-pointer">
                                     <RadioGroupItem value="primary" id="primary" className="text-indigo-600 border-indigo-300" />
                                     <div className="flex items-center gap-2">
                                         <Camera className="h-4 w-4 text-indigo-500" />
                                         <Label htmlFor="primary" className="text-[11px] font-bold text-gray-600 uppercase tracking-widest cursor-pointer">Back Module</Label>
                                     </div>
                                 </div>
-                                <div className="flex items-center space-x-3 bg-gray-50/50 px-6 py-4 rounded-xl border border-gray-100 hover:border-indigo-200 transition-all cursor-pointer">
+                                <div className="flex items-center space-x-3 bg-gray-50/50 px-6 py-4 rounded-lg border border-gray-100 hover:border-indigo-200 transition-all cursor-pointer">
                                     <RadioGroupItem value="secondary" id="secondary" className="text-indigo-600 border-indigo-300" />
                                     <div className="flex items-center gap-2">
                                         <Smartphone className="h-4 w-4 text-indigo-500" />
@@ -204,7 +204,7 @@ export default function QrCodeSettingPage() {
             </div>
 
             {/* Hint Box */}
-            <div className="w-full max-w-4xl bg-indigo-50/30 p-6 rounded-2xl border border-indigo-100 flex items-start gap-4">
+            <div className="w-full max-w-4xl bg-indigo-50/30 p-6 rounded-lg border border-indigo-100 flex items-start gap-4">
                 <Cpu className="h-6 w-6 text-indigo-400 mt-1" />
                 <div className="space-y-1">
                     <h4 className="text-[11px] font-bold text-indigo-700 uppercase tracking-widest">Architectural Insight</h4>

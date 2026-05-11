@@ -191,7 +191,7 @@ export default function StudentDetailsPage() {
                                     <select
                                         value={filters.school_class_id}
                                         onChange={(e) => setFilters(prev => ({ ...prev, school_class_id: e.target.value }))}
-                                        className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     >
                                         <option value="">Select Class</option>
                                         {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -207,7 +207,7 @@ export default function StudentDetailsPage() {
                                     <select
                                         value={filters.section_id}
                                         onChange={(e) => setFilters(prev => ({ ...prev, section_id: e.target.value }))}
-                                        className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     >
                                         <option value="">Select Section</option>
                                         {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -223,7 +223,7 @@ export default function StudentDetailsPage() {
                                     <select
                                         value={filters.status}
                                         onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                                        className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     >
                                         <option value="">Select Status</option>
                                         <option value="active">Active</option>
@@ -236,7 +236,7 @@ export default function StudentDetailsPage() {
                                 <div className="flex gap-2">
                                     <Button
                                         variant="outline"
-                                        className="h-11 px-6 rounded-xl border-muted/50 hover:bg-muted/50"
+                                        className="h-11 px-6 rounded-lg border-muted/50 hover:bg-muted/50"
                                         onClick={handleReset}
                                         disabled={loading}
                                     >
@@ -267,7 +267,7 @@ export default function StudentDetailsPage() {
                                         placeholder="Search By Student Name, Roll Number, etc."
                                         value={filters.search}
                                         onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                                        className="h-11 pl-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all"
+                                        className="h-11 pl-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all"
                                         onKeyDown={(e) => e.key === "Enter" && handleSearch(1)}
                                     />
                                 </div>
@@ -276,7 +276,7 @@ export default function StudentDetailsPage() {
                                 <div className="flex gap-2">
                                     <Button
                                         variant="outline"
-                                        className="h-11 px-6 rounded-xl border-muted/50 hover:bg-muted/50"
+                                        className="h-11 px-6 rounded-lg border-muted/50 hover:bg-muted/50"
                                         onClick={handleReset}
                                         disabled={loading}
                                     >
@@ -423,7 +423,7 @@ export default function StudentDetailsPage() {
                         ) : (
                             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {students.map((student) => (
-                                    <div key={student.id} className="group relative bg-card rounded-[2rem] border border-muted/50 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 overflow-hidden">
+                                    <div key={student.id} className="group relative bg-card rounded-lg border border-muted/50 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 overflow-hidden">
                                         <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2 z-10">
                                             <Button 
                                                 variant="outline" 
@@ -459,8 +459,8 @@ export default function StudentDetailsPage() {
 
                                         <div className="flex flex-col items-center text-center space-y-4">
                                             <div className="relative">
-                                                <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
-                                                <Avatar className="h-24 w-24 rounded-2xl border-2 border-white shadow-md relative">
+                                                <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-500" />
+                                                <Avatar className="h-24 w-24 rounded-lg border-2 border-white shadow-md relative">
                                                     <AvatarImage src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${student.avatar}`} />
                                                     <AvatarFallback className="bg-primary/5 text-primary text-2xl font-black">
                                                         {student.name.substring(0, 2).toUpperCase()}
@@ -478,11 +478,11 @@ export default function StudentDetailsPage() {
                                             </div>
 
                                             <div className="w-full pt-4 grid grid-cols-2 gap-3">
-                                                <div className="bg-muted/30 p-2 rounded-xl text-center">
+                                                <div className="bg-muted/30 p-2 rounded-lg text-center">
                                                     <p className="text-[10px] font-black text-muted-foreground/60 uppercase">Class</p>
                                                     <p className="text-xs font-bold text-foreground line-clamp-1">{student.school_class?.name}</p>
                                                 </div>
-                                                <div className="bg-muted/30 p-2 rounded-xl text-center">
+                                                <div className="bg-muted/30 p-2 rounded-lg text-center">
                                                     <p className="text-[10px] font-black text-muted-foreground/60 uppercase">Roll No</p>
                                                     <p className="text-xs font-bold text-foreground">{student.roll_no || "-"}</p>
                                                 </div>
@@ -528,7 +528,7 @@ export default function StudentDetailsPage() {
                                         alt="No Data"
                                         className="h-24 w-24 object-contain opacity-80 drop-shadow-2xl grayscale group-hover:grayscale-0 transition-all duration-500"
                                     />
-                                    <div className="absolute -bottom-2 -right-2 p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-muted/50">
+                                    <div className="absolute -bottom-2 -right-2 p-3 bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-muted/50">
                                         <FolderSearch className="h-6 w-6 text-amber-500" />
                                     </div>
                                 </div>
@@ -542,7 +542,7 @@ export default function StudentDetailsPage() {
                                 </p>
                             </div>
                             {!loading && (
-                                <Button variant="gradient" className="h-12 px-8 rounded-2xl" onClick={() => window.location.href = "/dashboard/student-information/student-admission"}>
+                                <Button variant="gradient" className="h-12 px-8 rounded-lg" onClick={() => window.location.href = "/dashboard/student-information/student-admission"}>
                                     <Plus className="h-5 w-5" />
                                     Add new record or search with different criteria
                                 </Button>
@@ -596,7 +596,7 @@ export default function StudentDetailsPage() {
 
             {/* View Student Dialog */}
             <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl rounded-3xl bg-background/95 backdrop-blur-md">
+                <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl rounded-lg bg-background/95 backdrop-blur-md">
                     <DialogHeader className="p-8 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent relative">
                         <div className="absolute top-4 right-4">
                             <Button variant="ghost" size="icon" onClick={() => setViewDialogOpen(false)} className="rounded-full hover:bg-white/20 transition-all">
@@ -605,8 +605,8 @@ export default function StudentDetailsPage() {
                         </div>
                         <div className="flex flex-col md:flex-row items-center gap-8">
                             <div className="relative group">
-                                <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-3xl blur opacity-30 group-hover:opacity-50 transition duration-500" />
-                                <Avatar className="h-32 w-32 md:h-40 md:w-40 rounded-3xl border-4 border-white shadow-xl relative transition-transform duration-500 group-hover:scale-[1.02]">
+                                <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-lg blur opacity-30 group-hover:opacity-50 transition duration-500" />
+                                <Avatar className="h-32 w-32 md:h-40 md:w-40 rounded-lg border-4 border-white shadow-xl relative transition-transform duration-500 group-hover:scale-[1.02]">
                                     <AvatarImage src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${selectedStudent?.avatar}`} />
                                     <AvatarFallback className="bg-primary/5 text-primary text-4xl font-black">
                                         {selectedStudent?.name?.substring(0, 2).toUpperCase()}
@@ -621,11 +621,11 @@ export default function StudentDetailsPage() {
                                     {selectedStudent?.name} {selectedStudent?.last_name}
                                 </DialogTitle>
                                 <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-xl border border-muted/50">
+                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
                                         <BadgeCheck className="h-4 w-4 text-primary" />
                                         ADM: {selectedStudent?.admission_no}
                                     </div>
-                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-xl border border-muted/50">
+                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
                                         <GraduationCap className="h-4 w-4 text-indigo-500" />
                                         {selectedStudent?.school_class?.name} ({selectedStudent?.section?.name})
                                     </div>
@@ -655,8 +655,8 @@ export default function StudentDetailsPage() {
                                     <InfoField label="Email Address" value={selectedStudent?.email || "-"} icon={Mail} />
                                     <InfoField label="Father Name" value={selectedStudent?.father_name} icon={User} />
                                     <InfoField label="Category" value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} />
-                                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
-                                        <div className="p-2.5 bg-white rounded-xl shadow-sm border border-muted group-hover:scale-110 transition-transform">
+                                    <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
+                                        <div className="p-2.5 bg-white rounded-lg shadow-sm border border-muted group-hover:scale-110 transition-transform">
                                             <BadgeCheck className="h-4 w-4 text-primary" />
                                         </div>
                                         <div>
@@ -677,12 +677,12 @@ export default function StudentDetailsPage() {
                     </div>
                     
                     <DialogFooter className="p-6 bg-muted/20 border-t border-muted/50 flex flex-row gap-3">
-                        <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => setViewDialogOpen(false)}>
+                        <Button variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setViewDialogOpen(false)}>
                             Close
                         </Button>
                         <Button 
                             variant="gradient" 
-                            className="flex-1 rounded-2xl h-12 font-bold"
+                            className="flex-1 rounded-lg h-12 font-bold"
                             onClick={() => {
                                 setViewDialogOpen(false);
                                 router.push(`/dashboard/student-information/student-details/${selectedStudent?.id}/edit`);
@@ -697,9 +697,9 @@ export default function StudentDetailsPage() {
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent className="max-w-md border-none shadow-2xl rounded-3xl bg-background/95 backdrop-blur-md">
+                <DialogContent className="max-w-md border-none shadow-2xl rounded-lg bg-background/95 backdrop-blur-md">
                     <DialogHeader className="pt-6">
-                        <div className="mx-auto w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-4">
+                        <div className="mx-auto w-16 h-16 bg-red-100 rounded-lg flex items-center justify-center mb-4">
                             <Trash2 className="h-8 w-8 text-red-600" />
                         </div>
                         <DialogTitle className="text-2xl font-black text-center tracking-tight">Delete Record?</DialogTitle>
@@ -709,12 +709,12 @@ export default function StudentDetailsPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="flex flex-row gap-3 p-6 mt-2">
-                        <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => setDeleteDialogOpen(false)}>
+                        <Button variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setDeleteDialogOpen(false)}>
                             Cancel
                         </Button>
                         <Button 
                             variant="destructive" 
-                            className="flex-1 rounded-2xl h-12 font-bold bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200"
+                            className="flex-1 rounded-lg h-12 font-bold bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200"
                             onClick={handleDelete}
                             disabled={deleting}
                         >
@@ -729,8 +729,8 @@ export default function StudentDetailsPage() {
 
 function InfoField({ label, value, icon: Icon }: { label: string, value?: string, icon: any }) {
     return (
-        <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
-            <div className="p-2.5 bg-white rounded-xl shadow-sm border border-muted group-hover:scale-110 transition-transform">
+        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
+            <div className="p-2.5 bg-white rounded-lg shadow-sm border border-muted group-hover:scale-110 transition-transform">
                 <Icon className="h-4 w-4 text-primary" />
             </div>
             <div>

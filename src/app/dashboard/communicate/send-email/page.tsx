@@ -176,7 +176,7 @@ export default function SendEmailPage() {
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-2">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-indigo-50 rounded-2xl shadow-sm shadow-indigo-50/50">
+                    <div className="p-2.5 bg-indigo-50 rounded-lg shadow-sm shadow-indigo-50/50">
                         <Mail className="h-5 w-5 text-indigo-500" />
                     </div>
                     <div>
@@ -186,7 +186,7 @@ export default function SendEmailPage() {
                 </div>
 
                 {/* Navigation Tabs */}
-                <div className="flex bg-white/80 backdrop-blur-sm rounded-xl border border-gray-100 p-1 shadow-sm overflow-hidden">
+                <div className="flex bg-white/80 backdrop-blur-sm rounded-lg border border-gray-100 p-1 shadow-sm overflow-hidden">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -208,7 +208,7 @@ export default function SendEmailPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                  {/* Left Section: Composition */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-8 relative overflow-hidden">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-8 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none">
                             <Send className="h-64 w-64 text-indigo-500 -rotate-12" />
                         </div>
@@ -220,7 +220,7 @@ export default function SendEmailPage() {
                                     <FileText className="h-3 w-3" /> Email Template
                                 </Label>
                                 <Select value={formData.email_template_id} onValueChange={handleTemplateChange}>
-                                    <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm focus:ring-indigo-500 rounded-xl shadow-none">
+                                    <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm focus:ring-indigo-500 rounded-lg shadow-none">
                                         <SelectValue placeholder="Quick Templates" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -239,7 +239,7 @@ export default function SendEmailPage() {
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                     placeholder="Email subject line..."
-                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-xl shadow-none" 
+                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-lg shadow-none" 
                                 />
                             </div>
                         </div>
@@ -258,7 +258,7 @@ export default function SendEmailPage() {
                             <div 
                                 onClick={() => fileInputRef.current?.click()}
                                 className={cn(
-                                    "border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center transition-all cursor-pointer group relative overflow-hidden",
+                                    "border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center transition-all cursor-pointer group relative overflow-hidden",
                                     selectedFile ? "border-indigo-200 bg-indigo-50/30" : "border-gray-100 hover:border-indigo-200 hover:bg-gray-50/50"
                                 )}
                             >
@@ -284,7 +284,7 @@ export default function SendEmailPage() {
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                                 Message Body <span className="text-red-500">*</span>
                             </Label>
-                            <div className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+                            <div className="border border-gray-100 rounded-lg overflow-hidden bg-white shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
                                 {/* Toolbar */}
                                 <div className="bg-gray-50/50 border-b border-gray-100 p-2 flex flex-wrap gap-1">
                                     {[Bold, Italic, Underline, Link, ImageIcon, List, ListOrdered, AlignLeft, AlignCenter, AlignRight].map((Icon, i) => (
@@ -310,7 +310,7 @@ export default function SendEmailPage() {
 
                  {/* Right Section: Recipients */}
                 <div className="space-y-6">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 min-h-[400px] flex flex-col h-full">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 min-h-[400px] flex flex-col h-full">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                 <Users className="h-3.5 w-3.5" /> Recipients <span className="text-red-500">*</span>
@@ -324,7 +324,7 @@ export default function SendEmailPage() {
                                     key={role} 
                                     onClick={() => toggleRecipient(role.toLowerCase())}
                                     className={cn(
-                                        "flex items-center gap-3 p-3 rounded-xl transition-all duration-300 cursor-pointer border border-transparent",
+                                        "flex items-center gap-3 p-3 rounded-lg transition-all duration-300 cursor-pointer border border-transparent",
                                         formData.recipients.includes(role.toLowerCase())
                                             ? "bg-indigo-50/50 border-indigo-100"
                                             : "hover:bg-gray-50/50 hover:border-gray-100"
@@ -343,7 +343,7 @@ export default function SendEmailPage() {
                             ))}
                         </div>
 
-                        <div className="mt-8 p-4 bg-indigo-50/30 rounded-2xl border border-indigo-50/50">
+                        <div className="mt-8 p-4 bg-indigo-50/30 rounded-lg border border-indigo-50/50">
                             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-indigo-400">
                                 <span>Targeting</span>
                                 <span className="text-indigo-600">{formData.recipients.length} Roles</span>
@@ -354,7 +354,7 @@ export default function SendEmailPage() {
             </div>
 
             {/* Footer Actions */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white/80 backdrop-blur-md border border-gray-100 rounded-2xl p-6 shadow-xl shadow-indigo-100/20 mt-4 sticky bottom-4 z-10">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white/80 backdrop-blur-md border border-gray-100 rounded-lg p-6 shadow-xl shadow-indigo-100/20 mt-4 sticky bottom-4 z-10">
                 <RadioGroup 
                     value={formData.send_type} 
                     onValueChange={(val: "now" | "schedule") => setFormData({ ...formData, send_type: val })}
@@ -390,7 +390,7 @@ export default function SendEmailPage() {
 
                 <div className="flex items-center gap-6">
                     {formData.send_type === 'schedule' && (
-                        <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-lg border border-gray-100 animate-in fade-in slide-in-from-right-4 duration-500">
                             <Calendar className="h-3.5 w-3.5 text-indigo-500" />
                             <Input 
                                 type="datetime-local" 
@@ -412,7 +412,7 @@ export default function SendEmailPage() {
 
             {/* Confirmation Dialog */}
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-                <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Confirm Email Dispatch</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
@@ -421,8 +421,8 @@ export default function SendEmailPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-10 rounded-xl text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeSubmit} className="btn-gradient h-10 rounded-xl text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeSubmit} className="btn-gradient h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
                             {formData.send_type === 'now' ? 'Yes, Send Now' : 'Yes, Schedule'}
                         </AlertDialogAction>
                     </AlertDialogFooter>

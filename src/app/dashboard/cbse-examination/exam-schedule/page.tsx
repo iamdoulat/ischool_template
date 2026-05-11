@@ -63,7 +63,7 @@ export default function ExamSchedulePage() {
     return (
         <div className="space-y-8 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <CalendarCheck2 className="h-6 w-6 text-indigo-500" />
@@ -84,14 +84,14 @@ export default function ExamSchedulePage() {
             {loading ? (
                 <div className="grid grid-cols-1 gap-8">
                     {[1, 2].map(i => (
-                        <div key={i} className="bg-white rounded-2xl border border-gray-100 p-8 h-64 animate-pulse flex flex-col justify-center items-center space-y-4">
+                        <div key={i} className="bg-white rounded-lg border border-gray-100 p-8 h-64 animate-pulse flex flex-col justify-center items-center space-y-4">
                             <div className="h-8 w-64 bg-gray-100 rounded-full" />
-                            <div className="h-32 w-full bg-gray-50 rounded-2xl" />
+                            <div className="h-32 w-full bg-gray-50 rounded-lg" />
                         </div>
                     ))}
                 </div>
             ) : examGroups.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-24 text-center space-y-4 opacity-40">
+                <div className="bg-white rounded-lg border border-gray-100 p-24 text-center space-y-4 opacity-40">
                     <CalendarDays className="h-16 w-16 text-gray-300 mx-auto" />
                     <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-gray-500">No Active Schedules</h3>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mx-auto max-w-sm">There are no institutional examination cycles currently scheduled for this academic term</p>
@@ -99,11 +99,11 @@ export default function ExamSchedulePage() {
             ) : (
                 <div className="grid grid-cols-1 gap-8">
                     {examGroups.map((group) => (
-                        <div key={group.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-indigo-100/50">
+                        <div key={group.id} className="bg-white border border-gray-100 rounded-lg shadow-sm overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-indigo-100/50">
                             {/* Card Header */}
                             <div className="bg-gray-50/50 px-6 py-4 flex justify-between items-center border-b border-gray-100 group-hover:bg-indigo-50/30 transition-colors">
                                 <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex items-center justify-center border border-gray-100">
+                                    <div className="h-10 w-10 rounded-lg bg-white shadow-sm flex items-center justify-center border border-gray-100">
                                         <ShieldCheck className="h-5 w-5 text-indigo-500" />
                                     </div>
                                     <div>
@@ -116,10 +116,10 @@ export default function ExamSchedulePage() {
                                     </div>
                                 </div>
                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-4 group-hover:translate-x-0">
-                                    <Button size="icon" variant="ghost" className="h-9 w-9 bg-white border border-gray-100 hover:bg-indigo-500 hover:text-white rounded-xl shadow-sm">
+                                    <Button size="icon" variant="ghost" className="h-9 w-9 bg-white border border-gray-100 hover:bg-indigo-500 hover:text-white rounded-lg shadow-sm">
                                         <Printer className="h-4 w-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" className="h-9 w-9 bg-white border border-gray-100 hover:bg-indigo-500 hover:text-white rounded-xl shadow-sm">
+                                    <Button size="icon" variant="ghost" className="h-9 w-9 bg-white border border-gray-100 hover:bg-indigo-500 hover:text-white rounded-lg shadow-sm">
                                         <Info className="h-4 w-4" />
                                     </Button>
                                 </div>

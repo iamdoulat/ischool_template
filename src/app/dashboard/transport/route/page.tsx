@@ -154,7 +154,7 @@ export default function RoutePage() {
             <div className="flex flex-col lg:flex-row gap-8">
                 {/* Left Section: Create/Edit Route Form */}
                 <div className="w-full lg:w-1/3 xl:w-1/4">
-                    <div className="bg-white rounded-2xl shadow-xl shadow-black/5 border border-gray-100 overflow-hidden sticky top-6">
+                    <div className="bg-white rounded-lg shadow-xl shadow-black/5 border border-gray-100 overflow-hidden sticky top-6">
                         <div className="p-5 border-b border-gray-100 bg-gray-50/50">
                             <h2 className="text-base font-semibold text-gray-800 tracking-tight">
                                 {isEditing ? "Edit Route" : "Create Route"}
@@ -169,7 +169,7 @@ export default function RoutePage() {
                                 <Input
                                     value={formState.title}
                                     onChange={(e) => setFormState({ title: e.target.value })}
-                                    className="h-11 border-gray-200 text-sm focus-visible:ring-primary rounded-xl shadow-none transition-all focus:border-primary"
+                                    className="h-11 border-gray-200 text-sm focus-visible:ring-primary rounded-lg shadow-none transition-all focus:border-primary"
                                     placeholder="Enter route title"
                                 />
                             </div>
@@ -178,7 +178,7 @@ export default function RoutePage() {
                                 <Button
                                     onClick={handleSubmit}
                                     variant="primary"
-                                    className="w-full h-11 text-xs font-bold uppercase tracking-widest transition-all rounded-xl shadow-lg shadow-primary/20"
+                                    className="w-full h-11 text-xs font-bold uppercase tracking-widest transition-all rounded-lg shadow-lg shadow-primary/20"
                                 >
                                     {isEditing ? "Update Route" : "Save Route"}
                                 </Button>
@@ -186,7 +186,7 @@ export default function RoutePage() {
                                     <Button
                                         onClick={() => { setIsEditing(false); setFormState({ title: "" }); }}
                                         variant="outline"
-                                        className="w-full h-11 text-xs font-bold uppercase tracking-widest rounded-xl border-gray-200 text-gray-500 hover:bg-gray-50"
+                                        className="w-full h-11 text-xs font-bold uppercase tracking-widest rounded-lg border-gray-200 text-gray-500 hover:bg-gray-50"
                                     >
                                         Cancel
                                     </Button>
@@ -198,7 +198,7 @@ export default function RoutePage() {
 
                 {/* Right Section: Route List */}
                 <div className="flex-1 min-w-0">
-                    <div className="bg-white rounded-2xl shadow-xl shadow-black/5 border border-gray-100 p-6 space-y-6 overflow-hidden">
+                    <div className="bg-white rounded-lg shadow-xl shadow-black/5 border border-gray-100 p-6 space-y-6 overflow-hidden">
                         <div className="flex justify-between items-center">
                             <h2 className="text-base font-semibold text-gray-800 tracking-tight">Route List</h2>
                             <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-bold uppercase tracking-widest border border-indigo-100">
@@ -213,7 +213,7 @@ export default function RoutePage() {
                                     placeholder="Search routes..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-4 h-10 text-xs border-gray-200 focus-visible:ring-primary rounded-xl shadow-none transition-all focus:border-primary pr-10"
+                                    className="pl-4 h-10 text-xs border-gray-200 focus-visible:ring-primary rounded-lg shadow-none transition-all focus:border-primary pr-10"
                                 />
                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors">
                                     <Plus className="h-4 w-4 rotate-45" />
@@ -221,7 +221,7 @@ export default function RoutePage() {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-100">
                                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm transition-all rounded-lg text-gray-500" onClick={copyToClipboard}>
                                         <Copy className="h-4 w-4" />
                                     </Button>
@@ -243,10 +243,10 @@ export default function RoutePage() {
                                         setCurrentPage(1);
                                     }}
                                 >
-                                    <SelectTrigger className="h-10 w-20 text-xs border-gray-200 focus:ring-primary rounded-xl shadow-none bg-white">
+                                    <SelectTrigger className="h-10 w-20 text-xs border-gray-200 focus:ring-primary rounded-lg shadow-none bg-white">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl">
+                                    <SelectContent className="rounded-lg">
                                         <SelectItem value="10">10</SelectItem>
                                         <SelectItem value="25">25</SelectItem>
                                         <SelectItem value="50">50</SelectItem>
@@ -256,7 +256,7 @@ export default function RoutePage() {
                         </div>
 
                         {/* Table */}
-                        <div className="rounded-2xl border border-gray-100 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-lg border border-gray-100 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[600px]">
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
@@ -332,7 +332,7 @@ export default function RoutePage() {
                                     size="icon"
                                     disabled={currentPage === 1}
                                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                    className="h-9 w-9 rounded-xl border-gray-100 hover:bg-gray-50 hover:border-primary/20 disabled:opacity-30 transition-all shadow-sm"
+                                    className="h-9 w-9 rounded-lg border-gray-100 hover:bg-gray-50 hover:border-primary/20 disabled:opacity-30 transition-all shadow-sm"
                                 >
                                     <ChevronLeft className="h-4 w-4 text-gray-600" />
                                 </Button>
@@ -344,7 +344,7 @@ export default function RoutePage() {
                                             variant={currentPage === page ? "primary" : "outline"}
                                             onClick={() => setCurrentPage(page)}
                                             className={cn(
-                                                "h-9 min-w-[36px] rounded-xl text-xs font-bold transition-all",
+                                                "h-9 min-w-[36px] rounded-lg text-xs font-bold transition-all",
                                                 currentPage === page 
                                                     ? "shadow-lg shadow-primary/20 scale-105" 
                                                     : "border-gray-100 text-gray-400 hover:text-primary hover:border-primary/20 hover:bg-primary/5"
@@ -360,7 +360,7 @@ export default function RoutePage() {
                                     size="icon"
                                     disabled={currentPage === totalPages || totalPages === 0}
                                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                    className="h-9 w-9 rounded-xl border-gray-100 hover:bg-gray-50 hover:border-primary/20 disabled:opacity-30 transition-all shadow-sm"
+                                    className="h-9 w-9 rounded-lg border-gray-100 hover:bg-gray-50 hover:border-primary/20 disabled:opacity-30 transition-all shadow-sm"
                                 >
                                     <ChevronRight className="h-4 w-4 text-gray-600" />
                                 </Button>

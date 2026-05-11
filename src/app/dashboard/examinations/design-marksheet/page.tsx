@@ -188,7 +188,7 @@ export default function DesignMarksheetPage() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Left Column: Add Marksheet Form */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[calc(100vh-120px)] sticky top-4">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col h-[calc(100vh-120px)] sticky top-4">
                         <div className="p-6 border-b border-gray-50 bg-gray-50/30 rounded-t-2xl flex items-center gap-3">
                             <Palette className="h-5 w-5 text-indigo-500" />
                             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest">
@@ -205,7 +205,7 @@ export default function DesignMarksheetPage() {
                                     value={formData.name}
                                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                                     placeholder="e.g. School Final Marksheet"
-                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none" 
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
                                 />
                             </div>
 
@@ -214,7 +214,7 @@ export default function DesignMarksheetPage() {
                                 <Input 
                                     value={formData.exam_name}
                                     onChange={(e) => setFormData({...formData, exam_name: e.target.value})}
-                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none" 
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
                                 />
                             </div>
 
@@ -223,7 +223,7 @@ export default function DesignMarksheetPage() {
                                 <Input 
                                     value={formData.school_name}
                                     onChange={(e) => setFormData({...formData, school_name: e.target.value})}
-                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none" 
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
                                 />
                             </div>
 
@@ -255,7 +255,7 @@ export default function DesignMarksheetPage() {
                                 {["Header Image", "Background Image"].map((label) => (
                                     <div key={label} className="space-y-2">
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase">{label}</Label>
-                                        <div className="border-2 border-dashed border-gray-100 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-all bg-gray-50/20 group">
+                                        <div className="border-2 border-dashed border-gray-100 rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-all bg-gray-50/20 group">
                                             <Upload className="h-6 w-6 text-gray-300 mb-2 group-hover:text-indigo-400 transition-colors" />
                                             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Upload Asset</span>
                                         </div>
@@ -283,7 +283,7 @@ export default function DesignMarksheetPage() {
 
                 {/* Right Column: Marksheet List */}
                 <div className="lg:col-span-3">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                         <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                                 <Layout className="h-5 w-5 text-indigo-500" />
@@ -315,14 +315,14 @@ export default function DesignMarksheetPage() {
                                     placeholder="Search templates..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                                    className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
 
                             <div className="flex items-center gap-3">
                                 <span className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">View:</span>
                                 <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                                    <SelectTrigger className="w-[100px] h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl shadow-none">
+                                    <SelectTrigger className="w-[100px] h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg shadow-none">
                                         <SelectValue placeholder="50" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -335,7 +335,7 @@ export default function DesignMarksheetPage() {
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                        <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                             <Table>
                                 <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                                     <TableRow className="hover:bg-transparent border-gray-50">
@@ -444,7 +444,7 @@ export default function DesignMarksheetPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Design Template</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">

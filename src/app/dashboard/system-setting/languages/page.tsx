@@ -311,7 +311,7 @@ export default function LanguagesPage() {
 
             {/* Add / Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
+                <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-none shadow-2xl rounded-lg">
                     <DialogHeader className="bg-gradient-to-r from-orange-400 to-indigo-500 p-6 text-white text-left">
                         <DialogTitle className="text-xl font-bold uppercase tracking-tight">
                             {editingLanguage ? t("edit") : t("add_language")}
@@ -326,7 +326,7 @@ export default function LanguagesPage() {
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 placeholder="e.g. English"
-                                className="h-10 text-[12px] border-gray-100 bg-gray-50/50 focus:ring-indigo-500 rounded-xl shadow-none"
+                                className="h-10 text-[12px] border-gray-100 bg-gray-50/50 focus:ring-indigo-500 rounded-lg shadow-none"
                             />
                         </div>
 
@@ -337,7 +337,7 @@ export default function LanguagesPage() {
                                     value={formData.short_code}
                                     onChange={(e) => setFormData({ ...formData, short_code: e.target.value })}
                                     placeholder="e.g. en"
-                                    className="h-10 text-[12px] border-gray-100 bg-gray-50/50 focus:ring-indigo-500 rounded-xl shadow-none font-mono"
+                                    className="h-10 text-[12px] border-gray-100 bg-gray-50/50 focus:ring-indigo-500 rounded-lg shadow-none font-mono"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -346,12 +346,12 @@ export default function LanguagesPage() {
                                     value={formData.country_code}
                                     onChange={(e) => setFormData({ ...formData, country_code: e.target.value })}
                                     placeholder="e.g. us"
-                                    className="h-10 text-[12px] border-gray-100 bg-gray-50/50 focus:ring-indigo-500 rounded-xl shadow-none font-mono"
+                                    className="h-10 text-[12px] border-gray-100 bg-gray-50/50 focus:ring-indigo-500 rounded-lg shadow-none font-mono"
                                 />
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between p-3 bg-gray-50/80 rounded-xl border border-gray-100">
+                        <div className="flex items-center justify-between p-3 bg-gray-50/80 rounded-lg border border-gray-100">
                             <div className="space-y-0.5">
                                 <Label className="text-[11px] font-bold text-gray-700">{t("is_rtl")}</Label>
                                 <p className="text-[9px] text-gray-400 font-medium tracking-tight">Enable if the language reads right to left.</p>
@@ -368,14 +368,14 @@ export default function LanguagesPage() {
                         <Button
                             variant="outline"
                             onClick={() => setIsDialogOpen(false)}
-                            className="flex-1 h-10 text-[11px] font-bold uppercase rounded-xl border-gray-200 hover:bg-white text-gray-500"
+                            className="flex-1 h-10 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-white text-gray-500"
                         >
                             {t("cancel")}
                         </Button>
                         <Button
                             onClick={handleSave}
                             disabled={saving || !formData.name || !formData.short_code}
-                            className="flex-1 h-10 bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white text-[11px] font-bold uppercase rounded-xl shadow-lg border-none"
+                            className="flex-1 h-10 bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white text-[11px] font-bold uppercase rounded-lg shadow-lg border-none"
                         >
                             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                             {editingLanguage ? t("save") : t("save")}

@@ -333,7 +333,7 @@ export default function StudentAttendancePage() {
                     </div>
 
                     {/* Bulk Actions & Save Button Row */}
-                    <div className="flex items-center justify-between flex-wrap gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                    <div className="flex items-center justify-between flex-wrap gap-4 bg-gray-50/50 p-4 rounded-lg border border-gray-100">
                         <div className="flex items-center gap-4 flex-wrap">
                             <span className="text-[11px] font-semibold text-gray-500">
                                 Set attendance for all students as
@@ -376,7 +376,7 @@ export default function StudentAttendancePage() {
                                     Save Attendance
                                 </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent className="max-w-[400px] rounded-2xl border-none shadow-2xl">
+                            <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl">
                                 <AlertDialogHeader>
                                     <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
                                         <Info className="h-6 w-6 text-indigo-600" />

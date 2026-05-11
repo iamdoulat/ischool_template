@@ -249,7 +249,7 @@ export default function UploadContentPage() {
                                 </div>
                             ) : (
                                 contents.map((item) => (
-                                    <div key={item.id} className="relative group bg-white border border-gray-100 rounded-xl p-4 hover:shadow-lg hover:border-indigo-100 transition-all duration-300">
+                                    <div key={item.id} className="relative group bg-white border border-gray-100 rounded-lg p-4 hover:shadow-lg hover:border-indigo-100 transition-all duration-300">
                                         <div className="flex items-start gap-4">
                                             {getFileIcon(item)}
                                             <div className="flex-1 min-w-0 pr-6">
@@ -339,7 +339,7 @@ export default function UploadContentPage() {
                 <div className="w-full lg:w-80 space-y-4 shrink-0">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                         <div className="bg-gray-50/50 p-12 flex flex-col items-center justify-center border-b border-gray-100">
-                            <div className="relative h-20 w-20 flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-100 group">
+                            <div className="relative h-20 w-20 flex items-center justify-center bg-white rounded-lg shadow-lg border border-gray-100 group">
                                 <CloudUpload className="h-10 w-10 text-gray-300 group-hover:text-indigo-400 transition-colors" />
                                 <div className="absolute -bottom-1 -right-1 h-8 w-8 bg-indigo-500 rounded-full border-4 border-white flex items-center justify-center">
                                     <LayoutGrid className="h-3.5 w-3.5 text-white" />

@@ -439,7 +439,7 @@ export default function ManageAlumniPage() {
                         <Button 
                             variant="outline" 
                             size="icon" 
-                            className="h-8 w-8 rounded-xl border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
+                            className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
                         >
@@ -450,7 +450,7 @@ export default function ManageAlumniPage() {
                                 key={i}
                                 variant={currentPage === i + 1 ? "default" : "outline"}
                                 className={cn(
-                                    "h-8 min-w-[32px] rounded-xl text-xs font-bold transition-all shadow-sm",
+                                    "h-8 min-w-[32px] rounded-lg text-xs font-bold transition-all shadow-sm",
                                     currentPage === i + 1 
                                         ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-indigo-500/30 border-0" 
                                         : "bg-white border-gray-100 text-gray-500 hover:text-gray-700"
@@ -463,7 +463,7 @@ export default function ManageAlumniPage() {
                         <Button 
                             variant="outline" 
                             size="icon" 
-                            className="h-8 w-8 rounded-xl border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
+                            className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
                             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages || totalPages === 0}
                         >

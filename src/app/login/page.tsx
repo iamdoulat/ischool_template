@@ -136,7 +136,7 @@ export default function LoginPage() {
                         </form>
                     </Card>
 
-                    <p className="text-center text-slate-400 text-sm">
+                    <p className="text-center text-slate-400 text-[12px]">
                         © 2026 iSchool Management System. All rights reserved.
                     </p>
                 </div>

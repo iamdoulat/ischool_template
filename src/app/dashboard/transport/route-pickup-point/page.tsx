@@ -381,7 +381,7 @@ export default function RoutePickupPointPage() {
                                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                     variant="ghost"
                                     size="icon"
-                                    className="h-9 w-9 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                                    className="h-9 w-9 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
                                 >
                                     <ChevronLeft className="h-5 w-5 text-gray-600" />
                                 </Button>
@@ -392,7 +392,7 @@ export default function RoutePickupPointPage() {
                                         variant={currentPage === page ? "gradient" : "ghost"}
                                         onClick={() => setCurrentPage(page)}
                                         className={cn(
-                                            "h-9 w-9 rounded-xl text-[12px] font-bold p-0 transition-all shadow-sm",
+                                            "h-9 w-9 rounded-lg text-[12px] font-bold p-0 transition-all shadow-sm",
                                             currentPage === page ? "scale-105 border-0" : "border border-gray-50 text-gray-400 hover:text-indigo-600"
                                         )}
                                     >
@@ -405,7 +405,7 @@ export default function RoutePickupPointPage() {
                                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                     variant="ghost"
                                     size="icon"
-                                    className="h-9 w-9 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                                    className="h-9 w-9 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
                                 >
                                     <ChevronRight className="h-5 w-5 text-gray-600" />
                                 </Button>

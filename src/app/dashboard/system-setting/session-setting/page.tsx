@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,8 +35,11 @@ import {
     Pencil,
     Trash2,
     Info,
-    Loader2
+    Loader2,
+    CheckCircle2,
+    AlertCircle
 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 interface SessionEntry {
     id: number;
@@ -55,9 +59,7 @@ export default function SessionSettingPage() {
     const [sessionName, setSessionName] = useState("");
     const [isActive, setIsActive] = useState(false);
 
-    // Notifications
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
+    const { toast } = useToast();
 
     const fetchSessions = async () => {
         try {
@@ -81,28 +83,26 @@ export default function SessionSettingPage() {
         setEditId(null);
         setSessionName("");
         setIsActive(false);
-        setError("");
-        setSuccess("");
     };
 
     const handleEdit = (session: SessionEntry) => {
         setEditId(session.id);
         setSessionName(session.session);
         setIsActive(session.is_active);
-        setError("");
-        setSuccess("");
     };
 
     const handleSave = async () => {
         if (!sessionName.trim()) {
-            setError("Session name is required");
+            toast({
+                title: "Error",
+                description: "Session name is required",
+                variant: "destructive",
+            });
             return;
         }
 
         try {
             setSaving(true);
-            setError("");
-            setSuccess("");
 
             const payload = {
                 session: sessionName,
@@ -111,18 +111,27 @@ export default function SessionSettingPage() {
 
             if (editId) {
                 await api.put(`/system-setting/sessions/${editId}`, payload);
-                setSuccess("Session updated successfully");
+                toast({
+                    title: "Success",
+                    description: "Session updated successfully",
+                });
             } else {
                 await api.post("/system-setting/sessions", payload);
-                setSuccess("Session added successfully");
+                toast({
+                    title: "Success",
+                    description: "Session added successfully",
+                });
             }
 
             fetchSessions();
             resetForm();
-            setTimeout(() => setSuccess(""), 3000);
 
         } catch (err: any) {
-            setError(err.response?.data?.message || "An error occurred");
+            toast({
+                title: "Error",
+                description: err.response?.data?.message || "An error occurred",
+                variant: "destructive",
+            });
         } finally {
             setSaving(false);
         }
@@ -135,11 +144,39 @@ export default function SessionSettingPage() {
 
         try {
             await api.delete(`/system-setting/sessions/${id}`);
-            setSuccess("Session deleted successfully");
+            toast({
+                title: "Success",
+                description: "Session deleted successfully",
+            });
             fetchSessions();
-            setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to delete session");
+            toast({
+                title: "Error",
+                description: err.response?.data?.message || "Failed to delete session",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const handleToggleActive = async (session: SessionEntry) => {
+        if (session.is_active) return;
+
+        try {
+            await api.put(`/system-setting/sessions/${session.id}`, {
+                session: session.session,
+                is_active: true
+            });
+            toast({
+                title: "Success",
+                description: `Session ${session.session} set as active`,
+            });
+            fetchSessions();
+        } catch (err: any) {
+            toast({
+                title: "Error",
+                description: "Failed to update session status",
+                variant: "destructive",
+            });
         }
     };
 
@@ -161,8 +198,10 @@ export default function SessionSettingPage() {
         const rows = filteredSessions.map(s => [s.session, s.is_active ? "Active" : "Inactive"]);
         const tsv = [headers.join("\t"), ...rows.map(r => r.join("\t"))].join("\n");
         navigator.clipboard.writeText(tsv).then(() => {
-            setSuccess("Copied to clipboard");
-            setTimeout(() => setSuccess(""), 3000);
+            toast({
+                title: "Copied",
+                description: "Data copied to clipboard",
+            });
         });
     };
 
@@ -249,9 +288,6 @@ export default function SessionSettingPage() {
                             {editId ? "Edit Session" : "Add Session"}
                         </h2>
 
-                        {error && <div className="text-red-500 text-[10px] font-medium bg-red-50 p-2 rounded">{error}</div>}
-                        {success && <div className="text-green-500 text-[10px] font-medium bg-green-50 p-2 rounded">{success}</div>}
-
                         <div className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Session <span className="text-red-500">*</span></Label>
@@ -330,7 +366,6 @@ export default function SessionSettingPage() {
 
                             <div className="flex items-center gap-2">
                                 <div className="flex items-center gap-1.5 mr-2">
-                                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">50</span>
                                     <Select defaultValue="50">
                                         <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none rounded outline-none ring-0">
                                             <SelectValue />
@@ -390,11 +425,17 @@ export default function SessionSettingPage() {
                                         <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                                             <TableCell className="py-3 px-4 text-gray-700">{item.session}</TableCell>
                                             <TableCell className="py-3 px-4">
-                                                {item.is_active ? (
-                                                    <span className="bg-emerald-500 text-white text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-tighter">
-                                                        Active
-                                                    </span>
-                                                ) : null}
+                                                <button
+                                                    onClick={() => handleToggleActive(item)}
+                                                    className={cn(
+                                                        "text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-tighter transition-all",
+                                                        item.is_active 
+                                                            ? "bg-emerald-500 text-white cursor-default" 
+                                                            : "bg-gray-100 text-gray-400 hover:bg-emerald-100 hover:text-emerald-600 cursor-pointer"
+                                                    )}
+                                                >
+                                                    {item.is_active ? "Active" : "Set Active"}
+                                                </button>
                                             </TableCell>
                                             <TableCell className="py-3 px-4 text-right">
                                                 <div className="flex justify-end gap-1">

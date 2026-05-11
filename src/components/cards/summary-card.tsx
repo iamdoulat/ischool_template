@@ -29,7 +29,7 @@ export function SummaryCard({ title, value, icon: Icon, color }: SummaryCardProp
             colorMaps[color]
         )}>
             <CardContent className="px-4 py-3 md:px-5 md:py-4 flex items-center gap-4">
-                <div className="p-3 md:p-4 rounded-xl bg-white/20 backdrop-blur-md border border-white/10 shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:bg-white/30">
+                <div className="p-3 md:p-4 rounded-lg bg-white/20 backdrop-blur-md border border-white/10 shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:bg-white/30">
                     <Icon className="h-6 w-6 md:h-8 md:w-8 text-white" />
                 </div>
                 <div>

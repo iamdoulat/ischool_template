@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ExternalLink, Loader2 } from "lucide-react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/use-toast";
 
 const tabs = ["Meta WhatsApp Official", "Twilio"];
 
@@ -65,7 +65,7 @@ export default function WhatsappMessagingPage() {
                 }
             }
         } catch (error) {
-            toast("error", "Failed to fetch settings");
+            toast({ variant: "destructive", title: "Error", description: "Failed to fetch settings" });
         } finally {
             setLoading(false);
         }
@@ -97,10 +97,10 @@ export default function WhatsappMessagingPage() {
 
             const res = await api.post('/system-setting/sms-settings', payload);
             if (res.data?.status === 'success') {
-                toast("success", `${activeTab} Configuration Saved`);
+                toast({ title: "Saved", description: `${activeTab} configuration saved successfully` });
             }
         } catch (error) {
-            toast("error", `Failed to save ${activeTab} configuration`);
+            toast({ variant: "destructive", title: "Error", description: `Failed to save ${activeTab} configuration` });
         } finally {
             setSaving(false);
         }
@@ -198,9 +198,9 @@ export default function WhatsappMessagingPage() {
 
                             {/* Meta Brand Card */}
                             <div className="flex flex-col items-center justify-center p-8 space-y-4">
-                                <div className="w-56 h-32 bg-blue-600 rounded-xl shadow-lg flex items-center justify-center relative overflow-hidden group">
+                                <div className="w-56 h-32 bg-blue-600 rounded-lg shadow-lg flex items-center justify-center relative overflow-hidden group">
                                     <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-                                    <div className="bg-white p-3 rounded-2xl shadow-xl transform transition-transform group-hover:scale-110">
+                                    <div className="bg-white p-3 rounded-lg shadow-xl transform transition-transform group-hover:scale-110">
                                         <svg className="w-12 h-12 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
                                             <path d="M12.001 3.5c-3.111 0-5.875 1.579-7.534 3.993C3.012 10.016 3.012 13.984 4.467 16.507c1.659 2.414 4.423 3.993 7.534 3.993h.001c3.111 0 5.875-1.579 7.534-3.993 1.455-2.523 1.455-6.491 0-9.014-1.659-2.414-4.423-3.993-7.534-3.993s-5.875 1.579-7.534 3.993zM12.001 2c3.5 0 6.666 1.834 8.5 4.5 1.667 3 1.667 7.5 0 10.5-1.834 2.666-5 4.5-8.5 4.5h-.001c-3.5 0-6.666-1.834-8.5-4.5-1.667-3-1.667-7.5 0-10.5 1.834-2.666 5-4.5 8.5-4.5h.001z" />
                                             <path d="M12.001 8c-1.381 0-2.5 1.119-2.5 2.5s1.119 2.5 2.5 2.5c1.381 0 2.5-1.119 2.5-2.5s-1.119-2.5-2.5-2.5zm5.5 2.5c0 3.038-2.462 5.5-5.5 5.5s-5.5-2.462-5.5-5.5 2.462-5.5 5.5-5.5 5.5 2.462 5.5 5.5z" />
@@ -277,9 +277,9 @@ export default function WhatsappMessagingPage() {
 
                             {/* Twilio Brand Card */}
                             <div className="flex flex-col items-center justify-center p-8 space-y-4">
-                                <div className="w-56 h-32 bg-[#F22F46] rounded-xl shadow-lg flex items-center justify-center relative overflow-hidden group">
+                                <div className="w-56 h-32 bg-[#F22F46] rounded-lg shadow-lg flex items-center justify-center relative overflow-hidden group">
                                     <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
-                                    <div className="bg-white p-3 rounded-2xl shadow-xl transform transition-transform group-hover:scale-110">
+                                    <div className="bg-white p-3 rounded-lg shadow-xl transform transition-transform group-hover:scale-110">
                                         <svg className="w-12 h-12 text-[#F22F46]" viewBox="0 0 24 24" fill="currentColor">
                                             <path d="M12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12z" fill="#F22F46" />
                                             <path d="M7.4 17.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zm9.2 0c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zm-9.2-5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zm9.2 0c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#FFF" />

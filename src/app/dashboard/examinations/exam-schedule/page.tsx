@@ -98,7 +98,7 @@ export default function ExamSchedulePage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <CalendarDays className="h-6 w-6 text-indigo-500" />
@@ -109,7 +109,7 @@ export default function ExamSchedulePage() {
             </div>
 
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                 <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
                     <ClipboardList className="h-5 w-5 text-indigo-500" />
                     <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest">Search Configuration</h2>
@@ -121,7 +121,7 @@ export default function ExamSchedulePage() {
                             Exam Group <span className="text-red-500">*</span>
                         </Label>
                         <Select value={selectedCriteria.exam_group_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_group_id: val})}>
-                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Group" />
                             </SelectTrigger>
                             <SelectContent>
@@ -135,7 +135,7 @@ export default function ExamSchedulePage() {
                             Exam <span className="text-red-500">*</span>
                         </Label>
                         <Select value={selectedCriteria.exam_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_id: val})}>
-                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Exam" />
                             </SelectTrigger>
                             <SelectContent>
@@ -158,7 +158,7 @@ export default function ExamSchedulePage() {
             </div>
 
             {/* Exam Schedule List Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                 <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                     <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <Clock className="h-5 w-5 text-indigo-500" />
@@ -179,12 +179,12 @@ export default function ExamSchedulePage() {
                             placeholder="Search by subject..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                            className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                         />
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                     <Table>
                         <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-500">
                             <TableRow className="hover:bg-transparent border-gray-50">

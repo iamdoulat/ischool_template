@@ -326,7 +326,7 @@ export default function StudentAdmissionPage() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-3 bg-primary/10 rounded-2xl">
+                    <div className="p-3 bg-primary/10 rounded-lg">
                         <UserPlus className="h-6 w-6 text-primary" />
                     </div>
                     <div>
@@ -499,7 +499,7 @@ export default function StudentAdmissionPage() {
                 <SectionCard title="Fees Details" icon={Wallet}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {feeGroups.map((group) => (
-                            <label key={group.id} className="flex flex-col border border-muted/50 p-4 rounded-xl cursor-pointer hover:bg-muted/20 transition-colors group/fee">
+                            <label key={group.id} className="flex flex-col border border-muted/50 p-4 rounded-lg cursor-pointer hover:bg-muted/20 transition-colors group/fee">
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex items-center justify-center">
                                         <input
@@ -537,7 +537,7 @@ export default function StudentAdmissionPage() {
                 <SectionCard title="Fees Discount Details" icon={Percent}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {feeDiscounts.map((discount) => (
-                            <label key={discount.id} className="flex flex-col border border-muted/50 p-4 rounded-xl cursor-pointer hover:bg-muted/20 transition-colors group/discount">
+                            <label key={discount.id} className="flex flex-col border border-muted/50 p-4 rounded-lg cursor-pointer hover:bg-muted/20 transition-colors group/discount">
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex items-center justify-center">
                                         <input
@@ -740,7 +740,7 @@ export default function StudentAdmissionPage() {
                         <Button 
                             onClick={handleAddSibling}
                             disabled={!siblingStudentId || loadingSiblings}
-                            className="bg-primary hover:bg-primary/90 text-white px-6 rounded-xl flex items-center gap-2"
+                            className="bg-primary hover:bg-primary/90 text-white px-6 rounded-lg flex items-center gap-2"
                         >
                             {loadingSiblings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
                             Add
@@ -795,7 +795,7 @@ function InputField({ label, required, type = "text", value = "", onChange, plac
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
                 className={cn(
-                    "h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all placeholder:text-muted-foreground/50",
+                    "h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all placeholder:text-muted-foreground/50",
                     readOnly && "bg-muted/60 cursor-not-allowed text-muted-foreground"
                 )}
                 required={required}
@@ -819,7 +819,7 @@ function SelectField({ label, required, options, value, onChange }: { label: str
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     required={required}
-                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                 >
                     <option value="">Select</option>
                     {options.map(opt => {
@@ -844,7 +844,7 @@ function TextAreaField({ label, required, rows = 3, value, onChange }: { label: 
                 rows={rows}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="flex w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all resize-none placeholder:text-muted-foreground/50"
+                className="flex w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all resize-none placeholder:text-muted-foreground/50"
             />
         </div>
     );
@@ -856,7 +856,7 @@ function FileUploadField({ label, required, value, onChange }: { label: string, 
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
                 {label} {required && <span className="text-destructive">*</span>}
             </label>
-            <div className="relative h-11 border border-dashed border-muted-foreground/30 rounded-xl bg-muted/30 flex items-center justify-center cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all group/upload overflow-hidden">
+            <div className="relative h-11 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/30 flex items-center justify-center cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all group/upload overflow-hidden">
                 <div className="flex items-center gap-2 px-4 pointer-events-none w-full">
                     <Upload className="h-4 w-4 text-muted-foreground group-hover/upload:text-primary transition-colors" />
                     <span className="text-xs font-semibold text-muted-foreground group-hover/upload:text-foreground truncate">

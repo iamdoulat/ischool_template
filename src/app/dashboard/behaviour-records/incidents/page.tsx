@@ -166,7 +166,7 @@ export default function IncidentsPage() {
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 shadow-inner">
                             <ShieldAlert className="h-5 w-5" />
                         </div>
                         <div>
@@ -190,16 +190,16 @@ export default function IncidentsPage() {
                                 placeholder="Filter incident protocols..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11 rounded-xl bg-white border-muted/50 focus-visible:ring-indigo-500/20 text-[10px] font-bold uppercase tracking-[0.2em] shadow-none"
+                                className="pl-10 h-11 rounded-lg bg-white border-muted/50 focus-visible:ring-indigo-500/20 text-[10px] font-bold uppercase tracking-[0.2em] shadow-none"
                             />
                         </div>
                         <div className="flex items-center gap-4 ml-auto">
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-2">Page Density:</span>
                             <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                                <SelectTrigger className="h-10 w-24 text-[10px] font-bold bg-white border-muted/50 rounded-xl uppercase tracking-widest">
+                                <SelectTrigger className="h-10 w-24 text-[10px] font-bold bg-white border-muted/50 rounded-lg uppercase tracking-widest">
                                     <SelectValue placeholder="50" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-xl border-gray-100">
+                                <SelectContent className="rounded-lg border-gray-100">
                                     <SelectItem value="10">10 Rows</SelectItem>
                                     <SelectItem value="25">25 Rows</SelectItem>
                                     <SelectItem value="50">50 Rows</SelectItem>
@@ -256,7 +256,7 @@ export default function IncidentsPage() {
                                             <TableCell className="py-5 pl-8">
                                                 <div className="flex items-center gap-3">
                                                     <div className={cn(
-                                                        "h-8 w-8 rounded-xl flex items-center justify-center shadow-inner",
+                                                        "h-8 w-8 rounded-lg flex items-center justify-center shadow-inner",
                                                         incident.point >= 0 ? "bg-emerald-50 text-emerald-500" : "bg-rose-50 text-rose-500"
                                                     )}>
                                                         {incident.point >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
@@ -319,11 +319,11 @@ export default function IncidentsPage() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="rounded-[2rem] border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white">
+                <DialogContent className="rounded-lg border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white">
                     <div className="bg-rose-500/5 p-8 border-b border-rose-100 flex items-center justify-between">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-black text-gray-800 uppercase tracking-[0.2em] flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-2xl bg-rose-500 flex items-center justify-center text-white shadow-lg shadow-rose-200">
+                                <div className="h-10 w-10 rounded-lg bg-rose-500 flex items-center justify-center text-white shadow-lg shadow-rose-200">
                                     <ShieldAlert className="h-5 w-5" />
                                 </div>
                                 {editMode ? "Modify Protocol" : "Index New Protocol"}
@@ -338,7 +338,7 @@ export default function IncidentsPage() {
                                 value={formData.title}
                                 onChange={(e) => setFormData({...formData, title: e.target.value})}
                                 placeholder="e.g. Harassment and bullying"
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-rose-500 shadow-none text-sm font-bold tracking-tight px-6"
+                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-rose-500 shadow-none text-sm font-bold tracking-tight px-6"
                             />
                         </div>
 
@@ -350,10 +350,10 @@ export default function IncidentsPage() {
                                     value={formData.point}
                                     onChange={(e) => setFormData({...formData, point: parseInt(e.target.value) || 0})}
                                     placeholder="e.g. -10 or 20"
-                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-rose-500 shadow-none text-sm font-bold tracking-tight px-6 flex-1"
+                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-rose-500 shadow-none text-sm font-bold tracking-tight px-6 flex-1"
                                 />
                                 <div className={cn(
-                                    "h-14 w-14 rounded-2xl flex items-center justify-center shadow-inner transition-colors",
+                                    "h-14 w-14 rounded-lg flex items-center justify-center shadow-inner transition-colors",
                                     formData.point >= 0 ? "bg-emerald-50 text-emerald-500" : "bg-rose-50 text-rose-500"
                                 )}>
                                     {formData.point >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
@@ -371,7 +371,7 @@ export default function IncidentsPage() {
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                                 placeholder="Describe this incident classification in detail..."
                                 rows={4}
-                                className="border-gray-100 bg-gray-50/50 rounded-2xl focus:ring-rose-500 shadow-none text-sm font-bold tracking-tight px-6 py-4 resize-none"
+                                className="border-gray-100 bg-gray-50/50 rounded-lg focus:ring-rose-500 shadow-none text-sm font-bold tracking-tight px-6 py-4 resize-none"
                             />
                         </div>
                     </div>
@@ -394,7 +394,7 @@ export default function IncidentsPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="rounded-[2.5rem] border-0 shadow-2xl p-10">
                     <AlertDialogHeader>
-                        <div className="h-16 w-16 rounded-3xl bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 mb-6 shadow-inner">
+                        <div className="h-16 w-16 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 mb-6 shadow-inner">
                             <ShieldCheck className="h-8 w-8 text-rose-400/50" />
                         </div>
                         <AlertDialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-tight">Expunge Incident Protocol</AlertDialogTitle>

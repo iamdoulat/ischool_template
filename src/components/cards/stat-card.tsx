@@ -38,7 +38,7 @@ export function StatCard({ title, current, total, percentage, icon: Icon, color 
                             <span className="text-base md:text-lg text-white/60 font-medium ml-1">/{total}</span>
                         </p>
                     </div>
-                    <div className="p-3 md:p-4 rounded-2xl bg-white/20 backdrop-blur-md border border-white/10 shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:bg-white/30">
+                    <div className="p-3 md:p-4 rounded-lg bg-white/20 backdrop-blur-md border border-white/10 shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:bg-white/30">
                         <Icon className="h-7 w-7 md:h-8 md:w-8 text-white" />
                     </div>
                 </div>

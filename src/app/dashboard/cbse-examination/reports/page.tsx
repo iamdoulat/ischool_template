@@ -11,7 +11,7 @@ import {
     FileSpreadsheet, Printer, Search, FileBarChart, 
     ClipboardCheck, LayoutList, Trophy, GraduationCap,
     Calculator, ShieldAlert, UserCircle, Download,
-    FileText, BarChart3, Presentation
+    FileText, BarChart3, Presentation, BookMarked
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -107,7 +107,7 @@ export default function ReportsPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <Presentation className="h-6 w-6 text-indigo-500" />
@@ -117,13 +117,13 @@ export default function ReportsPage() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                 {/* Tabs Header */}
                 <div className="flex border-b border-gray-50 bg-gray-50/20 p-1">
                     <button
                         onClick={() => setActiveTab("subject-marks")}
                         className={cn(
-                            "flex-1 px-4 py-3 text-[11px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 rounded-xl transition-all",
+                            "flex-1 px-4 py-3 text-[11px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 rounded-lg transition-all",
                             activeTab === "subject-marks"
                                 ? "bg-white text-indigo-600 shadow-sm border border-gray-100"
                                 : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
@@ -135,7 +135,7 @@ export default function ReportsPage() {
                     <button
                         onClick={() => setActiveTab("template-marks")}
                         className={cn(
-                            "flex-1 px-4 py-3 text-[11px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 rounded-xl transition-all",
+                            "flex-1 px-4 py-3 text-[11px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 rounded-lg transition-all",
                             activeTab === "template-marks"
                                 ? "bg-white text-indigo-600 shadow-sm border border-gray-100"
                                 : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
@@ -151,13 +151,13 @@ export default function ReportsPage() {
                     {activeTab === "subject-marks" && (
                         <div className="space-y-8">
                             {/* Filter Section */}
-                            <div className="bg-gray-50/30 p-6 rounded-2xl border border-gray-100 flex flex-col md:flex-row items-end justify-between gap-6">
+                            <div className="bg-gray-50/30 p-6 rounded-lg border border-gray-100 flex flex-col md:flex-row items-end justify-between gap-6">
                                 <div className="space-y-2 w-full md:w-1/2">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                                         Examination Cycle <span className="text-red-500">*</span>
                                     </Label>
                                     <Select value={selectedExamId} onValueChange={setSelectedExamId}>
-                                        <SelectTrigger className="h-11 border-gray-100 bg-white rounded-xl focus:ring-indigo-500 shadow-none">
+                                        <SelectTrigger className="h-11 border-gray-100 bg-white rounded-lg focus:ring-indigo-500 shadow-none">
                                             <SelectValue placeholder="Select Target Exam" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -178,9 +178,9 @@ export default function ReportsPage() {
                             {/* Actions & Summary */}
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                                 <div className="flex gap-2">
-                                    <Button size="icon" variant="ghost" className="h-9 w-9 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl shadow-lg cursor-pointer"><Printer className="h-4 w-4" /></Button>
-                                    <Button size="icon" variant="ghost" className="h-9 w-9 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-lg cursor-pointer"><FileSpreadsheet className="h-4 w-4" /></Button>
-                                    <Button size="icon" variant="ghost" className="h-9 w-9 bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-lg cursor-pointer"><Download className="h-4 w-4" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-9 w-9 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-lg cursor-pointer"><Printer className="h-4 w-4" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-9 w-9 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-lg cursor-pointer"><FileSpreadsheet className="h-4 w-4" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-9 w-9 bg-orange-500 hover:bg-orange-600 text-white rounded-lg shadow-lg cursor-pointer"><Download className="h-4 w-4" /></Button>
                                 </div>
                                 {students.length > 0 && (
                                     <div className="flex items-center gap-4 bg-indigo-50/30 px-4 py-2 rounded-full border border-indigo-100">
@@ -195,7 +195,7 @@ export default function ReportsPage() {
                             </div>
 
                             {/* Table */}
-                            <div className="rounded-2xl border border-gray-100 overflow-hidden shadow-sm overflow-x-auto">
+                            <div className="rounded-lg border border-gray-100 overflow-hidden shadow-sm overflow-x-auto">
                                 <Table className="border-collapse">
                                     <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-500">
                                         <TableRow className="hover:bg-transparent">

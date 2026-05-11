@@ -56,6 +56,7 @@ interface GeneralSettings {
     youtube_url?: string;
     linkedin_url?: string;
     pinterest_url?: string;
+    app_version?: string;
 }
 
 interface SettingsContextType {
@@ -103,7 +104,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     'attendance_type', 'biometric_attendance', 'devices', 'low_attendance_limit',
                     'staff_attendance_settings', 'student_attendance_settings',
                     'footer_contact_title', 'footer_contact_info_label',
-                    'facebook_url', 'twitter_url', 'instagram_url', 'youtube_url', 'linkedin_url', 'pinterest_url'
+                    'facebook_url', 'twitter_url', 'instagram_url', 'youtube_url', 'linkedin_url', 'pinterest_url',
+                    'app_version'
                 ];
 
                 fields.forEach(field => {
@@ -179,7 +181,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 instagram_url: "",
                 youtube_url: "",
                 linkedin_url: "",
-                pinterest_url: ""
+                pinterest_url: "",
+                app_version: "7.2.0"
             };
             setSettings(defaultSettings);
         } finally {

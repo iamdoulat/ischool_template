@@ -156,7 +156,7 @@ export default function NoticeBoardPage() {
              {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-indigo-50 rounded-xl">
+                    <div className="p-2 bg-indigo-50 rounded-lg">
                         <Megaphone className="h-5 w-5 text-indigo-500" />
                     </div>
                     <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">Notice Board</h1>
@@ -176,7 +176,7 @@ export default function NoticeBoardPage() {
             </div>
 
              {/* Notice List Container */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px]">
+            <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden min-h-[400px]">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center h-[400px] text-gray-400 space-y-2">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
@@ -237,7 +237,7 @@ export default function NoticeBoardPage() {
 
             {/* Post/Edit Notice Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-lg border-none shadow-2xl">
                     <div className="bg-indigo-600 p-6 text-white">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-bold tracking-tight uppercase flex items-center gap-2">
@@ -255,7 +255,7 @@ export default function NoticeBoardPage() {
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                 placeholder="e.g. Annual Sports Day 2026"
-                                className="h-11 border-gray-100 bg-gray-50/30 text-sm shadow-none focus-visible:ring-indigo-500 rounded-xl"
+                                className="h-11 border-gray-100 bg-gray-50/30 text-sm shadow-none focus-visible:ring-indigo-500 rounded-lg"
                             />
                         </div>
 
@@ -266,7 +266,7 @@ export default function NoticeBoardPage() {
                                     type="date"
                                     value={formData.notice_date}
                                     onChange={(e) => setFormData({ ...formData, notice_date: e.target.value })}
-                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm shadow-none focus-visible:ring-indigo-500 rounded-xl"
+                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm shadow-none focus-visible:ring-indigo-500 rounded-lg"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -275,7 +275,7 @@ export default function NoticeBoardPage() {
                                     type="date"
                                     value={formData.publish_date}
                                     onChange={(e) => setFormData({ ...formData, publish_date: e.target.value })}
-                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm shadow-none focus-visible:ring-indigo-500 rounded-xl"
+                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm shadow-none focus-visible:ring-indigo-500 rounded-lg"
                                 />
                             </div>
                         </div>
@@ -303,7 +303,7 @@ export default function NoticeBoardPage() {
                                 value={formData.message}
                                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                                 placeholder="Write the notice content here..."
-                                className="border-gray-100 bg-gray-50/30 text-sm shadow-none min-h-[150px] focus-visible:ring-indigo-500 leading-relaxed rounded-2xl p-4"
+                                className="border-gray-100 bg-gray-50/30 text-sm shadow-none min-h-[150px] focus-visible:ring-indigo-500 leading-relaxed rounded-lg p-4"
                             />
                         </div>
                     </div>
@@ -321,7 +321,7 @@ export default function NoticeBoardPage() {
 
             {/* Single Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Notice</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
@@ -329,8 +329,8 @@ export default function NoticeBoardPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-10 rounded-xl text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-10 rounded-xl text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
                             Yes, Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -339,7 +339,7 @@ export default function NoticeBoardPage() {
 
             {/* Delete All Confirmation Dialog */}
             <AlertDialog open={deleteAllConfirm} onOpenChange={setDeleteAllConfirm}>
-                <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800 text-red-500">Clear Notice Board</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
@@ -347,8 +347,8 @@ export default function NoticeBoardPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-10 rounded-xl text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDeleteAll} className="bg-red-500 hover:bg-red-600 h-10 rounded-xl text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDeleteAll} className="bg-red-500 hover:bg-red-600 h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
                             Yes, Clear All
                         </AlertDialogAction>
                     </AlertDialogFooter>

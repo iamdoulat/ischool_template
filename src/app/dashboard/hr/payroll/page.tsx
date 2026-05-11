@@ -157,7 +157,7 @@ function Payslip({ row, month, year, school }: {
             </div>
 
             {/* Staff info */}
-            <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-8 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+            <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-8 bg-gray-50/50 p-4 rounded-lg border border-gray-100">
                 <div className="space-y-1">
                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Staff ID</span>
                     <span className="text-gray-800 font-semibold">{row.staff_id}</span>
@@ -217,7 +217,7 @@ function Payslip({ row, month, year, school }: {
             </div>
 
             {/* Final Summary */}
-            <div className="bg-indigo-900 text-white rounded-xl p-6 flex justify-between items-center shadow-lg">
+            <div className="bg-indigo-900 text-white rounded-lg p-6 flex justify-between items-center shadow-lg">
                 <div className="space-y-1">
                     <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-[.2em]">Net Salary Payable</span>
                     <p className="text-[24px] font-bold tracking-tight">{cur}{row.net_salary.toLocaleString()}</p>
@@ -443,7 +443,7 @@ export default function PayrollPage() {
                             <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
                                 <SelectValue placeholder="All Roles" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-gray-100">
+                            <SelectContent className="rounded-lg border-gray-100">
                                 <SelectItem value="all">All Roles</SelectItem>
                                 <SelectItem value="Admin">Admin</SelectItem>
                                 <SelectItem value="Teacher">Teacher</SelectItem>
@@ -461,7 +461,7 @@ export default function PayrollPage() {
                             <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-gray-100">
+                            <SelectContent className="rounded-lg border-gray-100">
                                 {MONTHS.map(m => (
                                     <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
                                 ))}
@@ -475,7 +475,7 @@ export default function PayrollPage() {
                             <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-gray-100">
+                            <SelectContent className="rounded-lg border-gray-100">
                                 {years.map(y => (
                                     <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                                 ))}
@@ -640,7 +640,7 @@ export default function PayrollPage() {
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-xl border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm"
+                                className="h-8 w-8 rounded-lg border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm"
                                 disabled={page === 1}
                                 onClick={() => { setPage(page - 1); fetchPayroll(page - 1); }}
                             >
@@ -660,7 +660,7 @@ export default function PayrollPage() {
                                             variant={isCurrent ? "gradient" : "outline"}
                                             size="sm"
                                             className={cn(
-                                                "h-8 w-8 rounded-xl font-bold shadow-sm transition-all",
+                                                "h-8 w-8 rounded-lg font-bold shadow-sm transition-all",
                                                 !isCurrent && "border-transparent bg-transparent hover:bg-gray-100 text-gray-600"
                                             )}
                                             onClick={() => { setPage(p); fetchPayroll(p); }}
@@ -679,7 +679,7 @@ export default function PayrollPage() {
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-xl border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm"
+                                className="h-8 w-8 rounded-lg border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm"
                                 disabled={page === (meta?.last_page || 1) || !meta}
                                 onClick={() => { setPage(page + 1); fetchPayroll(page + 1); }}
                             >
@@ -692,7 +692,7 @@ export default function PayrollPage() {
 
             {/* Empty state */}
             {!searched && (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-300 bg-white rounded-xl border border-dashed border-gray-200">
+                <div className="flex flex-col items-center justify-center py-20 text-gray-300 bg-white rounded-lg border border-dashed border-gray-200">
                     <DollarSign className="h-16 w-16 mb-4 opacity-10" />
                     <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">No Data Selected</p>
                     <p className="text-[11px] text-gray-400 mt-2 italic">Select role, month and year, then click search.</p>
@@ -701,7 +701,7 @@ export default function PayrollPage() {
 
             {/* ── Generate Payroll Dialog ──────────────────────────────────────── */}
             <Dialog open={genOpen} onOpenChange={setGenOpen}>
-                <DialogContent className="sm:max-w-[450px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-2xl">
+                <DialogContent className="sm:max-w-[450px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-lg">
                     <DialogHeader className="bg-gradient-to-r from-orange-400 to-indigo-500 p-5 text-white">
                         <div className="flex justify-between items-center w-full pr-6">
                             <div className="space-y-0.5">
@@ -710,7 +710,7 @@ export default function PayrollPage() {
                                 </DialogTitle>
                                 <p className="text-[10px] opacity-80 font-medium">{genRow?.name} • {MONTHS.find(m => m.value === month)?.label} {year}</p>
                             </div>
-                            <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                            <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
                                 <DollarSign className="h-5 w-5 text-white" />
                             </div>
                         </div>
@@ -752,7 +752,7 @@ export default function PayrollPage() {
                             </div>
                         </div>
 
-                        <div className="bg-indigo-900 rounded-2xl p-4 flex justify-between items-center shadow-inner overflow-hidden relative">
+                        <div className="bg-indigo-900 rounded-lg p-4 flex justify-between items-center shadow-inner overflow-hidden relative">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12"></div>
                             <div className="space-y-0.5">
                                 <span className="text-[9px] font-bold text-indigo-300 uppercase tracking-[.2em]">Net Calculated</span>
@@ -794,7 +794,7 @@ export default function PayrollPage() {
 
             {/* ── Confirm Pay Dialog ───────────────────────────────────────────── */}
             <Dialog open={!!payRow} onOpenChange={() => setPayRow(null)}>
-                <DialogContent className="sm:max-w-[400px] p-6 rounded-2xl border-0 shadow-2xl">
+                <DialogContent className="sm:max-w-[400px] p-6 rounded-lg border-0 shadow-2xl">
                     <div className="flex flex-col items-center text-center space-y-4">
                         <div className="h-16 w-16 bg-green-50 rounded-full flex items-center justify-center mb-2">
                             <DollarSign className="h-8 w-8 text-green-600" />
@@ -806,7 +806,7 @@ export default function PayrollPage() {
                             </p>
                         </div>
                         
-                        <div className="w-full bg-gray-50 rounded-xl p-4 space-y-2 border border-gray-100">
+                        <div className="w-full bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
                             <div className="flex justify-between text-[11px] text-gray-500">
                                 <span>Period</span>
                                 <span className="font-bold text-gray-800">{MONTHS.find(m => m.value === month)?.label} {year}</span>
@@ -818,12 +818,12 @@ export default function PayrollPage() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 w-full pt-4">
-                            <Button variant="outline" className="h-11 text-xs font-bold uppercase tracking-widest rounded-xl border-gray-200" onClick={() => setPayRow(null)}>No, Cancel</Button>
+                            <Button variant="outline" className="h-11 text-xs font-bold uppercase tracking-widest rounded-lg border-gray-200" onClick={() => setPayRow(null)}>No, Cancel</Button>
                             <Button
                                 onClick={handlePay}
                                 disabled={payLoading}
                                 variant="gradient"
-                                className="h-11 text-xs font-bold uppercase tracking-widest rounded-xl shadow-lg gap-2"
+                                className="h-11 text-xs font-bold uppercase tracking-widest rounded-lg shadow-lg gap-2"
                             >
                                 {payLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                                 Yes, Confirm
@@ -835,7 +835,7 @@ export default function PayrollPage() {
 
             {/* ── View Payslip Dialog ──────────────────────────────────────────── */}
             <Dialog open={!!slipRow} onOpenChange={() => setSlipRow(null)}>
-                <DialogContent className="max-w-2xl p-0 overflow-hidden border-0 shadow-2xl rounded-2xl">
+                <DialogContent className="max-w-2xl p-0 overflow-hidden border-0 shadow-2xl rounded-lg">
                     <div className="flex items-center justify-between px-6 py-4 bg-indigo-900 text-white">
                         <DialogTitle className="text-sm font-bold uppercase tracking-[.2em]">Salary Payslip Details</DialogTitle>
                         <Button

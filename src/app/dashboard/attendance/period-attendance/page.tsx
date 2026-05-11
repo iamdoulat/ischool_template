@@ -289,7 +289,7 @@ export default function PeriodAttendancePage() {
                         </h2>
                     </div>
 
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gray-50/50 p-5 rounded-xl border border-gray-100">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gray-50/50 p-5 rounded-lg border border-gray-100">
                         <div className="flex flex-col space-y-3">
                             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Set attendance for all students:</span>
                             <div className="flex flex-wrap gap-3">

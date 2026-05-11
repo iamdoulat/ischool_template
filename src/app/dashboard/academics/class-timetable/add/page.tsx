@@ -13,8 +13,10 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { useSettings } from "@/components/providers/settings-provider";
+import { useMemo } from "react";
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DEFAULT_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 interface TimetableRow {
     id: string; // temp client side id
@@ -31,6 +33,15 @@ interface DayData {
 
 export default function AddClassTimetablePage() {
     const { toast } = useToast();
+    const { settings } = useSettings();
+
+    // Derived ordered days based on settings
+    const orderedDays = useMemo(() => {
+        const startDay = settings?.start_day_of_week?.toLowerCase() || "monday";
+        const startIndex = DEFAULT_DAYS.findIndex(d => d.toLowerCase() === startDay);
+        if (startIndex === -1) return DEFAULT_DAYS;
+        return [...DEFAULT_DAYS.slice(startIndex), ...DEFAULT_DAYS.slice(0, startIndex)];
+    }, [settings?.start_day_of_week]);
 
     // Prerequisite states
     const [classes, setClasses] = useState<any[]>([]);
@@ -54,8 +65,20 @@ export default function AddClassTimetablePage() {
 
     // Timetable data state
     const [dayData, setDayData] = useState<DayData>(
-        DAYS.reduce((acc, day) => ({ ...acc, [day]: [] }), {})
+        DEFAULT_DAYS.reduce((acc, day) => ({ ...acc, [day]: [] }), {})
     );
+
+    // Update empty timetable grid when orderedDays changes
+    useEffect(() => {
+        setDayData(prev => {
+            const next = { ...prev };
+            orderedDays.forEach(day => {
+                if (!next[day]) next[day] = [];
+            });
+            return next;
+        });
+        if (orderedDays.length > 0) setCurrentDay(orderedDays[0]);
+    }, [orderedDays]);
 
     // UI states
     const [loading, setLoading] = useState(false);
@@ -63,23 +86,22 @@ export default function AddClassTimetablePage() {
     const [saving, setSaving] = useState(false);
     const [currentDay, setCurrentDay] = useState("Monday");
 
-    // Load prerequisites
+    // Load prerequisites (classes, subjects, teachers)
     useEffect(() => {
         const fetchPrerequisites = async () => {
             setLoading(true);
             try {
-                const [classRes, sectionRes, subjectGroupRes, subjectRes, staffRes] = await Promise.all([
-                    api.get("/academics/classes", { params: { limit: 1000 } }),
-                    api.get("/academics/sections", { params: { limit: 1000 } }),
-                    api.get("/academics/subject-groups", { params: { limit: 1000 } }),
-                    api.get("/academics/subjects", { params: { limit: 1000 } }),
-                    api.get("/users", { params: { role: "Staff", limit: 1000 } })
+                const [classRes, subjectGroupRes, subjectRes, staffRes] = await Promise.all([
+                    api.get("/academics/classes?no_paginate=true"),
+                    api.get("/academics/subject-groups?no_paginate=true"),
+                    api.get("/academics/subjects?no_paginate=true"),
+                    api.get("/hr/staff-directory", { params: { role: 'Teacher', no_paginate: true, active: 'all' } })
                 ]);
-                setClasses(classRes.data.data.data || []);
-                setSections(sectionRes.data.data.data || []);
-                setSubjectGroups(subjectGroupRes.data.data.data || []);
-                setAllSubjects(subjectRes.data.data.data || []);
-                setStaffList(staffRes.data.data.data || []);
+                setClasses(classRes.data.data?.data || classRes.data.data || []);
+                setSubjectGroups(subjectGroupRes.data.data?.data || subjectGroupRes.data.data || []);
+                setAllSubjects(subjectRes.data.data?.data || subjectRes.data.data || []);
+                const teachers = (staffRes.data?.data || staffRes.data || []).filter((u: any) => u.role === 'Teacher');
+                setStaffList(teachers);
             } catch (error) {
                 console.error("Error fetching prerequisites:", error);
                 toast("error", "Failed to load prerequisite data");
@@ -89,6 +111,19 @@ export default function AddClassTimetablePage() {
         };
         fetchPrerequisites();
     }, []);
+
+    // Fetch sections filtered by selected class ID
+    const fetchSectionsByClass = async (classId: string) => {
+        if (!classId) { setSections([]); return; }
+        try {
+            const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
+            const all: any[] = res.data?.data || res.data || [];
+            const filtered = all.filter((s: any) => String(s.school_class_id) === String(classId));
+            setSections(filtered);
+        } catch {
+            setSections([]);
+        }
+    };
 
     // Filtered subjects based on selected subject group
     const filteredSubjects = selectedSubjectGroupId
@@ -112,8 +147,8 @@ export default function AddClassTimetablePage() {
             });
             const entries = res.data.data || [];
 
-            // Map entries to our dayData state
-            const newDayData = DAYS.reduce((acc, day) => {
+            // Map entries to our dayData state in the correct order
+            const newDayData = orderedDays.reduce((acc, day) => {
                 const dayEntries = entries.filter((e: any) => e.day === day).map((e: any) => ({
                     id: e.id.toString(),
                     subject_id: e.subject_id.toString(),
@@ -164,31 +199,44 @@ export default function AddClassTimetablePage() {
         });
     };
 
+    const addMinutesToTime = (timeStr: string, minutes: number) => {
+        if (!timeStr) return "";
+        const [hours, mins] = timeStr.split(':').map(Number);
+        const date = new Date();
+        date.setHours(hours, mins, 0, 0);
+        date.setMinutes(date.getMinutes() + minutes);
+        const h = date.getHours().toString().padStart(2, '0');
+        const m = date.getMinutes().toString().padStart(2, '0');
+        return `${h}:${m}`;
+    };
+
     const applyQuickParams = () => {
         if (!quickParams.start_time) {
             toast("error", "Please set a Start Time first");
             return;
         }
 
-        const currentRows = dayData[currentDay];
-        if (currentRows.length === 0) return;
+        const currentRows = dayData[currentDay] || [];
+        if (currentRows.length === 0) {
+            toast("error", `No rows added for ${currentDay}. Add rows first.`);
+            return;
+        }
 
-        let startTime = quickParams.start_time;
-        const duration = parseInt(quickParams.duration);
-        const interval = parseInt(quickParams.interval);
+        let currentTime = quickParams.start_time;
+        const duration = parseInt(quickParams.duration) || 0;
+        const interval = parseInt(quickParams.interval) || 0;
 
         const newRows = currentRows.map((row, index) => {
-            if (index > 0) {
-                // Calculate start time from previous row's end time + interval
-                const prevRow = currentRows[index - 1];
-                // Note: This logic is simple and might need better time parsing
-                // For now we'll just use the end time placeholder logic or assume user fills sequentially
-            }
+            const start = currentTime;
+            const end = addMinutesToTime(start, duration);
+            
+            // Prepare time for NEXT row
+            currentTime = addMinutesToTime(end, interval);
 
-            // This is a simplified logic, real time addition needs proper date objects
-            // Returning same rows for now, but adding the room
             return {
                 ...row,
+                start_time: start,
+                end_time: end,
                 room: quickParams.room || row.room
             };
         });
@@ -197,7 +245,7 @@ export default function AddClassTimetablePage() {
             ...dayData,
             [currentDay]: newRows
         });
-        toast("success", "Parameters applied to current day");
+        toast("success", `Time parameters applied to ${currentRows.length} periods in ${currentDay}`);
     };
 
     const handleSave = async () => {
@@ -268,7 +316,15 @@ export default function AddClassTimetablePage() {
                             <Label className="text-xs font-semibold text-gray-600 uppercase">
                                 Class <span className="text-red-500">*</span>
                             </Label>
-                            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                            <Select 
+                                value={selectedClassId} 
+                                onValueChange={(val) => {
+                                    setSelectedClassId(val);
+                                    setSelectedSectionId('');
+                                    setSelectedSubjectGroupId('');
+                                    fetchSectionsByClass(val);
+                                }}
+                            >
                                 <SelectTrigger className="h-10">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
@@ -282,9 +338,13 @@ export default function AddClassTimetablePage() {
                             <Label className="text-xs font-semibold text-gray-600 uppercase">
                                 Section <span className="text-red-500">*</span>
                             </Label>
-                            <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
+                            <Select 
+                                value={selectedSectionId} 
+                                onValueChange={setSelectedSectionId}
+                                disabled={!selectedClassId}
+                            >
                                 <SelectTrigger className="h-10">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={!selectedClassId ? "Select class first" : "Select"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
@@ -367,7 +427,7 @@ export default function AddClassTimetablePage() {
                 <Tabs value={currentDay} onValueChange={setCurrentDay} className="w-full">
                     <div className="border-b bg-gray-50/50 flex justify-between items-center px-4">
                         <TabsList className="bg-transparent h-12 gap-0 p-0 border-r">
-                            {DAYS.map(day => (
+                            {orderedDays.map(day => (
                                 <TabsTrigger
                                     key={day}
                                     value={day}
@@ -385,7 +445,7 @@ export default function AddClassTimetablePage() {
                         </Button>
                     </div>
 
-                    {DAYS.map(day => (
+                    {orderedDays.map(day => (
                         <TabsContent key={day} value={day} className="p-0 m-0 border-none outline-none">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left">
@@ -400,14 +460,14 @@ export default function AddClassTimetablePage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
-                                        {dayData[day].length === 0 ? (
+                                        {dayData[day]?.length === 0 ? (
                                             <tr>
                                                 <td colSpan={6} className="py-10 text-center text-gray-500">
                                                     No entries added for {day}. Click "+ Add New" to start.
                                                 </td>
                                             </tr>
                                         ) : (
-                                            dayData[day].map((row) => (
+                                            dayData[day]?.map((row) => (
                                                 <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                                                     <td className="py-2 px-4 whitespace-nowrap min-w-[200px]">
                                                         <Select value={row.subject_id} onValueChange={(v) => updateRow(day, row.id, "subject_id", v)}>

@@ -143,7 +143,7 @@ export default function CBSESettingsPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <Settings2 className="h-6 w-6 text-indigo-500" />
@@ -156,7 +156,7 @@ export default function CBSESettingsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                 {/* Left Column: Settings Menu */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-4">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden sticky top-4">
                         <div className="p-4 border-b border-gray-50 bg-gray-50/30">
                             <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Settings Hub</h3>
                         </div>
@@ -166,7 +166,7 @@ export default function CBSESettingsPage() {
                                     key={item.name}
                                     onClick={() => setActiveTab(item.name)}
                                     className={cn(
-                                        "flex items-center gap-3 px-4 py-3 text-[11px] font-bold uppercase tracking-widest rounded-xl transition-all group",
+                                        "flex items-center gap-3 px-4 py-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all group",
                                         activeTab === item.name
                                             ? "bg-indigo-500 text-white shadow-lg shadow-indigo-100"
                                             : "text-gray-500 hover:bg-gray-50 hover:text-indigo-600"
@@ -182,7 +182,7 @@ export default function CBSESettingsPage() {
 
                 {/* Middle Column: Create Form */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-fit sticky top-4">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col h-fit sticky top-4">
                         <div className="p-6 border-b border-gray-50 bg-gray-50/30 rounded-t-2xl flex items-center gap-3">
                             <FileEdit className="h-5 w-5 text-indigo-500" />
                             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest">
@@ -199,7 +199,7 @@ export default function CBSESettingsPage() {
                                     value={formData.name}
                                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                                     placeholder="e.g. Scholastic"
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none" 
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
                                 />
                             </div>
 
@@ -209,7 +209,7 @@ export default function CBSESettingsPage() {
                                     value={formData.description}
                                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                                     placeholder="Optional details..."
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none" 
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
                                 />
                             </div>
                         </div>
@@ -233,7 +233,7 @@ export default function CBSESettingsPage() {
 
                 {/* Right Column: Category List */}
                 <div className="lg:col-span-3">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                         <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                                 <LayoutGrid className="h-5 w-5 text-indigo-500" />
@@ -254,14 +254,14 @@ export default function CBSESettingsPage() {
                                     placeholder={`Search ${activeTab.toLowerCase()}...`}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                                    className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
 
                             <div className="flex items-center gap-3">
                                 <span className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">Rows:</span>
                                 <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                                    <SelectTrigger className="w-[100px] h-10 border-gray-100 bg-gray-50/30 text-xs rounded-xl shadow-none">
+                                    <SelectTrigger className="w-[100px] h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg shadow-none">
                                         <SelectValue placeholder="50" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -274,7 +274,7 @@ export default function CBSESettingsPage() {
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                        <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                             <Table>
                                 <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                                     <TableRow className="hover:bg-transparent border-gray-50">
@@ -354,7 +354,7 @@ export default function CBSESettingsPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Record</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">

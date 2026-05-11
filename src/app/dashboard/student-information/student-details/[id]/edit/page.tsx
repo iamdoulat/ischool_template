@@ -406,7 +406,7 @@ export default function StudentEditPage() {
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                     </Link>
-                    <div className="p-3 bg-primary/10 rounded-2xl">
+                    <div className="p-3 bg-primary/10 rounded-lg">
                         <UserPlus className="h-6 w-6 text-primary" />
                     </div>
                     <div>
@@ -421,14 +421,14 @@ export default function StudentEditPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="lg:col-span-1 flex flex-col items-center justify-center border-r border-muted/50 pr-6">
                             <div className="relative group">
-                                <div className="h-32 w-32 rounded-3xl border-4 border-muted/20 overflow-hidden bg-muted/10">
+                                <div className="h-32 w-32 rounded-lg border-4 border-muted/20 overflow-hidden bg-muted/10">
                                     {avatarPreview ? (
                                         <img src={avatarPreview} alt="Preview" className="h-full w-full object-cover" />
                                     ) : (
                                         <UserCircle className="h-full w-full text-muted-foreground/20 p-2" />
                                     )}
                                 </div>
-                                <label className="absolute bottom-[-10px] right-[-10px] h-10 w-10 bg-primary text-white rounded-2xl flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-all">
+                                <label className="absolute bottom-[-10px] right-[-10px] h-10 w-10 bg-primary text-white rounded-lg flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-all">
                                     <Upload className="h-4 w-4" />
                                     <input type="file" className="sr-only" onChange={(e) => handleChange("avatar", e.target.files?.[0] || null)} accept="image/*" />
                                 </label>
@@ -598,7 +598,7 @@ export default function StudentEditPage() {
                 <SectionCard title="Fees Details" icon={Wallet}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {feeGroups.map((group) => (
-                            <label key={group.id} className="flex flex-col border border-muted/50 p-4 rounded-xl cursor-pointer hover:bg-muted/20 transition-colors group/fee">
+                            <label key={group.id} className="flex flex-col border border-muted/50 p-4 rounded-lg cursor-pointer hover:bg-muted/20 transition-colors group/fee">
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex items-center justify-center">
                                         <input
@@ -636,7 +636,7 @@ export default function StudentEditPage() {
                 <SectionCard title="Fees Discount Details" icon={Percent}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {feeDiscounts.map((discount) => (
-                            <label key={discount.id} className="flex flex-col border border-muted/50 p-4 rounded-xl cursor-pointer hover:bg-muted/20 transition-colors group/discount">
+                            <label key={discount.id} className="flex flex-col border border-muted/50 p-4 rounded-lg cursor-pointer hover:bg-muted/20 transition-colors group/discount">
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex items-center justify-center">
                                         <input
@@ -781,12 +781,12 @@ export default function StudentEditPage() {
 
                 <div className="flex justify-end gap-4 pt-6">
                     <Link href="/dashboard/student-information/student-details">
-                        <Button variant="outline" type="button" className="h-12 px-8 rounded-xl font-bold">Cancel</Button>
+                        <Button variant="outline" type="button" className="h-12 px-8 rounded-lg font-bold">Cancel</Button>
                     </Link>
                     <Button
                         variant="gradient"
                         type="submit"
-                        className="h-12 px-12 text-lg rounded-xl shadow-lg shadow-primary/20"
+                        className="h-12 px-12 text-lg rounded-lg shadow-lg shadow-primary/20"
                         disabled={loading}
                     >
                         {loading ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Save className="h-5 w-5 mr-2" />}
@@ -842,7 +842,7 @@ export default function StudentEditPage() {
                         <Button 
                             onClick={handleAddSibling}
                             disabled={!siblingStudentId || loadingSiblings}
-                            className="bg-primary hover:bg-primary/90 text-white px-6 rounded-xl flex items-center gap-2"
+                            className="bg-primary hover:bg-primary/90 text-white px-6 rounded-lg flex items-center gap-2"
                         >
                             {loadingSiblings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
                             Add
@@ -857,7 +857,7 @@ export default function StudentEditPage() {
 // Reuse components from Admission Page
 function SectionCard({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) {
     return (
-        <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden rounded-3xl">
+        <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden rounded-lg">
             <div className="px-6 py-4 border-b border-muted/50 flex items-center gap-3 bg-muted/20">
                 <div className="p-2 bg-primary/10 rounded-lg">
                     <Icon className="h-5 w-5 text-primary" />
@@ -896,7 +896,7 @@ function InputField({ label, required, type = "text", value = "", onChange, read
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 className={cn(
-                    "h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all",
+                    "h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all",
                     readOnly && "bg-muted/60 cursor-not-allowed text-muted-foreground"
                 )}
                 required={required}
@@ -917,7 +917,7 @@ function SelectField({ label, required, options, value, onChange }: { label: str
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     required={required}
-                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                 >
                     <option value="">Select</option>
                     {options.map(opt => {
@@ -943,7 +943,7 @@ function TextAreaField({ label, required, value = "", onChange, rows = 3 }: { la
                 onChange={(e) => onChange(e.target.value)}
                 required={required}
                 rows={rows}
-                className="flex w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all resize-y min-h-[80px]"
+                className="flex w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all resize-y min-h-[80px]"
             />
         </div>
     );
@@ -955,7 +955,7 @@ function FileUploadField({ label, required, value, onChange }: { label: string, 
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
                 {label} {required && <span className="text-destructive">*</span>}
             </label>
-            <div className="flex items-center gap-3 w-full h-11 rounded-xl border border-muted/50 bg-muted/30 px-3 relative focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-card focus-within:border-primary transition-all overflow-hidden group">
+            <div className="flex items-center gap-3 w-full h-11 rounded-lg border border-muted/50 bg-muted/30 px-3 relative focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-card focus-within:border-primary transition-all overflow-hidden group">
                 <input
                     type="file"
                     className="absolute inset-0 opacity-0 cursor-pointer z-10"

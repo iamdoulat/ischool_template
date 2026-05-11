@@ -154,9 +154,9 @@ export default function MarksGradePage() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Left Column: Add Marks Grade Form */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6 sticky top-4">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6 sticky top-4">
                         <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
-                            <div className="bg-indigo-50 p-2 rounded-xl">
+                            <div className="bg-indigo-50 p-2 rounded-lg">
                                 <BadgeCheck className="h-5 w-5 text-indigo-500" />
                             </div>
                             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest">
@@ -170,7 +170,7 @@ export default function MarksGradePage() {
                                     Exam Type <span className="text-red-500">*</span>
                                 </Label>
                                 <Select value={formData.exam_type} onValueChange={(val) => setFormData({...formData, exam_type: val})}>
-                                    <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500 shadow-none">
+                                    <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none">
                                         <SelectValue placeholder="Select" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -191,7 +191,7 @@ export default function MarksGradePage() {
                                     value={formData.name}
                                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                                     placeholder="e.g. A+"
-                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500 shadow-none" 
+                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none" 
                                 />
                             </div>
 
@@ -205,7 +205,7 @@ export default function MarksGradePage() {
                                         value={formData.percent_from}
                                         onChange={(e) => setFormData({...formData, percent_from: e.target.value})}
                                         placeholder="0.00"
-                                        className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500 shadow-none" 
+                                        className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none" 
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -217,7 +217,7 @@ export default function MarksGradePage() {
                                         value={formData.percent_upto}
                                         onChange={(e) => setFormData({...formData, percent_upto: e.target.value})}
                                         placeholder="100.00"
-                                        className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500 shadow-none" 
+                                        className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none" 
                                     />
                                 </div>
                             </div>
@@ -232,7 +232,7 @@ export default function MarksGradePage() {
                                     value={formData.grade_point}
                                     onChange={(e) => setFormData({...formData, grade_point: e.target.value})}
                                     placeholder="e.g. 4.0"
-                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500 shadow-none" 
+                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none" 
                                 />
                             </div>
 
@@ -244,7 +244,7 @@ export default function MarksGradePage() {
                                     value={formData.description}
                                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                                     placeholder="Enter grade description"
-                                    className="min-h-[100px] border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500 p-4" 
+                                    className="min-h-[100px] border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 p-4" 
                                 />
                             </div>
 
@@ -268,7 +268,7 @@ export default function MarksGradePage() {
 
                 {/* Right Column: Grade List */}
                 <div className="lg:col-span-3">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                         <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                                 <GraduationCap className="h-5 w-5 text-indigo-500" />
@@ -300,12 +300,12 @@ export default function MarksGradePage() {
                                     placeholder="Search grades..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none"
+                                    className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                        <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                             <Table>
                                 <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                                     <TableRow className="hover:bg-transparent border-gray-50">
@@ -389,7 +389,7 @@ export default function MarksGradePage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Grade</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">

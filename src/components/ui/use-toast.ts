@@ -148,17 +148,18 @@ function shadcnToast({ ...props }: Toast) {
     })
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
-  dispatch({
-    type: "ADD_TOAST",
-    toast: {
-      ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss()
+    dispatch({
+      type: "ADD_TOAST",
+      toast: {
+        ...props,
+        id,
+        open: true,
+        duration: props.duration || 3000,
+        onOpenChange: (open) => {
+          if (!open) dismiss()
+        },
       },
-    },
-  })
+    })
 
   return {
     id: id,
@@ -177,7 +178,7 @@ function toast(propsOrType: any, message?: string, duration?: number) {
       variant: propsOrType === "error" ? "destructive" : "default",
       title: propsOrType.charAt(0).toUpperCase() + propsOrType.slice(1),
       description: message,
-      duration: duration || 5000,
+      duration: duration || 3000,
     });
   } else {
     // Shadcn mode: toast({ ... })

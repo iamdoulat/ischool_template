@@ -108,9 +108,9 @@ export default function SubjectsPage() {
             };
 
             if (editingId) {
-                await api.put(`/subjects/${editingId}`, payload);
+                await api.put(`/academics/subjects/${editingId}`, payload);
             } else {
-                await api.post(`/subjects`, payload);
+                await api.post(`/academics/subjects`, payload);
             }
             resetForm();
             fetchSubjects(currentPage);
@@ -140,7 +140,7 @@ export default function SubjectsPage() {
         if (!idToDelete) return;
         setLoading(true);
         try {
-            const response = await api.delete(`/subjects/${idToDelete}`);
+            const response = await api.delete(`/academics/subjects/${idToDelete}`);
             if (response.data.status === "success") {
                 toast("success", response.data.message || "Subject deleted successfully");
                 fetchSubjects(currentPage);

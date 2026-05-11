@@ -346,7 +346,7 @@ export default function DisabledStudentsPage() {
                                 Class <span className="text-destructive">*</span>
                             </label>
                              <div className="relative">
-                                 <select className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer">
+                                 <select className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer">
                                      <option value="">Select</option>
                                      {classes.map(c => (
                                          <option key={c.id} value={c.id}>{c.name}</option>
@@ -361,7 +361,7 @@ export default function DisabledStudentsPage() {
                                 Section
                             </label>
                              <div className="relative">
-                                 <select className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer">
+                                 <select className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer">
                                      <option value="">Select</option>
                                      {sections.map(s => (
                                          <option key={s.id} value={s.id}>{s.name}</option>
@@ -378,11 +378,11 @@ export default function DisabledStudentsPage() {
                             <div className="flex gap-2">
                                 <Input
                                     placeholder="Search By Student Name, Roll Number, Etc."
-                                    className="h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all"
+                                    className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
-                                <Button variant="gradient" className="h-11 px-8 rounded-xl" onClick={() => fetchStudents(1)}>
+                                <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => fetchStudents(1)}>
                                     <Search className="h-4 w-4" /> Search
                                 </Button>
                             </div>
@@ -457,7 +457,7 @@ export default function DisabledStudentsPage() {
                             )}
 
                             {activeTab === "list" ? (
-                                <div className="overflow-x-auto rounded-xl border border-muted/50 text-slate-700">
+                                <div className="overflow-x-auto rounded-lg border border-muted/50 text-slate-700">
                                     <table className="w-full text-left border-collapse">
                                         <thead className="bg-muted/50 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                             <tr>
@@ -510,12 +510,12 @@ export default function DisabledStudentsPage() {
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                     {students.map((student) => (
-                                        <div key={student.id} className="group bg-white rounded-3xl border border-muted/50 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                                        <div key={student.id} className="group bg-white rounded-lg border border-muted/50 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
                                             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
                                             
                                             <div className="relative space-y-4">
                                                 <div className="flex items-start justify-between">
-                                                    <Avatar className="h-16 w-16 rounded-2xl border-2 border-primary/20 shadow-lg group-hover:scale-105 transition-transform">
+                                                    <Avatar className="h-16 w-16 rounded-lg border-2 border-primary/20 shadow-lg group-hover:scale-105 transition-transform">
                                                         <AvatarImage src={student.avatar} alt={student.name} />
                                                         <AvatarFallback className="bg-gradient-to-br from-primary to-indigo-600 text-white font-bold text-xl uppercase">
                                                             {student.name?.substring(0, 2).toUpperCase() || "ST"}
@@ -554,9 +554,9 @@ export default function DisabledStudentsPage() {
 
                                                 <div className="flex items-center justify-between pt-2">
                                                     <div className="flex -space-x-2">
-                                                        <ActionBtn icon={RotateCcw} onClick={() => handleRestore(student.id)} className="bg-green-500 hover:bg-green-600 rounded-xl" title="Enable" />
-                                                        <ActionBtn icon={Eye} onClick={() => handleView(student)} className="bg-indigo-500 hover:bg-indigo-600 rounded-xl ml-2" title="View" />
-                                                        <ActionBtn icon={Pencil} onClick={() => handleEdit(student)} className="bg-indigo-500 hover:bg-indigo-600 rounded-xl ml-2" title="Edit" />
+                                                        <ActionBtn icon={RotateCcw} onClick={() => handleRestore(student.id)} className="bg-green-500 hover:bg-green-600 rounded-lg" title="Enable" />
+                                                        <ActionBtn icon={Eye} onClick={() => handleView(student)} className="bg-indigo-500 hover:bg-indigo-600 rounded-lg ml-2" title="View" />
+                                                        <ActionBtn icon={Pencil} onClick={() => handleEdit(student)} className="bg-indigo-500 hover:bg-indigo-600 rounded-lg ml-2" title="Edit" />
                                                     </div>
                                                     <span className="text-[10px] font-black uppercase tracking-widest text-primary/60 bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
                                                         {student.gender}
@@ -644,7 +644,7 @@ export default function DisabledStudentsPage() {
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
                             )}
-                            <div className="overflow-x-auto rounded-xl border border-muted/50">
+                            <div className="overflow-x-auto rounded-lg border border-muted/50">
                                 <table className="w-full text-left border-collapse">
                                     <thead className="bg-muted/50 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                         <tr>
@@ -774,7 +774,7 @@ export default function DisabledStudentsPage() {
             </div>
 
             <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl rounded-3xl bg-background/95 backdrop-blur-md">
+                <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl rounded-lg bg-background/95 backdrop-blur-md">
                     {selectedStudent && (
                         <>
                             <DialogHeader className="p-8 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent relative">
@@ -785,8 +785,8 @@ export default function DisabledStudentsPage() {
                                 </div>
                                 <div className="flex flex-col md:flex-row items-center gap-8">
                                     <div className="relative group">
-                                        <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-3xl blur opacity-30 group-hover:opacity-50 transition duration-500" />
-                                        <Avatar className="h-32 w-32 md:h-40 md:w-40 rounded-3xl border-4 border-white shadow-xl relative transition-transform duration-500 group-hover:scale-[1.02]">
+                                        <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-lg blur opacity-30 group-hover:opacity-50 transition duration-500" />
+                                        <Avatar className="h-32 w-32 md:h-40 md:w-40 rounded-lg border-4 border-white shadow-xl relative transition-transform duration-500 group-hover:scale-[1.02]">
                                             <AvatarImage src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${selectedStudent?.avatar}`} />
                                             <AvatarFallback className="bg-primary/5 text-primary text-4xl font-black">
                                                 {selectedStudent?.name?.substring(0, 2)?.toUpperCase() || "ST"}
@@ -801,11 +801,11 @@ export default function DisabledStudentsPage() {
                                             {selectedStudent?.name} {selectedStudent?.last_name}
                                         </DialogTitle>
                                         <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                                            <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-xl border border-muted/50">
+                                            <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
                                                 <BadgeCheck className="h-4 w-4 text-primary" />
                                                 ADM: {selectedStudent?.admission_no}
                                             </div>
-                                            <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-xl border border-muted/50">
+                                            <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
                                                 <GraduationCap className="h-4 w-4 text-indigo-500" />
                                                 {selectedStudent?.school_class?.name} ({selectedStudent?.section?.name})
                                             </div>
@@ -835,8 +835,8 @@ export default function DisabledStudentsPage() {
                                             <InfoField label="Email Address" value={selectedStudent?.email || "-"} icon={Mail} />
                                             <InfoField label="Father Name" value={selectedStudent?.father_name} icon={User} />
                                             <InfoField label="Category" value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} />
-                                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
-                                                <div className="p-2.5 bg-white rounded-xl shadow-sm border border-muted group-hover:scale-110 transition-transform">
+                                            <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
+                                                <div className="p-2.5 bg-white rounded-lg shadow-sm border border-muted group-hover:scale-110 transition-transform">
                                                     <BadgeCheck className="h-4 w-4 text-primary" />
                                                 </div>
                                                 <div>
@@ -859,12 +859,12 @@ export default function DisabledStudentsPage() {
                             </div>
                             
                             <DialogFooter className="p-6 bg-muted/20 border-t border-muted/50 flex flex-row gap-3">
-                                <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => setViewDialogOpen(false)}>
+                                <Button variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setViewDialogOpen(false)}>
                                     Close
                                 </Button>
                                 <Button 
                                     variant="gradient" 
-                                    className="flex-1 rounded-2xl h-12 font-bold"
+                                    className="flex-1 rounded-lg h-12 font-bold"
                                     onClick={() => {
                                         setViewDialogOpen(false);
                                         router.push(`/dashboard/student-information/student-details/${selectedStudent?.id}/edit`);
@@ -881,7 +881,7 @@ export default function DisabledStudentsPage() {
 
             {/* Edit Student Modal */}
             <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                <DialogContent className="max-w-2xl border-none shadow-2xl rounded-3xl bg-background/95 backdrop-blur-md overflow-hidden p-0">
+                <DialogContent className="max-w-2xl border-none shadow-2xl rounded-lg bg-background/95 backdrop-blur-md overflow-hidden p-0">
                     {editingStudent && (
                         <>
                             <DialogHeader className="p-8 bg-gradient-to-br from-indigo-500/10 via-primary/5 to-transparent relative">
@@ -891,7 +891,7 @@ export default function DisabledStudentsPage() {
                                     </Button>
                                 </div>
                                 <div className="flex items-center gap-4 mb-2">
-                                    <div className="p-3 bg-indigo-500 rounded-2xl shadow-lg shadow-indigo-200">
+                                    <div className="p-3 bg-indigo-500 rounded-lg shadow-lg shadow-indigo-200">
                                         <Pencil className="h-6 w-6 text-white" />
                                     </div>
                                     <div>
@@ -918,11 +918,11 @@ export default function DisabledStudentsPage() {
                                             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">Identification</h4>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Admission No</label>
-                                                <Input name="admission_no" defaultValue={editingStudent?.admission_no} className="h-12 rounded-xl bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
+                                                <Input name="admission_no" defaultValue={editingStudent?.admission_no} className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Roll No</label>
-                                                <Input name="roll_no" defaultValue={editingStudent?.roll_no} className="h-12 rounded-xl bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
+                                                <Input name="roll_no" defaultValue={editingStudent?.roll_no} className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
                                             </div>
                                         </div>
 
@@ -931,11 +931,11 @@ export default function DisabledStudentsPage() {
                                             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 px-1">Basic Information</h4>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">First Name</label>
-                                                <Input name="name" defaultValue={editingStudent?.name} className="h-12 rounded-xl bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
+                                                <Input name="name" defaultValue={editingStudent?.name} className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Last Name</label>
-                                                <Input name="last_name" defaultValue={editingStudent?.last_name} className="h-12 rounded-xl bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
+                                                <Input name="last_name" defaultValue={editingStudent?.last_name} className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
                                             </div>
                                         </div>
 
@@ -944,7 +944,7 @@ export default function DisabledStudentsPage() {
                                             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">Academic & Contact</h4>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Mobile Number</label>
-                                                <Input name="phone" defaultValue={editingStudent?.phone} className="h-12 rounded-xl bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
+                                                <Input name="phone" defaultValue={editingStudent?.phone} className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Disable Reason</label>
@@ -952,7 +952,7 @@ export default function DisabledStudentsPage() {
                                                     <select 
                                                         name="disable_reason" 
                                                         defaultValue={editingStudent?.disable_reason}
-                                                        className="flex h-12 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                                        className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                                     >
                                                         <option value="">Select Reason</option>
                                                         {disableReasons.map(r => (
@@ -968,7 +968,7 @@ export default function DisabledStudentsPage() {
                                                     name="disable_date" 
                                                     type="date" 
                                                     defaultValue={editingStudent?.disable_date} 
-                                                    className="h-12 rounded-xl bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" 
+                                                    className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" 
                                                 />
                                             </div>
                                         </div>
@@ -976,13 +976,13 @@ export default function DisabledStudentsPage() {
                                 </div>
 
                                 <DialogFooter className="p-6 bg-muted/20 border-t border-muted/50 flex flex-row gap-3">
-                                    <Button type="button" variant="outline" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => setEditDialogOpen(false)}>
+                                    <Button type="button" variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setEditDialogOpen(false)}>
                                         Cancel
                                     </Button>
                                     <Button 
                                         type="submit" 
                                         variant="gradient" 
-                                        className="flex-1 rounded-2xl h-12 font-bold shadow-lg shadow-primary/20"
+                                        className="flex-1 rounded-lg h-12 font-bold shadow-lg shadow-primary/20"
                                         disabled={loading}
                                     >
                                         {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Save className="h-5 w-5 mr-2" />}
@@ -1033,8 +1033,8 @@ function ActionBtn({ icon: Icon, className, onClick, title }: { icon: any, class
 
 function InfoField({ label, value, icon: Icon }: { label: string, value?: string, icon: any }) {
     return (
-        <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
-            <div className="p-2.5 bg-white rounded-xl shadow-sm border border-muted group-hover:scale-110 transition-transform">
+        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
+            <div className="p-2.5 bg-white rounded-lg shadow-sm border border-muted group-hover:scale-110 transition-transform">
                 <Icon className="h-4 w-4 text-primary" />
             </div>
             <div>

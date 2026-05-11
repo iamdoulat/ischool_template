@@ -224,7 +224,7 @@ export default function FrontCmsSettingPage() {
             </div>
 
             <Tabs defaultValue="system" className="w-full">
-                <TabsList className="bg-white border text-gray-500 h-11 p-1 gap-1 rounded-xl shadow-sm border-gray-100">
+                <TabsList className="bg-white border text-gray-500 h-11 p-1 gap-1 rounded-lg shadow-sm border-gray-100">
                     <TabsTrigger value="system" className="text-[11px] font-bold uppercase gap-2 px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-400 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg transition-all duration-300">
                         <Globe size={14} className="stroke-[2.5px]" /> System
                     </TabsTrigger>
@@ -238,7 +238,7 @@ export default function FrontCmsSettingPage() {
 
                 {/* SYSTEM TAB */}
                 <TabsContent value="system" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-8">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
                             <div className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
@@ -293,7 +293,7 @@ export default function FrontCmsSettingPage() {
                                     <div className="md:col-span-8 flex flex-col gap-3">
                                         <div
                                             onClick={() => logoInputRef.current?.click()}
-                                            className="h-24 w-full max-w-[200px] border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all bg-gray-50/50 overflow-hidden relative group"
+                                            className="h-24 w-full max-w-[200px] border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all bg-gray-50/50 overflow-hidden relative group"
                                         >
                                             {settings.logo_preview ? (
                                                 <>
@@ -346,7 +346,7 @@ export default function FrontCmsSettingPage() {
                                         key={theme.id}
                                         onClick={() => setSettings({ ...settings, current_theme: theme.id })}
                                         className={cn(
-                                            "cursor-pointer group flex flex-col border-2 rounded-2xl overflow-hidden transition-all duration-300",
+                                            "cursor-pointer group flex flex-col border-2 rounded-lg overflow-hidden transition-all duration-300",
                                             settings.current_theme === theme.id ? "border-indigo-500 shadow-lg scale-105" : "border-gray-50 hover:border-indigo-200 hover:shadow-md"
                                         )}
                                     >
@@ -379,7 +379,7 @@ export default function FrontCmsSettingPage() {
 
                 {/* SOCIAL LINKS TAB */}
                 <TabsContent value="social" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 space-y-6">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-10 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6">
                             {Object.keys(settings.social_media).map((platform) => (
                                 <div key={platform} className="grid grid-cols-1 md:grid-cols-12 items-center gap-4 group">
@@ -405,7 +405,7 @@ export default function FrontCmsSettingPage() {
                 <TabsContent value="sections" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
 
                     {/* About Us */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 bg-indigo-500 h-full" />
                         <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
                             <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
@@ -428,7 +428,7 @@ export default function FrontCmsSettingPage() {
                     </div>
 
                     {/* Main Courses */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 bg-orange-400 h-full" />
                         <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                             <div className="flex items-center gap-3">
@@ -446,7 +446,7 @@ export default function FrontCmsSettingPage() {
                         </div>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {settings.main_courses.map((course: any, idx: number) => (
-                                <div key={course.id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50/30 space-y-4 relative group hover:border-orange-200 transition-all hover:shadow-lg hover:bg-white">
+                                <div key={course.id} className="p-6 border border-gray-100 rounded-lg bg-gray-50/30 space-y-4 relative group hover:border-orange-200 transition-all hover:shadow-lg hover:bg-white">
                                     <Button 
                                         size="icon" 
                                         onClick={() => removeListItem("main_courses", course.id)} 
@@ -482,7 +482,7 @@ export default function FrontCmsSettingPage() {
                     </div>
 
                     {/* Experienced Staff */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 bg-green-500 h-full" />
                         <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                             <div className="flex items-center gap-3">
@@ -500,7 +500,7 @@ export default function FrontCmsSettingPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {settings.experienced_staffs.map((staff: any, idx: number) => (
-                                <div key={staff.id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50/30 flex flex-col items-center space-y-4 relative group hover:border-green-200 hover:shadow-lg hover:bg-white transition-all">
+                                <div key={staff.id} className="p-6 border border-gray-100 rounded-lg bg-gray-50/30 flex flex-col items-center space-y-4 relative group hover:border-green-200 hover:shadow-lg hover:bg-white transition-all">
                                     <Button 
                                         size="icon" 
                                         onClick={() => removeListItem("experienced_staffs", staff.id)} 
@@ -539,7 +539,7 @@ export default function FrontCmsSettingPage() {
                     </div>
 
                     {/* Latest Notices */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 bg-red-400 h-full" />
                         <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                             <div className="flex items-center gap-3">
@@ -557,7 +557,7 @@ export default function FrontCmsSettingPage() {
                         </div>
                         <div className="space-y-3">
                             {settings.latest_notices.map((notice: any, idx: number) => (
-                                <div key={notice.id} className="flex gap-4 items-center p-4 border border-gray-50 rounded-xl bg-gray-50/20 group hover:bg-white hover:border-red-100 hover:shadow-md transition-all">
+                                <div key={notice.id} className="flex gap-4 items-center p-4 border border-gray-50 rounded-lg bg-gray-50/20 group hover:bg-white hover:border-red-100 hover:shadow-md transition-all">
                                     <div className="h-2 w-2 rounded-full bg-red-400 animate-pulse" />
                                     <Input 
                                         placeholder="Enter notice headline..." 
@@ -594,13 +594,13 @@ export default function FrontCmsSettingPage() {
                         <div className="flex items-center justify-between text-[10px] text-gray-400 font-medium pt-6 border-t border-gray-50">
                             <div>Showing {settings.latest_notices.length} notices in library</div>
                             <div className="flex gap-2 items-center">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-gray-50/50 border border-gray-100 hover:bg-gray-100">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-gray-50/50 border border-gray-100 hover:bg-gray-100">
                                     <ChevronLeft size={14} className="stroke-[3px]" />
                                 </Button>
-                                <Button className="h-8 w-8 p-0 bg-gradient-to-r from-orange-400 to-indigo-500 text-white border-0 font-bold text-[12px] rounded-xl shadow-md">
+                                <Button className="h-8 w-8 p-0 bg-gradient-to-r from-orange-400 to-indigo-500 text-white border-0 font-bold text-[12px] rounded-lg shadow-md">
                                     1
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-gray-50/50 border border-gray-100 hover:bg-gray-100">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-gray-50/50 border border-gray-100 hover:bg-gray-100">
                                     <ChevronRight size={14} className="stroke-[3px]" />
                                 </Button>
                             </div>

@@ -10,6 +10,13 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select";
+import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -42,7 +49,7 @@ export default function ClassPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [className, setClassName] = useState("");
     // sections stored as array of name strings e.g. ["A","B","C"]
-    const [sectionInput, setSectionInput] = useState("");
+    const [availableSections, setAvailableSections] = useState<Section[]>([]);
     const [sectionTags, setSectionTags] = useState<string[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -76,24 +83,28 @@ export default function ClassPage() {
         }
     };
 
-    useEffect(() => {
-        fetchClasses(1);
-    }, [searchTerm]);
-
-    // Add a section tag when user presses Enter or comma
-    const handleSectionKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Enter" || e.key === ",") {
-            e.preventDefault();
-            addSectionTag();
+    const fetchAvailableSections = async () => {
+        try {
+            const response = await api.get(`/academics/sections?no_paginate=true`);
+            if (response.data?.data) {
+                setAvailableSections(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching available sections:", error);
         }
     };
 
-    const addSectionTag = () => {
-        const val = sectionInput.trim().replace(/,/g, "");
-        if (val && !sectionTags.map(t => t.toUpperCase()).includes(val.toUpperCase())) {
-            setSectionTags(prev => [...prev, val.toUpperCase()]);
+    useEffect(() => {
+        fetchClasses(1);
+        fetchAvailableSections();
+    }, [searchTerm]);
+
+    // Add a section tag when user presses Enter or comma
+    const addSectionTag = (val: string) => {
+        const cleanVal = val.trim().replace(/,/g, "");
+        if (cleanVal && !sectionTags.map(t => t.toUpperCase()).includes(cleanVal.toUpperCase())) {
+            setSectionTags(prev => [...prev, cleanVal.toUpperCase()]);
         }
-        setSectionInput("");
     };
 
     const removeSectionTag = (tag: string) => {
@@ -103,21 +114,13 @@ export default function ClassPage() {
     const resetForm = () => {
         setClassName("");
         setSectionTags([]);
-        setSectionInput("");
         setEditingId(null);
     };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Also capture anything still typed in the input box
         const allTags = [...sectionTags];
-        if (sectionInput.trim()) {
-            const extra = sectionInput.trim().toUpperCase().replace(/,/g, "");
-            if (extra && !allTags.map(t => t.toUpperCase()).includes(extra)) {
-                allTags.push(extra);
-            }
-        }
 
         if (!className.trim()) {
             toast("error", "Please provide a class name.");
@@ -152,7 +155,6 @@ export default function ClassPage() {
     const handleEdit = (cls: ClassData) => {
         setClassName(cls.name);
         setSectionTags(cls.sections.map(s => s.name));
-        setSectionInput("");
         setEditingId(cls.id);
     };
 
@@ -247,11 +249,27 @@ export default function ClassPage() {
                             <Label className="text-sm font-medium text-gray-700">
                                 Sections <span className="text-red-500">*</span>
                             </Label>
-                            <p className="text-xs text-gray-400">Type a section name and press Enter or comma to add (e.g. A, B, C)</p>
+                            <p className="text-xs text-gray-400">Select sections from the dropdown to add them to this class.</p>
+
+                            <Select onValueChange={addSectionTag}>
+                                <SelectTrigger className="h-9 focus-visible:ring-indigo-500">
+                                    <SelectValue placeholder="Select a section to add" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableSections.length === 0 && (
+                                        <div className="p-2 text-xs text-gray-500 text-center">No sections available</div>
+                                    )}
+                                    {availableSections.map((sec) => (
+                                        <SelectItem key={sec.name} value={sec.name} disabled={sectionTags.includes(sec.name)}>
+                                            {sec.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
                             {/* Tag display */}
                             {sectionTags.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 p-2 border border-gray-200 rounded-md bg-gray-50 min-h-[40px]">
+                                <div className="flex flex-wrap gap-1.5 p-2 border border-gray-200 rounded-md bg-gray-50 min-h-[40px] mt-2">
                                     {sectionTags.map(tag => (
                                         <span
                                             key={tag}
@@ -269,15 +287,6 @@ export default function ClassPage() {
                                     ))}
                                 </div>
                             )}
-
-                            <Input
-                                className="h-9 focus-visible:ring-indigo-500"
-                                value={sectionInput}
-                                onChange={(e) => setSectionInput(e.target.value)}
-                                onKeyDown={handleSectionKeyDown}
-                                onBlur={addSectionTag}
-                                placeholder="Type A, B, C... and press Enter"
-                            />
                         </div>
 
                         <div className="flex justify-end gap-2 pt-4">

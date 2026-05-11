@@ -134,10 +134,12 @@ export default function StaffDirectoryPage() {
         loadInitialData();
     }, []);
 
-    const isAdmin = currentUser && (currentUser.role === "Admin" || currentUser.role === "Super Admin");
+    const isAdmin = currentUser && (currentUser.role === "Admin" || currentUser.role === "Super Admin" || currentUser.role === "SUPER ADMIN");
 
     const hasPerm = (permission: string) => {
-        if (!currentUser || !currentUser.permissions) return false;
+        if (!currentUser) return false;
+        if (isAdmin) return true;
+        if (!currentUser.permissions) return false;
         if (currentUser.permissions.includes("all")) return true;
         return currentUser.permissions.includes(permission);
     };
@@ -234,9 +236,9 @@ export default function StaffDirectoryPage() {
     const gradientBtn = "bg-gradient-to-r from-amber-500 to-purple-600 hover:from-amber-600 hover:to-purple-700 text-white shadow-lg shadow-purple-200/50 transition-all duration-300 border-none rounded-full";
 
     return (
-        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
-            <div className="flex justify-between items-center">
-                <h1 className="text-xl font-medium text-gray-800">Staff Directory</h1>
+        <div className="p-2 space-y-2 bg-transparent min-h-screen font-sans">
+            <div className="flex justify-between items-center bg-transparent p-4 rounded-md border border-slate-200/60 shadow-none">
+                <h1 className="text-lg font-bold text-gray-800 uppercase tracking-widest">Staff Directory</h1>
                 {hasPerm("human-resource.staff.add") && (
                     <Button
                         onClick={() => router.push('/dashboard/hr/staff-directory/create')}
@@ -248,7 +250,7 @@ export default function StaffDirectoryPage() {
             </div>
 
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-transparent rounded-md shadow-none border border-slate-200/60 p-6 space-y-4">
                 <h2 className="text-sm font-semibold text-gray-800">Select Criteria</h2>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -301,7 +303,7 @@ export default function StaffDirectoryPage() {
             </div>
 
             {/* Staff View Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-transparent rounded-md shadow-none border border-slate-200/60 overflow-hidden">
                 <Tabs defaultValue="card" className="w-full" onValueChange={setView}>
                     <div className="px-6 border-b border-gray-100 bg-white flex justify-between items-center">
                         <TabsList className="bg-transparent h-14 gap-8 p-0">
@@ -348,8 +350,8 @@ export default function StaffDirectoryPage() {
                         ) : staffList.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {staffList.map((person) => (
-                                    <div key={person.id} className={`bg-white border border-gray-100 rounded-xl p-4 hover:shadow-xl transition-all group relative overflow-hidden flex gap-4 ${person.active === false || person.active === 0 ? "opacity-60 grayscale hover:grayscale-0 hover:opacity-100" : "hover:shadow-indigo-500/5"}`}>
-                                        <div className="relative h-20 w-20 shrink-0 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
+                                    <div key={person.id} className={`bg-white border border-gray-100 rounded-lg p-4 hover:shadow-xl transition-all group relative overflow-hidden flex gap-4 ${person.active === false || person.active === 0 ? "opacity-60 grayscale hover:grayscale-0 hover:opacity-100" : "hover:shadow-indigo-500/5"}`}>
+                                        <div className="relative h-20 w-20 shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
                                             {person.avatar ? (
                                                 <img
                                                     src={person.avatar}

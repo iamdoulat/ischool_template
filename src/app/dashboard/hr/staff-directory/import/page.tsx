@@ -275,7 +275,7 @@ export default function ImportStaffPage() {
             </div>
 
             {/* Expected Format Table / CSV Preview */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
                     {csvData.length === 0 ? (
                         // Expected Format Table (shown when no CSV uploaded)
@@ -370,7 +370,7 @@ export default function ImportStaffPage() {
             </div>
 
             {/* Import Form */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-6">
                 {/* Role, Designation, Department */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-2">

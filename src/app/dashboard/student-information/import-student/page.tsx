@@ -99,7 +99,7 @@ export default function ImportStudentPage() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-3 bg-primary/10 rounded-2xl">
+                    <div className="p-3 bg-primary/10 rounded-lg">
                         <FileSpreadsheet className="h-6 w-6 text-primary" />
                     </div>
                     <div>
@@ -109,7 +109,7 @@ export default function ImportStudentPage() {
                 </div>
                 <Button
                     variant="default"
-                    className="h-10 px-6 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white rounded-xl shadow-lg shadow-primary/20"
+                    className="h-10 px-6 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white rounded-lg shadow-lg shadow-primary/20"
                     onClick={() => {
                         const csvContent = sampleColumns.join(",") + "\n" + sampleColumns.map(() => "").join(",");
                         const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -133,7 +133,7 @@ export default function ImportStudentPage() {
                 </div>
                 <CardContent className="p-8 space-y-8">
                     {/* Instructions */}
-                    <div className="p-6 bg-muted/10 rounded-2xl border border-muted/30 space-y-3">
+                    <div className="p-6 bg-muted/10 rounded-lg border border-muted/30 space-y-3">
                         <div className="flex items-center gap-2 text-primary font-bold text-sm mb-4">
                             <Info className="h-4 w-4" />
                             Instructions
@@ -153,7 +153,7 @@ export default function ImportStudentPage() {
 
                     {/* Sample Table */}
                     <div className="space-y-4">
-                        <div className="h-[200px] border border-muted/50 rounded-2xl overflow-hidden bg-muted/5">
+                        <div className="h-[200px] border border-muted/50 rounded-lg overflow-hidden bg-muted/5">
                             <div className="w-full overflow-x-auto h-full scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
                                 <table className="w-full text-left border-collapse min-w-[3000px]">
                                     <thead className="bg-muted/10 sticky top-0">
@@ -191,7 +191,7 @@ export default function ImportStudentPage() {
                             </label>
                             <div className="relative">
                                 <select
-                                    className="flex h-12 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     value={filters.school_class_id}
                                     onChange={(e) => setFilters(prev => ({ ...prev, school_class_id: e.target.value }))}
                                 >
@@ -210,7 +210,7 @@ export default function ImportStudentPage() {
                             </label>
                             <div className="relative">
                                 <select
-                                    className="flex h-12 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     value={filters.section_id}
                                     onChange={(e) => setFilters(prev => ({ ...prev, section_id: e.target.value }))}
                                 >
@@ -227,7 +227,7 @@ export default function ImportStudentPage() {
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
                                 Select CSV File <span className="text-destructive">*</span>
                             </label>
-                            <div className="relative h-24 border-2 border-dashed border-muted-foreground/30 rounded-2xl bg-muted/30 flex items-center justify-center cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all group/upload overflow-hidden">
+                            <div className="relative h-24 border-2 border-dashed border-muted-foreground/30 rounded-lg bg-muted/30 flex items-center justify-center cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all group/upload overflow-hidden">
                                 <div className="flex flex-col items-center gap-2 pointer-events-none">
                                     <Upload className="h-6 w-6 text-muted-foreground group-hover/upload:text-primary transition-colors" />
                                     <span className="text-sm font-semibold text-muted-foreground group-hover/upload:text-foreground">
@@ -247,7 +247,7 @@ export default function ImportStudentPage() {
                     <div className="flex justify-end pt-4">
                         <Button
                             variant="default"
-                            className="h-12 px-12 text-lg bg-[#8B5CF6] hover:bg-[#7C3AED] text-white rounded-xl shadow-lg shadow-primary/20"
+                            className="h-12 px-12 text-lg bg-[#8B5CF6] hover:bg-[#7C3AED] text-white rounded-lg shadow-lg shadow-primary/20"
                             onClick={handleImport}
                             disabled={loading}
                         >

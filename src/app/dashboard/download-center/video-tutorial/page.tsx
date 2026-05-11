@@ -204,7 +204,7 @@ export default function VideoTutorialPage() {
                     ) : (
                         tutorials.map((video) => (
                             <div key={video.id} className="group cursor-pointer flex flex-col h-full">
-                                <div className="relative aspect-video rounded-xl overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
+                                <div className="relative aspect-video rounded-lg overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
                                     {video.thumbnail ? (
                                         <>
                                             <Image

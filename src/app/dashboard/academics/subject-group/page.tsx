@@ -85,18 +85,16 @@ export default function SubjectGroupPage() {
     const [from, setFrom] = useState(0);
     const [to, setTo] = useState(0);
 
-    // Load prerequisites (Classes, Subjects, Sections)
+    // Load prerequisites (Classes, Subjects)
     useEffect(() => {
         const fetchPrerequisites = async () => {
             try {
-                const [classRes, subRes, secRes] = await Promise.all([
+                const [classRes, subRes] = await Promise.all([
                     api.get(`/academics/classes?no_paginate=true`),
-                    api.get(`/academics/subjects?no_paginate=true`),
-                    api.get(`/academics/sections?no_paginate=true`)
+                    api.get(`/academics/subjects?no_paginate=true`)
                 ]);
                 setClasses(classRes.data.data?.data || classRes.data.data || []);
                 setSubjects(subRes.data.data?.data || subRes.data.data || []);
-                setSections(secRes.data.data?.data || secRes.data.data || []);
             } catch (error) {
                 console.error("Failed to load prerequisites", error);
                 toast("error", "Failed to load prerequisites");
@@ -104,6 +102,19 @@ export default function SubjectGroupPage() {
         };
         fetchPrerequisites();
     }, []);
+
+    // Fetch sections filtered by selected class ID
+    const fetchSectionsByClass = async (selectedClassId: string) => {
+        if (!selectedClassId) { setSections([]); return; }
+        try {
+            const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
+            const all: Section[] = res.data?.data || res.data || [];
+            const filtered = all.filter((s: any) => String(s.school_class_id) === String(selectedClassId));
+            setSections(filtered);
+        } catch {
+            setSections([]);
+        }
+    };
 
     // Load Subject Groups with pagination
     const fetchSubjectGroups = async (page = 1) => {
@@ -138,6 +149,8 @@ export default function SubjectGroupPage() {
     // Handle Class Selection Change
     const handleClassChange = (value: string) => {
         setClassId(value);
+        setSelectedSections([]); // Reset section selection when class changes
+        fetchSectionsByClass(value);
     };
 
     // Handle Form Submit
@@ -188,6 +201,7 @@ export default function SubjectGroupPage() {
     const handleEdit = (group: SubjectGroup) => {
         setName(group.name);
         setClassId(group.school_class_id.toString());
+        fetchSectionsByClass(group.school_class_id.toString());
         setSelectedSections(group.sections.map(s => s.id));
         setSelectedSubjects(group.subjects.map(s => s.id));
         setDescription(group.description || "");
@@ -329,8 +343,10 @@ export default function SubjectGroupPage() {
                             <Label className="text-sm font-medium text-gray-700">
                                 Sections <span className="text-red-500">*</span>
                             </Label>
-                            {sections.length === 0 ? (
-                                <p className="text-xs text-gray-400 border border-dashed rounded p-2 text-center">No sections available in system</p>
+                            {!classId ? (
+                                <p className="text-xs text-gray-400 border border-dashed rounded p-2 text-center">Select a class first to see sections</p>
+                            ) : sections.length === 0 ? (
+                                <p className="text-xs text-gray-400 border border-dashed rounded p-2 text-center">No sections available for this class</p>
                             ) : (
                                 <div className="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-[150px] overflow-y-auto">
                                     {sections.map(section => (

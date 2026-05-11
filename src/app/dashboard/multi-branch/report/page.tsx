@@ -93,14 +93,14 @@ export default function ReportPage() {
                             key={report.id}
                             onClick={() => setActiveReport(report.id)}
                             className={cn(
-                                "flex flex-col items-center justify-center gap-3 p-6 rounded-3xl border-2 transition-all duration-300 group relative overflow-hidden",
+                                "flex flex-col items-center justify-center gap-3 p-6 rounded-lg border-2 transition-all duration-300 group relative overflow-hidden",
                                 isActive 
                                     ? "border-orange-500 bg-orange-50/50 shadow-xl shadow-orange-100/50 scale-[1.02] z-10" 
                                     : "border-gray-50 bg-white hover:border-gray-200 hover:shadow-lg"
                             )}
                         >
                             <div className={cn(
-                                "h-12 w-12 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110 shadow-inner",
+                                "h-12 w-12 rounded-lg flex items-center justify-center transition-transform duration-500 group-hover:scale-110 shadow-inner",
                                 isActive ? "bg-orange-500 text-white" : cn(report.bg, report.color)
                             )}>
                                 <Icon className="h-6 w-6" />
@@ -131,10 +131,10 @@ export default function ReportPage() {
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Analytical Filter</label>
                                     <Select defaultValue="keyword">
-                                        <SelectTrigger className="h-12 bg-white border-gray-100 rounded-2xl text-[11px] font-bold uppercase tracking-widest shadow-none">
+                                        <SelectTrigger className="h-12 bg-white border-gray-100 rounded-lg text-[11px] font-bold uppercase tracking-widest shadow-none">
                                             <SelectValue placeholder="Select search type" />
                                         </SelectTrigger>
-                                        <SelectContent className="rounded-xl border-gray-100">
+                                        <SelectContent className="rounded-lg border-gray-100">
                                             <SelectItem value="keyword">Node Keyword</SelectItem>
                                             <SelectItem value="branch">Institutional Node</SelectItem>
                                             <SelectItem value="date">Temporal Range</SelectItem>
@@ -149,7 +149,7 @@ export default function ReportPage() {
                                             placeholder="Search node records..." 
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="h-12 pl-12 border-gray-100 bg-white rounded-2xl text-[11px] font-bold uppercase tracking-widest shadow-none"
+                                            className="h-12 pl-12 border-gray-100 bg-white rounded-lg text-[11px] font-bold uppercase tracking-widest shadow-none"
                                         />
                                     </div>
                                 </div>
@@ -170,7 +170,7 @@ export default function ReportPage() {
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
                             <PieChart className="h-5 w-5" />
                         </div>
                         <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">
@@ -178,8 +178,8 @@ export default function ReportPage() {
                         </CardTitle>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-orange-50 hover:text-orange-600 rounded-xl transition-all"><Download className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-orange-50 hover:text-orange-600 rounded-xl transition-all"><Printer className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-all"><Download className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-all"><Printer className="h-4 w-4" /></Button>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -258,16 +258,16 @@ export default function ReportPage() {
                         <div className="flex items-center gap-10">
                             <div className="flex items-center gap-2">
                                 <Button 
-                                    variant="outline" size="icon" className="h-10 w-10 rounded-2xl border-muted/50 hover:bg-orange-50 hover:text-orange-600 transition-all shadow-sm"
+                                    variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-orange-50 hover:text-orange-600 transition-all shadow-sm"
                                     disabled={loading || reportData.length === 0}
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                                <Button size="icon" className="h-10 w-10 rounded-2xl bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg font-black text-xs">
+                                <Button size="icon" className="h-10 w-10 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg font-black text-xs">
                                     1
                                 </Button>
                                 <Button 
-                                    variant="outline" size="icon" className="h-10 w-10 rounded-2xl border-muted/50 hover:bg-orange-50 hover:text-orange-600 transition-all shadow-sm"
+                                    variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-orange-50 hover:text-orange-600 transition-all shadow-sm"
                                     disabled={loading || reportData.length === 0}
                                 >
                                     <ChevronRight className="h-4 w-4" />
@@ -277,7 +277,7 @@ export default function ReportPage() {
                             <div className="flex flex-col items-end gap-1">
                                 <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em]">Aggregate Node Valuation:</span>
                                 <div className={cn(
-                                    "px-8 py-3 rounded-2xl border-2 font-black text-lg tabular-nums shadow-xl transition-all duration-500",
+                                    "px-8 py-3 rounded-lg border-2 font-black text-lg tabular-nums shadow-xl transition-all duration-500",
                                     activeReport === 'income' ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-emerald-100" : "bg-rose-50 border-rose-500 text-rose-700 shadow-rose-100"
                                 )}>
                                     ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}

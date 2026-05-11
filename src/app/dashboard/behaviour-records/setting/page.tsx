@@ -59,7 +59,7 @@ export default function SettingPage() {
     if (loading) {
         return (
             <div className="h-[60vh] flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-700">
-                <div className="h-16 w-16 rounded-[2rem] bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-2xl shadow-indigo-100 animate-pulse">
+                <div className="h-16 w-16 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-2xl shadow-indigo-100 animate-pulse">
                     <Settings2 className="h-8 w-8" />
                 </div>
                 <div className="flex flex-col items-center">
@@ -73,12 +73,12 @@ export default function SettingPage() {
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-20 font-sans">
             {/* Strategy Header */}
-            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
+            <div className="bg-white p-8 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 text-indigo-600">
                     <ShieldCheck className="h-48 w-48" />
                 </div>
                 <div className="flex items-center gap-6 relative z-10">
-                    <div className="h-16 w-16 rounded-[2rem] bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner transform -rotate-3">
+                    <div className="h-16 w-16 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner transform -rotate-3">
                         <MessageSquare className="h-8 w-8" />
                     </div>
                     <div>
@@ -95,13 +95,13 @@ export default function SettingPage() {
             {/* Setting Section */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
+                    <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
                         <Zap className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Communication Parameters</CardTitle>
                 </CardHeader>
                 <CardContent className="p-10 space-y-12">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 p-8 bg-white/50 rounded-[2rem] border border-gray-50 shadow-sm relative group hover:border-indigo-100 transition-all duration-500">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 p-8 bg-white/50 rounded-lg border border-gray-50 shadow-sm relative group hover:border-indigo-100 transition-all duration-500">
                         <div className="space-y-2 relative z-10">
                             <label className="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-3">
                                 <Users className="h-4 w-4 text-indigo-500" />
@@ -151,7 +151,7 @@ function CheckboxItem({ id, label, checked, onChange, icon }: { id: string, labe
         <div 
             onClick={() => onChange(!checked)}
             className={cn(
-                "flex items-center space-x-4 group cursor-pointer p-4 rounded-2xl border-2 transition-all duration-300 min-w-[240px]",
+                "flex items-center space-x-4 group cursor-pointer p-4 rounded-lg border-2 transition-all duration-300 min-w-[240px]",
                 checked 
                     ? "border-indigo-500 bg-indigo-50/50 shadow-lg shadow-indigo-100/50" 
                     : "border-gray-50 bg-white hover:border-gray-200"

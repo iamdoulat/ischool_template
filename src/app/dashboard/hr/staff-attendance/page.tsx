@@ -184,7 +184,7 @@ export default function StaffAttendancePage() {
                             <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
                                 <SelectValue placeholder="All Roles" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-gray-100">
+                            <SelectContent className="rounded-lg border-gray-100">
                                 <SelectItem value="all">All Roles</SelectItem>
                                 {roles.map((r, idx) => (
                                     <SelectItem key={r.id || idx} value={r.name}>{r.name}</SelectItem>
@@ -268,7 +268,7 @@ export default function StaffAttendancePage() {
 
                     {/* Table */}
                     <div className="px-4 pb-4">
-                        <div className="rounded-xl border border-gray-50 overflow-hidden shadow-sm">
+                        <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                             <Table>
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="hover:bg-transparent border-gray-100">
@@ -395,7 +395,7 @@ export default function StaffAttendancePage() {
 
             {/* Empty state */}
             {!searched && attendanceData.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-24 text-gray-300 bg-white rounded-xl border border-dashed border-gray-200">
+                <div className="flex flex-col items-center justify-center py-24 text-gray-300 bg-white rounded-lg border border-dashed border-gray-200">
                     <UserCheck className="h-16 w-16 mb-4 opacity-10" />
                     <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">No Data Loaded</p>
                     <p className="text-[11px] text-gray-400 mt-2 italic">Select a role and date, then click search to load the attendance sheet.</p>

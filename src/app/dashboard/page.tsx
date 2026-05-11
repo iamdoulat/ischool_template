@@ -1,9 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { StatCard } from "@/components/cards/stat-card";
 import { FinanceChart } from "@/components/charts/finance-chart";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import { OverviewCard } from "@/components/cards/overview-card";
 import { SummaryCard } from "@/components/cards/summary-card";
 import { mockDashboardData } from "@/lib/mock-data";
+import api from "@/lib/api";
 import {
     Wallet,
     Target,
@@ -21,12 +25,49 @@ import {
     UserCircle,
     Users,
     FileCheck,
-    UserCheck
+    UserCheck,
+    Loader2,
+    Bus
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function DashboardPage() {
-    const { stats, dailyFinance, finance, incomeDistribution, expenseDistribution, overviews, summary } = mockDashboardData;
+    const [data, setData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                const response = await api.get('/dashboard');
+                setData(response.data);
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+                // Fallback to mock data if API fails
+                setData(mockDashboardData);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="h-[80vh] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    // Default to mock data if data is incomplete
+    const stats = data?.stats || mockDashboardData.stats;
+    const dailyFinance = data?.dailyFinance || mockDashboardData.dailyFinance;
+    const finance = data?.finance || mockDashboardData.finance;
+    const incomeDistribution = data?.incomeDistribution || mockDashboardData.incomeDistribution;
+    const expenseDistribution = data?.expenseDistribution || mockDashboardData.expenseDistribution;
+    const overviews = data?.overviews || mockDashboardData.overviews;
+    const summary = data?.summary || mockDashboardData.summary;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -85,21 +126,21 @@ export default function DashboardPage() {
             {/* Charts Grid - 2x2 Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <FinanceChart
-                    title="Fees Collection & Expenses For January 2026"
+                    title={`Fees Collection & Expenses For ${new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}`}
                     data={dailyFinance}
                     type="bar"
                 />
                 <DistributionChart
-                    title="Income - January 2026"
+                    title={`Income - ${new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}`}
                     data={incomeDistribution}
                 />
                 <FinanceChart
-                    title="Fees Collection & Expenses For Session 2025-26"
+                    title="Fees Collection & Expenses For Session"
                     data={finance}
                     type="line"
                 />
                 <DistributionChart
-                    title="Expense - January 2026"
+                    title={`Expense - ${new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}`}
                     data={expenseDistribution}
                 />
             </div>
@@ -124,6 +165,7 @@ export default function DashboardPage() {
                 <SummaryCard title="Librarian" value={summary.librarian} icon={LibraryBig} color="rose" />
                 <SummaryCard title="Receptionist" value={summary.receptionist} icon={UserRoundCheck} color="yellow" />
                 <SummaryCard title="Super Admin" value={summary.superAdmin} icon={ShieldCheck} color="primary" />
+                <SummaryCard title="Driver" value={summary.driver || 0} icon={Bus} color="red" />
             </div>
         </div>
     );

@@ -13,8 +13,10 @@ import {
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function EmailSettingPage() {
+    const { toast } = useToast();
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -37,7 +39,11 @@ export default function EmailSettingPage() {
                 setFormData(response.data.data);
             }
         } catch (error) {
-            console.error("Error fetching email settings:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to fetch email settings",
+            });
         } finally {
             setLoading(false);
         }
@@ -56,11 +62,17 @@ export default function EmailSettingPage() {
         try {
             const response = await api.post("/system-setting/email-setting", formData);
             if (response.data.status === "Success") {
-                alert("Email settings updated successfully!");
+                toast({
+                    title: "Success",
+                    description: "Email settings updated successfully!",
+                });
             }
         } catch (error: any) {
-            console.error("Error saving email settings:", error);
-            alert(error.response?.data?.message || "Failed to save email settings.");
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: error.response?.data?.message || "Failed to save email settings.",
+            });
         } finally {
             setSaving(false);
         }

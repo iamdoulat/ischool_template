@@ -102,7 +102,7 @@ export default function PrintMarksheetPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <Printer className="h-6 w-6 text-indigo-500" />
@@ -113,7 +113,7 @@ export default function PrintMarksheetPage() {
             </div>
 
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-8 relative overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
                     <Filter className="h-24 w-24 text-indigo-500" />
                 </div>
@@ -129,7 +129,7 @@ export default function PrintMarksheetPage() {
                             Target Class <span className="text-red-500">*</span>
                         </Label>
                         <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Class" />
                             </SelectTrigger>
                             <SelectContent>
@@ -141,7 +141,7 @@ export default function PrintMarksheetPage() {
                     <div className="space-y-2">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Target Section</Label>
                         <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
-                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Section (Optional)" />
                             </SelectTrigger>
                             <SelectContent>
@@ -155,7 +155,7 @@ export default function PrintMarksheetPage() {
                             Board Template <span className="text-red-500">*</span>
                         </Label>
                         <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Layout Template" />
                             </SelectTrigger>
                             <SelectContent>
@@ -178,7 +178,7 @@ export default function PrintMarksheetPage() {
             </div>
 
             {/* Student List Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                 <div className="flex justify-between items-center border-b border-gray-50 pb-4">
                     <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <Users2 className="h-5 w-5 text-indigo-500" />
@@ -196,7 +196,7 @@ export default function PrintMarksheetPage() {
                     )}
                 </div>
 
-                <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                     <Table>
                         <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                             <TableRow className="hover:bg-transparent border-gray-50">

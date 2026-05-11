@@ -5,6 +5,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { SettingsProvider } from "@/components/providers/settings-provider";
 import { MSWInit } from "@/lib/msw";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,10 +42,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <MSWInit />
-          <ToastProvider>
+          <ToastProvider duration={3000}>
             <SettingsProvider>
               {children}
               <Toaster />
+              <SonnerToaster position="top-center" richColors />
             </SettingsProvider>
           </ToastProvider>
         </ThemeProvider>

@@ -205,7 +205,7 @@ export function PublicFooter() {
 
             {/* Copyright Bar */}
             <div className="border-t border-slate-800 bg-slate-950/50">
-                <div className="container mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs md:text-sm text-slate-500">
+                <div className="container mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[12px] text-slate-500">
                     <p>© 2026 Smart School. All rights reserved.</p>
                     <div className="flex gap-6">
                         <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>

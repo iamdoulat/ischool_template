@@ -206,7 +206,7 @@ export default function ApproveLeavePage() {
             </div>
 
             {/* Approve Leave List Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="flex justify-between items-center border-b border-gray-50 pb-3">
                     <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-tight flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-indigo-500" />
@@ -331,7 +331,7 @@ export default function ApproveLeavePage() {
 
             {/* Approval Dialog */}
             <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-                <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+                <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden rounded-lg border-none shadow-2xl">
                     <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-8 text-white">
                         <DialogHeader>
                             <DialogTitle className="text-lg font-black uppercase tracking-widest text-white/90">Review Request</DialogTitle>
@@ -344,7 +344,7 @@ export default function ApproveLeavePage() {
                     <div className="p-8 space-y-8 bg-white">
                         {selectedLeave && (
                             <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-100">
                                     <div className="space-y-1">
                                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Student</span>
                                         <span className="text-xs font-bold text-gray-900 block">{selectedLeave.user.name}</span>
@@ -355,7 +355,7 @@ export default function ApproveLeavePage() {
                                     </div>
                                     <div className="col-span-2 space-y-1 pt-2 border-t border-gray-100 mt-2">
                                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Reason for Leave</span>
-                                        <p className="text-xs text-gray-600 font-medium leading-relaxed bg-white p-3 rounded-xl border border-gray-50 shadow-sm italic">
+                                        <p className="text-xs text-gray-600 font-medium leading-relaxed bg-white p-3 rounded-lg border border-gray-50 shadow-sm italic">
                                             "{selectedLeave.reason || "No reason provided"}"
                                         </p>
                                     </div>
@@ -370,7 +370,7 @@ export default function ApproveLeavePage() {
                                         placeholder="Enter approval conditions or rejection reasons here..."
                                         value={adminRemark}
                                         onChange={(e) => setAdminRemark(e.target.value)}
-                                        className="min-h-[120px] text-xs border-gray-100 focus:ring-2 focus:ring-indigo-500/20 shadow-none resize-none rounded-xl bg-gray-50/50 p-4 transition-all"
+                                        className="min-h-[120px] text-xs border-gray-100 focus:ring-2 focus:ring-indigo-500/20 shadow-none resize-none rounded-lg bg-gray-50/50 p-4 transition-all"
                                     />
                                 </div>
                             </div>

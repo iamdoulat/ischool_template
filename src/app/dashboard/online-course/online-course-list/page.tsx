@@ -181,7 +181,7 @@ export default function OnlineCoursePage() {
                 </div>
                 
                 <div className="flex items-center gap-6 relative z-10">
-                    <div className="h-16 w-16 rounded-[2rem] bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner transform -rotate-3 transition-transform group-hover:rotate-0 duration-500">
+                    <div className="h-16 w-16 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner transform -rotate-3 transition-transform group-hover:rotate-0 duration-500">
                         <LayoutDashboard className="h-8 w-8" />
                     </div>
                     <div>
@@ -202,18 +202,18 @@ export default function OnlineCoursePage() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && fetchCourses()}
-                            className="pl-12 h-14 rounded-2xl bg-slate-50 border-transparent focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-indigo-500/10 focus-visible:border-indigo-500 transition-all font-bold text-sm shadow-inner"
+                            className="pl-12 h-14 rounded-lg bg-slate-50 border-transparent focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-indigo-500/10 focus-visible:border-indigo-500 transition-all font-bold text-sm shadow-inner"
                         />
-                        <div onClick={fetchCourses} className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-xl bg-white flex items-center justify-center shadow-sm hover:bg-indigo-50 cursor-pointer text-indigo-500 active:scale-90 transition-all">
+                        <div onClick={fetchCourses} className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg bg-white flex items-center justify-center shadow-sm hover:bg-indigo-50 cursor-pointer text-indigo-500 active:scale-90 transition-all">
                             <Search className="h-4 w-4" />
                         </div>
                     </div>
 
-                    <div className="flex items-center bg-slate-50 border border-slate-100 rounded-2xl p-1.5 shadow-inner">
+                    <div className="flex items-center bg-slate-50 border border-slate-100 rounded-lg p-1.5 shadow-inner">
                         <Button
                             variant="ghost"
                             size="icon"
-                            className={cn("h-11 w-11 rounded-xl transition-all duration-300", viewMode === "grid" ? "bg-white text-indigo-500 shadow-md scale-105" : "text-slate-400 hover:text-slate-600")}
+                            className={cn("h-11 w-11 rounded-lg transition-all duration-300", viewMode === "grid" ? "bg-white text-indigo-500 shadow-md scale-105" : "text-slate-400 hover:text-slate-600")}
                             onClick={() => setViewMode("grid")}
                         >
                             <LayoutGrid className="h-5 w-5" />
@@ -221,7 +221,7 @@ export default function OnlineCoursePage() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className={cn("h-11 w-11 rounded-xl transition-all duration-300", viewMode === "list" ? "bg-white text-indigo-500 shadow-md scale-105" : "text-slate-400 hover:text-slate-600")}
+                            className={cn("h-11 w-11 rounded-lg transition-all duration-300", viewMode === "list" ? "bg-white text-indigo-500 shadow-md scale-105" : "text-slate-400 hover:text-slate-600")}
                             onClick={() => setViewMode("list")}
                         >
                             <List className="h-5 w-5" />
@@ -281,18 +281,18 @@ export default function OnlineCoursePage() {
             )}
 
             {/* Matrix Pagination */}
-            <div className="mt-12 p-8 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-muted-foreground shadow-sm">
+            <div className="mt-12 p-8 bg-white/50 backdrop-blur-sm rounded-lg border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-muted-foreground shadow-sm">
                 <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.25em]">
                     Institutional Summary: <span className="text-indigo-600">{courses.length}</span> active assets identified out of <span className="text-indigo-600">{totalEntries}</span> nodes
                 </p>
                 <div className="flex items-center gap-3">
-                    <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-gray-100 bg-white text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 active:scale-95 transition-all shadow-sm" disabled>
+                    <Button variant="outline" size="icon" className="h-12 w-12 rounded-lg border-gray-100 bg-white text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 active:scale-95 transition-all shadow-sm" disabled>
                         <ChevronDown className="h-5 w-5 rotate-90" />
                     </Button>
-                    <Button className="h-12 w-12 rounded-2xl border-none p-0 text-white font-black text-xs active:scale-95 transition-all shadow-xl shadow-indigo-200/50 bg-gradient-to-r from-indigo-500 to-indigo-700">
+                    <Button className="h-12 w-12 rounded-lg border-none p-0 text-white font-black text-xs active:scale-95 transition-all shadow-xl shadow-indigo-200/50 bg-gradient-to-r from-indigo-500 to-indigo-700">
                         1
                     </Button>
-                    <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-gray-100 bg-white text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 active:scale-95 transition-all shadow-sm" disabled>
+                    <Button variant="outline" size="icon" className="h-12 w-12 rounded-lg border-gray-100 bg-white text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 active:scale-95 transition-all shadow-sm" disabled>
                         <ChevronDown className="h-5 w-5 -rotate-90" />
                     </Button>
                 </div>
@@ -311,7 +311,7 @@ export default function OnlineCoursePage() {
                             <GraduationCap className="h-24 w-24" />
                         </div>
                         <div className="flex items-center gap-6 relative z-10">
-                            <div className="h-16 w-16 rounded-[2rem] bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xl">
+                            <div className="h-16 w-16 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xl">
                                 <Plus className="h-8 w-8" />
                             </div>
                             <div>
@@ -362,7 +362,7 @@ export default function OnlineCoursePage() {
                             </label>
                             <textarea 
                                 required
-                                className="w-full min-h-[120px] rounded-[2rem] border-2 border-slate-50 bg-slate-50/30 p-6 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/10 focus-visible:border-indigo-500 focus-visible:bg-white transition-all font-bold text-sm shadow-inner"
+                                className="w-full min-h-[120px] rounded-lg border-2 border-slate-50 bg-slate-50/30 p-6 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/10 focus-visible:border-indigo-500 focus-visible:bg-white transition-all font-bold text-sm shadow-inner"
                                 placeholder="Provide high-fidelity description of the curriculum assets..."
                                 value={formState.description}
                                 onChange={(e) => setFormState({...formState, description: e.target.value})}
@@ -416,7 +416,7 @@ function CourseCard({ course, viewMode, index, onEdit, onDelete }: { course: Cou
     return (
         <Card className={cn(
             "group border-none shadow-[0_15px_45px_rgb(0,0,0,0.03)] bg-card/50 backdrop-blur-md overflow-hidden hover:shadow-[0_25px_60px_rgb(0,0,0,0.08)] transition-all duration-500 flex relative animate-in fade-in slide-in-from-bottom-8",
-            viewMode === "grid" ? "flex-col rounded-[2.5rem]" : "flex-row h-72 rounded-[2rem]",
+            viewMode === "grid" ? "flex-col rounded-[2.5rem]" : "flex-row h-72 rounded-lg",
             `delay-[${index * 50}ms]`
         )}>
             {/* Asset Visual Node */}
@@ -434,8 +434,8 @@ function CourseCard({ course, viewMode, index, onEdit, onDelete }: { course: Cou
 
                 {/* Identity Overlay */}
                 <div className="absolute inset-x-0 bottom-0 p-5 z-10 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                    <div className="flex items-center gap-4 bg-white/10 backdrop-blur-xl p-3 rounded-2xl border border-white/20 shadow-2xl">
-                        <div className="h-10 w-10 rounded-xl overflow-hidden border-2 border-white/30 shadow-inner bg-indigo-500/20 flex items-center justify-center text-xs font-black text-white uppercase">
+                    <div className="flex items-center gap-4 bg-white/10 backdrop-blur-xl p-3 rounded-lg border border-white/20 shadow-2xl">
+                        <div className="h-10 w-10 rounded-lg overflow-hidden border-2 border-white/30 shadow-inner bg-indigo-500/20 flex items-center justify-center text-xs font-black text-white uppercase">
                             {course.instructor?.avatar ? <img src={course.instructor.avatar} className="w-full h-full object-cover" /> : course.instructor?.name?.[0]}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -451,7 +451,7 @@ function CourseCard({ course, viewMode, index, onEdit, onDelete }: { course: Cou
 
                 {/* Sector Badge */}
                 <div className="absolute top-5 left-5 z-10">
-                    <span className="text-[9px] font-black text-white uppercase tracking-[0.2em] bg-indigo-500/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20 shadow-xl">
+                    <span className="text-[9px] font-black text-white uppercase tracking-[0.2em] bg-indigo-500/80 backdrop-blur-md px-4 py-2 rounded-lg border border-white/20 shadow-xl">
                         {course.category}
                     </span>
                 </div>
@@ -466,11 +466,11 @@ function CourseCard({ course, viewMode, index, onEdit, onDelete }: { course: Cou
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="rounded-[1.5rem] border-0 shadow-[0_20px_70px_rgb(0,0,0,0.15)] p-2 min-w-[180px] bg-white animate-in zoom-in-95 duration-200">
-                        <DropdownMenuItem onClick={onEdit} className="rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-4 text-slate-600 focus:bg-indigo-50 focus:text-indigo-600 transition-colors">
+                        <DropdownMenuItem onClick={onEdit} className="rounded-lg px-4 py-3 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-4 text-slate-600 focus:bg-indigo-50 focus:text-indigo-600 transition-colors">
                             <Edit3 className="h-4 w-4" /> Manage Protocol
                         </DropdownMenuItem>
                         <div className="h-px bg-slate-50 my-1 mx-2" />
-                        <DropdownMenuItem onClick={onDelete} className="rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-4 text-rose-500 focus:bg-rose-50 focus:text-rose-600 transition-colors">
+                        <DropdownMenuItem onClick={onDelete} className="rounded-lg px-4 py-3 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-4 text-rose-500 focus:bg-rose-50 focus:text-rose-600 transition-colors">
                             <Trash2 className="h-4 w-4" /> Purge Asset
                         </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -523,7 +523,7 @@ function CourseCard({ course, viewMode, index, onEdit, onDelete }: { course: Cou
 function StatItem({ icon: Icon, label, value, className }: { icon: any, label: string, value: any, className?: string }) {
     return (
         <div className={cn("flex items-center gap-4", className)}>
-            <div className="h-8 w-8 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 shadow-inner group-hover:bg-indigo-50 group-hover:border-indigo-100 transition-colors">
+            <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 shadow-inner group-hover:bg-indigo-50 group-hover:border-indigo-100 transition-colors">
                 <Icon className="h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
             </div>
             <div className="flex flex-col min-w-0">

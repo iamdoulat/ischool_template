@@ -89,8 +89,12 @@ export default function ManageLessonPlanPage() {
 
     const fetchTeachers = async () => {
         try {
-            const response = await api.get('/hr/staff-directory?no_paginate=true');
-            const data = response.data?.data || response.data || [];
+            const response = await api.get('/hr/staff-directory', {
+                params: { role: 'Teacher', no_paginate: true, active: 'all' }
+            });
+            let data: any[] = response.data?.data || response.data || [];
+            // Enforce Teacher-only filter on client side as a safety net
+            data = data.filter((u: any) => u.role === 'Teacher');
             setTeachers(data);
             if (data.length > 0) setSelectedTeacherId(data[0].id.toString());
         } catch (error) {
@@ -140,8 +144,8 @@ export default function ManageLessonPlanPage() {
                 lesson: lesson.plan?.lesson || "",
                 topic: lesson.plan?.topic || "",
                 sub_topic: lesson.plan?.sub_topic || "",
-                presentation: "", // Fetch full details if needed
-                objectives: ""
+                presentation: (lesson.plan as any)?.presentation || "", 
+                objectives: (lesson.plan as any)?.objectives || ""
             });
         }
         setIsDialogOpen(true);
@@ -186,19 +190,19 @@ export default function ManageLessonPlanPage() {
                 <h1 className="text-xl font-medium text-gray-800">Manage Lesson Plan</h1>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm space-y-4">
                 <div className="space-y-3 max-w-2xl">
                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                         Teachers <span className="text-red-500">*</span>
                     </Label>
                     <div className="flex gap-3 items-center">
                         <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
-                            <SelectTrigger className="w-full h-11 border-gray-100 bg-gray-50/30 text-sm rounded-xl focus:ring-indigo-500">
+                            <SelectTrigger className="w-full h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500">
                                 <SelectValue placeholder="Select Teacher" />
                             </SelectTrigger>
                             <SelectContent>
                                 {teachers.map(t => (
-                                    <SelectItem key={t.id} value={t.id.toString()}>{t.first_name} {t.last_name} ({t.staff_id})</SelectItem>
+                                    <SelectItem key={t.id} value={t.id.toString()}>{t.name} ({t.staff_id})</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -209,8 +213,8 @@ export default function ManageLessonPlanPage() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-x-auto">
-                <div className="flex justify-center items-center gap-8 mb-8 bg-gray-50/50 p-4 rounded-2xl border border-gray-50">
+            <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-6 overflow-x-auto">
+                <div className="flex justify-center items-center gap-8 mb-8 bg-gray-50/50 p-4 rounded-lg border border-gray-50">
                     <Button onClick={() => handleNavigate('prev')} variant="ghost" size="icon" className="h-10 w-10 text-gray-400 rounded-full hover:bg-white hover:text-indigo-600 transition-all shadow-sm bg-white">
                         <ChevronLeft className="h-6 w-6" />
                     </Button>
@@ -226,7 +230,7 @@ export default function ManageLessonPlanPage() {
                 <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 min-w-[1400px]">
                     {weekPlan.map((dayPlan) => (
                         <div key={dayPlan.day} className="space-y-4">
-                            <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100 text-center shadow-sm">
+                            <div className="bg-gray-50/80 p-3 rounded-lg border border-gray-100 text-center shadow-sm">
                                 <div className="text-[11px] font-bold text-gray-800 uppercase tracking-wider">{dayPlan.day}</div>
                                 <div className="text-[10px] text-indigo-400 font-bold mt-1 tracking-tighter">{dayPlan.date}</div>
                             </div>
@@ -234,7 +238,7 @@ export default function ManageLessonPlanPage() {
                             {dayPlan.lessons.length > 0 ? (
                                 <div className="space-y-4">
                                     {dayPlan.lessons.map((lesson) => (
-                                        <div key={lesson.id} className="bg-white border border-gray-50 rounded-2xl shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 relative overflow-hidden group border-l-4 border-l-indigo-500">
+                                        <div key={lesson.id} className="bg-white border border-gray-50 rounded-lg shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 relative overflow-hidden group border-l-4 border-l-indigo-500">
                                             <div className="absolute top-0 right-0 p-2 flex gap-1 transform translate-y-[-100%] group-hover:translate-y-0 transition-transform duration-300">
                                                 {lesson.plan ? (
                                                     <>
@@ -299,7 +303,7 @@ export default function ManageLessonPlanPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="bg-red-50/30 border border-dashed border-red-100 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 text-center min-h-[150px]">
+                                <div className="bg-red-50/30 border border-dashed border-red-100 rounded-lg p-6 flex flex-col items-center justify-center gap-2 text-center min-h-[150px]">
                                     <CircleSlash className="h-6 w-6 text-red-300" />
                                     <div className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Off Day</div>
                                 </div>
@@ -311,7 +315,7 @@ export default function ManageLessonPlanPage() {
 
             {/* Add/Edit Lesson Plan Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl rounded-3xl border-0 shadow-2xl p-0 overflow-hidden">
+                <DialogContent className="max-w-2xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 btn-gradient text-white">
                         <DialogTitle className="text-xl font-bold uppercase tracking-widest flex items-center gap-3">
                             <FileText className="h-6 w-6" />
@@ -331,7 +335,7 @@ export default function ManageLessonPlanPage() {
                                     value={formData.lesson} 
                                     onChange={(e) => setFormData({...formData, lesson: e.target.value})}
                                     placeholder="Enter lesson name" 
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500"
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -341,7 +345,7 @@ export default function ManageLessonPlanPage() {
                                     value={formData.topic} 
                                     onChange={(e) => setFormData({...formData, topic: e.target.value})}
                                     placeholder="Enter topic name" 
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500"
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500"
                                 />
                             </div>
                         </div>
@@ -353,7 +357,18 @@ export default function ManageLessonPlanPage() {
                                 value={formData.sub_topic} 
                                 onChange={(e) => setFormData({...formData, sub_topic: e.target.value})}
                                 placeholder="Enter sub topic" 
-                                className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500"
+                                className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Presentation</Label>
+                            <Textarea 
+                                readOnly={dialogMode === "view"}
+                                value={formData.presentation} 
+                                onChange={(e) => setFormData({...formData, presentation: e.target.value})}
+                                placeholder="How will you present this lesson?" 
+                                className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 p-4"
                             />
                         </div>
 
@@ -364,7 +379,7 @@ export default function ManageLessonPlanPage() {
                                 value={formData.objectives} 
                                 onChange={(e) => setFormData({...formData, objectives: e.target.value})}
                                 placeholder="What should students achieve?" 
-                                className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-2xl focus:ring-indigo-500 p-4"
+                                className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 p-4"
                             />
                         </div>
                     </div>

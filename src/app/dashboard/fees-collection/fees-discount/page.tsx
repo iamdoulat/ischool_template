@@ -206,7 +206,7 @@ export default function FeesDiscountPage() {
                 <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden sticky top-24">
                     <div className="px-6 py-4 border-b border-muted/20 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-xl">
+                            <div className="p-2 bg-primary/10 rounded-lg">
                                 {editingId ? <Pencil className="h-5 w-5 text-primary" /> : <Plus className="h-5 w-5 text-primary" />}
                             </div>
                             <h2 className="font-bold text-lg tracking-tight">
@@ -232,7 +232,7 @@ export default function FeesDiscountPage() {
                                     onChange={handleInputChange}
                                     placeholder="Enter discount name"
                                     required
-                                    className="h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                 />
                             </div>
 
@@ -247,7 +247,7 @@ export default function FeesDiscountPage() {
                                     onChange={handleInputChange}
                                     placeholder="Enter discount code"
                                     required
-                                    className="h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                 />
                             </div>
 
@@ -264,7 +264,7 @@ export default function FeesDiscountPage() {
                                         <label 
                                             key={type.id} 
                                             className={cn(
-                                                "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all group",
+                                                "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all group",
                                                 formData.type === type.id 
                                                     ? "bg-primary/10 border-primary shadow-sm" 
                                                     : "bg-muted/20 border-muted/50 hover:bg-primary/5"
@@ -300,7 +300,7 @@ export default function FeesDiscountPage() {
                                             onChange={handleInputChange}
                                             placeholder="0"
                                             required
-                                            className="h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                            className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                         />
                                     </div>
                                 ) : (
@@ -315,7 +315,7 @@ export default function FeesDiscountPage() {
                                             onChange={handleInputChange}
                                             placeholder="0.00"
                                             required
-                                            className="h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                            className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                         />
                                     </div>
                                 )}
@@ -334,7 +334,7 @@ export default function FeesDiscountPage() {
                                         onChange={handleInputChange}
                                         placeholder="0"
                                         required
-                                        className="h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                        className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     />
                                 </div>
                                 <div className="space-y-2 group">
@@ -346,7 +346,7 @@ export default function FeesDiscountPage() {
                                         type="date"
                                         value={formData.expiry_date || ""}
                                         onChange={handleInputChange}
-                                        className="h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                        className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     />
                                 </div>
                             </div>
@@ -361,7 +361,7 @@ export default function FeesDiscountPage() {
                                     value={formData.description || ""}
                                     onChange={handleInputChange}
                                     placeholder="Enter description"
-                                    className="min-h-[100px] rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium resize-none text-xs"
+                                    className="min-h-[100px] rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium resize-none text-xs"
                                 />
                             </div>
 
@@ -369,7 +369,7 @@ export default function FeesDiscountPage() {
                                 <Button 
                                     type="submit"
                                     disabled={saving}
-                                    className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-2"
                                 >
                                     {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : editingId ? <Pencil className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
                                     {saving ? "Processing..." : editingId ? "Update Discount" : "Save Discount"}
@@ -385,7 +385,7 @@ export default function FeesDiscountPage() {
                 <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
                     <div className="px-6 py-4 border-b border-muted/20 bg-muted/5 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                            <div className="p-2 bg-primary/10 rounded-lg text-primary">
                                 <BadgePercent className="h-5 w-5" />
                             </div>
                             <div>
@@ -402,30 +402,30 @@ export default function FeesDiscountPage() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 <Input
                                     placeholder="Search by name or code..."
-                                    className="pl-10 h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    className="pl-10 h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                 />
                             </div>
 
                             <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2">
-                                    <Button onClick={copyToClipboard} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-xl border-muted/50 shadow-sm bg-card">
+                                    <Button onClick={copyToClipboard} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-lg border-muted/50 shadow-sm bg-card">
                                         <Copy className="h-4 w-4" />
                                     </Button>
-                                    <Button onClick={exportToExcel} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-xl border-muted/50 shadow-sm bg-card">
+                                    <Button onClick={exportToExcel} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-lg border-muted/50 shadow-sm bg-card">
                                         <FileSpreadsheet className="h-4 w-4" />
                                     </Button>
-                                    <Button onClick={exportToCSV} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-xl border-muted/50 shadow-sm bg-card">
+                                    <Button onClick={exportToCSV} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-lg border-muted/50 shadow-sm bg-card">
                                         <FileText className="h-4 w-4" />
                                     </Button>
-                                    <Button onClick={exportToPDF} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-xl border-muted/50 shadow-sm bg-card">
+                                    <Button onClick={exportToPDF} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-lg border-muted/50 shadow-sm bg-card">
                                         <FileCode className="h-4 w-4" />
                                     </Button>
-                                    <Button onClick={() => window.print()} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-xl border-muted/50 shadow-sm bg-card">
+                                    <Button onClick={() => window.print()} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-lg border-muted/50 shadow-sm bg-card">
                                         <Printer className="h-4 w-4" />
                                     </Button>
                                 </div>
                                 <div className="h-8 w-px bg-muted/50 mx-2" />
-                                <select className="h-11 px-4 rounded-xl border border-muted/50 bg-card text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold text-foreground shadow-sm">
+                                <select className="h-11 px-4 rounded-lg border border-muted/50 bg-card text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold text-foreground shadow-sm">
                                     <option>50</option>
                                     <option>100</option>
                                     <option>All</option>
@@ -434,7 +434,7 @@ export default function FeesDiscountPage() {
                         </div>
 
                         {/* Table */}
-                        <div className="rounded-2xl border border-muted/20 overflow-hidden bg-card shadow-sm">
+                        <div className="rounded-lg border border-muted/20 overflow-hidden bg-card shadow-sm">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
@@ -457,7 +457,7 @@ export default function FeesDiscountPage() {
                                             Array.from({ length: 3 }).map((_, i) => (
                                                 <tr key={i} className="animate-pulse">
                                                     <td colSpan={7} className="px-6 py-8">
-                                                        <div className="h-8 bg-muted/20 rounded-xl" />
+                                                        <div className="h-8 bg-muted/20 rounded-lg" />
                                                     </td>
                                                 </tr>
                                             ))

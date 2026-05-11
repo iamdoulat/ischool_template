@@ -277,7 +277,7 @@ export default function SmsSettingPage() {
                         <div className="flex flex-col items-center justify-center p-8 space-y-6">
                             {activeTab === "Clickatell Sms Gateway" ? (
                                 <>
-                                    <div className="p-6 bg-white rounded-xl flex items-center justify-center">
+                                    <div className="p-6 bg-white rounded-lg flex items-center justify-center">
                                         <div className="flex items-center gap-2 text-3xl font-bold tracking-tighter text-gray-700">
                                             <div className="h-8 w-8 rounded-full border-[3px] border-emerald-400 flex items-center justify-center">
                                                 <div className="h-3 w-3 rounded-full bg-emerald-500" />

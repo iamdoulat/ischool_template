@@ -124,7 +124,7 @@ export default function PrintAdmitCardPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header Section */}
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex justify-between items-center bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <Contact className="h-6 w-6 text-indigo-500" />
@@ -135,7 +135,7 @@ export default function PrintAdmitCardPage() {
             </div>
 
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                 <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
                     <ClipboardList className="h-5 w-5 text-indigo-500" />
                     <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest">Select Criteria</h2>
@@ -147,7 +147,7 @@ export default function PrintAdmitCardPage() {
                             Exam Group <span className="text-red-500">*</span>
                         </Label>
                         <Select value={selectedCriteria.exam_group_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_group_id: val})}>
-                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Group" />
                             </SelectTrigger>
                             <SelectContent>
@@ -161,7 +161,7 @@ export default function PrintAdmitCardPage() {
                             Exam <span className="text-red-500">*</span>
                         </Label>
                         <Select value={selectedCriteria.exam_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_id: val})}>
-                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Exam" />
                             </SelectTrigger>
                             <SelectContent>
@@ -175,7 +175,7 @@ export default function PrintAdmitCardPage() {
                             Session <span className="text-red-500">*</span>
                         </Label>
                         <Select value={selectedCriteria.session_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, session_id: val})}>
-                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Session" />
                             </SelectTrigger>
                             <SelectContent>
@@ -189,7 +189,7 @@ export default function PrintAdmitCardPage() {
                             Class <span className="text-red-500">*</span>
                         </Label>
                         <Select value={selectedCriteria.school_class_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, school_class_id: val})}>
-                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Class" />
                             </SelectTrigger>
                             <SelectContent>
@@ -203,7 +203,7 @@ export default function PrintAdmitCardPage() {
                             Section <span className="text-red-500">*</span>
                         </Label>
                         <Select value={selectedCriteria.section_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, section_id: val})}>
-                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Section" />
                             </SelectTrigger>
                             <SelectContent>
@@ -217,7 +217,7 @@ export default function PrintAdmitCardPage() {
                             Template <span className="text-red-500">*</span>
                         </Label>
                         <Select value={selectedCriteria.template_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, template_id: val})}>
-                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-xl focus:ring-indigo-500 shadow-none">
+                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
                                 <SelectValue placeholder="Select Template" />
                             </SelectTrigger>
                             <SelectContent>
@@ -240,7 +240,7 @@ export default function PrintAdmitCardPage() {
             </div>
 
             {/* Student List Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
                 <div className="flex justify-between items-center border-b border-gray-50 pb-4">
                     <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <UserCheck className="h-5 w-5 text-indigo-500" />
@@ -253,7 +253,7 @@ export default function PrintAdmitCardPage() {
                     )}
                 </div>
 
-                <div className="rounded-2xl border border-gray-50 overflow-hidden shadow-sm">
+                <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                     <Table>
                         <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-500">
                             <TableRow className="hover:bg-transparent border-gray-50">

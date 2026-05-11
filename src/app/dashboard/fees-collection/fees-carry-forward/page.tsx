@@ -139,7 +139,7 @@ export default function FeesCarryForwardPage() {
             <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
                 <CardHeader className="border-b border-muted/20 bg-muted/5">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+                        <div className="p-2.5 bg-primary/10 rounded-lg text-primary">
                             <Search className="h-5 w-5" />
                         </div>
                         <div>
@@ -159,7 +159,7 @@ export default function FeesCarryForwardPage() {
                                 <select 
                                     value={selectedClass}
                                     onChange={(e) => setSelectedClass(e.target.value)}
-                                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                 >
                                     <option value="">Select Class</option>
                                     {classes.map((c) => (
@@ -179,7 +179,7 @@ export default function FeesCarryForwardPage() {
                                 <select 
                                     value={selectedSection}
                                     onChange={(e) => setSelectedSection(e.target.value)}
-                                    className="flex h-11 w-full rounded-xl border border-muted/50 bg-muted/30 px-4 py-2 text-sm appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                 >
                                     <option value="">Select Section</option>
                                     {sections.map((s) => (

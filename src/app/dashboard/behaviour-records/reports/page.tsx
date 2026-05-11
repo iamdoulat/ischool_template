@@ -171,7 +171,7 @@ export default function ReportsPage() {
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 pb-8">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
                             <BarChart3 className="h-5 w-5" />
                         </div>
                         <CardTitle className="text-xl font-black tracking-tight text-slate-700 uppercase">Analytical Reports Registry</CardTitle>
@@ -204,10 +204,10 @@ export default function ReportsPage() {
                         <div className="space-y-3">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Target Class <span className="text-red-500">*</span></label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                <SelectTrigger className="h-14 rounded-2xl bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
+                                <SelectTrigger className="h-14 rounded-lg bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
                                     <SelectValue placeholder="Select Institutional Class" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
                                     {criteria.classes.map(cls => <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -215,10 +215,10 @@ export default function ReportsPage() {
                         <div className="space-y-3">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Class Section <span className="text-red-500">*</span></label>
                             <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                <SelectTrigger className="h-14 rounded-2xl bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
+                                <SelectTrigger className="h-14 rounded-lg bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
                                     <SelectValue placeholder="Select Academic Section" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
                                     {sections.map(sec => <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -226,10 +226,10 @@ export default function ReportsPage() {
                         <div className="space-y-3">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Temporal Session</label>
                             <Select value={selectedSession} onValueChange={setSelectedSession}>
-                                <SelectTrigger className="h-14 rounded-2xl bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
+                                <SelectTrigger className="h-14 rounded-lg bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
                                     <SelectValue placeholder="Current Session Points" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
                                     <SelectItem value="current">Current Session Points</SelectItem>
                                     <SelectItem value="all">Global Analytical Cumulative</SelectItem>
                                 </SelectContent>
@@ -252,14 +252,14 @@ export default function ReportsPage() {
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
                             <Layers className="h-5 w-5" />
                         </div>
                         <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Audit Results Matrix</CardTitle>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all"><Download className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all"><Printer className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-all"><Download className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-all"><Printer className="h-4 w-4" /></Button>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -315,7 +315,7 @@ export default function ReportsPage() {
                                             </TableCell>
                                             <TableCell className="py-5">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 font-bold text-[10px] shadow-inner">
+                                                    <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 font-bold text-[10px] shadow-inner">
                                                         {item.name?.[0]}
                                                     </div>
                                                     <span className="text-slate-700 text-[11px] font-black uppercase tracking-tight">{item.name}</span>
@@ -360,16 +360,16 @@ export default function ReportsPage() {
                         <span>Node Summary: {reports.length} analytical units identified</span>
                         <div className="flex items-center gap-2">
                             <Button 
-                                variant="outline" size="icon" className="h-10 w-10 rounded-xl border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
+                                variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
                                 disabled={loading || reports.length === 0}
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" className="h-10 w-10 rounded-xl bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg font-black text-xs">
+                            <Button size="icon" className="h-10 w-10 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg font-black text-xs">
                                 1
                             </Button>
                             <Button 
-                                variant="outline" size="icon" className="h-10 w-10 rounded-xl border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
+                                variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
                                 disabled={loading || reports.length === 0}
                             >
                                 <ChevronRight className="h-4 w-4" />
@@ -381,10 +381,10 @@ export default function ReportsPage() {
 
             {/* Student Incident Audit Modal */}
             <Dialog open={auditOpen} onOpenChange={setAuditOpen}>
-                <DialogContent className="rounded-[2rem] border-0 shadow-2xl max-w-3xl p-0 overflow-hidden bg-white">
+                <DialogContent className="rounded-lg border-0 shadow-2xl max-w-3xl p-0 overflow-hidden bg-white">
                     <div className="bg-indigo-600 p-8 text-white flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/20">
+                            <div className="h-12 w-12 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/20">
                                 <UserCheck className="h-6 w-6" />
                             </div>
                             <div>
@@ -476,14 +476,14 @@ function ReportLink({ label, active, onClick, icon }: { label: string, active?: 
         <div 
             onClick={onClick}
             className={cn(
-                "flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 group border-2",
+                "flex items-center gap-4 p-4 rounded-lg cursor-pointer transition-all duration-300 group border-2",
                 active 
                     ? "bg-indigo-50/50 border-indigo-500 text-slate-800 shadow-xl shadow-indigo-50 scale-[1.02]" 
                     : "text-muted-foreground hover:text-slate-700 hover:bg-white border-transparent hover:border-gray-100 hover:shadow-lg"
             )}
         >
             <div className={cn(
-                "p-2 rounded-xl transition-all duration-500 group-hover:scale-110 shadow-inner", 
+                "p-2 rounded-lg transition-all duration-500 group-hover:scale-110 shadow-inner", 
                 active ? "bg-indigo-500 text-white" : "bg-muted/50"
             )}>
                 {icon}

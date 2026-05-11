@@ -58,7 +58,7 @@ export default function OverviewPage() {
     if (loading) {
         return (
             <div className="h-[60vh] flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-700">
-                <div className="h-16 w-16 rounded-[2rem] bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-2xl shadow-indigo-100 animate-pulse">
+                <div className="h-16 w-16 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-2xl shadow-indigo-100 animate-pulse">
                     <LayoutDashboard className="h-8 w-8" />
                 </div>
                 <div className="flex flex-col items-center">
@@ -72,12 +72,12 @@ export default function OverviewPage() {
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-24 font-sans">
             {/* Strategy Header */}
-            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
+            <div className="bg-white p-8 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 text-indigo-600">
                     <Activity className="h-48 w-48" />
                 </div>
                 <div className="flex items-center gap-6 relative z-10">
-                    <div className="h-16 w-16 rounded-[2rem] bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner transform -rotate-3">
+                    <div className="h-16 w-16 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner transform -rotate-3">
                         <Building2 className="h-8 w-8" />
                     </div>
                     <div>
@@ -94,7 +94,7 @@ export default function OverviewPage() {
             {/* Fees Details */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-inner">
+                    <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-inner">
                         <Wallet className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Institutional Fees Matrix</CardTitle>
@@ -136,7 +136,7 @@ export default function OverviewPage() {
                 {/* Student Admission */}
                 <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                     <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 shadow-inner">
                             <UserCheck className="h-5 w-5" />
                         </div>
                         <CardTitle className="text-sm font-black tracking-tight text-slate-700 uppercase">Admission Flux Matrix</CardTitle>
@@ -171,7 +171,7 @@ export default function OverviewPage() {
                 {/* Library Details */}
                 <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                     <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 shadow-inner">
                             <Library className="h-5 w-5" />
                         </div>
                         <CardTitle className="text-sm font-black tracking-tight text-slate-700 uppercase">Knowledge Node Density</CardTitle>
@@ -209,7 +209,7 @@ export default function OverviewPage() {
             {/* Staff Payroll */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+                    <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
                         <Users className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Institutional Payroll Protocol</CardTitle>
@@ -251,7 +251,7 @@ export default function OverviewPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                     <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 shadow-inner">
                             <Activity className="h-5 w-5" />
                         </div>
                         <CardTitle className="text-sm font-black tracking-tight text-slate-700 uppercase">Human Capital Presence</CardTitle>
@@ -285,7 +285,7 @@ export default function OverviewPage() {
 
                 <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                     <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
                             <Bus className="h-5 w-5" />
                         </div>
                         <CardTitle className="text-sm font-black tracking-tight text-slate-700 uppercase">Transport Logistics Matrix</CardTitle>

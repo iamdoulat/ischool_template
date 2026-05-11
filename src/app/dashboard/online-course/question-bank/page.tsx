@@ -150,7 +150,7 @@ export default function QuestionBankPage() {
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
                 <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+                        <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
                             <Search className="h-5 w-5" />
                         </div>
                         <CardTitle className="text-xl font-black tracking-tight text-slate-700 uppercase">Question Strategy Engine</CardTitle>
@@ -234,11 +234,11 @@ export default function QuestionBankPage() {
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && fetchQuestions()}
-                                className="pl-12 h-12 rounded-2xl bg-white border-gray-100 focus-visible:ring-indigo-500/20 transition-all shadow-none text-sm font-bold tracking-tight"
+                                className="pl-12 h-12 rounded-lg bg-white border-gray-100 focus-visible:ring-indigo-500/20 transition-all shadow-none text-sm font-bold tracking-tight"
                             />
                         </div>
                         <div className="flex items-center gap-4 w-full md:w-auto">
-                            <div className="flex items-center bg-white border border-gray-100 rounded-2xl px-4 h-12 shadow-sm">
+                            <div className="flex items-center bg-white border border-gray-100 rounded-lg px-4 h-12 shadow-sm">
                                 <select
                                     value={viewEntries}
                                     onChange={(e) => setViewEntries(Number(e.target.value))}
@@ -353,15 +353,15 @@ export default function QuestionBankPage() {
                                             <td className="px-8 py-5 text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-all">
+                                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-all">
                                                             <MoreVertical className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="rounded-2xl border-gray-100 shadow-2xl p-2 min-w-[160px]">
-                                                        <DropdownMenuItem className="rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-3 text-indigo-600 focus:bg-indigo-50">
+                                                    <DropdownMenuContent align="end" className="rounded-lg border-gray-100 shadow-2xl p-2 min-w-[160px]">
+                                                        <DropdownMenuItem className="rounded-lg px-4 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-3 text-indigo-600 focus:bg-indigo-50">
                                                             <Edit3 className="h-3.5 w-3.5" /> Edit Node
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleDelete(q.id)} className="rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-3 text-rose-600 focus:bg-rose-50">
+                                                        <DropdownMenuItem onClick={() => handleDelete(q.id)} className="rounded-lg px-4 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-3 text-rose-600 focus:bg-rose-50">
                                                             <Trash2 className="h-3.5 w-3.5" /> Purge Entry
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
@@ -380,13 +380,13 @@ export default function QuestionBankPage() {
                             Showing {questions.length > 0 ? 1 : 0} to {questions.length} of {totalEntries} entries
                         </p>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-muted/50 text-muted-foreground hover:bg-card transition-all" disabled>
+                            <Button variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 text-muted-foreground hover:bg-card transition-all" disabled>
                                 <ChevronDown className="h-4 w-4 rotate-90" />
                             </Button>
-                            <Button className="h-10 w-10 rounded-xl border-none p-0 text-white font-black text-xs active:scale-95 transition-all shadow-xl shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
+                            <Button className="h-10 w-10 rounded-lg border-none p-0 text-white font-black text-xs active:scale-95 transition-all shadow-xl shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
                                 1
                             </Button>
-                            <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-muted/50 text-muted-foreground hover:bg-card transition-all" disabled>
+                            <Button variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 text-muted-foreground hover:bg-card transition-all" disabled>
                                 <ChevronDown className="h-4 w-4 -rotate-90" />
                             </Button>
                         </div>
@@ -407,7 +407,7 @@ function CriteriaSelect({ label, options, value, onChange }: { label: string, op
                 <select 
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    className="flex h-12 w-full rounded-2xl border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer shadow-none"
+                    className="flex h-12 w-full rounded-lg border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer shadow-none"
                 >
                     <option value="">Select Registry Node</option>
                     {options.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
@@ -423,7 +423,7 @@ function TableToolButton({ icon: Icon }: { icon: any }) {
         <Button
             variant="ghost"
             size="icon"
-            className="h-11 w-11 rounded-2xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/50 active:scale-90 transition-all shadow-sm"
+            className="h-11 w-11 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/50 active:scale-90 transition-all shadow-sm"
         >
             <Icon className="h-4 w-4" />
         </Button>

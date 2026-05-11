@@ -319,7 +319,7 @@ export default function PickupPointPage() {
                             size="icon"
                             disabled={currentPage === 1}
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                            className="h-8 w-8 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
                         >
                             <ChevronLeft className="h-4 w-4 text-gray-600" />
                         </Button>
@@ -330,7 +330,7 @@ export default function PickupPointPage() {
                                 variant={currentPage === page ? "gradient" : "outline"}
                                 onClick={() => setCurrentPage(page)}
                                 className={cn(
-                                    "h-8 w-8 rounded-xl text-[10px] font-bold p-0 transition-all",
+                                    "h-8 w-8 rounded-lg text-[10px] font-bold p-0 transition-all",
                                     currentPage === page ? "shadow-md scale-105" : "border-gray-100 text-gray-400 hover:text-indigo-600"
                                 )}
                             >
@@ -343,7 +343,7 @@ export default function PickupPointPage() {
                             size="icon"
                             disabled={currentPage === totalPages}
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            className="h-8 w-8 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
+                            className="h-8 w-8 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
                         >
                             <ChevronRight className="h-4 w-4 text-gray-600" />
                         </Button>
@@ -369,7 +369,7 @@ export default function PickupPointPage() {
                                 value={formState.name}
                                 onChange={(e) => setFormState({ ...formState, name: e.target.value })}
                                 readOnly={isViewing}
-                                className="h-10 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-xl text-xs"
+                                className="h-10 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg text-xs"
                                 placeholder="e.g. Brooklyn North"
                             />
                         </div>
@@ -380,7 +380,7 @@ export default function PickupPointPage() {
                                     value={formState.latitude}
                                     onChange={(e) => setFormState({ ...formState, latitude: e.target.value })}
                                     readOnly={isViewing}
-                                    className="h-10 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-xl text-xs"
+                                    className="h-10 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg text-xs"
                                     placeholder="23.2195..."
                                 />
                             </div>
@@ -390,7 +390,7 @@ export default function PickupPointPage() {
                                     value={formState.longitude}
                                     onChange={(e) => setFormState({ ...formState, longitude: e.target.value })}
                                     readOnly={isViewing}
-                                    className="h-10 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-xl text-xs"
+                                    className="h-10 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg text-xs"
                                     placeholder="79.9206..."
                                 />
                             </div>
@@ -400,7 +400,7 @@ export default function PickupPointPage() {
                         <Button
                             onClick={() => setIsModalOpen(false)}
                             variant="outline"
-                            className="w-full sm:w-auto px-6 h-10 text-[11px] font-bold uppercase rounded-xl border-gray-200 hover:bg-gray-100 transition-all shadow-sm"
+                            className="w-full sm:w-auto px-6 h-10 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-gray-100 transition-all shadow-sm"
                         >
                             {isViewing ? "Close" : "Cancel"}
                         </Button>
@@ -408,7 +408,7 @@ export default function PickupPointPage() {
                             <Button
                                 onClick={handleSubmit}
                                 variant="gradient"
-                                className="w-full sm:w-auto px-10 h-10 text-[11px] font-bold uppercase transition-all rounded-xl shadow-lg hover:shadow-indigo-200"
+                                className="w-full sm:w-auto px-10 h-10 text-[11px] font-bold uppercase transition-all rounded-lg shadow-lg hover:shadow-indigo-200"
                             >
                                 {isEditing ? "Save Changes" : "Create Point"}
                             </Button>

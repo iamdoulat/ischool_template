@@ -249,7 +249,7 @@ export default function FeesGroupPage() {
                                 <Input
                                     required
                                     placeholder="Enter group name"
-                                    className="h-11 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium border-[#4F39F6]/20 focus-visible:border-[#4F39F6]"
+                                    className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium border-[#4F39F6]/20 focus-visible:border-[#4F39F6]"
                                     value={formData.name || ""}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 />
@@ -262,7 +262,7 @@ export default function FeesGroupPage() {
                                 </label>
                                 <Textarea
                                     placeholder="Enter description"
-                                    className="min-h-[120px] rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium resize-none text-xs"
+                                    className="min-h-[120px] rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium resize-none text-xs"
                                     value={formData.description || ""}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 />
@@ -270,11 +270,11 @@ export default function FeesGroupPage() {
 
                             <div className="pt-4 flex justify-end gap-2">
                                 {isEdit && (
-                                    <Button type="button" variant="outline" className="h-11 px-6 rounded-xl font-bold" onClick={resetForm}>
+                                    <Button type="button" variant="outline" className="h-11 px-6 rounded-lg font-bold" onClick={resetForm}>
                                         Cancel
                                     </Button>
                                 )}
-                                <Button type="submit" variant="gradient" className="h-11 px-10 rounded-xl font-bold tracking-tight shadow-lg shadow-primary/25">
+                                <Button type="submit" variant="gradient" className="h-11 px-10 rounded-lg font-bold tracking-tight shadow-lg shadow-primary/25">
                                     {isEdit ? "Update Group" : "Save Group"}
                                 </Button>
                             </div>
@@ -302,7 +302,7 @@ export default function FeesGroupPage() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 <Input
                                     placeholder="Search groups..."
-                                    className="pl-10 h-10 rounded-xl bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -317,7 +317,7 @@ export default function FeesGroupPage() {
                                     <IconButton icon={Printer} onClick={handlePrint} title="Print" />
                                 </div>
                                 <div className="h-8 w-px bg-muted/50 mx-2" />
-                                <select className="h-10 px-3 rounded-xl border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
+                                <select className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
                                     <option>50</option>
                                     <option>100</option>
                                     <option>All</option>
@@ -326,7 +326,7 @@ export default function FeesGroupPage() {
                         </div>
 
                         {/* Table */}
-                        <div className="rounded-2xl border border-muted/50 overflow-hidden bg-muted/10 shadow-inner">
+                        <div className="rounded-lg border border-muted/50 overflow-hidden bg-muted/10 shadow-inner">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
