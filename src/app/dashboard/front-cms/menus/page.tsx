@@ -43,6 +43,7 @@ interface MenuItem {
     type: string;
     parent_id?: number | null;
     order: number;
+    column?: number;
     sub_items?: MenuItem[];
 }
 
@@ -141,7 +142,7 @@ export default function MenusPage() {
             open_new_tab: item.open_new_tab,
             url: item.url || "",
             page: item.page || "",
-            column: (item as any).column || 1,
+            column: item.column || 1,
         });
     };
 
@@ -369,7 +370,7 @@ export default function MenusPage() {
                                             {currentMenus.length === 0 ? (
                                                 <div className="text-center text-sm text-gray-400 py-4">No menu items found.</div>
                                             ) : (
-                                                currentMenus.map((item, index) => (
+                                                currentMenus.map((item: MenuItem, index) => (
                                                     <Draggable key={item.id.toString()} draggableId={item.id.toString()} index={index}>
                                                         {(provided) => (
                                                             <div
