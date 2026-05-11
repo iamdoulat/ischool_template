@@ -47,8 +47,8 @@ export default function StudentAdmissionPage() {
     const [fetchingPrereqs, setFetchingPrereqs] = useState(true);
     const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
-    const [categories, setCategories] = useState<{ id: number; category: string }[]>([]);
-    const [houses, setHouses] = useState<{ id: number; house_name: string }[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
+    const [houses, setHouses] = useState<any[]>([]);
     const [showSiblingModal, setShowSiblingModal] = useState(false);
     const [siblingClassId, setSiblingClassId] = useState("");
     const [siblingSectionId, setSiblingSectionId] = useState("");

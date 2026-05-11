@@ -78,6 +78,8 @@ export default function AttendanceReportPage() {
     const [selectedSource, setSelectedSource] = useState("All");
     const [dayWiseData, setDayWiseData] = useState<any[]>([]);
     const [attendanceTypeData, setAttendanceTypeData] = useState<any[]>([]);
+    const [attendanceType, setAttendanceType] = useState("");
+    const [searchType, setSearchType] = useState("today");
     const [selectedSection, setSelectedSection] = useState("");
 
     // Daily Attendance Report state

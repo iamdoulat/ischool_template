@@ -62,56 +62,6 @@ interface PaginationData {
     to: number;
 }
 
-const mockSuppliers: Supplier[] = [
-    {
-        id: "1",
-        name: "Camlin Stationeries",
-        phone: "8458435583",
-        email: "camlin@gmail.com",
-        contactPerson: {
-            name: "Bruce Stark",
-            phone: "847487932",
-            email: "bruce@gmail.com",
-        },
-        address: "22 Cristal Way, CA",
-    },
-    {
-        id: "2",
-        name: "Jhonson Uniform Dress",
-        phone: "8798787856",
-        email: "jhon@gmail.com",
-        contactPerson: {
-            name: "David",
-            phone: "87878785678",
-            email: "david@gmail.com",
-        },
-        address: "22 Cristal Way, CA",
-    },
-    {
-        id: "3",
-        name: "David Furniture",
-        phone: "678678678",
-        email: "da@gmail.com",
-        contactPerson: {
-            name: "Peter",
-            phone: "685675578",
-            email: "pet@gmail.com",
-        },
-        address: "22 Cristal Way, CA",
-    },
-    {
-        id: "4",
-        name: "Jhon smith Supplier",
-        phone: "8908898875",
-        email: "jhon@gmail.com",
-        contactPerson: {
-            name: "David",
-            phone: "8987878578",
-            email: "david@gmail.com",
-        },
-        address: "Delhi Road, DR",
-    },
-];
 
 export default function ItemSupplierPage() {
     const { toast } = useToast();

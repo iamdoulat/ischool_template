@@ -70,20 +70,6 @@ interface PaginationData {
     to: number;
 }
 
-const mockIssues: InventoryIssue[] = [
-    { id: "1", item: "Football", note: "", itemCategory: "Sports", issuePeriod: "02/11/2025 - 02/21/2025", issueTo: "aman (GS4)", issuedBy: "William Abbot (9003)", quantity: 2, status: "pending" },
-    { id: "2", item: "Lab Equipment", note: "", itemCategory: "Chemistry Lab Apparatus", issuePeriod: "02/24/2025 - 02/28/2025", issueTo: "Nishant Khare (1002)", issuedBy: "Nishant Khare (1002)", quantity: 13, status: "pending" },
-    { id: "3", item: "Class Board", note: "", itemCategory: "Books Stationery", issuePeriod: "02/18/2025 - 02/27/2025", issueTo: "Brandon Heart (9003)", issuedBy: "James Decker (9004)", quantity: 12, status: "pending" },
-    { id: "4", item: "Paper and Pencils", note: "", itemCategory: "Books Stationery", issuePeriod: "02/17/2025 - 02/20/2025", issueTo: "James Decker (9004)", issuedBy: "William Abbot (9003)", quantity: 5, status: "pending" },
-    { id: "5", item: "Uniform", note: "", itemCategory: "Staff Dress", issuePeriod: "02/11/2025 - 02/17/2025", issueTo: "Shivam Verma (9002)", issuedBy: "Brandon Heart (9006)", quantity: 3, status: "pending" },
-    { id: "6", item: "Cricket Bat", note: "", itemCategory: "Sports", issuePeriod: "02/04/2025 - 02/09/2025", issueTo: "William Abbot (9003)", issuedBy: "Joe Black (9000)", quantity: 2, status: "pending" },
-    { id: "7", item: "Cricket Bat", note: "", itemCategory: "Sports", issuePeriod: "01/22/2025 - 01/23/2025", issueTo: "Shivam Verma (9002)", issuedBy: "aman (GS4)", quantity: 23, status: "pending" },
-    { id: "8", item: "Staff Uniform", note: "", itemCategory: "Staff Dress", issuePeriod: "01/27/2025 - 01/31/2025", issueTo: "William Abbot (9003)", issuedBy: "Shivam Verma (9002)", quantity: 2, status: "pending" },
-    { id: "9", item: "Projectors", note: "", itemCategory: "Chemistry Lab Apparatus", issuePeriod: "01/22/2025 - 01/27/2025", issueTo: "Jason Sharkey (90006)", issuedBy: "Joe Black (9000)", quantity: 2, status: "pending" },
-    { id: "10", item: "Benches", note: "", itemCategory: "Furniture", issuePeriod: "01/17/2025 - 01/25/2025", issueTo: "Maria Ford (9005)", issuedBy: "Brandon Heart (9006)", quantity: 5, status: "returned" },
-    { id: "11", item: "Notebooks", note: "", itemCategory: "Books Stationery", issuePeriod: "01/06/2025 - 01/13/2025", issueTo: "Brandon Heart (9003)", issuedBy: "Shivam Verma (9002)", quantity: 5, status: "pending" },
-    { id: "12", item: "Class Board", note: "", itemCategory: "Books Stationery", issuePeriod: "01/03/2025 - 01/03/2025", issueTo: "Shivam Verma (9002)", issuedBy: "William Abbot (9003)", quantity: 2, status: "returned" },
-];
 
 export default function IssueItemPage() {
     const { toast } = useToast();

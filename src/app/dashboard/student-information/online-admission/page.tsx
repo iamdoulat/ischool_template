@@ -21,7 +21,8 @@ import {
     Copy,
     X,
     GraduationCap,
-    Info
+    Info,
+    User
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ interface OnlineAdmission {
     dob: string;
     gender: string;
     category: string;
+    student_category?: { category_name: string };
     phone: string;
     email?: string;
     form_status: string;
@@ -211,7 +213,7 @@ export default function OnlineAdmissionPage() {
             return;
         }
         const doc = new jsPDF("landscape");
-        doc.autoTable({
+        autoTable(doc, {
             head: [["Ref No", "Student Name", "Class", "Section", "Father", "DOB", "Gender", "Mobile", "Form Status", "Payment", "Enrolled"]],
             body: admissions.map(a => [
                 a.reference_no,

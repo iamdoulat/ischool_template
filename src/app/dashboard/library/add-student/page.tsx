@@ -70,21 +70,7 @@ interface PaginationData {
     to: number;
 }
 
-const mockStudents: StudentMember[] = [
-    { id: "1", memberId: "50", libraryCardNo: "234", admissionNo: "120020", studentName: "Ashwani Kumar", class: "Class 1(A)", fatherName: "Arjun Kumar", dob: "09/25/2009", gender: "Male", mobile: "900678463", isMember: true },
-    { id: "2", memberId: "52", libraryCardNo: "8907", admissionNo: "18001", studentName: "Edward Thomas", class: "Class 1(A)", fatherName: "Olivier Thomas", dob: "10/24/2013", gender: "Male", mobile: "8906785675", isMember: true },
-    { id: "3", memberId: "", libraryCardNo: "", admissionNo: "520030", studentName: "xavier bartlett", class: "Class 1(A)", fatherName: "David bartlett", dob: "05/13/2009", gender: "Male", mobile: "890785657", isMember: false },
-    { id: "4", memberId: "53", libraryCardNo: "67888", admissionNo: "125005", studentName: "Nukul Wadhera", class: "Class 1(A)", fatherName: "Karun wadhera", dob: "11/23/2008", gender: "Male", mobile: "8907865784", isMember: true },
-    { id: "5", memberId: "54", libraryCardNo: "1211", admissionNo: "10024", studentName: "Steven Taylor", class: "Class 1(A)", fatherName: "Jason Taylor", dob: "08/17/2017", gender: "Male", mobile: "800567345", isMember: true },
-    { id: "6", memberId: "", libraryCardNo: "", admissionNo: "25001", studentName: "Georgia Wareham", class: "Class 1(A)", fatherName: "Zakary Foulkes", dob: "05/10/2021", gender: "Female", mobile: "9808908777", isMember: false },
-    { id: "7", memberId: "56", libraryCardNo: "78900", admissionNo: "656999", studentName: "James Bennett", class: "Class 1(A)", fatherName: "David Wilson", dob: "05/05/2009", gender: "Male", mobile: "8978788865", isMember: true },
-    { id: "8", memberId: "", libraryCardNo: "", admissionNo: "19001", studentName: "Edward Thomas", class: "Class 1(A)", fatherName: "Olivier Thomas", dob: "10/03/2014", gender: "Male", mobile: "8233366613", isMember: false },
-    { id: "9", memberId: "", libraryCardNo: "", admissionNo: "9001", studentName: "Niharika", class: "Class 1(A)", fatherName: "ajay", dob: "01/07/2020", gender: "Female", mobile: "", isMember: false },
-    { id: "10", memberId: "", libraryCardNo: "", admissionNo: "98001", studentName: "Matthew Bacon", class: "Class 1(A)", fatherName: "Jason", dob: "12/31/2018", gender: "Male", mobile: "08909789", isMember: false },
-    { id: "11", memberId: "58", libraryCardNo: "788", admissionNo: "7656", studentName: "RAM", class: "Class 1(A)", fatherName: "Joy", dob: "01/07/2020", gender: "Male", mobile: "", isMember: true },
-    { id: "12", memberId: "", libraryCardNo: "", admissionNo: "90034", studentName: "Nidhi Verma", class: "Class 1(A)", fatherName: "Balbir", dob: "09/02/2021", gender: "Female", mobile: "7676563786", isMember: false },
-    { id: "13", memberId: "", libraryCardNo: "", admissionNo: "9004", studentName: "AVYAAN", class: "Class 1(A)", fatherName: "s r", dob: "10/14/2020", gender: "Male", mobile: "78646736787", isMember: false },
-];
+
 
 export default function AddStudentLibraryPage() {
     const { toast } = useToast();

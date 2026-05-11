@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1650,7 +1650,7 @@ export default function FinanceReportPage() {
                                                     return acc;
                                                 }, {})
                                             ).map(([head, records]: [string, any], headIdx) => (
-                                                <React.Fragment key={headIdx}>
+                                                <Fragment key={headIdx}>
                                                     {records.map((row: any, rowIdx: number) => (
                                                         <TableRow key={`${headIdx}-${rowIdx}`} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors text-[10px]">
                                                             <TableCell className="py-3 px-4 text-gray-800 font-medium">
@@ -1669,7 +1669,7 @@ export default function FinanceReportPage() {
                                                             ${records.reduce((sum: number, r: any) => sum + parseFloat(r.amount), 0).toFixed(2)}
                                                         </TableCell>
                                                     </TableRow>
-                                                </React.Fragment>
+                                                </Fragment>
                                             ))}
                                         </>
                                     ) : (

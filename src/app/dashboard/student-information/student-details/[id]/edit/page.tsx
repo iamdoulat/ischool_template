@@ -44,9 +44,9 @@ export default function StudentEditPage() {
     const [fetching, setFetching] = useState(true);
     const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
-    const [categories, setCategories] = useState<{ id: number; category: string }[]>([]);
-    const [houses, setHouses] = useState<{ id: number; house_name: string }[]>([]);
-    const [disableReasons, setDisableReasons] = useState<{ id: number; reason: string }[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
+    const [houses, setHouses] = useState<any[]>([]);
+    const [disableReasons, setDisableReasons] = useState<any[]>([]);
     const [feeGroups, setFeeGroups] = useState<any[]>([]);
     const [feeDiscounts, setFeeDiscounts] = useState<any[]>([]);
     const [transportRoutes, setTransportRoutes] = useState<any[]>([]);

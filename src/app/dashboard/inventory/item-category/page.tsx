@@ -51,13 +51,6 @@ interface PaginationData {
     to: number;
 }
 
-const mockCategories: ItemCategory[] = [
-    { id: "1", category: "Sports", description: "" },
-    { id: "2", category: "Staff Dress", description: "" },
-    { id: "3", category: "Furniture", description: "" },
-    { id: "4", category: "Books Stationery", description: "" },
-    { id: "5", category: "Chemistry Lab Apparatus", description: "Chemistry Lab Apparatus" },
-];
 
 export default function ItemCategoryPage() {
     const { toast } = useToast();

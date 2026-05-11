@@ -70,15 +70,6 @@ interface PaginationData {
     to: number;
 }
 
-const mockStock: ItemStock[] = [
-    { id: 1, item_id: 1, item_category_id: 1, item_supplier_id: 1, item_store_id: 1, quantity: 234, purchase_price: "17,150.00", date: "02/26/2026", item: { item_name: "Desk" }, item_category: { item_category: "Furniture" }, supplier: { item_supplier: "David Furniture" }, store: { item_store: "Furniture Store (FS342)" } },
-    { id: 2, item_id: 2, item_category_id: 2, item_supplier_id: 2, item_store_id: 2, quantity: 45, purchase_price: "31,920.00", date: "02/28/2026", item: { item_name: "Projectors" }, item_category: { item_category: "Chemistry Lab Apparatus" }, supplier: { item_supplier: "Jhon smith Supplier" }, store: { item_store: "Chemistry Equipment (CH201)" } },
-    { id: 3, item_id: 3, item_category_id: 3, item_supplier_id: 2, item_store_id: 1, quantity: 100, purchase_price: "24,150.00", date: "02/20/2026", item: { item_name: "Class Board" }, item_category: { item_category: "Books Stationery" }, supplier: { item_supplier: "Jhon smith Supplier" }, store: { item_store: "Furniture Store (FS342)" } },
-    { id: 4, item_id: 4, item_category_id: 1, item_supplier_id: 1, item_store_id: 1, quantity: 12, purchase_price: "20,000.00", date: "02/17/2026", item: { item_name: "Table chair" }, item_category: { item_category: "Furniture" }, supplier: { item_supplier: "David Furniture" }, store: { item_store: "Furniture Store (FS342)" } },
-    { id: 5, item_id: 5, item_category_id: 4, item_supplier_id: 3, item_store_id: 3, quantity: 23, purchase_price: "21,000.00", date: "02/07/2026", item: { item_name: "Uniform" }, item_category: { item_category: "Staff Dress" }, supplier: { item_supplier: "Jhonson Uniform Dress" }, store: { item_store: "Uniform Dress Store (UND23)" } },
-    { id: 6, item_id: 6, item_category_id: 3, item_supplier_id: 4, item_store_id: 4, quantity: 12, purchase_price: "14,000.00", date: "02/03/2026", item: { item_name: "Football" }, item_category: { item_category: "Sports" }, supplier: { item_supplier: "Camlin Stationaries" }, store: { item_store: "Library Store (LS2)" } },
-    { id: 7, item_id: 7, item_category_id: 3, item_supplier_id: 4, item_store_id: 4, quantity: 200, purchase_price: "25,820.00", date: "01/22/2026", item: { item_name: "Cricket Bat" }, item_category: { item_category: "Sports" }, supplier: { item_supplier: "Camlin Stationaries" }, store: { item_store: "Library Store (LS2)" } },
-];
 
 export default function AddItemStockPage() {
     const { toast } = useToast();

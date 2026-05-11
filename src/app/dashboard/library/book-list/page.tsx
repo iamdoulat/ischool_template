@@ -71,16 +71,7 @@ interface PaginationData {
     to: number;
 }
 
-const mockBooks: Book[] = [
-    { id: "1", title: "Hindi Vyakaran", description: "No Description", bookNumber: "1453", isbnNumber: "DA097886", publisher: "D.S. Publisher", author: "Suresh Kumar", subject: "Hindi", rackNumber: "7845", qty: 80, available: 77, price: "₹10,500.00", postDate: "02/23/2025" },
-    { id: "2", title: "Mathematics", description: "No Description", bookNumber: "1455", isbnNumber: "BRT0-890907", publisher: "D.S. Publisher", author: "", subject: "Mathematics", rackNumber: "1234", qty: 90, available: 86, price: "₹14,000.00", postDate: "02/17/2025" },
-    { id: "3", title: "Environmental Studies (EVS)", description: "No Description", bookNumber: "65545", isbnNumber: "FSB87665", publisher: "D.S. Publisher", author: "", subject: "Environmental", rackNumber: "756", qty: 90, available: 88, price: "₹21,000.00", postDate: "02/11/2025" },
-    { id: "4", title: "English Reader", description: "English Reader", bookNumber: "4344", isbnNumber: "FG-08908", publisher: "S.K. Publisher", author: "", subject: "English", rackNumber: "4545", qty: 50, available: 48, price: "₹17,500.00", postDate: "02/02/2025" },
-    { id: "5", title: "Social & Political Life", description: "No Description", bookNumber: "87897", isbnNumber: "VBB00-8-90-78", publisher: "St. Publisher", author: "Harish Vardhan", subject: "Social Science", rackNumber: "57574", qty: 100, available: 90, price: "₹8,400.00", postDate: "01/20/2025" },
-    { id: "6", title: "Wonderful Adventures of Nils", description: "No Description", bookNumber: "789667", isbnNumber: "DER900808", publisher: "S.K. Publisher", author: "Selma Lagerlöf", subject: "English", rackNumber: "567574", qty: 90, available: 79, price: "₹7,000.00", postDate: "01/15/2025" },
-    { id: "7", title: "Electricity & Circuits", description: "No Description", bookNumber: "56433", isbnNumber: "FG-08908", publisher: "S.K. Publisher", author: "John Wright", subject: "Science", rackNumber: "89875", qty: 80, available: 69, price: "₹3,500.00", postDate: "01/10/2025" },
-    { id: "8", title: "Basic Geometrical Ideas", description: "No Description", bookNumber: "34222", isbnNumber: "FWSE56564", publisher: "S.K. Publisher", author: "David Wilson", subject: "Mathematics", rackNumber: "34522", qty: 100, available: 93, price: "₹5,600.00", postDate: "01/02/2025" },
-];
+
 
 export default function BookListPage() {
     const { toast } = useToast();

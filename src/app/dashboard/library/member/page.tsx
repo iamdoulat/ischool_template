@@ -56,23 +56,7 @@ interface PaginationData {
     to: number;
 }
 
-const mockMembers: LibraryMember[] = [
-    { id: "1", memberId: "7", libraryCardNo: "0013", admissionNo: "18002", name: "Robin Peterson", memberType: "Student", phone: "9465454545" },
-    { id: "2", memberId: "8", libraryCardNo: "0115", admissionNo: "18005", name: "Glen Stark", memberType: "Student", phone: "9858471234" },
-    { id: "3", memberId: "9", libraryCardNo: "00185", admissionNo: "18007", name: "Brian Kohler", memberType: "Student", phone: "9465454445" },
-    { id: "4", memberId: "10", libraryCardNo: "0101", admissionNo: "18004", name: "Laura Clinton", memberType: "Student", phone: "9445454554" },
-    { id: "5", memberId: "11", libraryCardNo: "12W", admissionNo: "18023", name: "Karuna Rana", memberType: "Student", phone: "7412589530" },
-    { id: "6", memberId: "14", libraryCardNo: "001L", admissionNo: "18020", name: "Jhony Taylor", memberType: "Student", phone: "67878878" },
-    { id: "7", memberId: "15", libraryCardNo: "102L", admissionNo: "18025", name: "Jhonson wood", memberType: "Student", phone: "8776882879" },
-    { id: "8", memberId: "16", libraryCardNo: "100", admissionNo: "18008", name: "David Heart", memberType: "Student", phone: "645646544" },
-    { id: "9", memberId: "17", libraryCardNo: "00120", admissionNo: "18014", name: "Devin Donnach", memberType: "Student", phone: "7896541235" },
-    { id: "10", memberId: "18", libraryCardNo: "210", admissionNo: "18009", name: "Kavya Roy", memberType: "Student", phone: "9874581321" },
-    { id: "11", memberId: "19", libraryCardNo: "254", admissionNo: "18029", name: "Rahul Sinha", memberType: "Student", phone: "6985471235" },
-    { id: "12", memberId: "20", libraryCardNo: "895", admissionNo: "18028", name: "Rahul Sinha", memberType: "Student", phone: "7418529530" },
-    { id: "13", memberId: "21", libraryCardNo: "987", admissionNo: "18010", name: "Kriti Singh", memberType: "Student", phone: "185485415" },
-    { id: "14", memberId: "22", libraryCardNo: "845", admissionNo: "18006", name: "Simon Peterson", memberType: "Student", phone: "9485454545" },
-    { id: "15", memberId: "23", libraryCardNo: "231", admissionNo: "18003", name: "Nicolas Fleming", memberType: "Student", phone: "54848548" },
-];
+
 
 export default function LibraryMembersPage() {
     const { toast } = useToast();

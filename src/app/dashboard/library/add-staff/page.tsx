@@ -67,17 +67,7 @@ interface PaginationData {
     to: number;
 }
 
-const mockStaff: StaffMember[] = [
-    { id: "1", memberId: "31", libraryCardNo: "453", staffName: "Joe Black (9000)", email: "superadmin@gmail.com", dob: "01/01/1988", phone: "6545645645", isMember: true },
-    { id: "2", memberId: "2", libraryCardNo: "00156", staffName: "Shivam Verma (9002)", email: "manishp@gmail.com", dob: "06/18/1982", phone: "9562654564", isMember: true },
-    { id: "3", memberId: "3", libraryCardNo: "00146", staffName: "Brandon Heart (9003)", email: "brandong@gmail.com", dob: "03/04/1988", phone: "34564654", isMember: true },
-    { id: "4", memberId: "", libraryCardNo: "", staffName: "William Abbot (9002)", email: "william@gmail.com", dob: "05/03/1982", phone: "56465465", isMember: false },
-    { id: "5", memberId: "20", libraryCardNo: "789", staffName: "Jason Sharkey (90006)", email: "jason@gmail.com", dob: "05/15/1980", phone: "46545654564", isMember: true },
-    { id: "6", memberId: "5", libraryCardNo: "001758", staffName: "James Decker (9004)", email: "james.decker@gmail.com", dob: "10/01/1987", phone: "78785545453", isMember: true },
-    { id: "7", memberId: "4", libraryCardNo: "00147", staffName: "Maria Ford (9005)", email: "maria.ford@gmail.com", dob: "02/10/1992", phone: "8521479530", isMember: true },
-    { id: "8", memberId: "", libraryCardNo: "", staffName: "Nishant Khare (1002)", email: "nishant@gmail.com", dob: "12/11/2000", phone: "9865757657", isMember: false },
-    { id: "9", memberId: "", libraryCardNo: "", staffName: "aman (GS4)", email: "aman@gmail.com", dob: "01/14/2025", phone: "", isMember: false },
-];
+
 
 export default function AddStaffLibraryPage() {
     const { toast } = useToast();

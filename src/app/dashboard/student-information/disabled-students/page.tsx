@@ -54,7 +54,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-interface Student {
+interface IDisabledStudent {
     id: string;
     admission_no: string;
     roll_no?: string;
@@ -69,19 +69,7 @@ interface Student {
     gender: string;
     phone: string;
     active: boolean;
-    dob?: string;
-    email?: string;
-    blood_group?: string;
-    religion?: string;
-    avatar?: string;
-    category?: string;
-    student_category?: { category_name: string };
-    disable_reason_id?: string;
-    school_class_id?: string;
-    section_id?: string;
-    guardian_name?: string;
-    guardian_relation?: string;
-    guardian_phone?: string;
+    [key: string]: any;
 }
 
 const formatDate = (dateString?: string) => {
@@ -95,16 +83,16 @@ const formatDate = (dateString?: string) => {
 
 export default function DisabledStudentsPage() {
     const [activeTab, setActiveTab] = useState("list");
-    const [students, setStudents] = useState<Student[]>([]);
-    const [allStudents, setAllStudents] = useState<Student[]>([]);
+    const [students, setStudents] = useState<IDisabledStudent[]>([]);
+    const [allStudents, setAllStudents] = useState<IDisabledStudent[]>([]);
     const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
     const [disableReasons, setDisableReasons] = useState<{ id: number; reason: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingAll, setLoadingAll] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-    const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+    const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+    const [editingStudent, setEditingStudent] = useState<any | null>(null);
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const { toast } = useToast();
@@ -163,12 +151,12 @@ export default function DisabledStudentsPage() {
         }
     }, [toast]);
 
-    const handleView = (student: Student) => {
+    const handleView = (student: IDisabledStudent) => {
         setSelectedStudent(student);
         setViewDialogOpen(true);
     };
 
-    const handleEdit = (student: Student) => {
+    const handleEdit = (student: IDisabledStudent) => {
         setEditingStudent(student);
         setEditDialogOpen(true);
     };
@@ -702,7 +690,7 @@ export default function DisabledStudentsPage() {
                                     </div>
                                     <div className="space-y-2 max-w-xs">
                                         <p className="text-red-400 font-bold text-sm">No student data available</p>
-                                        <button className="flex items-center gap-2 text-primary hover:underline font-bold text-sm mx-auto transition-all hover:gap-3" onClick={fetchAllStudents}>
+                                        <button className="flex items-center gap-2 text-primary hover:underline font-bold text-sm mx-auto transition-all hover:gap-3" onClick={() => fetchAllStudents()}>
                                             <span>←</span> Refresh data
                                         </button>
                                     </div>

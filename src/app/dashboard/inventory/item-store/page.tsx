@@ -52,14 +52,6 @@ interface PaginationData {
     to: number;
 }
 
-const mockStores: ItemStore[] = [
-    { id: "1", name: "Library Store", code: "LS2", description: "" },
-    { id: "2", name: "Science Store", code: "SC2", description: "" },
-    { id: "3", name: "Uniform Dress Store", code: "UND23", description: "" },
-    { id: "4", name: "Furniture Store", code: "FS342", description: "" },
-    { id: "5", name: "Chemistry Equipment", code: "CH201", description: "The basic idea about the proper and necessary chemistry lab apparatus should be cleared among the students." },
-    { id: "6", name: "Sports Store", code: "spSS", description: "" },
-];
 
 export default function ItemStorePage() {
     const { toast } = useToast();
