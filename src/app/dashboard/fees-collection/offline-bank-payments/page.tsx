@@ -73,7 +73,7 @@ export default function OfflineBankPaymentsPage() {
     const [rejectionReason, setRejectionReason] = useState("");
     const [processing, setProcessing] = useState(false);
     const { toast } = useToast();
-    const { symbol } = useCurrencyFormatter();
+    const { symbol, formatCurrency } = useCurrencyFormatter();
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);

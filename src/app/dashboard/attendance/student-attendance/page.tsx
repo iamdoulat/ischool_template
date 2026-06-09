@@ -44,11 +44,13 @@ interface StudentAttendanceRecord {
     admission_no: string;
     roll_no: string;
     name: string;
-    attendance: "present" | "late" | "absent" | "holiday" | "half_day";
+    attendance: "present" | "late" | "absent" | "holiday" | "half_day" | "on_leave";
     reason: string;
     entry_time: string;
     exit_time: string;
     note: string;
+    isOnLeave?: boolean;
+    leaveDetails?: any;
 }
 
 interface SchoolClass {
@@ -201,7 +203,7 @@ export default function StudentAttendancePage() {
     const getAutoEntryTime = () => {
         let entryTime = "";
         if (settings?.student_attendance_settings) {
-            const classSettings = settings.student_attendance_settings.find(
+            const classSettings = (settings.student_attendance_settings as any[]).find(
                 (c: any) => String(c.class_id) === selectedClass
             );
             if (classSettings) {

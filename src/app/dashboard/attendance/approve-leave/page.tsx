@@ -297,7 +297,7 @@ export default function ApproveLeavePage() {
         if (cls?.sections) setNewLeaveSections(cls.sections);
         setNewLeaveSection(sectionId);
         setNewLeaveStudent(item.user.id.toString());
-        setNewLeaveType(item.leave_type.id.toString());
+        setNewLeaveType(item.leave_type.id?.toString() || "");
         // Format dates to YYYY-MM-DD for input[type=date]
         setNewLeaveApplyDate(item.apply_date?.substring(0, 10) || "");
         setNewLeaveFromDate(item.leave_from?.substring(0, 10) || "");
