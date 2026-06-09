@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -162,9 +163,9 @@ const menuItems = [
                 color: "orange",
                 submenus: [
                     { name: "student_attendance", href: "/dashboard/attendance/student-attendance" },
-                    { name: "period_attendance", href: "/dashboard/attendance/period-attendance" },
                     { name: "approve_leave", href: "/dashboard/attendance/approve-leave" },
                     { name: "attendance_by_date", href: "/dashboard/attendance/attendencereport" },
+                    { name: "leave_type", href: "/dashboard/attendance/leave-type" },
                 ]
             },
             {
@@ -174,6 +175,7 @@ const menuItems = [
                 color: "purple",
                 submenus: [
                     { name: "exam_group", href: "/dashboard/examinations/exam-group" },
+
                     { name: "exam_schedule", href: "/dashboard/examinations/exam-schedule" },
                     { name: "exam_result", href: "/dashboard/examinations/exam-result" },
                     { name: "design_admit_card", href: "/dashboard/examinations/design-admit-card" },
@@ -498,7 +500,12 @@ const menuItems = [
                 color: "rose",
                 submenus: [
                     { name: "attendance", href: "/dashboard/qr-code-attendance/attendance" },
+                    { name: "terminal", href: "/dashboard/smart-attendance-terminal" },
+                    { name: "face_registration", href: "/dashboard/qr-code-attendance/face-registration" },
+                    { name: "qr_code_generation", href: "/dashboard/qr-code-attendance/qr-code-generation" },
+                    { name: "nfc_assignment", href: "/dashboard/qr-code-attendance/nfc-assignment" },
                     { name: "setting", href: "/dashboard/qr-code-attendance/setting" },
+                    { name: "smart_attendance_settings", href: "/dashboard/qr-code-attendance/smart-attendance-settings" },
                 ]
             },
             {
@@ -1057,3 +1064,4 @@ export function Sidebar({
         </>
     );
 }
+

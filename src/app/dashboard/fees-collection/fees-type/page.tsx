@@ -8,7 +8,7 @@ import {
     FileText,
     FileCode,
     Printer,
-    Eye,
+
     Pencil,
     Trash2,
     LayoutGrid,
@@ -51,6 +51,14 @@ export default function FeesTypePage() {
     const [feesTypes, setFeesTypes] = useState<FeeType[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
+
+    // Pagination states
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
     // Selection state
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -171,6 +179,9 @@ export default function FeesTypePage() {
             setSelectedIds([...selectedIds, id]);
         }
     };
+
+    const totalPages = Math.ceil(feesTypes.length / pageSize);
+    const paginatedTypes = feesTypes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const handleCopy = () => {
         const text = feesTypes.map(t => `${t.name}\t${t.code}`).join("\n");
@@ -331,6 +342,20 @@ export default function FeesTypePage() {
                             </div>
 
                             <div className="flex items-center gap-2">
+                                <select 
+                                    value={pageSize === Number.MAX_SAFE_INTEGER ? "All" : pageSize}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setPageSize(val === "All" ? Number.MAX_SAFE_INTEGER : Number(val));
+                                        setCurrentPage(1);
+                                    }}
+                                    className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium text-muted-foreground"
+                                >
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="All">All</option>
+                                </select>
+                                <div className="h-8 w-px bg-muted/50 mx-2" />
                                 <div className="flex gap-1">
                                     <IconButton icon={CopyIcon} onClick={handleCopy} />
                                     <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} />
@@ -338,12 +363,6 @@ export default function FeesTypePage() {
                                     <IconButton icon={FileCode} onClick={handleExportPDF} />
                                     <IconButton icon={Printer} onClick={handlePrint} />
                                 </div>
-                                <div className="h-8 w-px bg-muted/50 mx-2" />
-                                <select className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
-                                    <option>50</option>
-                                    <option>100</option>
-                                    <option>All</option>
-                                </select>
                             </div>
                         </div>
 
@@ -392,7 +411,7 @@ export default function FeesTypePage() {
                                                 <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground font-medium">No fees types found</td>
                                             </tr>
                                         ) : (
-                                            feesTypes.map((type) => (
+                                            paginatedTypes.map((type) => (
                                                 <tr key={type.id} className={cn(
                                                     "hover:bg-muted/20 transition-colors group/row",
                                                     selectedIds.includes(type.id) && "bg-muted/30"
@@ -416,13 +435,7 @@ export default function FeesTypePage() {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center justify-end gap-1.5 pr-2">
-                                                            <Button
-                                                                size="icon"
-                                                                onClick={() => { /* View logic */ }}
-                                                                className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all font-bold"
-                                                            >
-                                                                <Eye className="h-3.5 w-3.5" />
-                                                            </Button>
+
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => startEdit(type)}
@@ -447,11 +460,36 @@ export default function FeesTypePage() {
                             </div>
                         </div>
 
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
-                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                Showing {feesTypes.length > 0 ? 1 : 0} to {feesTypes.length} of {feesTypes.length} entries
-                            </p>
-                        </div>
+                        {feesTypes.length > 0 && (
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
+                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                                    Showing {Math.min((currentPage - 1) * pageSize + 1, feesTypes.length)} to {Math.min(currentPage * pageSize, feesTypes.length)} of {feesTypes.length} entries
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        disabled={currentPage === 1}
+                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                    >
+                                        <ChevronDown className="h-4 w-4 rotate-90" />
+                                    </Button>
+                                    <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#6366F1]">
+                                        {currentPage}
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        disabled={currentPage >= totalPages}
+                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                    >
+                                        <ChevronDown className="h-4 w-4 -rotate-90" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </Card>
             </div>

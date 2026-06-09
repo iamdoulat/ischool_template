@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Upload, Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, Trash2, Loader2, Save, FileCode, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Upload, Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, Trash2, Loader2, Save, FileCode, X, ChevronLeft, ChevronRight, FileDown, Eye } from "lucide-react";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+import { useSettings } from "@/components/providers/settings-provider";
 
 interface IncomeHead {
     id: number;
@@ -36,6 +37,7 @@ interface IncomeRecord {
 }
 
 export default function AddIncomePage() {
+    const { settings } = useSettings();
     const { symbol, formatCurrency } = useCurrencyFormatter();
     const [searchTerm, setSearchTerm] = useState("");
     const [rowsPerPage, setRowsPerPage] = useState("50");
@@ -46,6 +48,7 @@ export default function AddIncomePage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [invoicePrintSettings, setInvoicePrintSettings] = useState<{ header_image_url: string | null; footer_content: string }>({ header_image_url: null, footer_content: "" });
 
     const [formData, setFormData] = useState({
         income_head_id: "",
@@ -55,6 +58,34 @@ export default function AddIncomePage() {
         amount: "",
         description: ""
     });
+
+    const fetchNextInvoiceNumber = async () => {
+        try {
+            const res = await api.get("income/incomes/next-invoice-number");
+            if (res.data?.status === "Success" && res.data.data?.invoice_number) {
+                setFormData(prev => ({ ...prev, invoice_number: res.data.data.invoice_number }));
+            }
+        } catch {
+            // silently fail — invoice_number stays blank
+        }
+    };
+
+    const fetchInvoicePrintSettings = async () => {
+        try {
+            const res = await api.get("system-setting/print-settings");
+            if (res.data?.status === "success") {
+                const invoice = (res.data.data || []).find((s: any) => s.type === "Invoice");
+                if (invoice) {
+                    setInvoicePrintSettings({
+                        header_image_url: invoice.header_image_url || null,
+                        footer_content: invoice.footer_content || "",
+                    });
+                }
+            }
+        } catch {
+            // silently fail
+        }
+    };
 
     const fetchData = async () => {
         try {
@@ -82,6 +113,11 @@ export default function AddIncomePage() {
                 }));
                 setIncomes(mappedIncomes);
             }
+
+            await Promise.all([
+                fetchNextInvoiceNumber(),
+                fetchInvoicePrintSettings(),
+            ]);
         } catch (error) {
             console.error("Error fetching data:", error);
             toast.error("Failed to load data");
@@ -152,6 +188,7 @@ export default function AddIncomePage() {
         setEditingId(null);
         setSelectedFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
+        fetchNextInvoiceNumber();
     };
 
     const handleEdit = (item: IncomeRecord) => {
@@ -224,6 +261,169 @@ export default function AddIncomePage() {
         });
         doc.save("incomes.pdf");
         toast.success("Exported to PDF");
+    };
+
+    const loadImage = (url: string): Promise<HTMLImageElement> =>
+        new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.onload = () => resolve(img);
+            img.onerror = () => {
+                // Fallback without crossOrigin just in case it's on the same host but fails CORS
+                const fallbackImg = new Image();
+                fallbackImg.onload = () => resolve(fallbackImg);
+                fallbackImg.onerror = reject;
+                fallbackImg.src = url;
+            };
+            img.src = url;
+        });
+
+    const downloadInvoicePDF = async (item: IncomeRecord) => {
+        const doc = new jsPDF();
+        let startY = 15;
+        const pageWidth = doc.internal.pageSize.getWidth();
+
+        // Helper to map non-ASCII currency symbols to text equivalents for jsPDF
+        const formatPdfCurrency = (val: number) => {
+            let str = formatCurrency(val);
+            // Map known non-ASCII currency symbols to text
+            str = str.replace(/৳/g, "Tk ");
+            str = str.replace(/₹/g, "Rs ");
+            str = str.replace(/€/g, "EUR ");
+            str = str.replace(/£/g, "GBP ");
+            
+            // Remove any other non-ASCII characters to prevent PDF corruption
+            return str.replace(/[^\x00-\x7F]/g, "").trim();
+        };
+
+        const { header_image_url, footer_content } = invoicePrintSettings;
+
+        let imageLoaded = false;
+        if (header_image_url) {
+            try {
+                let imgUrl = header_image_url;
+                // Fix relative URLs or localhost mismatches
+                if (imgUrl.startsWith('/')) {
+                    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://127.0.0.1:8000';
+                    imgUrl = baseUrl + imgUrl;
+                }
+                imgUrl = imgUrl.replace('localhost', '127.0.0.1');
+
+                const img = await loadImage(imgUrl);
+                // Based on standard A4 (210x297mm), make it full width minus margins
+                const imgWidth = 190;
+                const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
+                doc.addImage(img, 'PNG', 10, startY, imgWidth, imgHeight);
+                startY += imgHeight + 10;
+                imageLoaded = true;
+            } catch (error) {
+                console.error("Failed to load header image for PDF:", error);
+                // silently continue without header image
+            }
+        }
+        
+        if (!imageLoaded) {
+            const schoolName = settings?.school_name || "SMART SCHOOL";
+            doc.setFontSize(22);
+            doc.setFont("helvetica", "bold");
+            doc.text(schoolName, pageWidth / 2, startY + 10, { align: "center" });
+            startY += 25;
+        }
+
+        // Top Section Left
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        
+        let leftY = startY;
+        doc.text(`Name: ${item.name}`, 14, leftY);
+        
+        leftY += 6;
+        doc.text(`Roll No:`, 14, leftY);
+        doc.text(`Class:`, 60, leftY);
+        
+        leftY += 6;
+        doc.text(`Section:`, 14, leftY);
+        doc.text(`Session:`, 60, leftY);
+
+        // Top Section Center
+        doc.setFontSize(16);
+        doc.text("INVOICE", pageWidth / 2, startY + 5, { align: "center" });
+
+        // Top Section Right
+        doc.setFontSize(10);
+        let rightY = startY;
+        doc.text(`Invoice No: ${item.invoice_number || 'N/A'}`, pageWidth - 14, rightY, { align: "right" });
+        rightY += 6;
+        doc.text(`Date: ${formatDate(item.date)}`, pageWidth - 14, rightY, { align: "right" });
+        rightY += 6;
+        doc.text(`Income Head: ${item.income_head_name}`, pageWidth - 14, rightY, { align: "right" });
+
+        startY = Math.max(leftY, rightY) + 10;
+
+        // Line
+        doc.setLineWidth(0.5);
+        doc.line(14, startY, pageWidth - 14, startY);
+        startY += 5;
+
+        // Table
+        autoTable(doc, {
+            head: [[
+                'NO', 
+                'Description', 
+                { content: 'QTY', styles: { halign: 'right' } }, 
+                { content: 'Amount', styles: { halign: 'right' } }
+            ]],
+            body: [
+                ['1', item.description || item.name || 'Income', '1', formatPdfCurrency(item.amount)],
+            ],
+            startY: startY,
+            headStyles: {
+                fillColor: [41, 128, 185], // #2980b9 blue color
+                textColor: 255,
+                fontStyle: 'bold',
+            },
+            alternateRowStyles: {
+                fillColor: [245, 245, 245], // light gray
+            },
+            styles: {
+                fontSize: 10,
+                cellPadding: 3,
+            },
+            columnStyles: {
+                0: { cellWidth: 20 },
+                2: { cellWidth: 30, halign: 'right' },
+                3: { halign: 'right' }
+            }
+        });
+
+        let finalY = (doc as any).lastAutoTable.finalY + 10;
+
+        // Totals
+        doc.setFontSize(9);
+        doc.text(`Discount:`, pageWidth - 40, finalY, { align: "right" });
+        doc.text(formatPdfCurrency(0), pageWidth - 14, finalY, { align: "right" });
+        
+        finalY += 5;
+        doc.text(`Sub Total:`, pageWidth - 40, finalY, { align: "right" });
+        doc.text(formatPdfCurrency(item.amount), pageWidth - 14, finalY, { align: "right" });
+        
+        finalY += 6;
+        doc.setFontSize(11);
+        doc.text(`Total:`, pageWidth - 40, finalY, { align: "right" });
+        doc.text(formatPdfCurrency(item.amount), pageWidth - 14, finalY, { align: "right" });
+
+        // Footer Text
+        finalY += 30; // spacing
+        
+        // additional footer content from settings
+        if (footer_content) {
+            doc.setFontSize(10);
+            const lines = doc.splitTextToSize(footer_content, 180);
+            doc.text(lines, pageWidth / 2, finalY, { align: "center" });
+        }
+
+        doc.save(`invoice-${item.invoice_number || item.id}.pdf`);
+        toast.success("Invoice downloaded");
     };
 
     const copyToClipboard = () => {
@@ -448,6 +648,7 @@ export default function AddIncomePage() {
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Invoice Number</TableHead>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Date</TableHead>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Income Head</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Attachment</TableHead>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Amount ({symbol})</TableHead>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Action</TableHead>
                                 </TableRow>
@@ -455,13 +656,13 @@ export default function AddIncomePage() {
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-8">
+                                        <TableCell colSpan={8} className="text-center py-8">
                                             <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
                                         </TableCell>
                                     </TableRow>
                                 ) : filteredData.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                                             No records found.
                                         </TableCell>
                                     </TableRow>
@@ -473,6 +674,23 @@ export default function AddIncomePage() {
                                             <TableCell className="text-gray-600">{item.invoice_number}</TableCell>
                                             <TableCell className="text-gray-600">{formatDate(item.date)}</TableCell>
                                             <TableCell className="text-gray-600">{item.income_head_name}</TableCell>
+                                            <TableCell>
+                                                {item.document ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            const storageBase = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1').replace('/api/v1', '/storage');
+                                                            window.open(`${storageBase}/${item.document}`, '_blank');
+                                                        }}
+                                                        className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded p-0"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                ) : (
+                                                    <span className="text-gray-300 text-xs">—</span>
+                                                )}
+                                            </TableCell>
                                             <TableCell className="text-gray-600 text-right">{formatCurrency(item.amount)}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-1">
@@ -482,6 +700,14 @@ export default function AddIncomePage() {
                                                         className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
                                                     >
                                                         <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => downloadInvoicePDF(item)}
+                                                        className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                        title="Download Invoice PDF"
+                                                    >
+                                                        <FileDown className="h-4 w-4" />
                                                     </Button>
                                                     <Button
                                                         size="sm"

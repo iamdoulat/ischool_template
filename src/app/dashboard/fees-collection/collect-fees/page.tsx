@@ -95,7 +95,7 @@ export default function CollectFeesPage() {
                 if (keyword) params.search = keyword;
             }
 
-            const response = await api.get("/fee-collection/students", { params });
+            const response = await api.get("/fee-collection/search-students", { params });
             const data = response.data.data;
             setStudents(Array.isArray(data) ? data : (data.data || []));
 

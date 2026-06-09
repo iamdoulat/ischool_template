@@ -51,6 +51,13 @@ interface MultiClassRecord {
     section: { name: string };
 }
 
+const getAvatarUrl = (avatarPath?: string | null) => {
+    if (!avatarPath) return undefined;
+    if (avatarPath.startsWith('http')) return avatarPath;
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/api\/v1\/?$/, '');
+    return `${baseUrl}/storage/${avatarPath}`;
+};
+
 export default function MultiClassStudentPage() {
     const [records, setRecords] = useState<MultiClassRecord[]>([]);
     const [loading, setLoading] = useState(false);
@@ -62,6 +69,7 @@ export default function MultiClassStudentPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
+    const [searched, setSearched] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [allStudents, setAllStudents] = useState<any[]>([]);
     const [addFormData, setAddFormData] = useState({
@@ -74,28 +82,44 @@ export default function MultiClassStudentPage() {
 
     const fetchDropdowns = useCallback(async () => {
         try {
-            const [classRes, sectionRes, studentRes] = await Promise.all([
+            const [classRes, studentRes] = await Promise.all([
                 api.get("/academics/classes?no_paginate=true"),
-                api.get("/academics/sections?no_paginate=true"),
                 api.get("/students?no_paginate=true")
             ]);
             setClasses(classRes.data.data?.data || classRes.data.data || []);
-            setSections(sectionRes.data.data?.data || sectionRes.data.data || []);
             setAllStudents(studentRes.data.data?.data || studentRes.data.data || []);
         } catch (error) {
             console.error("Error fetching dropdowns:", error);
         }
     }, []);
 
-    const fetchRecords = useCallback(async () => {
+    const [dialogSections, setDialogSections] = useState<any[]>([]);
+
+    const fetchSections = async (classId: string, isDialog = false) => {
+        if (!classId) {
+            if (isDialog) setDialogSections([]);
+            else setSections([]);
+            return;
+        }
+        try {
+            const response = await api.get(`/academics/sections?school_class_id=${classId}&no_paginate=true`);
+            const data = response.data.data?.data || response.data.data || [];
+            if (isDialog) setDialogSections(data);
+            else setSections(data);
+        } catch (error) {
+            console.error("Error fetching sections:", error);
+        }
+    };
+
+    const fetchRecords = useCallback(async (pg = currentPage, kw = searchTerm) => {
         setLoading(true);
         try {
             const response = await api.get("/multi-class-students", {
                 params: {
                     school_class_id: selectedClass,
                     section_id: selectedSection,
-                    search: searchTerm,
-                    page: currentPage,
+                    search: kw,
+                    page: pg,
                     limit: 50
                 }
             });
@@ -103,21 +127,18 @@ export default function MultiClassStudentPage() {
             setRecords(data?.data || data || []);
             setTotalPages(data?.last_page || 1);
             setTotalRecords(data?.total || 0);
+            setSearched(true);
         } catch (error) {
             console.error("Error fetching multi-class records:", error);
             toast("error", "Failed to fetch records.");
         } finally {
             setLoading(false);
         }
-    }, [selectedClass, selectedSection, searchTerm, toast]);
+    }, [selectedClass, selectedSection, toast]);
 
     useEffect(() => {
         fetchDropdowns();
     }, [fetchDropdowns]);
-
-    useEffect(() => {
-        fetchRecords();
-    }, [fetchRecords]);
 
     // Export functions
     const exportToCopy = () => {
@@ -173,7 +194,7 @@ export default function MultiClassStudentPage() {
         try {
             await api.delete(`/multi-class-students/${id}`);
             toast("success", "Enrollment removed successfully");
-            fetchRecords();
+            fetchRecords(currentPage, searchTerm);
         } catch (error) {
             toast("error", "Failed to remove enrollment");
         }
@@ -192,7 +213,7 @@ export default function MultiClassStudentPage() {
             toast("success", "Student assigned to additional class successfully");
             setIsAddDialogOpen(false);
             setAddFormData({ user_id: "", school_class_id: "", section_id: "" });
-            fetchRecords();
+            fetchRecords(currentPage, searchTerm);
         } catch (error: any) {
             const message = error.response?.data?.message || "Failed to assign student";
             toast("error", message);
@@ -238,7 +259,12 @@ export default function MultiClassStudentPage() {
                                 <select
                                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     value={selectedClass}
-                                    onChange={(e) => setSelectedClass(e.target.value)}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelectedClass(val);
+                                        setSelectedSection("");
+                                        fetchSections(val);
+                                    }}
                                 >
                                     <option value="">Select</option>
                                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -273,9 +299,17 @@ export default function MultiClassStudentPage() {
                                 className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && fetchRecords(1, searchTerm)}
                             />
                         </div>
-                        <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => { setCurrentPage(1); fetchRecords(); }} disabled={loading}>
+                        <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => { 
+                            if (!selectedClass || !selectedSection) {
+                                toast("error", "Please select Class and Section first.");
+                                return;
+                            }
+                            setCurrentPage(1); 
+                            fetchRecords(1, searchTerm); 
+                        }} disabled={loading}>
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
                         </Button>
                     </div>
@@ -317,7 +351,7 @@ export default function MultiClassStudentPage() {
                                                 <div className="h-10 w-10 rounded-full border-2 border-muted overflow-hidden bg-muted/20">
                                                     {(record.student as any)?.avatar ? (
                                                         <img 
-                                                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${(record.student as any).avatar}`} 
+                                                            src={getAvatarUrl((record.student as any).avatar)} 
                                                             alt="Avatar" 
                                                             className="h-full w-full object-cover" 
                                                         />
@@ -366,7 +400,11 @@ export default function MultiClassStudentPage() {
                                     size="icon"
                                     className="h-8 w-8 rounded-lg"
                                     disabled={currentPage === 1 || loading}
-                                    onClick={() => setCurrentPage(prev => prev - 1)}
+                                    onClick={() => {
+                                        const newPg = currentPage - 1;
+                                        setCurrentPage(newPg);
+                                        fetchRecords(newPg, searchTerm);
+                                    }}
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
@@ -386,7 +424,10 @@ export default function MultiClassStudentPage() {
                                                     "h-8 w-8 rounded-lg text-xs font-bold",
                                                     currentPage === page && "shadow-md scale-105"
                                                 )}
-                                                onClick={() => setCurrentPage(page)}
+                                                onClick={() => {
+                                                    setCurrentPage(page);
+                                                    fetchRecords(page, searchTerm);
+                                                }}
                                                 disabled={loading}
                                             >
                                                 {page}
@@ -406,7 +447,11 @@ export default function MultiClassStudentPage() {
                                     size="icon"
                                     className="h-8 w-8 rounded-lg"
                                     disabled={currentPage === totalPages || loading}
-                                    onClick={() => setCurrentPage(prev => prev + 1)}
+                                    onClick={() => {
+                                        const newPg = currentPage + 1;
+                                        setCurrentPage(newPg);
+                                        fetchRecords(newPg, searchTerm);
+                                    }}
                                 >
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
@@ -414,10 +459,18 @@ export default function MultiClassStudentPage() {
                         </div>
                     </CardContent>
                 </Card>
-            ) : !loading && (
+            ) : searched && !loading && (
                 <div className="px-6 py-4 bg-red-100/80 border border-red-200 rounded-lg text-red-600 font-bold text-sm shadow-sm flex items-center gap-3 animate-in slide-in-from-top-2">
                     <AlertCircle className="h-5 w-5 opacity-80" />
                     No Record Found
+                </div>
+            )}
+
+            {!searched && !loading && (
+                <div className="flex flex-col items-center justify-center py-20 text-gray-300 bg-white rounded-lg border border-dashed border-gray-200 shadow-sm print:hidden">
+                    <User className="h-16 w-16 mb-4 opacity-10" />
+                    <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">No Data Selected</p>
+                    <p className="text-[11px] text-gray-400 mt-2 italic">Select class and section, then click search.</p>
                 </div>
             )}
 
@@ -497,7 +550,11 @@ export default function MultiClassStudentPage() {
                                             <select
                                                 className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                                 value={addFormData.school_class_id}
-                                                onChange={(e) => setAddFormData({ ...addFormData, school_class_id: e.target.value })}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setAddFormData({ ...addFormData, school_class_id: val, section_id: "" });
+                                                    fetchSections(val, true);
+                                                }}
                                                 required
                                             >
                                                 <option value="">Select Class</option>
@@ -519,7 +576,7 @@ export default function MultiClassStudentPage() {
                                                 required
                                             >
                                                 <option value="">Select Section</option>
-                                                {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                {dialogSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                             </select>
                                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                         </div>

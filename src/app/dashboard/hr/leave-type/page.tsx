@@ -184,9 +184,9 @@ export default function LeaveTypePage() {
                             <Button 
                                 onClick={handleSubmit}
                                 variant="gradient"
-                                className="px-8 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5"
+                                className="px-8 h-8 text-[11px] uppercase shadow-sm flex items-center gap-1.5 min-w-[80px]"
                             >
-                                {isEditing ? "Update" : "Save"}
+                                {isEditing ? "UPDATE" : "SAVE"}
                             </Button>
                         </div>
                     </div>
@@ -251,6 +251,7 @@ export default function LeaveTypePage() {
                         <Table>
                             <TableHeader className="bg-gray-50/50">
                                 <TableRow className="hover:bg-transparent border-gray-100">
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 w-[60px] text-center">No.</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Leave Type</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
                                 </TableRow>
@@ -258,15 +259,16 @@ export default function LeaveTypePage() {
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={2} className="text-center py-10 text-gray-400 italic">Loading leave types...</TableCell>
+                                        <TableCell colSpan={3} className="text-center py-10 text-gray-400 italic">Loading leave types...</TableCell>
                                     </TableRow>
                                 ) : paginatedData.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={2} className="text-center py-10 text-gray-400 italic">No leave types found</TableCell>
+                                        <TableCell colSpan={3} className="text-center py-10 text-gray-400 italic">No leave types found</TableCell>
                                     </TableRow>
                                 ) : (
-                                    paginatedData.map((lt) => (
+                                    paginatedData.map((lt, idx) => (
                                         <TableRow key={lt.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
+                                            <TableCell className="py-3.5 text-gray-500 font-medium text-center">{startIndex + idx + 1}</TableCell>
                                             <TableCell className="py-3.5 text-gray-700 font-medium">{lt.name}</TableCell>
                                             <TableCell className="py-3.5 text-right">
                                                 <div className="flex items-center justify-end gap-1.5">

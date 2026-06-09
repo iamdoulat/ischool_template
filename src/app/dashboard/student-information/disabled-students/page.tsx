@@ -81,15 +81,20 @@ const formatDate = (dateString?: string) => {
     });
 };
 
+const getAvatarUrl = (avatarPath?: string | null) => {
+    if (!avatarPath) return undefined;
+    if (avatarPath.startsWith('http')) return avatarPath;
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/api\/v1\/?$/, '');
+    return `${baseUrl}/storage/${avatarPath}`;
+};
+
 export default function DisabledStudentsPage() {
     const [activeTab, setActiveTab] = useState("list");
     const [students, setStudents] = useState<IDisabledStudent[]>([]);
-    const [allStudents, setAllStudents] = useState<IDisabledStudent[]>([]);
     const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
     const [disableReasons, setDisableReasons] = useState<{ id: number; reason: string }[]>([]);
     const [loading, setLoading] = useState(true);
-    const [loadingAll, setLoadingAll] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
     const [editingStudent, setEditingStudent] = useState<any | null>(null);
@@ -98,30 +103,23 @@ export default function DisabledStudentsPage() {
     const { toast } = useToast();
     const router = useRouter();
 
-    // Pagination state (Disabled Students)
+    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [total, setTotal] = useState(0);
     const [from, setFrom] = useState(0);
     const [to, setTo] = useState(0);
-
-    // Pagination state (All Students)
-    const [allCurrentPage, setAllCurrentPage] = useState(1);
-    const [allLastPage, setAllLastPage] = useState(1);
-    const [allTotal, setAllTotal] = useState(0);
-    const [allFrom, setAllFrom] = useState(0);
-    const [allTo, setAllTo] = useState(0);
+    const [selectedClassId, setSelectedClassId] = useState("");
+    const [selectedSectionId, setSelectedSectionId] = useState("");
 
     // Fetch classes, sections and disable reasons
-    const fetchClassesAndSections = useCallback(async () => {
+    const fetchClassesAndReasons = useCallback(async () => {
         try {
-            const [classesRes, sectionsRes, reasonsRes] = await Promise.all([
+            const [classesRes, reasonsRes] = await Promise.all([
                 api.get("/academics/classes?no_paginate=true"),
-                api.get("/academics/sections?no_paginate=true"),
                 api.get("/disable-reasons?no_paginate=true")
             ]);
             setClasses(classesRes.data.data || []);
-            setSections(sectionsRes.data.data || []);
             setDisableReasons(reasonsRes.data.data || []);
         } catch (error) {
             console.error("Error fetching dependencies:", error);
@@ -129,27 +127,19 @@ export default function DisabledStudentsPage() {
         }
     }, [toast]);
 
-    // Fetch all students
-    const fetchAllStudents = useCallback(async (page = 1) => {
-        setLoadingAll(true);
-        try {
-            const response = await api.get("/students", {
-                params: { page, limit: 50 }
-            });
-            const { data, current_page, last_page, total, from, to } = response.data.data;
-            setAllStudents(data || []);
-            setAllCurrentPage(current_page);
-            setAllLastPage(last_page);
-            setAllTotal(total);
-            setAllFrom(from || 0);
-            setAllTo(to || 0);
-        } catch (error) {
-            console.error("Error fetching all students:", error);
-            toast("error", "Failed to fetch all students");
-        } finally {
-            setLoadingAll(false);
+    const fetchSections = async (classId: string) => {
+        if (!classId) {
+            setSections([]);
+            return;
         }
-    }, [toast]);
+        try {
+            const response = await api.get(`/academics/sections?school_class_id=${classId}&no_paginate=true`);
+            setSections(response.data.data || []);
+        } catch (error) {
+            console.error("Error fetching sections:", error);
+        }
+    };
+
 
     const handleView = (student: IDisabledStudent) => {
         setSelectedStudent(student);
@@ -168,6 +158,8 @@ export default function DisabledStudentsPage() {
                 params: {
                     page,
                     search: searchTerm,
+                    school_class_id: selectedClassId,
+                    section_id: selectedSectionId,
                     limit: 50
                 }
             });
@@ -184,7 +176,7 @@ export default function DisabledStudentsPage() {
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, toast]);
+    }, [searchTerm, selectedClassId, selectedSectionId, toast]);
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -194,9 +186,8 @@ export default function DisabledStudentsPage() {
     }, [fetchStudents]);
 
     useEffect(() => {
-        fetchClassesAndSections();
-        fetchAllStudents();
-    }, [fetchClassesAndSections, fetchAllStudents]);
+        fetchClassesAndReasons();
+    }, [fetchClassesAndReasons]);
 
     // Export functions
     const exportToCopy = () => {
@@ -334,7 +325,16 @@ export default function DisabledStudentsPage() {
                                 Class <span className="text-destructive">*</span>
                             </label>
                              <div className="relative">
-                                 <select className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer">
+                                 <select 
+                                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                     value={selectedClassId}
+                                     onChange={(e) => {
+                                         const val = e.target.value;
+                                         setSelectedClassId(val);
+                                         setSelectedSectionId("");
+                                         fetchSections(val);
+                                     }}
+                                 >
                                      <option value="">Select</option>
                                      {classes.map(c => (
                                          <option key={c.id} value={c.id}>{c.name}</option>
@@ -349,7 +349,11 @@ export default function DisabledStudentsPage() {
                                 Section
                             </label>
                              <div className="relative">
-                                 <select className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer">
+                                 <select 
+                                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                     value={selectedSectionId}
+                                     onChange={(e) => setSelectedSectionId(e.target.value)}
+                                 >
                                      <option value="">Select</option>
                                      {sections.map(s => (
                                          <option key={s.id} value={s.id}>{s.name}</option>
@@ -504,7 +508,7 @@ export default function DisabledStudentsPage() {
                                             <div className="relative space-y-4">
                                                 <div className="flex items-start justify-between">
                                                     <Avatar className="h-16 w-16 rounded-lg border-2 border-primary/20 shadow-lg group-hover:scale-105 transition-transform">
-                                                        <AvatarImage src={student.avatar} alt={student.name} />
+                                                        <AvatarImage src={getAvatarUrl(student.avatar)} alt={student.name} />
                                                         <AvatarFallback className="bg-gradient-to-br from-primary to-indigo-600 text-white font-bold text-xl uppercase">
                                                             {student.name?.substring(0, 2).toUpperCase() || "ST"}
                                                         </AvatarFallback>
@@ -612,146 +616,6 @@ export default function DisabledStudentsPage() {
                                     className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-50"
                                     onClick={() => currentPage < lastPage && fetchStudents(currentPage + 1)}
                                     disabled={currentPage === lastPage}
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* All Students Section */}
-                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden mt-6">
-                    <CardHeader className="border-b border-muted/50 pb-4">
-                        <CardTitle className="text-xl font-bold tracking-tight">All Students Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                        <div className="min-h-[400px] flex flex-col relative">
-                            {loadingAll && (
-                                <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                </div>
-                            )}
-                            <div className="overflow-x-auto rounded-lg border border-muted/50">
-                                <table className="w-full text-left border-collapse">
-                                    <thead className="bg-muted/50 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                        <tr>
-                                            <Th>Admission No</Th>
-                                            <Th>Roll No</Th>
-                                            <Th>Student Name</Th>
-                                            <Th>Class</Th>
-                                            <Th>Father Name</Th>
-                                            <Th>Disable Date</Th>
-                                            <Th>Disable Reason</Th>
-                                            <Th>Gender</Th>
-                                            <Th>Mobile Number</Th>
-                                            <Th>Status</Th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-muted/30">
-                                        {allStudents.map((student) => (
-                                            <tr key={student.id} className="hover:bg-muted/10 transition-colors">
-                                                <Td><span className="font-semibold text-primary/80">{student.admission_no}</span></Td>
-                                                <Td>{student.roll_no || "-"}</Td>
-                                                <Td className="font-semibold">{student.name} {student.last_name}</Td>
-                                                <Td>{student.school_class?.name || ""}({student.section?.name || ""})</Td>
-                                                <Td>{student.father_name}</Td>
-                                                <Td>{formatDate(student.disable_date)}</Td>
-                                                <Td>{student.reason?.reason || student.disable_reason || "-"}</Td>
-                                                <Td>{student.gender}</Td>
-                                                <Td>{student.phone}</Td>
-                                                <Td>
-                                                    <span className={cn(
-                                                        "px-2 py-1 text-xs font-semibold rounded-full",
-                                                        student.active
-                                                            ? "bg-green-100 text-green-800"
-                                                            : "bg-red-100 text-red-800"
-                                                    )}>
-                                                        {student.active ? "Active" : "Disabled"}
-                                                    </span>
-                                                </Td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* Empty State */}
-                            {!loadingAll && allStudents.length === 0 && (
-                                <div className="flex-1 flex flex-col items-center justify-center py-20 text-center space-y-6">
-                                    <div className="relative">
-                                        <div className="absolute -inset-4 bg-primary/5 rounded-full blur-2xl animate-pulse" />
-                                        <div className="relative bg-muted/20 p-8 rounded-full border border-muted/50">
-                                            <FileSearch className="h-16 w-16 text-muted-foreground/30" />
-                                        </div>
-                                        <div className="absolute top-0 right-0 bg-primary/10 p-2 rounded-lg -rotate-12 border border-primary/20">
-                                            <Plus className="h-4 w-4 text-primary" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2 max-w-xs">
-                                        <p className="text-red-400 font-bold text-sm">No student data available</p>
-                                        <button className="flex items-center gap-2 text-primary hover:underline font-bold text-sm mx-auto transition-all hover:gap-3" onClick={() => fetchAllStudents()}>
-                                            <span>←</span> Refresh data
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* All Students Pagination */}
-                        <div className="mt-6 flex flex-col md:flex-row items-center justify-between gap-4 px-2">
-                            <p className="text-sm font-medium text-muted-foreground bg-muted/30 px-4 py-2 rounded-full border border-muted/50">
-                                Showing <span className="text-primary font-bold">{allFrom}</span> to <span className="text-primary font-bold">{allTo}</span> of <span className="text-primary font-bold">{allTotal}</span> students
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-50"
-                                    onClick={() => allCurrentPage > 1 && fetchAllStudents(allCurrentPage - 1)}
-                                    disabled={allCurrentPage === 1}
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <div className="flex items-center gap-1">
-                                    {[...Array(allLastPage)].map((_, i) => {
-                                        const page = i + 1;
-                                        if (
-                                            page === 1 ||
-                                            page === allLastPage ||
-                                            (page >= allCurrentPage - 1 && page <= allCurrentPage + 1)
-                                        ) {
-                                            return (
-                                                <Button
-                                                    key={page}
-                                                    variant={allCurrentPage === page ? "default" : "outline"}
-                                                    size="icon"
-                                                    className={cn(
-                                                        "h-8 w-8 rounded-lg transition-all active:scale-95",
-                                                        allCurrentPage === page
-                                                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-110"
-                                                            : "border-muted/50 text-muted-foreground hover:bg-card"
-                                                    )}
-                                                    onClick={() => fetchAllStudents(page)}
-                                                >
-                                                    {page}
-                                                </Button>
-                                            );
-                                        } else if (
-                                            page === allCurrentPage - 2 ||
-                                            page === allCurrentPage + 2
-                                        ) {
-                                            return <span key={page} className="text-muted-foreground/50 px-1">...</span>;
-                                        }
-                                        return null;
-                                    })}
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-50"
-                                    onClick={() => allCurrentPage < allLastPage && fetchAllStudents(allCurrentPage + 1)}
-                                    disabled={allCurrentPage === allLastPage}
                                 >
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>

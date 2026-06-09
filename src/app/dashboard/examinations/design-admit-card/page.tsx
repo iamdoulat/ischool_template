@@ -42,7 +42,8 @@ export default function DesignAdmitCardPage() {
     
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(50);
+    const [rowsPerPage, setRowsPerPage] = useState("50");
+    const itemsPerPage = parseInt(rowsPerPage);
     const [totalEntries, setTotalEntries] = useState(0);
 
     // Form State
@@ -84,6 +85,10 @@ export default function DesignAdmitCardPage() {
     useEffect(() => {
         fetchTemplates();
     }, [currentPage, itemsPerPage, searchTerm]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [rowsPerPage]);
 
     const fetchTemplates = async () => {
         setLoading(true);
@@ -262,16 +267,16 @@ export default function DesignAdmitCardPage() {
                             </div>
                         </div>
 
-                        <div className="p-6 border-t border-gray-50 bg-gray-50/30 rounded-b-2xl flex gap-2">
+                        <div className="p-6 border-t border-gray-50 bg-gray-50/30 rounded-b-2xl flex gap-2 justify-end">
                             {editMode && (
-                                <Button onClick={resetForm} variant="outline" className="flex-1 h-11 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-200">
+                                <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5">
                                     Cancel
                                 </Button>
                             )}
                             <Button 
                                 onClick={handleSave} 
                                 disabled={submitting}
-                                className="btn-gradient flex-[2] text-white h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
                             >
                                 {submitting ? "Saving..." : editMode ? "Update Design" : "Save Design"}
                             </Button>
@@ -287,22 +292,35 @@ export default function DesignAdmitCardPage() {
                                 <Contact className="h-5 w-5 text-indigo-500" />
                                 Admit Card Templates
                             </h2>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                    <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                    <FileSpreadsheet className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                    <FileText className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                    <Printer className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                    <Columns className="h-4 w-4" />
-                                </Button>
+                            <div className="flex items-center gap-2">
+                                <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
+                                    <SelectTrigger className="w-[65px] h-8 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder="50" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="20">20</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                        <SelectItem value="500">500</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <div className="flex items-center gap-1 text-gray-400">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                        <FileSpreadsheet className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                        <FileText className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                        <Printer className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                        <Columns className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
@@ -315,21 +333,6 @@ export default function DesignAdmitCardPage() {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <span className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">View:</span>
-                                <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                                    <SelectTrigger className="w-[100px] h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10 Rows</SelectItem>
-                                        <SelectItem value="25">25 Rows</SelectItem>
-                                        <SelectItem value="50">50 Rows</SelectItem>
-                                        <SelectItem value="100">100 Rows</SelectItem>
-                                    </SelectContent>
-                                </Select>
                             </div>
                         </div>
 
@@ -390,7 +393,7 @@ export default function DesignAdmitCardPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="py-4 px-6 text-right">
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                                                    <div className="flex items-center justify-end gap-2">
                                                         <Button size="icon" variant="ghost" className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md">
                                                             <Eye className="h-4 w-4" />
                                                         </Button>

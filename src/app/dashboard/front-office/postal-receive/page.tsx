@@ -16,7 +16,10 @@ import {
     Calendar,
     CloudUpload,
     Copy,
-    FileSpreadsheet
+    FileSpreadsheet,
+    ChevronLeft,
+    ChevronRight,
+    LucideIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,6 +47,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface PostalReceive {
     id: number;
@@ -71,6 +81,13 @@ export default function PostalReceivePage() {
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [selectedReceive, setSelectedReceive] = useState<PostalReceive | null>(null);
 
+    // Pagination states
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(50);
+    const [total, setTotal] = useState(0);
+    const [lastPage, setLastPage] = useState(1);
+    const [isBackendPaginated, setIsBackendPaginated] = useState(false);
+
     const [formData, setFormData] = useState<Partial<PostalReceive>>({
         from_title: "",
         reference_no: "",
@@ -86,17 +103,31 @@ export default function PostalReceivePage() {
         try {
             const response = await api.get("/postal-receives", {
                 params: {
-                    search: searchQuery
+                    search: searchQuery,
+                    page,
+                    limit
                 }
             });
-            setReceives(response.data.data.data || response.data.data);
+            const resData = response.data?.data;
+            if (resData && Array.isArray(resData.data)) {
+                setReceives(resData.data);
+                setTotal(resData.total || 0);
+                setLastPage(resData.last_page || 1);
+                setIsBackendPaginated(true);
+            } else {
+                const list = Array.isArray(resData) ? resData : [];
+                setReceives(list);
+                setTotal(list.length);
+                setLastPage(Math.ceil(list.length / limit) || 1);
+                setIsBackendPaginated(false);
+            }
         } catch (error) {
             console.error("Error fetching postal receives:", error);
             toast("error", "Failed to load postal receives");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, toast]);
+    }, [searchQuery, page, limit, toast]);
 
     useEffect(() => {
         fetchReceives();
@@ -176,11 +207,21 @@ export default function PostalReceivePage() {
         });
     };
 
+    const displayedReceives = isBackendPaginated
+        ? receives
+        : receives.slice((page - 1) * limit, page * limit);
+
     const toggleSelectAll = () => {
-        if (selectedIds.length === receives.length) {
-            setSelectedIds([]);
+        if (displayedReceives.length > 0 && displayedReceives.every(d => selectedIds.includes(d.id))) {
+            setSelectedIds(selectedIds.filter(id => !displayedReceives.some(d => d.id === id)));
         } else {
-            setSelectedIds(receives.map(d => d.id));
+            const newSelected = [...selectedIds];
+            displayedReceives.forEach(d => {
+                if (!newSelected.includes(d.id)) {
+                    newSelected.push(d.id);
+                }
+            });
+            setSelectedIds(newSelected);
         }
     };
 
@@ -324,13 +365,32 @@ export default function PostalReceivePage() {
                                         placeholder="Search"
                                         className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onChange={(e) => {
+                                            setSearchQuery(e.target.value);
+                                            setPage(1);
+                                        }}
                                     />
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1.5 mr-4">
-                                        <span className="text-sm font-semibold text-muted-foreground">50</span>
-                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                    <div className="flex items-center gap-1.5 mr-2">
+                                        <Select
+                                            value={String(limit)}
+                                            onValueChange={(val) => {
+                                                setLimit(Number(val));
+                                                setPage(1);
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-8 w-16 text-xs border border-muted/50 bg-muted/30 hover:bg-muted/50 transition-colors shadow-none rounded-lg font-semibold text-muted-foreground">
+                                                <SelectValue placeholder={String(limit)} />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-lg border-muted/50">
+                                                {[20, 50, 100, 500].map((n) => (
+                                                    <SelectItem key={n} value={String(n)} className="font-medium text-slate-700">
+                                                        {n}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="flex gap-1">
                                         <IconButton icon={Printer} onClick={handlePrint} />
@@ -350,7 +410,7 @@ export default function PostalReceivePage() {
                                         <tr>
                                             <th className="px-4 py-4 w-10 border-b border-muted/50">
                                                 <Checkbox
-                                                    checked={selectedIds.length === receives.length && receives.length > 0}
+                                                    checked={displayedReceives.length > 0 && displayedReceives.every(d => selectedIds.includes(d.id))}
                                                     onCheckedChange={toggleSelectAll}
                                                 />
                                             </th>
@@ -379,12 +439,12 @@ export default function PostalReceivePage() {
                                             <tr>
                                                 <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading receives...</td>
                                             </tr>
-                                        ) : receives.length === 0 ? (
+                                        ) : displayedReceives.length === 0 ? (
                                             <tr>
                                                 <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No postal receives found</td>
                                             </tr>
                                         ) : (
-                                            receives.map((item) => (
+                                            displayedReceives.map((item) => (
                                                 <tr key={item.id} className={cn(
                                                     "hover:bg-muted/10 transition-colors group",
                                                     selectedIds.includes(item.id) && "bg-muted/30"
@@ -416,15 +476,40 @@ export default function PostalReceivePage() {
 
                             <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                    Showing {receives.length > 0 ? 1 : (receives.length === 0 ? 0 : 0)} to {receives.length} of {receives.length} entries
+                                    Showing {total > 0 ? (page - 1) * limit + 1 : 0} to {Math.min(page * limit, total)} of {total} entries
                                 </p>
                                 <div className="flex items-center gap-2">
-                                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                        <ChevronDown className="h-4 w-4 rotate-90" />
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-50"
+                                        onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={page === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
                                     </Button>
-                                    <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]">1</Button>
-                                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                        <ChevronDown className="h-4 w-4 -rotate-90" />
+                                    {Array.from({ length: lastPage }, (_, i) => i + 1).map((p) => (
+                                        <Button
+                                            key={p}
+                                            className={cn(
+                                                "h-8 w-8 rounded-lg border-none p-0 font-bold active:scale-95 transition-all shadow-md",
+                                                p === page
+                                                    ? "text-white shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]"
+                                                    : "bg-muted/50 hover:bg-muted text-muted-foreground"
+                                            )}
+                                            onClick={() => setPage(p)}
+                                        >
+                                            {p}
+                                        </Button>
+                                    ))}
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-50"
+                                        onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
+                                        disabled={page === lastPage}
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </div>

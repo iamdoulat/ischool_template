@@ -61,6 +61,7 @@ export default function CreateStaffPage() {
         note: "",
         pan_number: "",
     });
+    const [isAutoStaffId, setIsAutoStaffId] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -71,7 +72,8 @@ export default function CreateStaffPage() {
                 await Promise.all([
                     fetchRoles(),
                     fetchDesignations(),
-                    fetchDepartments()
+                    fetchDepartments(),
+                    fetchNextStaffId()
                 ]);
             } else if (user) {
                 toast({
@@ -132,6 +134,20 @@ export default function CreateStaffPage() {
         }
     };
 
+    const fetchNextStaffId = async () => {
+        try {
+            const response = await api.get("/hr/next-staff-id");
+            if (response.data.status === "Success") {
+                if (response.data.data.staff_id) {
+                    setFormData(prev => ({ ...prev, staff_id: response.data.data.staff_id }));
+                }
+                setIsAutoStaffId(!!response.data.data.auto_staff_id);
+            }
+        } catch (error) {
+            console.error("Error fetching next staff ID:", error);
+        }
+    };
+
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
         if (errors[field]) {
@@ -144,11 +160,7 @@ export default function CreateStaffPage() {
     };
 
     const generateStaffId = () => {
-        const prefix = "STF";
-        const timestamp = Date.now().toString().slice(-6);
-        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        const staffId = `${prefix}${timestamp}${random}`;
-        setFormData(prev => ({ ...prev, staff_id: staffId }));
+        fetchNextStaffId();
     };
 
     const validateForm = (): boolean => {
@@ -259,16 +271,19 @@ export default function CreateStaffPage() {
                                         value={formData.staff_id}
                                         onChange={(e) => handleInputChange("staff_id", e.target.value)}
                                         placeholder="Enter Staff ID"
-                                        className={`h-11 border-gray-200 pr-12 ${errors.staff_id ? "border-red-500" : ""}`}
+                                        disabled={isAutoStaffId}
+                                        className={`h-11 border-gray-200 pr-12 ${errors.staff_id ? "border-red-500" : ""} ${isAutoStaffId ? "bg-gray-50 cursor-not-allowed" : ""}`}
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={generateStaffId}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 rounded-md transition-colors group"
-                                        title="Generate Staff ID"
-                                    >
-                                        <RefreshCw className="h-4 w-4 text-gray-500 group-hover:text-purple-600 group-hover:rotate-180 transition-all duration-300" />
-                                    </button>
+                                    {!isAutoStaffId && (
+                                        <button
+                                            type="button"
+                                            onClick={generateStaffId}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 rounded-md transition-colors group"
+                                            title="Generate Staff ID"
+                                        >
+                                            <RefreshCw className="h-4 w-4 text-gray-500 group-hover:text-purple-600 group-hover:rotate-180 transition-all duration-300" />
+                                        </button>
+                                    )}
                                 </div>
                                 {errors.staff_id && <p className="text-xs text-red-500">{errors.staff_id}</p>}
                             </div>

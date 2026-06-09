@@ -19,7 +19,9 @@ import {
     Loader2,
     AlertCircle,
     Trash2,
-    Eye
+    Eye,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,6 +53,13 @@ import {
     DialogTrigger,
     DialogFooter,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface AdmissionEnquiry {
     id: number;
@@ -96,6 +105,13 @@ export default function AdmissionEnquiryPage() {
         status: ""
     });
 
+    // Pagination states
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(50);
+    const [total, setTotal] = useState(0);
+    const [lastPage, setLastPage] = useState(1);
+    const [isBackendPaginated, setIsBackendPaginated] = useState(false);
+
     const [formData, setFormData] = useState<Partial<AdmissionEnquiry>>({
         name: "",
         phone: "",
@@ -122,9 +138,24 @@ export default function AdmissionEnquiryPage() {
             if (filters.from_date) params.append("from_date", filters.from_date);
             if (filters.to_date) params.append("to_date", filters.to_date);
             if (filters.status) params.append("status", filters.status);
+            params.append("page", String(page));
+            params.append("limit", String(limit));
+            if (searchTerm) params.append("search", searchTerm);
 
             const response = await api.get(`/admission-enquiries?${params.toString()}`);
-            setEnquiries(response.data.data);
+            const resData = response.data?.data;
+            if (resData && Array.isArray(resData.data)) {
+                setEnquiries(resData.data);
+                setTotal(resData.total || 0);
+                setLastPage(resData.last_page || 1);
+                setIsBackendPaginated(true);
+            } else {
+                const list = Array.isArray(resData) ? resData : (Array.isArray(response.data) ? response.data : []);
+                setEnquiries(list);
+                setTotal(list.length);
+                setLastPage(Math.ceil(list.length / limit) || 1);
+                setIsBackendPaginated(false);
+            }
             setSelectedIds(new Set());
         } catch (error) {
             console.error("Error fetching enquiries:", error);
@@ -132,7 +163,7 @@ export default function AdmissionEnquiryPage() {
         } finally {
             setLoading(false);
         }
-    }, [filters, toast]);
+    }, [filters, page, limit, searchTerm, toast]);
 
     const fetchClasses = useCallback(async () => {
         try {
@@ -261,7 +292,7 @@ export default function AdmissionEnquiryPage() {
 
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
-            setSelectedIds(new Set(filteredEnquiries.map(e => e.id)));
+            setSelectedIds(new Set(displayedEnquiries.map(e => e.id)));
         } else {
             setSelectedIds(new Set());
         }
@@ -277,10 +308,16 @@ export default function AdmissionEnquiryPage() {
         setSelectedIds(newSelected);
     };
 
-    const filteredEnquiries = enquiries.filter(e =>
-        e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        e.phone.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredEnquiries = isBackendPaginated
+        ? enquiries
+        : enquiries.filter(e =>
+            e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            e.phone.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+    const displayedEnquiries = isBackendPaginated
+        ? filteredEnquiries
+        : filteredEnquiries.slice((page - 1) * limit, page * limit);
 
     // Export functions
     const exportToCopy = () => {
@@ -632,6 +669,26 @@ export default function AdmissionEnquiryPage() {
                             />
                         </div>
                         <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 mr-2">
+                                <Select
+                                    value={String(limit)}
+                                    onValueChange={(val) => {
+                                        setLimit(Number(val));
+                                        setPage(1);
+                                    }}
+                                >
+                                    <SelectTrigger className="h-8 w-16 text-xs border border-muted/50 bg-muted/30 hover:bg-muted/50 transition-colors shadow-none rounded-lg font-semibold text-muted-foreground bg-white">
+                                        <SelectValue placeholder={String(limit)} />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-lg border-muted/50">
+                                        {[20, 50, 100, 500].map((n) => (
+                                            <SelectItem key={n} value={String(n)} className="font-medium text-slate-700">
+                                                {n}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             <div className="flex gap-1">
                                 <IconButton icon={Printer} onClick={() => window.print()} title="Print" />
                                 <IconButton icon={CopyIcon} onClick={exportToCopy} title="Copy" />
@@ -652,7 +709,7 @@ export default function AdmissionEnquiryPage() {
                                         <input
                                             type="checkbox"
                                             className="h-4 w-4 rounded border-muted/50 text-primary cursor-pointer"
-                                            checked={filteredEnquiries.length > 0 && selectedIds.size === filteredEnquiries.length}
+                                            checked={displayedEnquiries.length > 0 && selectedIds.size === displayedEnquiries.length}
                                             onChange={(e) => handleSelectAll(e.target.checked)}
                                         />
                                     </Th>
@@ -694,8 +751,8 @@ export default function AdmissionEnquiryPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-muted/30">
-                                {filteredEnquiries.length > 0 ? (
-                                    filteredEnquiries.map((item) => (
+                                {displayedEnquiries.length > 0 ? (
+                                    displayedEnquiries.map((item) => (
                                         <tr key={item.id} className="hover:bg-muted/10 transition-colors">
                                             <Td>
                                                 <input
@@ -760,15 +817,27 @@ export default function AdmissionEnquiryPage() {
 
                     <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                            Showing {filteredEnquiries.length} entries
+                            Showing {total > 0 ? ((page - 1) * limit) + 1 : 0} to {Math.min(page * limit, total)} of {total} entries
                         </p>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                <ChevronDown className="h-4 w-4 rotate-90" />
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all bg-white"
+                                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                                disabled={page === 1}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]">1</Button>
-                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                <ChevronDown className="h-4 w-4 -rotate-90" />
+                            <span className="text-xs text-muted-foreground px-2">Page {page} of {lastPage}</span>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all bg-white"
+                                onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
+                                disabled={page === lastPage}
+                            >
+                                <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
                     </div>

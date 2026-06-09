@@ -27,7 +27,10 @@ import {
     Clock,
     Users,
     StickyNote,
-    Paperclip
+    Paperclip,
+    ChevronLeft,
+    ChevronRight,
+    LucideIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -54,6 +57,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/toast";
 import api from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface Visitor {
     id: number;
@@ -80,12 +90,18 @@ export default function VisitorBookPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     const [currentVisitor, setCurrentVisitor] = useState<Visitor | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [selectedVisitor, setSelectedVisitor] = useState<Visitor | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(50);
+    const [total, setTotal] = useState(0);
+    const [lastPage, setLastPage] = useState(1);
+    const [isBackendPaginated, setIsBackendPaginated] = useState(false);
 
     const [formData, setFormData] = useState<Partial<Visitor>>({
         purpose: "",
@@ -107,17 +123,32 @@ export default function VisitorBookPage() {
         try {
             const response = await api.get("/visitors", {
                 params: {
-                    search: searchQuery
+                    search: searchQuery,
+                    page: page,
+                    limit: limit
                 }
             });
-            setVisitors(response.data.data);
+            const resData = response.data?.data;
+            if (resData && Array.isArray(resData.data)) {
+                setVisitors(resData.data);
+                setTotal(resData.total || 0);
+                setLastPage(resData.last_page || 1);
+                setIsBackendPaginated(true);
+            } else {
+                const list = Array.isArray(resData) ? resData : (Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []));
+                setVisitors(list);
+                setTotal(list.length);
+                setLastPage(Math.ceil(list.length / limit) || 1);
+                setIsBackendPaginated(false);
+            }
+            setSelectedIds([]);
         } catch (error) {
             console.error("Error fetching visitors:", error);
             toast("error", "Failed to load visitors");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery]);
+    }, [searchQuery, page, limit, toast]);
 
     const fetchPurposes = useCallback(async () => {
         try {
@@ -221,11 +252,21 @@ export default function VisitorBookPage() {
         setIsDialogOpen(true);
     };
 
+    const displayedVisitors = isBackendPaginated ? visitors : visitors.slice((page - 1) * limit, page * limit);
+
     const toggleSelectAll = () => {
-        if (selectedIds.length === visitors.length) {
-            setSelectedIds([]);
+        const displayedIds = displayedVisitors.map(v => v.id);
+        const allDisplayedSelected = displayedIds.every(id => selectedIds.includes(id));
+        if (allDisplayedSelected) {
+            setSelectedIds(selectedIds.filter(id => !displayedIds.includes(id)));
         } else {
-            setSelectedIds(visitors.map(v => v.id));
+            const newSelected = [...selectedIds];
+            displayedIds.forEach(id => {
+                if (!newSelected.includes(id)) {
+                    newSelected.push(id);
+                }
+            });
+            setSelectedIds(newSelected);
         }
     };
 
@@ -436,13 +477,32 @@ export default function VisitorBookPage() {
                                 placeholder="Search"
                                 className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus:ring-2 focus:ring-[#008489]/20"
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    setPage(1);
+                                }}
                             />
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 mr-4">
-                                <span className="text-sm font-semibold text-muted-foreground">50</span>
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            <div className="flex items-center gap-1.5 mr-2">
+                                <Select
+                                    value={String(limit)}
+                                    onValueChange={(val) => {
+                                        setLimit(Number(val));
+                                        setPage(1);
+                                    }}
+                                >
+                                    <SelectTrigger className="h-8 w-16 text-xs border border-muted/50 bg-muted/30 hover:bg-muted/50 transition-colors shadow-none rounded-lg font-semibold text-muted-foreground">
+                                        <SelectValue placeholder={String(limit)} />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-lg border-muted/50">
+                                        {[20, 50, 100, 500].map((n) => (
+                                            <SelectItem key={n} value={String(n)} className="font-medium text-slate-700">
+                                                {n}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="flex gap-1">
                                 <IconButton icon={Printer} onClick={handlePrint} />
@@ -462,7 +522,7 @@ export default function VisitorBookPage() {
                                 <tr>
                                     <th className="px-4 py-4 w-10">
                                         <Checkbox
-                                            checked={selectedIds.length === visitors.length && visitors.length > 0}
+                                            checked={displayedVisitors.length > 0 && displayedVisitors.every(v => selectedIds.includes(v.id))}
                                             onCheckedChange={toggleSelectAll}
                                         />
                                     </th>
@@ -497,12 +557,12 @@ export default function VisitorBookPage() {
                                     <tr>
                                         <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">Loading visitors...</td>
                                     </tr>
-                                ) : visitors.length === 0 ? (
+                                ) : displayedVisitors.length === 0 ? (
                                     <tr>
                                         <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">No visitors found</td>
                                     </tr>
                                 ) : (
-                                    visitors.map((visitor) => (
+                                    displayedVisitors.map((visitor) => (
                                         <tr key={visitor.id} className={cn(
                                             "hover:bg-muted/10 transition-colors group",
                                             selectedIds.includes(visitor.id) && "bg-muted/30"
@@ -540,15 +600,40 @@ export default function VisitorBookPage() {
 
                     <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                            Showing {visitors.length > 0 ? 1 : 0} to {visitors.length} of {visitors.length} entries
+                            Showing {total > 0 ? (page - 1) * limit + 1 : 0} to {Math.min(page * limit, total)} of {total} entries
                         </p>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                <ChevronDown className="h-4 w-4 rotate-90" />
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-50"
+                                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                                disabled={page === 1}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]">1</Button>
-                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                <ChevronDown className="h-4 w-4 -rotate-90" />
+                            {Array.from({ length: lastPage }, (_, i) => i + 1).map((p) => (
+                                <Button
+                                    key={p}
+                                    className={cn(
+                                        "h-8 w-8 rounded-lg border-none p-0 font-bold active:scale-95 transition-all shadow-md",
+                                        p === page
+                                            ? "text-white shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]"
+                                            : "bg-muted/50 hover:bg-muted text-muted-foreground"
+                                    )}
+                                    onClick={() => setPage(p)}
+                                >
+                                    {p}
+                                </Button>
+                            ))}
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-50"
+                                onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
+                                disabled={page === lastPage}
+                            >
+                                <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
                     </div>

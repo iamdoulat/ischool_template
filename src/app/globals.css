@@ -140,6 +140,17 @@
   .btn-emerald {
     @apply bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-200/50 transition-all duration-300 border-none rounded-full;
   }
+
+  /* Automatically hide the default dialog close button if a custom close button (containing an X icon) is provided inside the dialog content */
+  [data-slot="dialog-content"]:has(button:not([data-slot="dialog-close"]) .lucide-x) > [data-slot="dialog-close"] {
+    display: none !important;
+  }
+}
+
+/* QR Scanner animation */
+@keyframes scan {
+  0%, 100% { top: 0; }
+  50% { top: calc(100% - 2px); }
 }
 
 /* Theme Skins */

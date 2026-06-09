@@ -57,6 +57,7 @@ interface GeneralSettings {
     linkedin_url?: string;
     pinterest_url?: string;
     app_version?: string;
+    maintenance_mode?: boolean;
 }
 
 interface SettingsContextType {
@@ -105,12 +106,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     'staff_attendance_settings', 'student_attendance_settings',
                     'footer_contact_title', 'footer_contact_info_label',
                     'facebook_url', 'twitter_url', 'instagram_url', 'youtube_url', 'linkedin_url', 'pinterest_url',
-                    'app_version'
+                    'app_version',
+                    'maintenance_mode'
                 ];
 
                 fields.forEach(field => {
                     const value = incomingData[field];
-                    if (field.includes('login') || field === 'allow_student_to_add_timeline' || field === 'biometric_attendance') {
+                    if (field.includes('login') || field === 'allow_student_to_add_timeline' || field === 'biometric_attendance' || field === 'maintenance_mode') {
                         normalizedData[field] = (value === 1 || value === true || value === '1' || value === 'true');
                     } else if (field === 'staff_attendance_settings' || field === 'student_attendance_settings') {
                         normalizedData[field] = Array.isArray(value) ? value : [];
@@ -182,7 +184,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 youtube_url: "",
                 linkedin_url: "",
                 pinterest_url: "",
-                app_version: "7.2.0"
+                app_version: "7.2.0",
+                maintenance_mode: false
             };
             setSettings(defaultSettings);
         } finally {

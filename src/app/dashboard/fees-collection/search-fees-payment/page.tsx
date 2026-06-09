@@ -88,9 +88,10 @@ export default function SearchFeesPaymentPage() {
                             </div>
                         </div>
                         <Button
+                            variant="gradient"
                             onClick={handleSearch}
                             disabled={loading}
-                            className="h-12 px-10 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2 border-none"
+                            className="h-12 px-10 rounded-lg flex items-center gap-2"
                         >
                             {loading ? <Search className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                             Search Payment

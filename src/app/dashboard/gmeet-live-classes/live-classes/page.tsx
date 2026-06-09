@@ -2,13 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle
-} from "@/components/ui/card";
+import { toast } from "sonner";
 import {
     Table,
     TableBody,
@@ -29,18 +23,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { 
-    Plus, Search, Eye, ChevronLeft, ChevronRight, 
-    Pencil, Trash2, MonitorPlay, RefreshCw,
-    Video, Calendar, Clock, User, ShieldCheck,
-    Zap, ExternalLink, Info, MoreHorizontal, Users,
-    GraduationCap, BookOpen, Layers
+    Plus, Search, ChevronLeft, ChevronRight, 
+    ArrowUpDown, Video, Copy, FileSpreadsheet,
+    FileBox, Printer, Columns, Calendar, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
-    DialogTitle,
 } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -65,14 +55,13 @@ interface GmeetClass {
     section_id: string;
     status: string;
     meeting_url?: string;
-    creator?: { name: string; last_name: string };
-    staff?: { name: string; last_name: string; employee_id: string };
-    school_class?: { name: string };
+    creator?: { id: number; name: string; last_name: string; role: string };
+    staff?: { id: number; name: string; last_name: string; role: string };
+    school_class?: { name: string; sections?: any[] };
     section?: { name: string };
 }
 
 export default function LiveClassesPage() {
-    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [classes, setClasses] = useState<GmeetClass[]>([]);
     const [loading, setLoading] = useState(false);
@@ -80,7 +69,7 @@ export default function LiveClassesPage() {
     
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(50);
+    const [itemsPerPage, setItemsPerPage] = useState("50");
     const [totalEntries, setTotalEntries] = useState(0);
 
     // Form Criteria
@@ -88,6 +77,8 @@ export default function LiveClassesPage() {
     const [open, setOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [selectedRole, setSelectedRole] = useState("");
+
     const [formData, setFormData] = useState({
         title: "",
         description: "",
@@ -107,6 +98,9 @@ export default function LiveClassesPage() {
 
     useEffect(() => {
         fetchCriteria();
+    }, []);
+
+    useEffect(() => {
         fetchClasses();
     }, [currentPage, itemsPerPage, searchTerm]);
 
@@ -115,7 +109,7 @@ export default function LiveClassesPage() {
             const response = await api.get('/conference/gmeet-classes/criteria');
             setFormCriteria(response.data);
         } catch (error) {
-            console.error("Failed to fetch criteria");
+            console.error("Failed to fetch criteria", error);
         }
     };
 
@@ -129,10 +123,16 @@ export default function LiveClassesPage() {
                     search: searchTerm
                 }
             });
-            setClasses(response.data.data || []);
-            setTotalEntries(response.data.total || 0);
+            if (response.data && response.data.data) {
+                setClasses(response.data.data || []);
+                setTotalEntries(response.data.total || 0);
+            } else {
+                setClasses(response.data || []);
+                setTotalEntries(response.data.length || 0);
+            }
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch classes", variant: "destructive" });
+            console.error("Failed to fetch live classes", error);
+            toast.error("Failed to load live classes");
         } finally {
             setLoading(false);
         }
@@ -147,29 +147,39 @@ export default function LiveClassesPage() {
         }
     }, [formData.class_id, formCriteria.classes]);
 
+    // Extract dynamic unique roles from staff members in criteria
+    const uniqueRoles = Array.from(new Set(formCriteria.staff.map(s => s.role).filter(Boolean)));
+
+    // Filter staff members based on selected role
+    const filteredStaff = formCriteria.staff.filter(s => !selectedRole || s.role === selectedRole);
+
     const handleSave = async () => {
-        if (!formData.title || !formData.date_time || !formData.class_id || !formData.section_id || !formData.staff_id) {
-            toast({ title: "Validation", description: "All required fields must be populated", variant: "destructive" });
+        if (!formData.title || !formData.date_time || !formData.class_id || !formData.section_id || !formData.staff_id || !formData.meeting_url) {
+            toast.error("All required fields (*) must be populated");
             return;
         }
 
         setSubmitting(true);
-        // Default creator id - in real app from auth
-        const payload = { ...formData, created_by: formCriteria.staff[0]?.id || 1 };
+        // Default creator id
+        const payload = { 
+            ...formData, 
+            created_by: formCriteria.staff[0]?.id || 1 
+        };
 
         try {
             if (editMode && selectedId) {
                 await api.put(`/conference/gmeet-classes/${selectedId}`, payload);
-                toast({ title: "Success", description: "G-Meet class updated" });
+                toast.success("Live class updated successfully");
             } else {
                 await api.post('/conference/gmeet-classes', payload);
-                toast({ title: "Success", description: "G-Meet class scheduled" });
+                toast.success("Live class scheduled successfully");
             }
             setOpen(false);
             resetForm();
             fetchClasses();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to save curriculum session", variant: "destructive" });
+            console.error("Failed to save live class", error);
+            toast.error("Failed to save live class session");
         } finally {
             setSubmitting(false);
         }
@@ -178,6 +188,7 @@ export default function LiveClassesPage() {
     const handleEdit = (item: GmeetClass) => {
         setEditMode(true);
         setSelectedId(item.id);
+        setSelectedRole(item.staff?.role || "");
         setFormData({
             title: item.title,
             description: item.description || "",
@@ -195,10 +206,11 @@ export default function LiveClassesPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/conference/gmeet-classes/${deleteId}`);
-            toast({ title: "Success", description: "Curriculum session expunged" });
+            toast.success("Live class session deleted successfully");
             fetchClasses();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to delete session", variant: "destructive" });
+            console.error("Failed to delete live class", error);
+            toast.error("Failed to delete live class session");
         } finally {
             setDeleteId(null);
         }
@@ -207,6 +219,7 @@ export default function LiveClassesPage() {
     const resetForm = () => {
         setEditMode(false);
         setSelectedId(null);
+        setSelectedRole("");
         setFormData({
             title: "",
             description: "",
@@ -222,333 +235,432 @@ export default function LiveClassesPage() {
     const handleStatusChange = async (id: string, newStatus: string) => {
         try {
             await api.put(`/conference/gmeet-classes/${id}`, { status: newStatus });
-            toast({ title: "Success", description: "Status updated" });
+            toast.success("Status updated successfully");
             fetchClasses();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+            console.error("Failed to update status", error);
+            toast.error("Failed to update class status");
         }
     };
 
+    // Date time parser helper to format as MM/DD/YYYY HH:MM:SS
+    const formatDateTime = (dtStr: string) => {
+        try {
+            const d = new Date(dtStr);
+            if (isNaN(d.getTime())) return dtStr;
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const mm = pad(d.getMonth() + 1);
+            const dd = pad(d.getDate());
+            const yyyy = d.getFullYear();
+            const hh = pad(d.getHours());
+            const min = pad(d.getMinutes());
+            const ss = pad(d.getSeconds());
+            return (
+                <div className="flex flex-col text-slate-600 text-[11px] leading-tight">
+                    <span>{`${mm}/${dd}/${yyyy}`}</span>
+                    <span className="text-gray-400 mt-0.5">{`${hh}:${min}:${ss}`}</span>
+                </div>
+            );
+        } catch {
+            return dtStr;
+        }
+    };
+
+    // Calculate pagination variables
+    const sizeNum = parseInt(itemsPerPage, 10) || 50;
+    const totalPages = Math.ceil(totalEntries / sizeNum) || 1;
+    const safePage = Math.min(currentPage, totalPages);
+    const startIndex = (safePage - 1) * sizeNum;
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800 rounded-lg">
-                <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner">
-                            <BookOpen className="h-6 w-6" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-xl font-black tracking-tight text-slate-700 uppercase">G-Meet Live Classes</CardTitle>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Management of curriculum-linked Google virtual classrooms</p>
-                        </div>
+        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
+            <div className="flex justify-between items-center mb-2">
+                <h1 className="text-sm font-medium text-gray-800 tracking-tight">Live Classes</h1>
+                <Button 
+                    onClick={() => { resetForm(); setOpen(true); }}
+                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
+                >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add
+                </Button>
+            </div>
+
+            <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[500px]">
+
+                {/* Table Toolbar */}
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-3">
+                    <div className="relative w-full md:w-64">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                        <Input
+                            placeholder="Search..."
+                            value={searchTerm}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            className="pl-8 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                        />
                     </div>
-                    <Button 
-                        onClick={() => { resetForm(); setOpen(true); }}
-                        className="h-11 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase gap-2 shadow-xl shadow-orange-200/40 active:scale-95 transition-all"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Initiate Session
-                    </Button>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="p-6 flex items-center gap-6 border-b border-muted/20">
-                        <div className="relative w-80">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Filter curriculum sessions..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11 rounded-lg bg-white border-muted/50 focus-visible:ring-blue-500/20 text-[10px] font-bold uppercase tracking-[0.2em] shadow-none"
-                            />
-                        </div>
-                        <div className="flex items-center gap-4 ml-auto">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-2">Page Density:</span>
-                            <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                                <SelectTrigger className="h-10 w-24 text-[10px] font-bold bg-white border-muted/50 rounded-lg uppercase tracking-widest">
+
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 mr-2">
+                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Rows</span>
+                            <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
+                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 shadow-none rounded font-semibold">
                                     <SelectValue placeholder="50" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100">
-                                    <SelectItem value="10">10 Rows</SelectItem>
-                                    <SelectItem value="25">25 Rows</SelectItem>
-                                    <SelectItem value="50">50 Rows</SelectItem>
-                                    <SelectItem value="100">100 Rows</SelectItem>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="25">25</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="flex items-center gap-1 text-gray-400">
+                            {[Copy, FileSpreadsheet, FileBox, Printer, Columns].map((Icon, i) => (
+                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
+                                    <Icon className="h-3.5 w-3.5" />
+                                </Button>
+                            ))}
+                        </div>
                     </div>
+                </div>
 
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent border-b border-muted/20 bg-muted/5">
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-5 pl-8">Class Title</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-5">Curriculum Target</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-5">Temporal Schedule</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-5 text-center">Duration</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-5">Instructor</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-5 text-center">Status</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-5 pr-8 text-center">Utility Protocol</TableHead>
+                {/* Live Classes Table */}
+                <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
+                    <Table className="min-w-[1300px]">
+                        <TableHeader className="bg-transparent border-b border-gray-100">
+                            <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
+                                <TableHead className="py-3 px-4">Class Title <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">Description <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">Date Time <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 text-center">Class Duration (Minutes)</TableHead>
+                                <TableHead className="py-3 px-4">Created By <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">Created For <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">Class <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 text-center">Status <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 text-right">Action</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={9} className="text-center py-12">
+                                        <div className="flex items-center justify-center gap-2 text-gray-400">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
+                                            Loading live classes...
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="h-48 text-center">
-                                            <div className="flex flex-col items-center justify-center space-y-2">
-                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Syncing Virtual Curriculum Registry...</p>
+                            ) : classes.length === 0 ? (
+                                <TableRow className="hover:bg-transparent h-64">
+                                    <TableCell colSpan={9} className="text-center py-12 text-gray-400 font-bold uppercase text-[10px] tracking-widest">
+                                        No live classes scheduled yet.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                classes.map((item, idx) => (
+                                    <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap">
+                                        <TableCell className="py-3 px-4 text-gray-700 font-medium cursor-pointer hover:underline" onClick={() => handleEdit(item)}>{item.title}</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-500 max-w-[200px] truncate" title={item.description}>{item.description || "-"}</TableCell>
+                                        <TableCell className="py-3 px-4">{formatDateTime(item.date_time)}</TableCell>
+                                        <TableCell className="py-3 px-4 text-center text-gray-700 font-medium">{item.duration}</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-600">
+                                            {item.creator 
+                                                ? `${item.creator.name} ${item.creator.last_name} (${item.creator.role} : ${item.creator.id})`
+                                                : "Doulat User (Super Admin : 1)"}
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-600">
+                                            {item.staff
+                                                ? `${item.staff.name} ${item.staff.last_name} (${item.staff.role} : ${item.staff.id})`
+                                                : "-"}
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4">
+                                            <div className="flex flex-col gap-0.5 text-[10px] text-gray-700">
+                                                {item.school_class?.sections?.map((sec: any) => {
+                                                    const isChecked = sec.id === parseInt(item.section_id, 10);
+                                                    return (
+                                                        <div key={sec.id} className="flex items-center gap-1.5">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isChecked} 
+                                                                readOnly 
+                                                                className="h-3 w-3 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 pointer-events-none" 
+                                                            />
+                                                            <span>{item.school_class?.name} ({sec.name.replace('SECTION - ', '')})</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                                {!item.school_class?.sections && item.school_class && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={true} 
+                                                            readOnly 
+                                                            className="h-3 w-3 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 pointer-events-none" 
+                                                        />
+                                                        <span>{item.school_class?.name} ({item.section?.name || 'A'})</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-center">
+                                            <Select value={item.status || "awaited"} onValueChange={(val) => handleStatusChange(item.id, val)}>
+                                                <SelectTrigger className="h-7 w-24 text-[10px] font-semibold bg-white border-gray-200 rounded mx-auto shadow-none">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded shadow-xl">
+                                                    <SelectItem value="awaited">Awaited</SelectItem>
+                                                    <SelectItem value="finished">Finished</SelectItem>
+                                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-right">
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <Button 
+                                                    onClick={() => {
+                                                        if (item.meeting_url) {
+                                                            window.open(item.meeting_url, '_blank');
+                                                        } else {
+                                                            toast.error("No join meeting URL configured");
+                                                        }
+                                                    }}
+                                                    className="bg-[#4caf50] hover:bg-[#43a047] text-white px-2.5 h-6 text-[10px] font-bold rounded shadow-none flex items-center gap-1 transition-all active:scale-95"
+                                                >
+                                                    <Video className="h-3 w-3" />
+                                                    Start
+                                                </Button>
+                                                <Button 
+                                                    onClick={() => setDeleteId(item.id)}
+                                                    className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95"
+                                                    title="Delete class"
+                                                >
+                                                    <span className="font-bold text-[10px]">X</span>
+                                                </Button>
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ) : classes.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="h-32 text-center text-gray-400 text-[11px] font-bold uppercase tracking-widest italic">
-                                            No curriculum-linked G-Meet sessions indexed.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    classes.map((item, index) => (
-                                        <TableRow key={item.id} className={cn(
-                                            "hover:bg-blue-50/20 border-b border-muted/10 transition-colors group",
-                                            index % 2 === 0 ? 'bg-white' : 'bg-muted/5'
-                                        )}>
-                                            <TableCell className="text-slate-700 text-xs py-5 pl-8 font-bold uppercase tracking-tight">
-                                                <div className="flex flex-col">
-                                                    <span>{item.title}</span>
-                                                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter truncate max-w-[180px]">{item.description || "Official curriculum session"}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-5">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold text-[9px] border border-blue-100 uppercase tracking-tighter shadow-sm">
-                                                        {item.school_class?.name}
-                                                    </span>
-                                                    <span className="bg-gray-50 text-gray-500 px-2 py-1 rounded-full font-bold text-[9px] border border-gray-100 uppercase tracking-tighter">
-                                                        {item.section?.name}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-slate-600 text-xs py-5">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-gray-500 flex items-center gap-2">
-                                                        <Calendar className="h-3.5 w-3.5 text-blue-500" /> {new Date(item.date_time).toLocaleDateString()}
-                                                    </span>
-                                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pl-5">{new Date(item.date_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-center py-5">
-                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{item.duration}m</span>
-                                            </TableCell>
-                                            <TableCell className="text-slate-700 text-[10px] py-5 font-bold uppercase tracking-tighter">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[9px] text-blue-600 font-bold uppercase shadow-inner">
-                                                        {item.staff?.name?.[0]}{item.staff?.last_name?.[0]}
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span>{item.staff ? `${item.staff.name} ${item.staff.last_name}` : "Pending Assign"}</span>
-                                                        <span className="text-[8px] text-gray-400 tracking-tighter italic">Ref: {item.staff?.employee_id || "SYS"}</span>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-5 text-center">
-                                                <Select defaultValue={item.status || "awaited"} onValueChange={(val) => handleStatusChange(item.id, val)}>
-                                                    <SelectTrigger className={cn(
-                                                        "h-8 w-[105px] text-[9px] font-black uppercase tracking-widest bg-white border-muted/50 rounded-lg mx-auto shadow-sm",
-                                                        (item.status === 'awaited' || !item.status) && "text-orange-500 border-orange-100 bg-orange-50/50",
-                                                        item.status === 'finished' && "text-emerald-500 border-emerald-100 bg-emerald-50/50",
-                                                        item.status === 'cancelled' && "text-rose-500 border-rose-100 bg-rose-50/50"
-                                                    )}>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-lg border-gray-100 shadow-xl">
-                                                        <SelectItem value="awaited">Awaited</SelectItem>
-                                                        <SelectItem value="finished">Finished</SelectItem>
-                                                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                            <TableCell className="pr-8 py-5 text-center">
-                                                <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 duration-300">
-                                                    <Button size="icon" className="h-9 w-9 rounded-lg bg-blue-500 hover:bg-blue-600 text-white shadow-xl shadow-blue-200 transition-all active:scale-90">
-                                                        <MonitorPlay className="h-4.5 w-4.5" />
-                                                    </Button>
-                                                    <Button onClick={() => handleEdit(item)} size="icon" className="h-9 w-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-200 transition-all active:scale-90">
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button onClick={() => setDeleteId(item.id)} size="icon" className="h-9 w-9 rounded-lg bg-rose-500 hover:bg-rose-600 text-white shadow-xl shadow-rose-200 transition-all active:scale-90">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
+                    <div>
+                        Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
+                        {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                        {searchTerm && ` (filtered from ${totalEntries} total entries)`}
                     </div>
 
-                    <div className="p-6 border-t border-muted/20 flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                        <span>Index: {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} node entries</span>
-                        <div className="flex items-center gap-2">
-                            <Button 
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
-                                disabled={currentPage === 1}
+                    {totalEntries > 0 && (
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                disabled={safePage === 1}
+                                onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                             >
                                 <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" className="h-10 w-10 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg font-black text-xs">
-                                {currentPage}
-                            </Button>
-                            <Button 
-                                onClick={() => setCurrentPage(p => p + 1)}
-                                variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
-                                disabled={classes.length < itemsPerPage}
+                            </button>
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={cn(
+                                        "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer font-bold",
+                                        safePage === page
+                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95"
+                                            : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
+                                    )}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+
+                            <button
+                                disabled={safePage === totalPages}
+                                onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                             >
                                 <ChevronRight className="h-4 w-4" />
-                            </Button>
+                            </button>
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    )}
+                </div>
+            </div>
 
             {/* Add/Edit Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="rounded-[2.5rem] border-0 shadow-2xl max-w-2xl p-0 overflow-hidden bg-white">
-                    <div className="bg-blue-500/5 p-10 border-b border-blue-100 flex items-center justify-between">
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-[0.2em] flex items-center gap-5">
-                                <div className="h-14 w-14 rounded-[1.8rem] bg-blue-500 flex items-center justify-center text-white shadow-2xl shadow-blue-200 transform rotate-3">
-                                    <GraduationCap className="h-7 w-7" />
-                                </div>
-                                <div>
-                                    {editMode ? "Reschedule Curriculum" : "Initiate Curriculum"}
-                                    <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1 italic">Synchronization of virtual workspace nodes</p>
-                                </div>
-                            </DialogTitle>
-                        </DialogHeader>
+                <DialogContent className="max-w-[500px] p-0 overflow-hidden bg-white border border-gray-200 shadow-2xl rounded">
+                    
+                    {/* Header */}
+                    <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
+                        <span>{editMode ? "Edit Live Class" : "Add Live Class"}</span>
+                        <button 
+                            onClick={() => setOpen(false)} 
+                            className="text-white/80 hover:text-white transition-colors cursor-pointer"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
                     </div>
 
-                    <div className="p-12 grid grid-cols-2 gap-10">
-                        <div className="space-y-4 col-span-2">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
-                                <Info className="h-3 w-3" /> Session Title <span className="text-red-500">*</span>
-                            </Label>
+                    {/* Form Fields */}
+                    <div className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto custom-scrollbar">
+                        
+                        {/* Class Title */}
+                        <div className="space-y-1">
+                            <Label className="text-[11px] font-medium text-gray-700">Class Title <span className="text-red-500">*</span></Label>
                             <Input 
                                 value={formData.title}
                                 onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                placeholder="e.g. Advanced Calculus - Virtual Module"
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none text-sm font-bold tracking-tight px-6" 
+                                placeholder=""
+                                className="h-9 border-gray-200 focus-visible:ring-indigo-500 text-xs rounded" 
                             />
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Temporal Schedule <span className="text-red-500">*</span></Label>
-                            <Input 
-                                type="datetime-local"
-                                value={formData.date_time}
-                                onChange={(e) => setFormData({...formData, date_time: e.target.value})}
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
-                            />
+                        {/* Class Date & Duration */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-[11px] font-medium text-gray-700">Class Date <span className="text-red-500">*</span></Label>
+                                <div className="relative">
+                                    <Input 
+                                        type="datetime-local"
+                                        value={formData.date_time}
+                                        onChange={(e) => setFormData({...formData, date_time: e.target.value})}
+                                        className="h-9 border-gray-200 focus-visible:ring-indigo-500 text-xs rounded pr-8" 
+                                    />
+                                    <Calendar className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label className="text-[11px] font-medium text-gray-700">Class Duration (Minutes) <span className="text-red-500">*</span></Label>
+                                <Input 
+                                    type="number"
+                                    value={formData.duration}
+                                    onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value) || 0})}
+                                    placeholder=""
+                                    className="h-9 border-gray-200 focus-visible:ring-indigo-500 text-xs rounded" 
+                                />
+                            </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Assigned Instructor <span className="text-red-500">*</span></Label>
+                        {/* Role Select */}
+                        <div className="space-y-1">
+                            <Label className="text-[11px] font-medium text-gray-700">Role <span className="text-red-500">*</span></Label>
+                            <Select value={selectedRole} onValueChange={(val) => { setSelectedRole(val); setFormData({...formData, staff_id: ""}); }}>
+                                <SelectTrigger className="h-9 border-gray-200 text-xs rounded shadow-none text-gray-700">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded shadow-xl">
+                                    {uniqueRoles.map(role => (
+                                        <SelectItem key={role} value={role}>{role}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Staff Select */}
+                        <div className="space-y-1">
+                            <Label className="text-[11px] font-medium text-gray-700">Staff <span className="text-red-500">*</span></Label>
                             <Select value={formData.staff_id} onValueChange={(val) => setFormData({...formData, staff_id: val})}>
-                                <SelectTrigger className="h-14 border-gray-100 bg-gray-50/50 rounded-lg shadow-none px-6 text-sm font-bold">
-                                    <SelectValue placeholder="Select Staff Member" />
+                                <SelectTrigger className="h-9 border-gray-200 text-xs rounded shadow-none text-gray-700">
+                                    <SelectValue placeholder="Select" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
-                                    {formCriteria.staff.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name} {s.last_name}</SelectItem>)}
+                                <SelectContent className="rounded shadow-xl">
+                                    {filteredStaff.map(s => (
+                                        <SelectItem key={s.id} value={s.id.toString()}>{s.name} {s.last_name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Institutional Class <span className="text-red-500">*</span></Label>
-                            <Select value={formData.class_id} onValueChange={(val) => setFormData({...formData, class_id: val})}>
-                                <SelectTrigger className="h-14 border-gray-100 bg-gray-50/50 rounded-lg shadow-none px-6 text-sm font-bold">
-                                    <SelectValue placeholder="Select Target Class" />
+                        {/* Class Select */}
+                        <div className="space-y-1">
+                            <Label className="text-[11px] font-medium text-gray-700">Class <span className="text-red-500">*</span></Label>
+                            <Select value={formData.class_id} onValueChange={(val) => setFormData({...formData, class_id: val, section_id: ""})}>
+                                <SelectTrigger className="h-9 border-gray-200 text-xs rounded shadow-none text-gray-700">
+                                    <SelectValue placeholder="Select" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
-                                    {formCriteria.classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                <SelectContent className="rounded shadow-xl">
+                                    {formCriteria.classes.map(c => (
+                                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Academic Section <span className="text-red-500">*</span></Label>
+                        {/* Section Select */}
+                        <div className="space-y-1">
+                            <Label className="text-[11px] font-medium text-gray-700">Section <span className="text-red-500">*</span></Label>
                             <Select value={formData.section_id} onValueChange={(val) => setFormData({...formData, section_id: val})}>
-                                <SelectTrigger className="h-14 border-gray-100 bg-gray-50/50 rounded-lg shadow-none px-6 text-sm font-bold">
-                                    <SelectValue placeholder="Select Section" />
+                                <SelectTrigger className="h-9 border-gray-200 text-xs rounded shadow-none text-gray-700">
+                                    <SelectValue placeholder="Select" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
-                                    {formSections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                <SelectContent className="rounded shadow-xl">
+                                    {formSections.map(s => (
+                                        <SelectItem key={s.id} value={s.id.toString()}>{s.name.replace('SECTION - ', '')}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Duration (Min)</Label>
-                            <Input 
-                                type="number"
-                                value={formData.duration}
-                                onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
-                                placeholder="45"
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
-                            />
-                        </div>
-
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">G-Meet Join URL</Label>
+                        {/* Gmeet URL */}
+                        <div className="space-y-1">
+                            <div className="flex justify-between items-center">
+                                <Label className="text-[11px] font-medium text-gray-700">Gmeet URL (How To Get <span className="text-[#7e57c2] hover:underline cursor-pointer font-bold" onClick={() => window.open('https://meet.google.com/', '_blank')}>Gmeet URL</span>? ) <span className="text-red-500">*</span></Label>
+                            </div>
                             <Input 
                                 value={formData.meeting_url}
                                 onChange={(e) => setFormData({...formData, meeting_url: e.target.value})}
-                                placeholder="meet.google.com/..."
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
+                                placeholder=""
+                                className="h-9 border-gray-200 focus-visible:ring-indigo-500 text-xs rounded" 
                             />
                         </div>
 
-                        <div className="space-y-4 col-span-2">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Session Agenda / Methodology</Label>
+                        {/* Description */}
+                        <div className="space-y-1">
+                            <Label className="text-[11px] font-medium text-gray-700">Description</Label>
                             <Textarea 
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                placeholder="Learning outcomes and session structure..."
-                                className="min-h-[120px] border-gray-100 bg-gray-50/50 rounded-[2.5rem] focus:ring-blue-500 shadow-none p-8 text-sm resize-none tracking-tight leading-relaxed" 
+                                placeholder=""
+                                className="min-h-[70px] border-gray-200 text-xs rounded resize-none" 
                             />
                         </div>
                     </div>
 
-                    <div className="p-10 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-5">
-                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-14 px-10 rounded-full text-[11px] font-bold uppercase tracking-widest hover:bg-white transition-all">Discard Protocol</Button>
+                    {/* Footer */}
+                    <div className="bg-gray-50/50 p-4 border-t border-gray-150 flex justify-end">
                         <Button 
                             onClick={handleSave} 
                             disabled={submitting}
-                            className="btn-gradient text-white px-16 h-14 text-[12px] font-black uppercase shadow-2xl shadow-orange-200/50 transition-all rounded-full flex gap-3 active:scale-95"
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-5 h-8 text-[11px] font-bold rounded shadow-sm"
                         >
-                            {submitting ? <RefreshCw className="h-5 w-5 animate-spin" /> : editMode ? "Update Curriculum Node" : "Commit Curriculum Session"}
+                            {submitting ? "Saving..." : "Save"}
                         </Button>
                     </div>
+
                 </DialogContent>
             </Dialog>
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-[3rem] border-0 shadow-2xl p-12">
+                <AlertDialogContent className="rounded bg-white">
                     <AlertDialogHeader>
-                        <div className="h-20 w-20 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 mb-8 transform -rotate-6 shadow-inner">
-                            <ShieldCheck className="h-10 w-10" />
-                        </div>
-                        <AlertDialogTitle className="text-3xl font-black text-gray-800 uppercase tracking-tight">Expunge Curriculum Session</AlertDialogTitle>
-                        <AlertDialogDescription className="text-base text-gray-500 leading-relaxed mt-6">
-                            Are you sure you want to permanently invalidate this curriculum-linked virtual session? This protocol will expunge all join history and indexed engagement records from the institutional registry.
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete this scheduled live class session from the database.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-12 gap-5">
-                        <AlertDialogCancel className="h-14 px-10 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-100 hover:bg-gray-50 transition-all">Cancel Protocol</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 h-14 px-12 rounded-full text-[11px] font-black uppercase tracking-widest border-0 shadow-2xl shadow-rose-200 active:scale-95 transition-all">
-                            Confirm Expunge
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded text-xs h-9">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 rounded text-xs h-9 text-white">
+                            Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, Trash2, ChevronLeft, ChevronRight, Loader2, Save, FileCode } from "lucide-react";
+import { Upload, Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, Trash2, ChevronLeft, ChevronRight, Loader2, Save, FileCode, Download, Eye } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate } from "@/lib/utils";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -34,6 +35,7 @@ interface ExpenseHead {
 }
 
 export default function AddExpensePage() {
+    const { formatCurrency } = useCurrencyFormatter();
     const [searchTerm, setSearchTerm] = useState("");
     const [rowsPerPage, setRowsPerPage] = useState("50");
     const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
@@ -42,6 +44,7 @@ export default function AddExpensePage() {
     const [saving, setSaving] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [invoicePrintSettings, setInvoicePrintSettings] = useState<{ header_image_url: string | null; footer_content: string }>({ header_image_url: null, footer_content: "" });
 
     const [formData, setFormData] = useState({
         expense_head_id: "",
@@ -52,6 +55,34 @@ export default function AddExpensePage() {
         description: "",
         document: null as File | null
     });
+
+    const fetchNextExpenseNumber = async () => {
+        try {
+            const res = await api.get("expense/expenses/next-expense-number");
+            if (res.data?.status === "Success" && res.data.data?.invoice_number) {
+                setFormData(prev => ({ ...prev, invoice_number: res.data.data.invoice_number }));
+            }
+        } catch {
+            // silently fail
+        }
+    };
+
+    const fetchInvoicePrintSettings = async () => {
+        try {
+            const res = await api.get("system-setting/print-settings");
+            if (res.data?.status === "success") {
+                const invoice = (res.data.data || []).find((s: any) => s.type === "Invoice");
+                if (invoice) {
+                    setInvoicePrintSettings({
+                        header_image_url: invoice.header_image_url || null,
+                        footer_content: invoice.footer_content || "",
+                    });
+                }
+            }
+        } catch {
+            // silently fail
+        }
+    };
 
     const fetchData = async () => {
         try {
@@ -67,6 +98,11 @@ export default function AddExpensePage() {
             if (headRes.data?.status === "Success") {
                 setExpenseHeads(headRes.data.data);
             }
+
+            await Promise.all([
+                fetchNextExpenseNumber(),
+                fetchInvoicePrintSettings(),
+            ]);
         } catch (error) {
             console.error("Error fetching data:", error);
             toast.error("Failed to load records");
@@ -181,7 +217,7 @@ export default function AddExpensePage() {
     const exportData = filteredData.map(item => ({
         'Name': item.name,
         'Description': item.description,
-        'Invoice Number': item.invoice_number,
+        'Expense Number': item.invoice_number,
         'Date': item.date,
         'Expense Head': item.expense_head.expense_head,
         'Amount': item.amount
@@ -214,12 +250,91 @@ export default function AddExpensePage() {
         const doc = new jsPDF();
         doc.text("Expense List", 14, 15);
         autoTable(doc, {
-            head: [['Name', 'Invoice', 'Date', 'Head', 'Amount']],
+            head: [['Name', 'Expense No.', 'Date', 'Head', 'Amount']],
             body: filteredData.map(item => [item.name, item.invoice_number, item.date, item.expense_head.expense_head, item.amount]),
             startY: 20,
         });
         doc.save("expenses.pdf");
         toast.success("Exported to PDF");
+    };
+
+    const loadImage = (url: string): Promise<HTMLImageElement> =>
+        new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.onload = () => resolve(img);
+            img.onerror = () => {
+                const fallbackImg = new Image();
+                fallbackImg.onload = () => resolve(fallbackImg);
+                fallbackImg.onerror = reject;
+                fallbackImg.src = url;
+            };
+            img.src = url;
+        });
+
+    const downloadInvoicePDF = async (item: ExpenseRecord) => {
+        const doc = new jsPDF();
+        let startY = 15;
+        const formatPdfCurrency = (val: number) => {
+            let str = formatCurrency(val);
+            str = str.replace(/[^\x00-\x7F]/g, "").trim();
+            return str;
+        };
+
+        const { header_image_url, footer_content } = invoicePrintSettings;
+
+        if (header_image_url) {
+            try {
+                let imgUrl = header_image_url;
+                if (imgUrl.startsWith('/')) {
+                    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://127.0.0.1:8000';
+                    imgUrl = baseUrl + imgUrl;
+                }
+                imgUrl = imgUrl.replace('localhost', '127.0.0.1');
+
+                const img = await loadImage(imgUrl);
+                const imgWidth = 190;
+                const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
+                doc.addImage(img, 'PNG', 10, startY, imgWidth, imgHeight);
+                startY += imgHeight + 10;
+            } catch {
+                // silently continue without header image
+            }
+        }
+
+        doc.setFontSize(16);
+        doc.text("EXPENSE INVOICE", 14, startY);
+        startY += 10;
+        doc.setFontSize(10);
+        doc.text(`Expense No: ${item.invoice_number || 'N/A'}`, 14, startY);
+        startY += 6;
+        doc.text(`Date: ${formatDate(item.date)}`, 14, startY);
+        startY += 6;
+        doc.text(`Expense Head: ${item.expense_head.expense_head}`, 14, startY);
+        startY += 6;
+        doc.line(14, startY, 196, startY);
+        startY += 4;
+
+        autoTable(doc, {
+            head: [['Description', 'Amount']],
+            body: [
+                [item.name, formatPdfCurrency(item.amount)],
+            ],
+            startY,
+        });
+        let finalY = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFontSize(12);
+        doc.text(`Total: ${formatPdfCurrency(item.amount)}`, 14, finalY);
+
+        if (footer_content) {
+            finalY += 10;
+            doc.setFontSize(9);
+            const lines = doc.splitTextToSize(footer_content, 180);
+            doc.text(lines, 14, finalY);
+        }
+
+        doc.save(`expense-${item.invoice_number || item.id}.pdf`);
+        toast.success("Invoice downloaded");
     };
 
     const copyToClipboard = () => {
@@ -273,12 +388,13 @@ export default function AddExpensePage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="invoice-number" className="text-xs font-semibold text-gray-600">
-                                Invoice Number
+                                Expense Number
                             </Label>
                             <Input 
                                 id="invoice-number" 
                                 value={formData.invoice_number}
                                 onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                                placeholder="Auto-generated"
                             />
                         </div>
 
@@ -436,9 +552,10 @@ export default function AddExpensePage() {
                                 <TableRow>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Name</TableHead>
                                     <TableHead className="font-semibold text-gray-600 min-w-[300px]">Description</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Invoice Number</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Expense Number</TableHead>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Date</TableHead>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Expense Head</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Attachment</TableHead>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Amount ($)</TableHead>
                                     <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Action</TableHead>
                                 </TableRow>
@@ -446,13 +563,13 @@ export default function AddExpensePage() {
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-8">
+                                        <TableCell colSpan={8} className="text-center py-8">
                                             <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
                                         </TableCell>
                                     </TableRow>
                                 ) : filteredData.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-8 text-gray-500 font-medium">
+                                        <TableCell colSpan={8} className="text-center py-8 text-gray-500 font-medium">
                                             No records found.
                                         </TableCell>
                                     </TableRow>
@@ -464,9 +581,33 @@ export default function AddExpensePage() {
                                             <TableCell className="text-gray-600">{item.invoice_number}</TableCell>
                                             <TableCell className="text-gray-600">{formatDate(item.date)}</TableCell>
                                             <TableCell className="text-gray-600">{item.expense_head.expense_head}</TableCell>
+                                            <TableCell>
+                                                {item.document ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            const storageBase = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1').replace('/api/v1', '/storage');
+                                                            window.open(`${storageBase}/${item.document}`, '_blank');
+                                                        }}
+                                                        className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded p-0"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                ) : (
+                                                    <span className="text-gray-300 text-xs">—</span>
+                                                )}
+                                            </TableCell>
                                             <TableCell className="text-gray-600 text-right font-semibold">${item.amount}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-1">
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => downloadInvoicePDF(item)}
+                                                        className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                    </Button>
                                                     <Button
                                                         size="sm"
                                                         onClick={() => handleEdit(item)}

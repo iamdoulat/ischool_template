@@ -217,6 +217,22 @@ export default function GeneralSettingPage() {
         staff_id_prefix: "",
         staff_no_digit: 4,
         staff_id_start_from: "",
+        auto_roll_no: false,
+        roll_no_prefix: "",
+        roll_no_digit: 4,
+        roll_no_start_from: "",
+
+        // Income Invoice
+        income_invoice_enable_auto_generation: false,
+        income_invoice_prefix: "",
+        income_invoice_digit: 4,
+        income_invoice_start_from: "",
+
+        // Expense Invoice
+        expense_invoice_enable_auto_generation: false,
+        expense_invoice_prefix: "",
+        expense_invoice_digit: 4,
+        expense_invoice_start_from: "",
 
         // Fees
         fees_offline_bank_payment_in_student_panel: false,
@@ -1777,6 +1793,106 @@ export default function GeneralSettingPage() {
                                         <Input
                                             value={formData.roll_no_start_from}
                                             onChange={(e) => handleChange('roll_no_start_from', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-[11px]"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Income Invoice */}
+                        <div className="space-y-4 pt-4 border-t border-gray-50">
+                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">Income Invoice Auto Generation</h3>
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="flex items-center justify-between max-w-sm">
+                                    <Label className="text-[11px] font-medium text-gray-600">Auto Generate Invoice No.</Label>
+                                    <Switch
+                                        checked={formData.income_invoice_enable_auto_generation}
+                                        onCheckedChange={(checked) => handleChange('income_invoice_enable_auto_generation', checked)}
+                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Invoice No. Prefix <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.income_invoice_prefix}
+                                            onChange={(e) => handleChange('income_invoice_prefix', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-[11px]"
+                                            placeholder="INV-"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Invoice No. Digit <span className="text-red-500">*</span></Label>
+                                        <Select
+                                            value={String(formData.income_invoice_digit)}
+                                            onValueChange={(value) => handleChange('income_invoice_digit', parseInt(value))}
+                                        >
+                                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="4">4</SelectItem>
+                                                <SelectItem value="5">5</SelectItem>
+                                                <SelectItem value="6">6</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Invoice Start From <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.income_invoice_start_from}
+                                            onChange={(e) => handleChange('income_invoice_start_from', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-[11px]"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Expense Invoice */}
+                        <div className="space-y-4 pt-4 border-t border-gray-50">
+                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">Expense Invoice Auto Generation</h3>
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="flex items-center justify-between max-w-sm">
+                                    <Label className="text-[11px] font-medium text-gray-600">Auto Generate Expense No.</Label>
+                                    <Switch
+                                        checked={formData.expense_invoice_enable_auto_generation}
+                                        onCheckedChange={(checked) => handleChange('expense_invoice_enable_auto_generation', checked)}
+                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Expense No. Prefix <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.expense_invoice_prefix}
+                                            onChange={(e) => handleChange('expense_invoice_prefix', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-[11px]"
+                                            placeholder="EXP-"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Expense No. Digit <span className="text-red-500">*</span></Label>
+                                        <Select
+                                            value={String(formData.expense_invoice_digit)}
+                                            onValueChange={(value) => handleChange('expense_invoice_digit', parseInt(value))}
+                                        >
+                                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="4">4</SelectItem>
+                                                <SelectItem value="5">5</SelectItem>
+                                                <SelectItem value="6">6</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Expense Start From <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.expense_invoice_start_from}
+                                            onChange={(e) => handleChange('expense_invoice_start_from', e.target.value)}
                                             className="h-8 border-gray-200 shadow-none rounded text-[11px]"
                                         />
                                     </div>

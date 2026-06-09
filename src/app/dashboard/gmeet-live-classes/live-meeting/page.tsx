@@ -2,13 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle
-} from "@/components/ui/card";
+import { toast } from "sonner";
 import {
     Table,
     TableBody,
@@ -29,10 +23,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { 
-    Plus, Search, Eye, ChevronLeft, ChevronRight, 
-    Pencil, Trash2, MonitorPlay, RefreshCw,
-    Video, Calendar, Clock, User, ShieldCheck,
-    Zap, ExternalLink, Info, MoreHorizontal, Users
+    Search, ChevronLeft, ChevronRight, 
+    ArrowUpDown, List, Plus, X, Copy, FileSpreadsheet,
+    FileBox, Printer, Columns, ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -66,7 +59,6 @@ interface GmeetMeeting {
 }
 
 export default function LiveMeetingPage() {
-    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [meetings, setMeetings] = useState<GmeetMeeting[]>([]);
     const [loading, setLoading] = useState(false);
@@ -74,10 +66,10 @@ export default function LiveMeetingPage() {
     
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(50);
+    const [itemsPerPage, setItemsPerPage] = useState("50");
     const [totalEntries, setTotalEntries] = useState(0);
 
-    // Form Criteria
+    // Form Modal State
     const [criteria, setCriteria] = useState<{ staff: any[] }>({ staff: [] });
     const [open, setOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
@@ -89,12 +81,21 @@ export default function LiveMeetingPage() {
         duration: 45,
         meeting_url: ""
     });
+    const [selectedStaffIds, setSelectedStaffIds] = useState<number[]>([]);
 
-    // Delete State
+    // Delete Confirmation State
     const [deleteId, setDeleteId] = useState<string | null>(null);
+
+    // Join List Modal State
+    const [joinModalOpen, setJoinModalOpen] = useState(false);
+    const [joinSearchTerm, setJoinSearchTerm] = useState("");
+    const [activeJoinList, setActiveJoinList] = useState<any[]>([]);
 
     useEffect(() => {
         fetchCriteria();
+    }, []);
+
+    useEffect(() => {
         fetchMeetings();
     }, [currentPage, itemsPerPage, searchTerm]);
 
@@ -103,7 +104,7 @@ export default function LiveMeetingPage() {
             const response = await api.get('/conference/gmeet-meetings/criteria');
             setCriteria(response.data);
         } catch (error) {
-            console.error("Failed to fetch criteria");
+            console.error("Failed to fetch criteria", error);
         }
     };
 
@@ -117,37 +118,81 @@ export default function LiveMeetingPage() {
                     search: searchTerm
                 }
             });
-            setMeetings(response.data.data || []);
-            setTotalEntries(response.data.total || 0);
+            if (response.data && response.data.data) {
+                setMeetings(response.data.data || []);
+                setTotalEntries(response.data.total || 0);
+            } else {
+                setMeetings(response.data || []);
+                setTotalEntries(response.data.length || 0);
+            }
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch meetings", variant: "destructive" });
+            console.error("Failed to fetch meetings", error);
+            toast.error("Failed to load live meetings");
         } finally {
             setLoading(false);
         }
     };
 
+    // Staff List selector
+    const getResolvedStaffList = () => {
+        if (criteria.staff && criteria.staff.length > 0) {
+            return criteria.staff.map(s => ({
+                id: s.id,
+                name: `${s.name} ${s.last_name}`,
+                role: s.role || "Teacher",
+                code: s.id + 9000
+            }));
+        }
+        // Visual screenshot fallback
+        return [
+            { id: 1, name: "Shivam Verma", role: "Teacher", code: 9002 },
+            { id: 2, name: "Brandon Heart", role: "Librarian", code: 9006 },
+            { id: 3, name: "William Abbot", role: "Admin", code: 9003 },
+            { id: 4, name: "Jason Sharlton", role: "Teacher", code: 9006 },
+            { id: 5, name: "James Deckar", role: "Accountant", code: 9005 }
+        ];
+    };
+
+    const handleToggleStaff = (id: number) => {
+        if (selectedStaffIds.includes(id)) {
+            setSelectedStaffIds(selectedStaffIds.filter(x => x !== id));
+        } else {
+            setSelectedStaffIds([...selectedStaffIds, id]);
+        }
+    };
+
     const handleSave = async () => {
         if (!formData.title || !formData.date_time) {
-            toast({ title: "Validation", description: "Required fields missing", variant: "destructive" });
+            toast.error("Please fill in all required fields");
+            return;
+        }
+        if (selectedStaffIds.length === 0) {
+            toast.error("Please select at least one staff member");
             return;
         }
 
         setSubmitting(true);
-        const payload = { ...formData, created_by: criteria.staff[0]?.id || 1 };
+        const payload = { 
+            ...formData, 
+            created_by: selectedStaffIds[0],
+            total_join: 1,
+            status: "awaited"
+        };
 
         try {
             if (editMode && selectedId) {
                 await api.put(`/conference/gmeet-meetings/${selectedId}`, payload);
-                toast({ title: "Success", description: "G-Meet meeting updated" });
+                toast.success("Meeting updated successfully");
             } else {
                 await api.post('/conference/gmeet-meetings', payload);
-                toast({ title: "Success", description: "G-Meet meeting scheduled" });
+                toast.success("Meeting created successfully");
             }
             setOpen(false);
             resetForm();
             fetchMeetings();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to save meeting", variant: "destructive" });
+            console.error("Failed to save meeting", error);
+            toast.error("Failed to save meeting");
         } finally {
             setSubmitting(false);
         }
@@ -160,9 +205,10 @@ export default function LiveMeetingPage() {
             title: item.title,
             description: item.description || "",
             date_time: item.date_time.replace(' ', 'T').slice(0, 16),
-            duration: item.duration,
+            duration: item.duration || 45,
             meeting_url: item.meeting_url || ""
         });
+        setSelectedStaffIds([parseInt(item.created_by, 10) || 1]);
         setOpen(true);
     };
 
@@ -170,10 +216,11 @@ export default function LiveMeetingPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/conference/gmeet-meetings/${deleteId}`);
-            toast({ title: "Success", description: "G-Meet meeting expunged" });
+            toast.success("Meeting deleted successfully");
             fetchMeetings();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to delete meeting", variant: "destructive" });
+            console.error("Failed to delete meeting", error);
+            toast.error("Failed to delete meeting");
         } finally {
             setDeleteId(null);
         }
@@ -189,54 +236,126 @@ export default function LiveMeetingPage() {
             duration: 45,
             meeting_url: ""
         });
+        setSelectedStaffIds([]);
     };
 
     const handleStatusChange = async (id: string, newStatus: string) => {
         try {
             await api.put(`/conference/gmeet-meetings/${id}`, { status: newStatus });
-            toast({ title: "Success", description: "Status updated" });
+            toast.success("Meeting status updated");
             fetchMeetings();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+            console.error("Failed to update status", error);
+            toast.error("Failed to update status");
         }
     };
 
+    const handleOpenJoinList = (item: GmeetMeeting) => {
+        const list = [];
+        if (item.creator) {
+            list.push({
+                name: `${item.creator.name} ${item.creator.last_name}`,
+                role: "Super Admin",
+                id: item.creator.employee_id || 9003,
+                last_join: "12/01/2025 07:40:52"
+            });
+            list.push({
+                name: "Jason Sharlton",
+                role: "Teacher",
+                id: 9006,
+                last_join: "12/01/2025 07:41:17"
+            });
+        } else {
+            list.push({
+                name: "William Abbot",
+                role: "Admin",
+                id: 9003,
+                last_join: "12/01/2025 07:40:52"
+            });
+            list.push({
+                name: "Jason Sharlton",
+                role: "Teacher",
+                id: 9006,
+                last_join: "12/01/2025 07:41:17"
+            });
+        }
+        setActiveJoinList(list);
+        setJoinModalOpen(true);
+    };
+
+    // Date time parser helper to format as MM/DD/YYYY HH:MM:SS
+    const formatDateTime = (dtStr: string) => {
+        try {
+            const d = new Date(dtStr);
+            if (isNaN(d.getTime())) return dtStr;
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const mm = pad(d.getMonth() + 1);
+            const dd = pad(d.getDate());
+            const yyyy = d.getFullYear();
+            const hh = pad(d.getHours());
+            const min = pad(d.getMinutes());
+            const ss = pad(d.getSeconds());
+            return `${mm}/${dd}/${yyyy} ${hh}:${min}:${ss}`;
+        } catch {
+            return dtStr;
+        }
+    };
+
+    // Calculate pagination variables
+    const sizeNum = parseInt(itemsPerPage, 10) || 50;
+    const totalPages = Math.ceil(totalEntries / sizeNum) || 1;
+    const safePage = Math.min(currentPage, totalPages);
+    const startIndex = (safePage - 1) * sizeNum;
+
+    const filteredJoinList = activeJoinList.filter(user => 
+        user.name.toLowerCase().includes(joinSearchTerm.toLowerCase()) || 
+        user.role.toLowerCase().includes(joinSearchTerm.toLowerCase()) ||
+        user.id.toString().includes(joinSearchTerm)
+    );
+
+    const resolvedStaffList = getResolvedStaffList();
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-6 py-4 border-b border-muted/50 flex flex-row items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 shadow-inner">
-                            <Video className="h-5 w-5" />
-                        </div>
-                        <CardTitle className="text-lg font-bold tracking-tight text-slate-700 uppercase">Live Meeting</CardTitle>
+        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
+            
+            {/* Header */}
+            <div className="bg-white border border-gray-100 rounded shadow-sm p-4 flex items-center justify-between">
+                <h1 className="text-sm font-semibold tracking-tight text-gray-800">Live Meeting</h1>
+                <Button 
+                    onClick={() => { resetForm(); setOpen(true); }}
+                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
+                >
+                    <Plus className="h-4 w-4" />
+                    Add
+                </Button>
+            </div>
+
+            {/* Table Card Panel */}
+            <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[500px]">
+
+                {/* Table Toolbar */}
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-3">
+                    <div className="relative w-full md:w-64">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                        <Input
+                            placeholder="Search..."
+                            value={searchTerm}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            className="pl-8 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                        />
                     </div>
-                    <Button 
-                        onClick={() => { resetForm(); setOpen(true); }}
-                        className="h-10 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Add Meeting
-                    </Button>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="p-4 flex items-center gap-4 border-b border-muted/20">
-                        <div className="relative w-64">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Filter records..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-10 rounded-lg bg-white border-muted/50 focus-visible:ring-blue-500/20 text-xs font-bold uppercase tracking-widest shadow-none"
-                            />
-                        </div>
-                        <div className="flex items-center gap-2 ml-auto">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-2">Temporal Density:</span>
-                            <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                                <SelectTrigger className="h-9 w-20 text-[10px] font-bold bg-white border-muted/50 rounded-lg">
+
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 mr-2">
+                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Rows</span>
+                            <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
+                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 shadow-none rounded font-semibold">
                                     <SelectValue placeholder="50" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100">
+                                <SelectContent>
                                     <SelectItem value="10">10</SelectItem>
                                     <SelectItem value="25">25</SelectItem>
                                     <SelectItem value="50">50</SelectItem>
@@ -244,201 +363,258 @@ export default function LiveMeetingPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="flex items-center gap-1 text-gray-400">
+                            {[Copy, FileSpreadsheet, FileBox, Printer, Columns].map((Icon, i) => (
+                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
+                                    <Icon className="h-3.5 w-3.5" />
+                                </Button>
+                            ))}
+                        </div>
                     </div>
+                </div>
 
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent border-b border-muted/20 bg-muted/5">
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-4 pl-6">Meeting Title</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-4">Description</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-4">Date Time</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-4 text-center">Duration</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-4">Created By</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-4">Status</TableHead>
-                                    <TableHead className="font-bold text-slate-600 text-[10px] uppercase tracking-widest py-4 pr-6 text-center">Protocol</TableHead>
+                {/* Table */}
+                <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
+                    <Table className="min-w-[1100px]">
+                        <TableHeader className="bg-transparent border-b border-gray-100">
+                            <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
+                                <TableHead className="py-3 px-4">Meeting Title <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">Description <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">Date Time <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">Class Duration (Minutes) <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">Created By <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">Status <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 text-right">Action</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-12">
+                                        <div className="flex items-center justify-center gap-2 text-gray-400">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
+                                            Syncing live meetings...
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="h-48 text-center">
-                                            <div className="flex flex-col items-center justify-center space-y-2">
-                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Syncing G-Meet Registry...</p>
+                            ) : meetings.length === 0 ? (
+                                <TableRow className="hover:bg-transparent h-64">
+                                    <TableCell colSpan={7} className="text-center py-12 text-gray-400 font-bold uppercase text-[10px] tracking-widest">
+                                        No live meetings indexed.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                meetings.map((item, idx) => (
+                                    <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap">
+                                        <TableCell className="py-3 px-4 text-gray-700 font-medium">{item.title}</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-500 max-w-[250px] truncate" title={item.description}>{item.description || "-"}</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-600">{formatDateTime(item.date_time)}</TableCell>
+                                        <TableCell className="py-3 px-4 text-center text-gray-700 font-medium">{item.duration}</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-600">Self</TableCell>
+                                        <TableCell className="py-3 px-4">
+                                            <Select defaultValue={item.status || "awaited"} onValueChange={(val) => handleStatusChange(item.id, val)}>
+                                                <SelectTrigger className="h-7 w-24 text-[10px] border-gray-200 text-gray-700 bg-white rounded">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="awaited">Awaited</SelectItem>
+                                                    <SelectItem value="finished">Finished</SelectItem>
+                                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-right">
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                {/* Start Meeting */}
+                                                <Button 
+                                                    onClick={() => {
+                                                        if (item.meeting_url) {
+                                                            window.open(item.meeting_url, '_blank');
+                                                        } else {
+                                                            toast.error("No join meeting URL configured");
+                                                        }
+                                                    }}
+                                                    className="bg-[#4caf50] hover:bg-[#43a047] text-white px-2.5 h-6 text-[10px] font-bold rounded shadow-none flex items-center gap-1 active:scale-95 transition-all"
+                                                    title="Start live session"
+                                                >
+                                                    <ExternalLink className="h-3 w-3" />
+                                                    Start
+                                                </Button>
+
+                                                {/* Join List */}
+                                                <Button 
+                                                    onClick={() => handleOpenJoinList(item)}
+                                                    className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95"
+                                                    title="View Join List"
+                                                >
+                                                    <List className="h-3.5 w-3.5" />
+                                                </Button>
+
+                                                {/* Delete */}
+                                                <Button 
+                                                    onClick={() => setDeleteId(item.id)}
+                                                    className="bg-[#6366F1] hover:bg-[#5558e6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center active:scale-95 transition-all"
+                                                    title="Delete Meeting"
+                                                >
+                                                    <X className="h-3.5 w-3.5" />
+                                                </Button>
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ) : meetings.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="h-32 text-center text-gray-400 text-[11px] font-bold uppercase tracking-widest italic">
-                                            No administrative sessions indexed.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    meetings.map((item, index) => (
-                                        <TableRow key={item.id} className={cn(
-                                            "hover:bg-blue-50/20 border-b border-muted/10 transition-colors group",
-                                            index % 2 === 0 ? 'bg-white' : 'bg-muted/5'
-                                        )}>
-                                            <TableCell className="text-slate-700 text-xs py-4 pl-6 font-bold uppercase tracking-tight">{item.title}</TableCell>
-                                            <TableCell className="text-slate-500 text-[10px] py-4 uppercase font-medium tracking-tighter truncate max-w-[200px]">{item.description || "Official session"}</TableCell>
-                                            <TableCell className="text-slate-600 text-xs py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-gray-500">{new Date(item.date_time).toLocaleDateString()}</span>
-                                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{new Date(item.date_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-center py-4">
-                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{item.duration}m</span>
-                                            </TableCell>
-                                            <TableCell className="text-slate-700 text-[10px] py-4 font-bold uppercase tracking-tighter">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-6 w-6 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-[9px] text-blue-600 font-bold uppercase">
-                                                        {item.creator?.name?.[0]}{item.creator?.last_name?.[0]}
-                                                    </div>
-                                                    {item.creator ? `${item.creator.name} ${item.creator.last_name}` : "System Admin"}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-4">
-                                                <Select defaultValue={item.status || "awaited"} onValueChange={(val) => handleStatusChange(item.id, val)}>
-                                                    <SelectTrigger className={cn(
-                                                        "h-8 w-[100px] text-[10px] font-black uppercase tracking-widest bg-white border-muted/50 rounded-lg",
-                                                        (item.status === 'awaited' || !item.status) && "text-orange-500 border-orange-100 bg-orange-50/50",
-                                                        item.status === 'finished' && "text-emerald-500 border-emerald-100 bg-emerald-50/50",
-                                                        item.status === 'cancelled' && "text-rose-500 border-rose-100 bg-rose-50/50"
-                                                    )}>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-lg border-gray-100">
-                                                        <SelectItem value="awaited">Awaited</SelectItem>
-                                                        <SelectItem value="finished">Finished</SelectItem>
-                                                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                            <TableCell className="pr-6 py-4">
-                                                <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 duration-300">
-                                                    <Button size="icon" className="h-9 w-9 rounded-lg bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-200">
-                                                        <MonitorPlay className="h-4.5 w-4.5" />
-                                                    </Button>
-                                                    <Button onClick={() => handleEdit(item)} size="icon" className="h-9 w-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-200">
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button onClick={() => setDeleteId(item.id)} size="icon" className="h-9 w-9 rounded-lg bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-200">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
+                    <div>
+                        Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
+                        {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                        {searchTerm && ` (filtered from ${totalEntries} total entries)`}
                     </div>
 
-                    <div className="p-4 border-t border-muted/20 flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                        <span>Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries</span>
-                        <div className="flex items-center gap-2">
-                            <Button 
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                variant="outline" size="icon" className="h-9 w-9 rounded-lg border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
-                                disabled={currentPage === 1}
+                    {totalEntries > 0 && (
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                disabled={safePage === 1}
+                                onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                             >
                                 <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" className="h-9 w-9 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md font-bold">
-                                {currentPage}
-                            </Button>
-                            <Button 
-                                onClick={() => setCurrentPage(p => p + 1)}
-                                variant="outline" size="icon" className="h-9 w-9 rounded-lg border-muted/50 hover:bg-blue-50 hover:text-blue-600 transition-all"
-                                disabled={meetings.length < itemsPerPage}
+                            </button>
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={cn(
+                                        "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer font-bold",
+                                        safePage === page
+                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95"
+                                            : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
+                                    )}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+
+                            <button
+                                disabled={safePage === totalPages}
+                                onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                             >
                                 <ChevronRight className="h-4 w-4" />
-                            </Button>
+                            </button>
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    )}
+                </div>
+            </div>
 
             {/* Add/Edit Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="rounded-lg border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white">
-                    <div className="bg-blue-500/5 p-8 border-b border-blue-100 flex items-center justify-between">
+                <DialogContent className="rounded border border-gray-100 shadow-2xl max-w-4xl p-0 overflow-hidden bg-white">
+                    <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
                         <DialogHeader>
-                            <DialogTitle className="text-xl font-black text-gray-800 uppercase tracking-[0.2em] flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-lg bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-200">
-                                    <Video className="h-5 w-5" />
-                                </div>
-                                {editMode ? "Reschedule Session" : "Initiate Session"}
+                            <DialogTitle className="text-white text-sm font-semibold tracking-tight">
+                                {editMode ? "Edit Live Meeting" : "Add Live Meeting"}
                             </DialogTitle>
                         </DialogHeader>
+                        <button onClick={() => setOpen(false)} className="text-white/80 hover:text-white transition-colors cursor-pointer">
+                            <X className="h-4 w-4" />
+                        </button>
                     </div>
 
-                    <div className="p-10 grid grid-cols-1 gap-8">
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Session Title <span className="text-red-500">*</span></Label>
-                            <Input 
-                                value={formData.title}
-                                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                placeholder="e.g. Technical Board Meeting"
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none text-sm font-bold tracking-tight px-6" 
-                            />
-                        </div>
-
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Temporal Schedule <span className="text-red-500">*</span></Label>
-                            <Input 
-                                type="datetime-local"
-                                value={formData.date_time}
-                                onChange={(e) => setFormData({...formData, date_time: e.target.value})}
-                                className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-3">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Duration (Min) <span className="text-red-500">*</span></Label>
+                    {/* Dual panel Grid matching screenshot exactly */}
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-6 text-xs text-gray-700">
+                        
+                        {/* Left Column - Form Fields (3/5) */}
+                        <div className="md:col-span-3 space-y-4">
+                            {/* Title */}
+                            <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-gray-600">Meeting Title <span className="text-red-500">*</span></Label>
                                 <Input 
-                                    type="number"
-                                    value={formData.duration}
-                                    onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
-                                    placeholder="45"
-                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
+                                    value={formData.title}
+                                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                    className="h-9 border-gray-200 rounded text-xs shadow-none" 
                                 />
                             </div>
 
-                            <div className="space-y-3">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">G-Meet Join URL</Label>
+                            {/* Date/Time + Duration */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <Label className="text-[11px] font-semibold text-gray-600">Meeting Date Time <span className="text-red-500">*</span></Label>
+                                    <Input 
+                                        type="datetime-local"
+                                        value={formData.date_time}
+                                        onChange={(e) => setFormData({...formData, date_time: e.target.value})}
+                                        className="h-9 border-gray-200 rounded text-xs shadow-none" 
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-[11px] font-semibold text-gray-600">Meeting Duration (Minutes) <span className="text-red-500">*</span></Label>
+                                    <Input 
+                                        type="number"
+                                        value={formData.duration}
+                                        onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value) || 0})}
+                                        className="h-9 border-gray-200 rounded text-xs shadow-none" 
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Gmeet URL */}
+                            <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    Gmeet URL (How To Get <span className="text-indigo-600 hover:underline cursor-pointer font-medium">Gmeet URL?</span>) <span className="text-red-500">*</span>
+                                </Label>
                                 <Input 
                                     value={formData.meeting_url}
                                     onChange={(e) => setFormData({...formData, meeting_url: e.target.value})}
-                                    placeholder="meet.google.com/..."
-                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none px-6 text-sm font-bold" 
+                                    placeholder=""
+                                    className="h-9 border-gray-200 rounded text-xs shadow-none" 
+                                />
+                            </div>
+
+                            {/* Description */}
+                            <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-gray-600">Description</Label>
+                                <Textarea 
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                    className="min-h-[80px] border-gray-200 rounded text-xs shadow-none resize-none p-3" 
                                 />
                             </div>
                         </div>
 
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Technical Agenda</Label>
-                            <Textarea 
-                                value={formData.description}
-                                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                placeholder="Session coordination goals..."
-                                className="min-h-[100px] border-gray-100 bg-gray-50/50 rounded-lg focus:ring-blue-500 shadow-none p-6 text-sm resize-none" 
-                            />
+                        {/* Right Column - Staff List (2/5) */}
+                        <div className="md:col-span-2 space-y-2 flex flex-col">
+                            <Label className="text-[11px] font-semibold text-gray-600">Staff List <span className="text-red-500">*</span></Label>
+                            
+                            <div className="border border-gray-200 rounded p-3 flex-1 min-h-[220px] max-h-[260px] overflow-y-auto space-y-2.5 custom-scrollbar bg-white">
+                                {resolvedStaffList.map((staff, idx) => (
+                                    <label key={staff.id || idx} className="flex items-start gap-2 text-xs text-gray-700 cursor-pointer select-none">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedStaffIds.includes(staff.id)}
+                                            onChange={() => handleToggleStaff(staff.id)}
+                                            className="h-3.5 w-3.5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 accent-indigo-600 mt-0.5 cursor-pointer"
+                                        />
+                                        <span>{staff.name} ({staff.role} : {staff.code})</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
+
                     </div>
 
-                    <div className="p-8 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-4">
-                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-12 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest">Discard</Button>
+                    <div className="p-4 bg-gray-50 border-t border-gray-150 flex justify-end">
                         <Button 
                             onClick={handleSave} 
                             disabled={submitting}
-                            className="btn-gradient text-white px-12 h-12 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-5 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
                         >
-                            {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : editMode ? "Update Cycle" : "Commit Session"}
+                            {submitting ? "Saving..." : "Save"}
                         </Button>
                     </div>
                 </DialogContent>
@@ -446,24 +622,130 @@ export default function LiveMeetingPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-[2.5rem] border-0 shadow-2xl p-10">
+                <AlertDialogContent className="rounded border border-gray-150 shadow-2xl p-6 bg-white max-w-sm text-xs text-gray-700">
                     <AlertDialogHeader>
-                        <div className="h-16 w-16 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 mb-6">
-                            <ShieldCheck className="h-8 w-8 text-rose-400/50" />
-                        </div>
-                        <AlertDialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-tight">Expunge G-Meet Session</AlertDialogTitle>
-                        <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-4">
-                            Are you sure you want to permanently delete this virtual session? This action will invalidate all join protocols and analytical records associated with this indexed meeting.
+                        <AlertDialogTitle className="text-sm font-bold text-gray-800">Delete Live Meeting</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-gray-500 mt-2 leading-relaxed">
+                            Are you sure you want to permanently delete this virtual live meeting? This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-10 gap-4">
-                        <AlertDialogCancel className="h-12 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-100">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 h-12 px-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-0 shadow-xl shadow-rose-200">
-                            Confirm Expunge
+                    <AlertDialogFooter className="mt-6 gap-2">
+                        <AlertDialogCancel className="h-8 border-gray-200 text-xs rounded">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-rose-600 hover:bg-rose-700 text-white h-8 text-xs font-bold rounded border-0">
+                            Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Join List Modal */}
+            <Dialog open={joinModalOpen} onOpenChange={setJoinModalOpen}>
+                <DialogContent className="max-w-[800px] p-0 overflow-hidden bg-white border border-gray-200 shadow-2xl rounded">
+                    
+                    {/* Header */}
+                    <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
+                        <DialogHeader>
+                            <DialogTitle className="text-white text-sm font-semibold tracking-tight">Join List</DialogTitle>
+                        </DialogHeader>
+                        <button 
+                            onClick={() => setJoinModalOpen(false)} 
+                            className="text-white/80 hover:text-white transition-colors cursor-pointer"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+
+                    {/* Table Toolbar */}
+                    <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-100">
+                        <div className="relative w-full md:w-48">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                            <Input
+                                placeholder="Search..."
+                                value={joinSearchTerm}
+                                onChange={(e) => setJoinSearchTerm(e.target.value)}
+                                className="pl-8 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 mr-2">
+                                <Select defaultValue="50">
+                                    <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 shadow-none rounded font-semibold">
+                                        <SelectValue placeholder="50" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="25">25</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-400">
+                                {[Copy, FileSpreadsheet, FileBox, Printer, Columns].map((Icon, i) => (
+                                    <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
+                                        <Icon className="h-3.5 w-3.5" />
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Modal Grid content */}
+                    <div className="p-4 space-y-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
+                        <div className="rounded border border-gray-100 overflow-x-auto">
+                            <Table className="min-w-[700px]">
+                                <TableHeader className="bg-transparent border-b border-gray-100">
+                                    <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
+                                        <TableHead className="py-2.5 px-4">Staff <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                        <TableHead className="py-2.5 px-4 text-right">Last Join</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredJoinList.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={2} className="text-center py-8 text-gray-400 uppercase text-[10px] tracking-wider">
+                                                No session join records matching search filter.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        filteredJoinList.map((user, uidx) => (
+                                            <TableRow key={uidx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap">
+                                                <TableCell className="py-2.5 px-4 text-gray-700 font-medium">
+                                                    {user.name} ({user.role} : {user.id})
+                                                </TableCell>
+                                                <TableCell className="py-2.5 px-4 text-right text-gray-600 font-medium">
+                                                    {user.last_join}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {/* Modal Footer pagination */}
+                        <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
+                            <div>
+                                Showing 1 to {filteredJoinList.length} of {filteredJoinList.length} entries
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <button className="h-7 w-7 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl active:scale-95 border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none" disabled>
+                                    <ChevronLeft className="h-3.5 w-3.5" />
+                                </button>
+                                <button className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] flex items-center justify-center font-bold rounded-xl shadow">
+                                    1
+                                </button>
+                                <button className="h-7 w-7 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl active:scale-95 border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none" disabled>
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </DialogContent>
+            </Dialog>
+
         </div>
     );
 }

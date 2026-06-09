@@ -8,7 +8,7 @@ import {
     FileText,
     FileCode,
     Printer,
-    Eye,
+
     Pencil,
     Trash2,
     LayoutGrid,
@@ -42,13 +42,23 @@ interface FeeGroup {
     id: number;
     name: string;
     description: string | null;
+    school_class_id: string | null;
 }
 
 export default function FeesGroupPage() {
     const { toast } = useToast();
     const [feesGroups, setFeesGroups] = useState<FeeGroup[]>([]);
+    const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
+
+    // Pagination states
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
     // Selection state
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -64,6 +74,7 @@ export default function FeesGroupPage() {
     const [formData, setFormData] = useState<Partial<FeeGroup>>({
         name: "",
         description: "",
+        school_class_id: "",
     });
 
     const fetchFeesGroups = useCallback(async () => {
@@ -83,8 +94,18 @@ export default function FeesGroupPage() {
         }
     }, [searchQuery, toast]);
 
+    const fetchClasses = async () => {
+        try {
+            const res = await api.get("/academics/classes?no_paginate=true");
+            setClasses(res.data.data || []);
+        } catch (error) {
+            console.error("Failed to fetch classes", error);
+        }
+    };
+
     useEffect(() => {
         fetchFeesGroups();
+        fetchClasses();
     }, [fetchFeesGroups]);
 
     const handleSave = async (e: React.FormEvent) => {
@@ -137,6 +158,7 @@ export default function FeesGroupPage() {
         setFormData({
             name: "",
             description: "",
+            school_class_id: "",
         });
         setIsEdit(false);
         setEditId(null);
@@ -148,6 +170,7 @@ export default function FeesGroupPage() {
         setFormData({
             name: group.name,
             description: group.description || "",
+            school_class_id: group.school_class_id?.toString() || "",
         });
     };
 
@@ -166,6 +189,9 @@ export default function FeesGroupPage() {
             setSelectedIds([...selectedIds, id]);
         }
     };
+
+    const totalPages = Math.ceil(feesGroups.length / pageSize);
+    const paginatedGroups = feesGroups.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const handleCopy = () => {
         const text = feesGroups.map(g => `${g.name}\t${g.description || ""}`).join("\n");
@@ -268,6 +294,23 @@ export default function FeesGroupPage() {
                                 />
                             </div>
 
+                            {/* Class Assignment */}
+                            <div className="space-y-2 group">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
+                                    Assign to Class <span className="text-muted-foreground/50 font-normal normal-case tracking-normal">(optional — leave blank for all classes)</span>
+                                </label>
+                                <select
+                                    value={formData.school_class_id || ""}
+                                    onChange={(e) => setFormData({ ...formData, school_class_id: e.target.value || "" })}
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
+                                >
+                                    <option value="">All Classes</option>
+                                    {classes.map((c) => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <div className="pt-4 flex justify-end gap-2">
                                 {isEdit && (
                                     <Button type="button" variant="outline" className="h-11 px-6 rounded-lg font-bold" onClick={resetForm}>
@@ -309,6 +352,20 @@ export default function FeesGroupPage() {
                             </div>
 
                             <div className="flex items-center gap-2">
+                                <select 
+                                    value={pageSize === Number.MAX_SAFE_INTEGER ? "All" : pageSize}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setPageSize(val === "All" ? Number.MAX_SAFE_INTEGER : Number(val));
+                                        setCurrentPage(1);
+                                    }}
+                                    className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium text-muted-foreground"
+                                >
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="All">All</option>
+                                </select>
+                                <div className="h-8 w-px bg-muted/50 mx-2" />
                                 <div className="flex gap-1">
                                     <IconButton icon={CopyIcon} onClick={handleCopy} title="Copy" />
                                     <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} title="Excel" />
@@ -316,12 +373,6 @@ export default function FeesGroupPage() {
                                     <IconButton icon={FileCode} onClick={handleExportPDF} title="PDF" />
                                     <IconButton icon={Printer} onClick={handlePrint} title="Print" />
                                 </div>
-                                <div className="h-8 w-px bg-muted/50 mx-2" />
-                                <select className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
-                                    <option>50</option>
-                                    <option>100</option>
-                                    <option>All</option>
-                                </select>
                             </div>
                         </div>
 
@@ -343,6 +394,9 @@ export default function FeesGroupPage() {
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
                                                 Description
                                             </th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
+                                                Class
+                                            </th>
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap text-right">
                                                 <div className="flex justify-end pr-1 text-slate-700">
                                                     {selectedIds.length > 0 ? (
@@ -363,14 +417,14 @@ export default function FeesGroupPage() {
                                     <tbody className="divide-y divide-muted/50">
                                         {loading ? (
                                             <tr>
-                                                <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground font-medium">Loading fees groups...</td>
+                                                <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground font-medium">Loading fees groups...</td>
                                             </tr>
                                         ) : feesGroups.length === 0 ? (
                                             <tr>
-                                                <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground font-medium">No fees groups found</td>
+                                                <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground font-medium">No fees groups found</td>
                                             </tr>
                                         ) : (
-                                            feesGroups.map((group) => (
+                                            paginatedGroups.map((group) => (
                                                 <tr key={group.id} className={cn(
                                                     "hover:bg-muted/20 transition-colors group/row",
                                                     selectedIds.includes(group.id) && "bg-muted/30"
@@ -392,15 +446,14 @@ export default function FeesGroupPage() {
                                                     <td className="px-6 py-4 text-xs font-medium text-muted-foreground italic">
                                                         {group.description || "—"}
                                                     </td>
+                                                    <td className="px-6 py-4 text-xs font-bold text-muted-foreground">
+                                                        {group.school_class_id
+                                                            ? classes.find(c => c.id.toString() === group.school_class_id?.toString())?.name || "—"
+                                                            : <span className="text-primary/60 italic font-normal">All Classes</span>}
+                                                    </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center justify-end gap-1.5 pr-2">
-                                                            <Button
-                                                                size="icon"
-                                                                onClick={() => { /* View logic */ }}
-                                                                className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all font-bold"
-                                                            >
-                                                                <Eye className="h-3.5 w-3.5" />
-                                                            </Button>
+
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => startEdit(group)}
@@ -425,20 +478,36 @@ export default function FeesGroupPage() {
                             </div>
                         </div>
 
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
-                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                Showing {feesGroups.length > 0 ? 1 : 0} to {feesGroups.length} of {feesGroups.length} entries
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                    <ChevronDown className="h-4 w-4 rotate-90" />
-                                </Button>
-                                <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]">1</Button>
-                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                    <ChevronDown className="h-4 w-4 -rotate-90" />
-                                </Button>
+                        {feesGroups.length > 0 && (
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
+                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                                    Showing {Math.min((currentPage - 1) * pageSize + 1, feesGroups.length)} to {Math.min(currentPage * pageSize, feesGroups.length)} of {feesGroups.length} entries
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        disabled={currentPage === 1}
+                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                    >
+                                        <ChevronDown className="h-4 w-4 rotate-90" />
+                                    </Button>
+                                    <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#6366F1]">
+                                        {currentPage}
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        disabled={currentPage >= totalPages}
+                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                    >
+                                        <ChevronDown className="h-4 w-4 -rotate-90" />
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </Card>
             </div>

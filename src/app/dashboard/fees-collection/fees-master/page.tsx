@@ -8,7 +8,7 @@ import {
     FileText,
     FileCode,
     Printer,
-    Eye,
+
     Pencil,
     Trash2,
     ChevronDown,
@@ -24,6 +24,7 @@ import { cn, formatDate } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -78,6 +79,7 @@ export default function FeesMasterPage() {
     const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
+    const { symbol, formatCurrency } = useCurrencyFormatter();
 
     // Form and Editing state
     const [isEdit, setIsEdit] = useState(false);
@@ -363,10 +365,10 @@ export default function FeesMasterPage() {
                             {/* Amount */}
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Amount ($) <span className="text-destructive font-black">*</span>
+                                    Amount ({symbol}) <span className="text-destructive font-black">*</span>
                                 </label>
                                 <Input
-                                    placeholder="0.00"
+                                    placeholder={`0.00 (${symbol})`}
                                     required
                                     className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     value={formData.amount || ""}
@@ -471,7 +473,7 @@ export default function FeesMasterPage() {
                                                                             value={tier.fine_amount}
                                                                             onChange={(e) => updateFineTier(idx, 'fine_amount', e.target.value)}
                                                                             className="h-8 rounded-md bg-transparent border-muted/30 focus-visible:bg-white transition-all text-[11px]"
-                                                                            placeholder="$ 0.00"
+                                                                            placeholder={`${symbol} 0.00`}
                                                                         />
                                                                     </td>
                                                                     <td className="p-1 text-center">
@@ -506,7 +508,7 @@ export default function FeesMasterPage() {
                                             </div>
                                             <div className="space-y-2 group">
                                                 <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                                    Fix Amount ($)
+                                                    Fix Amount ({symbol})
                                                 </label>
                                                 <Input
                                                     placeholder="0.00"
@@ -562,18 +564,18 @@ export default function FeesMasterPage() {
                             </div>
 
                             <div className="flex items-center gap-2">
+                                <select className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
+                                    <option>50</option>
+                                    <option>100</option>
+                                    <option>All</option>
+                                </select>
+                                <div className="h-8 w-px bg-muted/50 mx-2" />
                                 <div className="flex gap-1">
                                     <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} title="Excel" />
                                     <IconButton icon={FileText} onClick={handleExportCSV} title="CSV" />
                                     <IconButton icon={FileCode} onClick={handleExportPDF} title="PDF" />
                                     <IconButton icon={Printer} onClick={handlePrint} title="Print" />
                                 </div>
-                                <div className="h-8 w-px bg-muted/50 mx-2" />
-                                <select className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
-                                    <option>50</option>
-                                    <option>100</option>
-                                    <option>All</option>
-                                </select>
                             </div>
                         </div>
 
@@ -612,10 +614,10 @@ export default function FeesMasterPage() {
                                                                 </div>
                                                             </td>
                                                         )}
-                                                        <td className="px-4 py-4 text-xs font-medium text-muted-foreground">
-                                                            {item.fee_type?.name} ({item.fee_type?.code})
+                                                        <td className="px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                                            {item.fee_type?.code}
                                                         </td>
-                                                        <td className="px-4 py-4 text-sm font-black text-foreground text-center">${item.amount}</td>
+                                                        <td className="px-4 py-4 text-sm font-black text-foreground text-center">{formatCurrency(parseFloat(item.amount))}</td>
                                                         <td className="px-4 py-4 text-center">
                                                             <span className={cn(
                                                                 "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm",
@@ -640,7 +642,7 @@ export default function FeesMasterPage() {
                                                                         <div className="flex flex-col gap-0.5">
                                                                             {(item.fine_tiers || []).map((t, idx) => (
                                                                                 <span key={idx} className="block whitespace-nowrap">
-                                                                                    {t.total_overdue} days: {t.fine_amount}
+                                                                                    {t.total_overdue} days: {formatCurrency(parseFloat(t.fine_amount || '0'))}
                                                                                 </span>
                                                                             ))}
                                                                         </div>
@@ -648,13 +650,7 @@ export default function FeesMasterPage() {
                                                         </td>
                                                         <td className="px-4 py-4">
                                                             <div className="flex items-center justify-center gap-1.5 transition-transform">
-                                                                <Button
-                                                                    size="icon"
-                                                                    onClick={() => { /* View logic could go here */ }}
-                                                                    className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all"
-                                                                >
-                                                                    <Eye className="h-3.5 w-3.5" />
-                                                                </Button>
+
                                                                 <Button
                                                                     size="icon"
                                                                     onClick={() => startEdit(item)}

@@ -42,6 +42,13 @@ const formatDate = (dateString?: string | null) => {
     return isNaN(date.getTime()) ? dateString : date.toLocaleDateString('en-GB');
 };
 
+const getAvatarUrl = (avatarPath?: string | null) => {
+    if (!avatarPath) return undefined;
+    if (avatarPath.startsWith('http')) return avatarPath;
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/api\/v1\/?$/, '');
+    return `${baseUrl}/storage/${avatarPath}`;
+};
+
 interface OnlineAdmission {
     id: string;
     reference_no: string;
@@ -470,7 +477,7 @@ export default function OnlineAdmissionPage() {
                                 <div className="w-40 h-40 rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center overflow-hidden shadow-lg">
                                     {selectedAdmission.student_photo ? (
                                         <img 
-                                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${selectedAdmission.student_photo}`} 
+                                            src={getAvatarUrl(selectedAdmission.student_photo)} 
                                             alt="Student" 
                                             className="w-full h-full object-cover"
                                         />

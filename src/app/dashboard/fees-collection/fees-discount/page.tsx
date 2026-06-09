@@ -9,7 +9,6 @@ import {
     Printer,
     Pencil,
     Trash2,
-    Tag,
     LayoutGrid,
     BadgePercent,
     ChevronDown,
@@ -25,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -47,6 +47,16 @@ export default function FeesDiscountPage() {
     const [saving, setSaving] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const { toast } = useToast();
+    const { symbol, formatCurrency } = useCurrencyFormatter();
+
+    // Search and Pagination states
+    const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
     const [formData, setFormData] = useState<Discount>({
         name: "",
@@ -144,11 +154,19 @@ export default function FeesDiscountPage() {
         }
     };
 
-    const exportData = discounts.map(d => ({
+    const filteredDiscounts = discounts.filter(d => 
+        d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.code.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const totalPages = Math.ceil(filteredDiscounts.length / pageSize);
+    const paginatedDiscounts = filteredDiscounts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+    const exportData = filteredDiscounts.map(d => ({
         Name: d.name,
         'Discount Code': d.code,
         Percentage: d.type === 'percentage' ? `${d.percentage}%` : '-',
-        Amount: d.type === 'fix' ? `$${d.amount?.toFixed(2)}` : '-',
+        Amount: d.type === 'fix' ? formatCurrency(d.amount || 0) : '-',
         'Use Count': d.use_count,
         'Expiry Date': d.expiry_date ? new Date(d.expiry_date).toLocaleDateString() : '-',
         Description: d.description || '-'
@@ -180,11 +198,11 @@ export default function FeesDiscountPage() {
         doc.text("Fees Discount List", 14, 15);
         autoTable(doc, {
             head: [['Name', 'Discount Code', 'Percentage', 'Amount', 'Use Count', 'Expiry Date']],
-            body: discounts.map(d => [
-                d.name, 
-                d.code, 
+            body: filteredDiscounts.map(d => [
+                d.name,
+                d.code,
                 d.type === 'percentage' ? `${d.percentage}%` : '-',
-                d.type === 'fix' ? `$${d.amount?.toFixed(2)}` : '-',
+                d.type === 'fix' ? formatCurrency(d.amount || 0) : '-',
                 d.use_count.toString(),
                 d.expiry_date ? new Date(d.expiry_date).toLocaleDateString() : '-'
             ]),
@@ -232,7 +250,7 @@ export default function FeesDiscountPage() {
                                     onChange={handleInputChange}
                                     placeholder="Enter discount name"
                                     required
-                                    className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                 />
                             </div>
 
@@ -247,7 +265,7 @@ export default function FeesDiscountPage() {
                                     onChange={handleInputChange}
                                     placeholder="Enter discount code"
                                     required
-                                    className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                 />
                             </div>
 
@@ -300,22 +318,22 @@ export default function FeesDiscountPage() {
                                             onChange={handleInputChange}
                                             placeholder="0"
                                             required
-                                            className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                            className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                         />
                                     </div>
                                 ) : (
                                     <div className="space-y-2 group col-span-2">
                                         <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                            Amount ($) <span className="text-destructive font-black">*</span>
+                                            Amount ({symbol}) <span className="text-destructive font-black">*</span>
                                         </label>
                                         <Input
                                             name="amount"
                                             type="number"
                                             value={formData.amount || ""}
                                             onChange={handleInputChange}
-                                            placeholder="0.00"
+                                            placeholder={`0.00 (${symbol})`}
                                             required
-                                            className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                            className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                         />
                                     </div>
                                 )}
@@ -334,7 +352,7 @@ export default function FeesDiscountPage() {
                                         onChange={handleInputChange}
                                         placeholder="0"
                                         required
-                                        className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                        className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     />
                                 </div>
                                 <div className="space-y-2 group">
@@ -346,7 +364,7 @@ export default function FeesDiscountPage() {
                                         type="date"
                                         value={formData.expiry_date || ""}
                                         onChange={handleInputChange}
-                                        className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                        className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     />
                                 </div>
                             </div>
@@ -365,13 +383,19 @@ export default function FeesDiscountPage() {
                                 />
                             </div>
 
-                            <div className="pt-2">
+                            <div className="pt-4 flex justify-end gap-2">
+                                {editingId && (
+                                    <Button type="button" variant="outline" className="h-10 px-6 rounded-lg font-bold text-xs active:scale-95 transition-all" onClick={resetForm}>
+                                        Cancel
+                                    </Button>
+                                )}
                                 <Button 
                                     type="submit"
+                                    variant="gradient"
                                     disabled={saving}
-                                    className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    className="h-10 px-8 rounded-lg font-bold text-xs tracking-tight shadow-lg shadow-primary/25 active:scale-95 transition-all flex items-center gap-2"
                                 >
-                                    {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : editingId ? <Pencil className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                                     {saving ? "Processing..." : editingId ? "Update Discount" : "Save Discount"}
                                 </Button>
                             </div>
@@ -402,34 +426,34 @@ export default function FeesDiscountPage() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 <Input
                                     placeholder="Search by name or code..."
-                                    className="pl-10 h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                 />
                             </div>
 
                             <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2">
-                                    <Button onClick={copyToClipboard} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-lg border-muted/50 shadow-sm bg-card">
-                                        <Copy className="h-4 w-4" />
-                                    </Button>
-                                    <Button onClick={exportToExcel} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-lg border-muted/50 shadow-sm bg-card">
-                                        <FileSpreadsheet className="h-4 w-4" />
-                                    </Button>
-                                    <Button onClick={exportToCSV} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-lg border-muted/50 shadow-sm bg-card">
-                                        <FileText className="h-4 w-4" />
-                                    </Button>
-                                    <Button onClick={exportToPDF} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-lg border-muted/50 shadow-sm bg-card">
-                                        <FileCode className="h-4 w-4" />
-                                    </Button>
-                                    <Button onClick={() => window.print()} variant="outline" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary transition-all rounded-lg border-muted/50 shadow-sm bg-card">
-                                        <Printer className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                                <div className="h-8 w-px bg-muted/50 mx-2" />
-                                <select className="h-11 px-4 rounded-lg border border-muted/50 bg-card text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold text-foreground shadow-sm">
-                                    <option>50</option>
-                                    <option>100</option>
-                                    <option>All</option>
+                                <select 
+                                    value={pageSize === Number.MAX_SAFE_INTEGER ? "All" : pageSize}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setPageSize(val === "All" ? Number.MAX_SAFE_INTEGER : Number(val));
+                                        setCurrentPage(1);
+                                    }}
+                                    className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium text-muted-foreground"
+                                >
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="All">All</option>
                                 </select>
+                                <div className="h-8 w-px bg-muted/50 mx-2" />
+                                <div className="flex items-center gap-1">
+                                    <IconButton icon={Copy} onClick={copyToClipboard} title="Copy" />
+                                    <IconButton icon={FileSpreadsheet} onClick={exportToExcel} title="Excel" />
+                                    <IconButton icon={FileText} onClick={exportToCSV} title="CSV" />
+                                    <IconButton icon={FileCode} onClick={exportToPDF} title="PDF" />
+                                    <IconButton icon={Printer} onClick={() => window.print()} title="Print" />
+                                </div>
                             </div>
                         </div>
 
@@ -443,7 +467,7 @@ export default function FeesDiscountPage() {
                                                 "Name", "Discount Code", "Percentage", "Amount", "Use Count", "Expiry Date", "Action"
                                             ].map((header) => (
                                                 <th key={header} className={cn(
-                                                    "px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-foreground border-b border-muted/20 whitespace-nowrap",
+                                                    "px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-foreground border-b border-muted/20 whitespace-nowrap",
                                                     header === "Action" ? "text-center w-36" : "",
                                                     ["Percentage", "Amount", "Use Count", "Expiry Date"].includes(header) ? "text-center" : ""
                                                 )}>
@@ -471,49 +495,49 @@ export default function FeesDiscountPage() {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            discounts.map((discount) => (
+                                            paginatedDiscounts.map((discount) => (
                                                 <tr key={discount.id} className="hover:bg-muted/10 transition-colors group/row">
-                                                    <td className="px-6 py-5">
+                                                    <td className="px-6 py-4">
                                                         <div className="flex items-center gap-3">
                                                             <div className="p-2 bg-primary/5 rounded-lg group-hover/row:bg-primary/20 transition-colors">
                                                                 <LayoutGrid className="h-4 w-4 text-primary" />
                                                             </div>
                                                             <div className="flex flex-col">
-                                                                <span className="text-sm font-bold text-foreground">{discount.name}</span>
+                                                                <span className="text-xs font-bold text-foreground">{discount.name}</span>
                                                                 {discount.description && <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">{discount.description}</span>}
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-5">
+                                                    <td className="px-6 py-4">
                                                         <span className="px-2 py-1 rounded bg-muted text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                                             {discount.code}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-5 text-sm font-bold text-primary text-center">
+                                                    <td className="px-6 py-4 text-xs font-bold text-primary text-center">
                                                         {discount.type === "percentage" ? `${discount.percentage}%` : "-"}
                                                     </td>
-                                                    <td className="px-6 py-5 text-sm font-bold text-primary text-center">
-                                                        {discount.type === "fix" ? `$${discount.amount?.toFixed(2)}` : "-"}
+                                                    <td className="px-6 py-4 text-xs font-bold text-primary text-center">
+                                                        {discount.type === "fix" ? formatCurrency(discount.amount || 0) : "-"}
                                                     </td>
-                                                    <td className="px-6 py-5 text-sm font-bold text-center">
+                                                    <td className="px-6 py-4 text-xs font-bold text-center">
                                                         {discount.use_count}
                                                     </td>
-                                                    <td className="px-6 py-5 text-xs font-bold text-muted-foreground text-center">
+                                                    <td className="px-6 py-4 text-xs font-bold text-muted-foreground text-center">
                                                         {discount.expiry_date ? new Date(discount.expiry_date).toLocaleDateString() : "-"}
                                                     </td>
-                                                    <td className="px-6 py-5">
+                                                    <td className="px-6 py-4">
                                                         <div className="flex items-center justify-center gap-2">
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => handleEdit(discount)}
-                                                                className="h-8 w-8 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-md active:scale-90"
+                                                                className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-md active:scale-90"
                                                             >
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => handleDelete(discount.id!)}
-                                                                className="h-8 w-8 rounded-full bg-rose-500 hover:bg-rose-600 text-white shadow-md active:scale-90"
+                                                                className="h-8 w-8 rounded-lg bg-rose-500 hover:bg-rose-600 text-white shadow-md active:scale-90"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
@@ -527,24 +551,54 @@ export default function FeesDiscountPage() {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-4">
-                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] italic">
-                                Total {discounts.length} {discounts.length === 1 ? 'Entry' : 'Entries'}
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <Button variant="pagination-inactive" size="icon" className="h-10 w-10">
-                                    <ChevronDown className="h-5 w-5 rotate-90" />
-                                </Button>
-                                <Button variant="pagination-active" size="icon" className="h-11 w-11 text-lg">1</Button>
-                                <Button variant="pagination-inactive" size="icon" className="h-10 w-10">
-                                    <ChevronDown className="h-5 w-5 -rotate-90" />
-                                </Button>
+                        {filteredDiscounts.length > 0 && (
+                            <div className="flex items-center justify-between pt-4 border-t border-muted/20">
+                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] italic">
+                                    Showing {Math.min((currentPage - 1) * pageSize + 1, filteredDiscounts.length)} to {Math.min(currentPage * pageSize, filteredDiscounts.length)} of {filteredDiscounts.length} entries
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        disabled={currentPage === 1}
+                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                    >
+                                        <ChevronDown className="h-4 w-4 rotate-90" />
+                                    </Button>
+                                    <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]">
+                                        {currentPage}
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        disabled={currentPage >= totalPages}
+                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                    >
+                                        <ChevronDown className="h-4 w-4 -rotate-90" />
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </Card>
             </div>
         </div>
+    );
+}
+
+// Helper component for icon buttons
+function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () => void, title?: string }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            title={title}
+            className="p-2 hover:bg-muted rounded-lg transition-colors border border-muted/50 text-muted-foreground hover:text-foreground shadow-sm active:scale-95"
+        >
+            <Icon className="h-4 w-4" />
+        </button>
     );
 }
 

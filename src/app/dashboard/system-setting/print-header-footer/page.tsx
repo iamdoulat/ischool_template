@@ -35,7 +35,8 @@ const tabs = [
     "Online Admission Receipt",
     "Online Exam",
     "Email",
-    "General Purpose"
+    "General Purpose",
+    "Invoice"
 ];
 
 export default function PrintHeaderFooterPage() {

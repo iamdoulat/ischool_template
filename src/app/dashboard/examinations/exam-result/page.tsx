@@ -70,22 +70,30 @@ export default function ExamResultPage() {
     const fetchInitialData = async () => {
         setLoading(true);
         try {
-            const [criteriaRes, classesRes, sectionsRes] = await Promise.all([
+            const [criteriaRes, classesRes] = await Promise.all([
                 api.get('/examination/exam-results/criteria'),
-                api.get('/academics/classes?no_paginate=true'),
-                api.get('/academics/sections?no_paginate=true')
+                api.get('/academics/classes?no_paginate=true')
             ]);
             
             setExamGroups(criteriaRes.data.exam_groups || []);
             setSessions(criteriaRes.data.sessions || []);
             setClasses(classesRes.data.data || classesRes.data || []);
-            setSections(sectionsRes.data.data || sectionsRes.data || []);
         } catch (error) {
             toast({ title: "Error", description: "Failed to load criteria", variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (selectedCriteria.school_class_id) {
+            const cls = classes.find(c => c.id.toString() === selectedCriteria.school_class_id);
+            setSections(cls?.sections || []);
+        } else {
+            setSections([]);
+        }
+        setSelectedCriteria(prev => ({ ...prev, section_id: "" }));
+    }, [selectedCriteria.school_class_id, classes]);
 
     useEffect(() => {
         if (selectedCriteria.exam_group_id) {
@@ -189,7 +197,7 @@ export default function ExamResultPage() {
                                 <SelectValue placeholder="Select Session" />
                             </SelectTrigger>
                             <SelectContent>
-                                {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.year}</SelectItem>)}
+                                {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
@@ -220,11 +228,11 @@ export default function ExamResultPage() {
                 </div>
 
                 <div className="flex justify-end pt-4">
-                    <Button 
-                        onClick={handleSearch} 
-                        disabled={searching}
-                        className="btn-gradient text-white px-10 h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex gap-2"
-                    >
+                        <Button 
+                            onClick={handleSearch} 
+                            disabled={searching}
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-10 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
+                        >
                         {searching ? <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" /> : <Search className="h-4 w-4" />}
                         Retrieve Results
                     </Button>

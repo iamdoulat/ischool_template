@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Info, AlertCircle, CheckCircle2, Search, Save, Loader2, UserCheck } from "lucide-react";
 import CsvImportDialog from "@/components/attendance/CsvImportDialog";
+import { useSettings } from "@/components/providers/settings-provider";
 
 interface StudentAttendanceRecord {
     id: number;
@@ -70,6 +71,7 @@ const ATTENDANCE_OPTIONS = [
 ];
 
 export default function StudentAttendancePage() {
+    const { settings } = useSettings();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<Section[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
@@ -163,17 +165,23 @@ export default function StudentAttendancePage() {
             if (studentsData.length > 0) {
                 const mappedStudents = studentsData.map((student: any) => {
                     const attendance = student.attendances?.[0] || student.student_attendances?.[0];
+                    const hasApprovedLeave = 
+                        attendance?.attendance === "on_leave" || 
+                        (student.leave_requests && student.leave_requests.length > 0) || 
+                        (student.leave_requests && student.leave_requests.length > 0);
                     return {
                         id: student.id,
                         student_id: student.id,
                         admission_no: student.admission_no || "-",
                         roll_no: student.roll_no || "-",
                         name: `${student.name || ""}${student.last_name ? " " + student.last_name : ""}`.trim(),
-                        attendance: attendance?.attendance || "present",
-                        reason: attendance?.reason || "N/A",
+                        attendance: attendance?.attendance || (hasApprovedLeave ? "on_leave" : "present"),
+                        reason: attendance?.reason || (hasApprovedLeave ? "Leave System" : "Manual"),
                         entry_time: attendance?.entry_time || "",
                         exit_time: attendance?.exit_time || "",
                         note: attendance?.note || "",
+                        isOnLeave: hasApprovedLeave,
+                        leaveDetails: hasApprovedLeave ? (student.leave_requests?.[0] || student.leave_requests?.[0]) : null,
                     };
                 });
                 setStudents(mappedStudents);
@@ -190,13 +198,60 @@ export default function StudentAttendancePage() {
         }
     };
 
+    const getAutoEntryTime = () => {
+        let entryTime = "";
+        if (settings?.student_attendance_settings) {
+            const classSettings = settings.student_attendance_settings.find(
+                (c: any) => String(c.class_id) === selectedClass
+            );
+            if (classSettings) {
+                const sectionSettings = classSettings.sections?.find(
+                    (s: any) => String(s.section_id) === selectedSection
+                );
+                if (sectionSettings) {
+                    const presentSetting = sectionSettings.settings?.find(
+                        (s: any) => s.type?.toLowerCase().startsWith("present")
+                    );
+                    if (presentSetting) {
+                        entryTime = presentSetting.from ? presentSetting.from.substring(0, 5) : "";
+                    }
+                }
+            }
+        }
+        return entryTime;
+    };
+
     const handleAttendanceChange = (studentId: number, value: "present" | "late" | "absent" | "holiday" | "half_day") => {
-        setStudents(prev => prev.map(s => s.id === studentId ? { ...s, attendance: value } : s));
+        setStudents(prev => prev.map(s => {
+            if (s.id !== studentId || s.isOnLeave) return s;
+            
+            const updates: any = { attendance: value };
+            if (value === "present") {
+                const entryTime = getAutoEntryTime();
+                if (entryTime && !s.entry_time) updates.entry_time = entryTime;
+            }
+            return { ...s, ...updates };
+        }));
     };
 
     const handleBulkAction = (value: string) => {
         setBulkAttendance(value);
-        setStudents(prev => prev.map(s => ({ ...s, attendance: value as any })));
+        
+        let autoEntry = "";
+        
+        if (value === "present") {
+            autoEntry = getAutoEntryTime();
+        }
+
+        setStudents(prev => prev.map(s => {
+            if (s.isOnLeave) return s;
+            const updates: any = { attendance: value as any };
+            if (value === "present" && autoEntry) {
+                updates.entry_time = autoEntry;
+            }
+            return { ...s, ...updates };
+        }));
+        
         toast.info(`Set all students to ${value}`);
     };
 
@@ -443,65 +498,90 @@ export default function StudentAttendancePage() {
                                         <TableCell className="py-3 px-4 text-gray-800 font-semibold">
                                             {student.name}
                                         </TableCell>
-                                        <TableCell className="py-3 px-4">
-                                            <RadioGroup 
-                                                value={student.attendance} 
-                                                onValueChange={(val) => handleAttendanceChange(student.id, val as any)}
-                                                className="flex flex-col gap-1"
-                                            >
-                                                {ATTENDANCE_OPTIONS.map((opt) => (
-                                                    <div key={opt.id} className="flex items-center gap-1.5">
-                                                        <RadioGroupItem
-                                                            value={opt.id}
-                                                            id={`${opt.id}-${student.id}`}
-                                                            className={cn(
-                                                                "h-3.5 w-3.5 border-gray-300",
-                                                                student.attendance === opt.id && "text-indigo-600 border-indigo-600"
-                                                            )}
-                                                        />
-                                                        <label
-                                                            htmlFor={`${opt.id}-${student.id}`}
-                                                            className={cn(
-                                                                "text-[11px] font-medium cursor-pointer leading-none",
-                                                                "text-gray-600"
-                                                            )}
-                                                        >
-                                                            {opt.label}
-                                                        </label>
+                                        {student.isOnLeave ? (
+                                            <TableCell colSpan={6} className="py-3 px-4 bg-gradient-to-r from-orange-50/30 to-indigo-50/30 border-y border-gray-100">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-[10px] font-black bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md uppercase tracking-wider animate-pulse">
+                                                            On Leave
+                                                        </span>
+                                                        <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50/50 border border-indigo-100/50 px-3 py-1 rounded-full uppercase tracking-tight">
+                                                            {student.leaveDetails?.leaveType?.name || student.leaveDetails?.leave_type?.name || "Approved Leave"}
+                                                        </span>
+                                                        {student.leaveDetails?.reason && (
+                                                            <span className="text-[11px] font-medium text-gray-500 italic max-w-[200px] truncate" title={student.leaveDetails.reason}>
+                                                                "{student.leaveDetails.reason}"
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                ))}
-                                            </RadioGroup>
-                                        </TableCell>
-                                        <TableCell className="py-3 px-4 text-center text-gray-500 font-medium text-[11px]">
-                                            {attendanceDate}
-                                        </TableCell>
-                                        <TableCell className="py-3 px-4 text-center text-gray-400 font-medium text-[11px]">
-                                            {student.reason || "N/A"}
-                                        </TableCell>
-                                        <TableCell className="py-3 px-4">
-                                            <Input
-                                                type="time"
-                                                value={student.entry_time}
-                                                onChange={(e) => handleInputChange(student.id, 'entry_time', e.target.value)}
-                                                className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[110px] focus:ring-2 focus:ring-indigo-500/20"
-                                            />
-                                        </TableCell>
-                                        <TableCell className="py-3 px-4">
-                                            <Input
-                                                type="time"
-                                                value={student.exit_time}
-                                                onChange={(e) => handleInputChange(student.id, 'exit_time', e.target.value)}
-                                                className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[110px] focus:ring-2 focus:ring-indigo-500/20"
-                                            />
-                                        </TableCell>
-                                        <TableCell className="py-3 px-4">
-                                            <Input
-                                                placeholder="Note..."
-                                                value={student.note}
-                                                onChange={(e) => handleInputChange(student.id, 'note', e.target.value)}
-                                                className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[100px] focus:ring-2 focus:ring-indigo-500/20"
-                                            />
-                                        </TableCell>
+                                                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white border border-gray-100 px-3 py-1 rounded-full shadow-sm">
+                                                        Leave Range: {student.leaveDetails?.leave_from ? new Date(student.leaveDetails.leave_from).toLocaleDateString() : ""} - {student.leaveDetails?.leave_to ? new Date(student.leaveDetails.leave_to).toLocaleDateString() : ""}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                        ) : (
+                                            <>
+                                                <TableCell className="py-3 px-4">
+                                                    <RadioGroup 
+                                                        value={student.attendance} 
+                                                        onValueChange={(val) => handleAttendanceChange(student.id, val as any)}
+                                                        className="flex flex-col gap-1"
+                                                    >
+                                                        {ATTENDANCE_OPTIONS.map((opt) => (
+                                                            <div key={opt.id} className="flex items-center gap-1.5">
+                                                                <RadioGroupItem
+                                                                    value={opt.id}
+                                                                    id={`${opt.id}-${student.id}`}
+                                                                    className={cn(
+                                                                        "h-3.5 w-3.5 border-gray-300",
+                                                                        student.attendance === opt.id && "text-indigo-600 border-indigo-600"
+                                                                    )}
+                                                                />
+                                                                <label
+                                                                    htmlFor={`${opt.id}-${student.id}`}
+                                                                    className={cn(
+                                                                        "text-[11px] font-medium cursor-pointer leading-none",
+                                                                        "text-gray-600"
+                                                                    )}
+                                                                >
+                                                                    {opt.label}
+                                                                </label>
+                                                            </div>
+                                                        ))}
+                                                    </RadioGroup>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-gray-500 font-medium text-[11px]">
+                                                    {attendanceDate}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-gray-400 font-medium text-[11px]">
+                                                    {student.reason || "Manual"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4">
+                                                    <Input
+                                                        type="time"
+                                                        value={student.entry_time}
+                                                        onChange={(e) => handleInputChange(student.id, 'entry_time', e.target.value)}
+                                                        className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[145px] focus:ring-2 focus:ring-indigo-500/20"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4">
+                                                    <Input
+                                                        type="time"
+                                                        value={student.exit_time}
+                                                        onChange={(e) => handleInputChange(student.id, 'exit_time', e.target.value)}
+                                                        className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[145px] focus:ring-2 focus:ring-indigo-500/20"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4">
+                                                    <Input
+                                                        placeholder="Note..."
+                                                        value={student.note}
+                                                        onChange={(e) => handleInputChange(student.id, 'note', e.target.value)}
+                                                        className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[100px] focus:ring-2 focus:ring-indigo-500/20"
+                                                    />
+                                                </TableCell>
+                                            </>
+                                        )}
                                     </TableRow>
                                 ))}
                             </TableBody>

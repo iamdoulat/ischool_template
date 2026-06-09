@@ -122,7 +122,7 @@ export default function StudentTransportFeesPage() {
     const handleClassChange = async (classId: string) => {
         setFilters({ ...filters, class_id: classId, section_id: "" });
         try {
-            const res = await api.get(`/academics/sections?class_id=${classId}`);
+            const res = await api.get(`/academics/sections?school_class_id=${classId}`);
             setSections(res.data.data.data || res.data.data || []);
         } catch (error) {
             toast("error", "Failed to load sections");
@@ -317,7 +317,6 @@ export default function StudentTransportFeesPage() {
 
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{itemsPerPage}</span>
                             <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
                                 <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
                                     <SelectValue />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -26,6 +26,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn, formatDate } from "@/lib/utils";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
     Dialog,
@@ -40,6 +41,7 @@ export default function StudentEditPage() {
     const { id } = useParams();
     const router = useRouter();
     const { toast } = useToast();
+    const { symbol } = useCurrencyFormatter();
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
     const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
@@ -60,6 +62,7 @@ export default function StudentEditPage() {
     const [siblingStudents, setSiblingStudents] = useState<any[]>([]);
     const [loadingSiblings, setLoadingSiblings] = useState(false);
     const [selectedSiblings, setSelectedSiblings] = useState<any[]>([]);
+    const [showMoreDetails, setShowMoreDetails] = useState(false);
 
     const [formData, setFormData] = useState<{ [key: string]: any }>({
         admission_no: "",
@@ -108,7 +111,22 @@ export default function StudentEditPage() {
         transport_pickup_point_id: "",
         hostel_id: "",
         room_id: "",
+        national_identification_no: "",
+        local_identification_no: "",
+        bank_account_no: "",
+        bank_name: "",
+        ifsc_code: "",
+        previous_school_details: "",
+        note: "",
+        current_address: "",
+        permanent_address: "",
+        rte: "No",
     });
+
+    const filteredFeeGroups = useMemo(() => {
+        if (!formData.school_class_id) return feeGroups;
+        return feeGroups.filter(g => !g.school_class_id || g.school_class_id.toString() === formData.school_class_id);
+    }, [feeGroups, formData.school_class_id]);
 
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
@@ -206,6 +224,16 @@ export default function StudentEditPage() {
                 transport_pickup_point_id: student.transport_assignment?.pickup_point_id || student.transport_pickup_point_id || "",
                 hostel_id: student.hostel_room?.hostel_id || student.hostel_id || "",
                 room_id: student.hostel_room?.room_id || student.room_id || "",
+                national_identification_no: student.national_identification_no || "",
+                local_identification_no: student.local_identification_no || "",
+                bank_account_no: student.bank_account_no || "",
+                bank_name: student.bank_name || "",
+                ifsc_code: student.ifsc_code || "",
+                previous_school_details: student.previous_school_details || "",
+                note: student.note || "",
+                current_address: student.current_address || "",
+                permanent_address: student.permanent_address || "",
+                rte: student.rte || "No",
             });
 
             if (student.avatar) {
@@ -597,7 +625,7 @@ export default function StudentEditPage() {
                 {/* Fees Details Card */}
                 <SectionCard title="Fees Details" icon={Wallet}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {feeGroups.map((group) => (
+                        {filteredFeeGroups.map((group) => (
                             <label key={group.id} className="flex flex-col border border-muted/50 p-4 rounded-lg cursor-pointer hover:bg-muted/20 transition-colors group/fee">
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex items-center justify-center">
@@ -624,7 +652,7 @@ export default function StudentEditPage() {
                                 </div>
                             </label>
                         ))}
-                        {feeGroups.length === 0 && (
+                        {filteredFeeGroups.length === 0 && (
                             <div className="col-span-full py-6 text-center text-muted-foreground text-sm">
                                 No fee groups available.
                             </div>
@@ -659,7 +687,7 @@ export default function StudentEditPage() {
                                         <div className="flex justify-between items-center w-full">
                                             <span className="font-semibold text-sm group-hover/discount:text-primary transition-colors">{discount.name}</span>
                                             <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                                                {discount.type === 'percentage' ? `${discount.percentage}%` : `₹${discount.amount}`}
+                                                {discount.type === 'percentage' ? `${discount.percentage}%` : `${symbol}${discount.amount}`}
                                             </span>
                                         </div>
                                         {discount.code && <span className="text-xs text-muted-foreground mt-0.5">Code: {discount.code}</span>}
@@ -721,7 +749,9 @@ export default function StudentEditPage() {
                         </div>
 
                         <InputField label="Guardian Name" required value={formData.guardian_name} onChange={(val) => handleChange("guardian_name", val)} />
-                        <InputField label="Guardian Relation" required value={formData.guardian_relation} onChange={(val) => handleChange("guardian_relation", val)} />
+                        {formData.guardian_type === "Other" && (
+                            <InputField label="Guardian Relation" required value={formData.guardian_relation} onChange={(val) => handleChange("guardian_relation", val)} />
+                        )}
                         <InputField label="Guardian Email" value={formData.guardian_email} onChange={(val) => handleChange("guardian_email", val)} />
                         <FileUploadField
                             label="Guardian Photo (100px X 100px)"
@@ -736,11 +766,70 @@ export default function StudentEditPage() {
                         </div>
                     </div>
                     <div className="mt-6 pt-4 border-t border-muted/30">
-                        <button type="button" className="w-full flex items-center justify-between text-muted-foreground hover:text-foreground transition-colors py-2 px-1">
-                            <span className="font-bold text-sm">Add More Details</span>
-                            <Plus className="h-5 w-5 bg-muted rounded-full p-1" />
+                        <button 
+                            type="button" 
+                            onClick={() => setShowMoreDetails(!showMoreDetails)}
+                            className="w-full flex items-center justify-between text-muted-foreground hover:text-foreground transition-colors py-2 px-1"
+                        >
+                            <span className="font-bold text-sm">{showMoreDetails ? "Hide More Details" : "Add More Details"}</span>
+                            <Plus className={cn("h-5 w-5 bg-muted rounded-full p-1 transition-transform", showMoreDetails && "rotate-45")} />
                         </button>
                     </div>
+
+                    {showMoreDetails && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 pt-6 border-t border-muted/30 animate-in slide-in-from-top-4 duration-300">
+                            <div className="lg:col-span-4 mb-2">
+                                <h3 className="text-lg font-bold">Others Information</h3>
+                            </div>
+                            
+                            <div className="lg:col-span-2">
+                                <TextAreaField label="Current Address" rows={2} value={formData.current_address} onChange={(val) => handleChange("current_address", val)} />
+                            </div>
+                            <div className="lg:col-span-2">
+                                <TextAreaField label="Permanent Address" rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
+                            </div>
+
+                            <InputField label="Bank Account Number" value={formData.bank_account_no} onChange={(val) => handleChange("bank_account_no", val)} />
+                            <InputField label="Bank Name" value={formData.bank_name} onChange={(val) => handleChange("bank_name", val)} />
+                            <InputField label="IFSC Code" value={formData.ifsc_code} onChange={(val) => handleChange("ifsc_code", val)} />
+                            <InputField label="National Identification Number" value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
+                            
+                            <InputField label="Local Identification Number" value={formData.local_identification_no} onChange={(val) => handleChange("local_identification_no", val)} />
+                            
+                            <div className="py-2">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-3">
+                                    RTE
+                                </label>
+                                <div className="flex gap-6">
+                                    {["Yes", "No"].map((opt) => (
+                                        <label key={opt} className="flex items-center gap-2 cursor-pointer group">
+                                            <div className="relative flex items-center justify-center">
+                                                <input
+                                                    type="radio"
+                                                    name="rte"
+                                                    className="peer sr-only"
+                                                    checked={formData.rte === opt}
+                                                    onChange={() => handleChange("rte", opt)}
+                                                />
+                                                <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
+                                                <div className="absolute h-2.5 w-2.5 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                            </div>
+                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{opt}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="lg:col-span-2"></div>
+
+                            <div className="lg:col-span-2">
+                                <TextAreaField label="Previous School Details" rows={2} value={formData.previous_school_details} onChange={(val) => handleChange("previous_school_details", val)} />
+                            </div>
+                            <div className="lg:col-span-2">
+                                <TextAreaField label="Note" rows={2} value={formData.note} onChange={(val) => handleChange("note", val)} />
+                            </div>
+                        </div>
+                    )}
                 </SectionCard>
 
                 {/* Transport & Hostel Details */}

@@ -66,30 +66,42 @@ export default function BulkDeletePage() {
     const [totalPages, setTotalPages] = useState(1);
     const [totalStudents, setTotalStudents] = useState(0);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [searched, setSearched] = useState(false);
     const { toast } = useToast();
 
     const fetchDropdowns = useCallback(async () => {
         try {
-            const [classRes, sectionRes] = await Promise.all([
-                api.get("/academics/classes?no_paginate=true"),
-                api.get("/academics/sections?no_paginate=true")
+            const [classRes] = await Promise.all([
+                api.get("/academics/classes?no_paginate=true")
             ]);
             setClasses(classRes.data.data?.data || classRes.data.data || []);
-            setSections(sectionRes.data.data?.data || sectionRes.data.data || []);
         } catch (error) {
             console.error("Error fetching dropdowns:", error);
         }
     }, []);
 
-    const fetchStudents = useCallback(async () => {
+    const fetchSections = async (classId: string) => {
+        if (!classId) {
+            setSections([]);
+            return;
+        }
+        try {
+            const response = await api.get(`/academics/sections?school_class_id=${classId}&no_paginate=true`);
+            setSections(response.data.data?.data || response.data.data || []);
+        } catch (error) {
+            console.error("Error fetching sections:", error);
+        }
+    };
+
+    const fetchStudents = useCallback(async (pg = currentPage, kw = searchTerm) => {
         setLoading(true);
         try {
             const response = await api.get("/students", {
                 params: {
                     school_class_id: selectedClass,
                     section_id: selectedSection,
-                    search: searchTerm,
-                    page: currentPage,
+                    search: kw,
+                    page: pg,
                     limit: 50
                 }
             });
@@ -97,21 +109,18 @@ export default function BulkDeletePage() {
             setTotalPages(response.data.data?.last_page || 1);
             setTotalStudents(response.data.data?.total || 0);
             setSelectedIds(new Set()); // Reset selections when data changes
+            setSearched(true);
         } catch (error) {
             console.error("Error fetching students:", error);
             toast("error", "Failed to fetch students.");
         } finally {
             setLoading(false);
         }
-    }, [selectedClass, selectedSection, searchTerm, currentPage, toast]);
+    }, [selectedClass, selectedSection, toast]);
 
     useEffect(() => {
         fetchDropdowns();
     }, [fetchDropdowns]);
-
-    useEffect(() => {
-        fetchStudents();
-    }, [fetchStudents]);
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
@@ -145,7 +154,7 @@ export default function BulkDeletePage() {
         try {
             await api.post("/students/bulk-delete", { ids: Array.from(selectedIds) });
             toast("success", "Students deleted successfully.");
-            fetchStudents();
+            fetchStudents(currentPage, searchTerm);
         } catch (error) {
             console.error("Error deleting students:", error);
             toast("error", "Failed to delete students.");
@@ -242,7 +251,12 @@ export default function BulkDeletePage() {
                                 <select
                                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     value={selectedClass}
-                                    onChange={(e) => setSelectedClass(e.target.value)}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelectedClass(val);
+                                        setSelectedSection("");
+                                        fetchSections(val);
+                                    }}
                                 >
                                     <option value="">Select</option>
                                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -270,7 +284,14 @@ export default function BulkDeletePage() {
                     </div>
 
                     <div className="flex justify-end mt-6">
-                        <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => { setCurrentPage(1); fetchStudents(); }} disabled={loading}>
+                        <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => {
+                            if (!selectedClass || !selectedSection) {
+                                toast("error", "Please select Class and Section first.");
+                                return;
+                            }
+                            setCurrentPage(1); 
+                            fetchStudents(1, searchTerm); 
+                        }} disabled={loading}>
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
                         </Button>
                     </div>
@@ -297,6 +318,7 @@ export default function BulkDeletePage() {
                                 className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && fetchStudents(1, searchTerm)}
                             />
                         </div>
                     </div>
@@ -353,7 +375,7 @@ export default function BulkDeletePage() {
                                                 <div className="h-10 w-10 rounded-full border-2 border-muted overflow-hidden bg-muted/20">
                                                     {student.avatar ? (
                                                         <img 
-                                                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${student.avatar}`} 
+                                                            src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}/storage/${student.avatar}`} 
                                                             alt="Avatar" 
                                                             className="h-full w-full object-cover" 
                                                         />
@@ -392,7 +414,11 @@ export default function BulkDeletePage() {
                                         size="icon"
                                         className="h-8 w-8 rounded-lg"
                                         disabled={currentPage === 1 || loading}
-                                        onClick={() => setCurrentPage(prev => prev - 1)}
+                                        onClick={() => {
+                                            const newPg = currentPage - 1;
+                                            setCurrentPage(newPg);
+                                            fetchStudents(newPg, searchTerm);
+                                        }}
                                     >
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
@@ -413,7 +439,10 @@ export default function BulkDeletePage() {
                                                         "h-8 w-8 rounded-lg text-xs font-bold",
                                                         currentPage === page && "shadow-md scale-105"
                                                     )}
-                                                    onClick={() => setCurrentPage(page)}
+                                                    onClick={() => {
+                                                        setCurrentPage(page);
+                                                        fetchStudents(page, searchTerm);
+                                                    }}
                                                     disabled={loading}
                                                 >
                                                     {page}
@@ -433,7 +462,11 @@ export default function BulkDeletePage() {
                                         size="icon"
                                         className="h-8 w-8 rounded-lg"
                                         disabled={currentPage === totalPages || loading}
-                                        onClick={() => setCurrentPage(prev => prev + 1)}
+                                        onClick={() => {
+                                            const newPg = currentPage + 1;
+                                            setCurrentPage(newPg);
+                                            fetchStudents(newPg, searchTerm);
+                                        }}
                                     >
                                         <ChevronRight className="h-4 w-4" />
                                     </Button>
@@ -441,10 +474,18 @@ export default function BulkDeletePage() {
                             </div>
                         </CardContent>
                     </Card>
-                ) : !loading && (
+                ) : searched && !loading && (
                     <div className="px-6 py-4 bg-red-100/80 border border-red-200 rounded-lg text-red-600 font-bold text-sm shadow-sm flex items-center gap-3 animate-in slide-in-from-top-2">
                         <AlertCircle className="h-5 w-5 opacity-80" />
                         No Record Found
+                    </div>
+                )}
+                
+                {!searched && !loading && (
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-300 bg-white rounded-lg border border-dashed border-gray-200 shadow-sm print:hidden">
+                        <User className="h-16 w-16 mb-4 opacity-10" />
+                        <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">No Data Selected</p>
+                        <p className="text-[11px] text-gray-400 mt-2 italic">Select class and section, then click search.</p>
                     </div>
                 )}
 

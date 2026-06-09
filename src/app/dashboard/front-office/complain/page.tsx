@@ -16,7 +16,10 @@ import {
     Calendar,
     CloudUpload,
     Copy,
-    FileSpreadsheet
+    FileSpreadsheet,
+    ChevronLeft,
+    ChevronRight,
+    LucideIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 import {
     Dialog,
     DialogContent,
@@ -42,9 +45,17 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface Complaint {
     id: number;
+    complaint_id: string | null;
     complaint_type: string | null;
     source: string | null;
     complain_by: string;
@@ -61,7 +72,6 @@ interface Complaint {
 
 
 export default function ComplainPage() {
-    const { toast } = useToast();
     const [complaints, setComplaints] = useState<Complaint[]>([]);
     const [dynamicComplaintTypes, setDynamicComplaintTypes] = useState<any[]>([]);
     const [dynamicSources, setDynamicSources] = useState<any[]>([]);
@@ -76,7 +86,15 @@ export default function ComplainPage() {
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
 
+    // Pagination states
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(50);
+    const [total, setTotal] = useState(0);
+    const [lastPage, setLastPage] = useState(1);
+    const [isBackendPaginated, setIsBackendPaginated] = useState(false);
+
     const [formData, setFormData] = useState<Partial<Complaint>>({
+        complaint_id: "",
         complaint_type: "",
         source: "",
         complain_by: "",
@@ -94,17 +112,31 @@ export default function ComplainPage() {
         try {
             const response = await api.get("/complaints", {
                 params: {
-                    search: searchQuery
+                    search: searchQuery,
+                    page,
+                    limit
                 }
             });
-            setComplaints(response.data.data.data || response.data.data);
+            const resData = response.data?.data;
+            if (resData && Array.isArray(resData.data)) {
+                setComplaints(resData.data);
+                setTotal(resData.total || 0);
+                setLastPage(resData.last_page || 1);
+                setIsBackendPaginated(true);
+            } else {
+                const list = Array.isArray(resData) ? resData : [];
+                setComplaints(list);
+                setTotal(list.length);
+                setLastPage(Math.ceil(list.length / limit) || 1);
+                setIsBackendPaginated(false);
+            }
         } catch (error) {
             console.error("Error fetching complaints:", error);
             toast("error", "Failed to load complaints");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, toast]);
+    }, [searchQuery, page, limit]);
 
     const fetchComplaintTypes = useCallback(async () => {
         try {
@@ -159,9 +191,16 @@ export default function ComplainPage() {
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
             fetchComplaints();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error deleting complaint:", error);
-            toast("error", "Failed to delete complaint");
+            if (error.response?.status === 404) {
+                toast("error", "Complaint not found. It may have been already deleted.");
+            } else {
+                toast("error", "Failed to delete complaint");
+            }
+            setIsDeleteDialogOpen(false);
+            setDeleteId(null);
+            fetchComplaints();
         }
     };
 
@@ -180,6 +219,7 @@ export default function ComplainPage() {
 
     const resetForm = () => {
         setFormData({
+            complaint_id: "",
             complaint_type: "",
             source: "",
             complain_by: "",
@@ -199,6 +239,7 @@ export default function ComplainPage() {
         setIsEdit(true);
         setEditId(complaint.id);
         setFormData({
+            complaint_id: complaint.complaint_id || "",
             complaint_type: complaint.complaint_type || "",
             source: complaint.source || "",
             complain_by: complaint.complain_by,
@@ -212,11 +253,21 @@ export default function ComplainPage() {
         });
     };
 
+    const displayedComplaints = isBackendPaginated
+        ? complaints
+        : complaints.slice((page - 1) * limit, page * limit);
+
     const toggleSelectAll = () => {
-        if (selectedIds.length === complaints.length) {
-            setSelectedIds([]);
+        if (displayedComplaints.length > 0 && displayedComplaints.every(c => selectedIds.includes(c.id))) {
+            setSelectedIds(selectedIds.filter(id => !displayedComplaints.some(c => c.id === id)));
         } else {
-            setSelectedIds(complaints.map(c => c.id));
+            const newSelected = [...selectedIds];
+            displayedComplaints.forEach(c => {
+                if (!newSelected.includes(c.id)) {
+                    newSelected.push(c.id);
+                }
+            });
+            setSelectedIds(newSelected);
         }
     };
 
@@ -260,6 +311,14 @@ export default function ComplainPage() {
                         </CardHeader>
                         <CardContent className="p-6 space-y-4">
                             <form onSubmit={handleSave} className="space-y-4">
+                                <div className="space-y-1.5 group">
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Complaint ID</label>
+                                    <Input
+                                        className="h-10 rounded-lg bg-muted/50 border-muted/50 text-slate-500 cursor-not-allowed"
+                                        value={formData.complaint_id || "(Auto-generated)"}
+                                        disabled
+                                    />
+                                </div>
                                 <div className="space-y-1.5 group">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Complaint Type</label>
                                     <div className="relative">
@@ -401,13 +460,32 @@ export default function ComplainPage() {
                                         placeholder="Search"
                                         className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onChange={(e) => {
+                                            setSearchQuery(e.target.value);
+                                            setPage(1);
+                                        }}
                                     />
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1.5 mr-4">
-                                        <span className="text-sm font-semibold text-muted-foreground">50</span>
-                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                    <div className="flex items-center gap-1.5 mr-2">
+                                        <Select
+                                            value={String(limit)}
+                                            onValueChange={(val) => {
+                                                setLimit(Number(val));
+                                                setPage(1);
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-8 w-16 text-xs border border-muted/50 bg-muted/30 hover:bg-muted/50 transition-colors shadow-none rounded-lg font-semibold text-muted-foreground">
+                                                <SelectValue placeholder={String(limit)} />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-lg border-muted/50">
+                                                {[20, 50, 100, 500].map((n) => (
+                                                    <SelectItem key={n} value={String(n)} className="font-medium text-slate-700">
+                                                        {n}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="flex gap-1">
                                         <IconButton icon={Printer} onClick={handlePrint} />
@@ -427,7 +505,7 @@ export default function ComplainPage() {
                                         <tr>
                                             <th className="px-4 py-4 w-10 border-b border-muted/50">
                                                 <Checkbox
-                                                    checked={selectedIds.length === complaints.length && complaints.length > 0}
+                                                    checked={displayedComplaints.length > 0 && displayedComplaints.every(c => selectedIds.includes(c.id))}
                                                     onCheckedChange={toggleSelectAll}
                                                 />
                                             </th>
@@ -457,12 +535,12 @@ export default function ComplainPage() {
                                             <tr>
                                                 <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading complaints...</td>
                                             </tr>
-                                        ) : complaints.length === 0 ? (
+                                        ) : displayedComplaints.length === 0 ? (
                                             <tr>
                                                 <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No complaints found</td>
                                             </tr>
                                         ) : (
-                                            complaints.map((item) => (
+                                            displayedComplaints.map((item) => (
                                                 <tr key={item.id} className={cn(
                                                     "hover:bg-muted/10 transition-colors group",
                                                     selectedIds.includes(item.id) && "bg-muted/30"
@@ -473,7 +551,7 @@ export default function ComplainPage() {
                                                             onCheckedChange={() => toggleSelect(item.id)}
                                                         />
                                                     </td>
-                                                    <Td className="text-slate-600 font-medium">{item.id}</Td>
+                                                    <Td className="text-slate-600 font-medium">{item.complaint_id || item.id}</Td>
                                                     <Td className="text-slate-600 font-medium">{item.complaint_type || "-"}</Td>
                                                     <Td className="font-semibold text-slate-700">{item.complain_by}</Td>
                                                     <Td className="text-slate-600 font-medium">{item.phone || "-"}</Td>
@@ -494,15 +572,40 @@ export default function ComplainPage() {
 
                             <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                    Showing {complaints.length > 0 ? 1 : 0} to {complaints.length} of {complaints.length} entries
+                                    Showing {total > 0 ? (page - 1) * limit + 1 : 0} to {Math.min(page * limit, total)} of {total} entries
                                 </p>
                                 <div className="flex items-center gap-2">
-                                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                        <ChevronDown className="h-4 w-4 rotate-90" />
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-50"
+                                        onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={page === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
                                     </Button>
-                                    <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]">1</Button>
-                                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                        <ChevronDown className="h-4 w-4 -rotate-90" />
+                                    {Array.from({ length: lastPage }, (_, i) => i + 1).map((p) => (
+                                        <Button
+                                            key={p}
+                                            className={cn(
+                                                "h-8 w-8 rounded-lg border-none p-0 font-bold active:scale-95 transition-all shadow-md",
+                                                p === page
+                                                    ? "text-white shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]"
+                                                    : "bg-muted/50 hover:bg-muted text-muted-foreground"
+                                            )}
+                                            onClick={() => setPage(p)}
+                                        >
+                                            {p}
+                                        </Button>
+                                    ))}
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-50"
+                                        onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
+                                        disabled={page === lastPage}
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </div>
@@ -551,6 +654,7 @@ export default function ComplainPage() {
                     </DialogHeader>
                     <div className="p-6">
                         <div className="grid grid-cols-2 gap-y-6 gap-x-8">
+                            <DetailItem label="Complaint ID" value={selectedComplaint?.complaint_id} />
                             <DetailItem label="Complaint Type" value={selectedComplaint?.complaint_type} />
                             <DetailItem label="Source" value={selectedComplaint?.source} />
                             <DetailItem label="Complain By" value={selectedComplaint?.complain_by} />

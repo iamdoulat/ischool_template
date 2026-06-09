@@ -22,7 +22,9 @@ import {
     ArrowUpDown,
     CheckCircle2,
     AlertCircle,
-    Copy as CopyIcon
+    Copy as CopyIcon,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,6 +52,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface PhoneCallLog {
     id: number;
@@ -78,6 +87,13 @@ export default function PhoneCallLogPage() {
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [selectedLog, setSelectedLog] = useState<PhoneCallLog | null>(null);
 
+    // Pagination states
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(50);
+    const [total, setTotal] = useState(0);
+    const [lastPage, setLastPage] = useState(1);
+    const [isBackendPaginated, setIsBackendPaginated] = useState(false);
+
     const [formData, setFormData] = useState<Partial<PhoneCallLog>>({
         name: "",
         phone: "",
@@ -94,18 +110,31 @@ export default function PhoneCallLogPage() {
         try {
             const response = await api.get("/phone-call-logs", {
                 params: {
-                    search: searchQuery
+                    search: searchQuery,
+                    page: page,
+                    limit: limit
                 }
             });
-            // Handle Laravel paginated response structure
-            setLogs(response.data.data.data || response.data.data);
+            const resData = response.data?.data;
+            if (resData && resData.data) {
+                setLogs(resData.data);
+                setTotal(resData.total || 0);
+                setLastPage(resData.last_page || 1);
+                setIsBackendPaginated(true);
+            } else {
+                const logsList = response.data?.data || [];
+                setLogs(logsList);
+                setTotal(logsList.length);
+                setLastPage(Math.ceil(logsList.length / limit) || 1);
+                setIsBackendPaginated(false);
+            }
         } catch (error) {
             console.error("Error fetching phone call logs:", error);
             toast("error", "Failed to load phone call logs");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, toast]);
+    }, [searchQuery, page, limit, toast]);
 
     useEffect(() => {
         fetchLogs();
@@ -187,11 +216,21 @@ export default function PhoneCallLogPage() {
         });
     };
 
+    const displayedLogs = isBackendPaginated
+        ? logs
+        : logs.slice((page - 1) * limit, page * limit);
+
     const toggleSelectAll = () => {
-        if (selectedIds.length === logs.length) {
-            setSelectedIds([]);
+        if (displayedLogs.length > 0 && displayedLogs.every(l => selectedIds.includes(l.id))) {
+            setSelectedIds(selectedIds.filter(id => !displayedLogs.some(l => l.id === id)));
         } else {
-            setSelectedIds(logs.map(l => l.id));
+            const newSelected = [...selectedIds];
+            displayedLogs.forEach(l => {
+                if (!newSelected.includes(l.id)) {
+                    newSelected.push(l.id);
+                }
+            });
+            setSelectedIds(newSelected);
         }
     };
 
@@ -372,9 +411,25 @@ export default function PhoneCallLogPage() {
                                     />
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1.5 mr-4">
-                                        <span className="text-sm font-semibold text-muted-foreground">50</span>
-                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                    <div className="flex items-center gap-1.5 mr-2">
+                                        <Select
+                                            value={String(limit)}
+                                            onValueChange={(val) => {
+                                                setLimit(Number(val));
+                                                setPage(1);
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-8 w-16 text-xs border border-muted/50 bg-muted/30 hover:bg-muted/50 transition-colors shadow-none rounded-lg font-semibold text-muted-foreground bg-white">
+                                                <SelectValue placeholder={String(limit)} />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-lg border-muted/50">
+                                                {[20, 50, 100, 500].map((n) => (
+                                                    <SelectItem key={n} value={String(n)} className="font-medium text-slate-700">
+                                                        {n}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="flex gap-1">
                                         <IconButton icon={Printer} onClick={handlePrint} />
@@ -394,7 +449,7 @@ export default function PhoneCallLogPage() {
                                         <tr>
                                             <th className="px-4 py-4 w-10 border-b border-muted/50">
                                                 <Checkbox
-                                                    checked={selectedIds.length === logs.length && logs.length > 0}
+                                                    checked={displayedLogs.length > 0 && displayedLogs.every(l => selectedIds.includes(l.id))}
                                                     onCheckedChange={toggleSelectAll}
                                                 />
                                             </th>
@@ -424,12 +479,12 @@ export default function PhoneCallLogPage() {
                                             <tr>
                                                 <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading logs...</td>
                                             </tr>
-                                        ) : logs.length === 0 ? (
+                                        ) : displayedLogs.length === 0 ? (
                                             <tr>
                                                 <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No phone call logs found</td>
                                             </tr>
                                         ) : (
-                                            logs.map((item) => (
+                                            displayedLogs.map((item) => (
                                                 <tr key={item.id} className={cn(
                                                     "hover:bg-muted/10 transition-colors group",
                                                     selectedIds.includes(item.id) && "bg-muted/30"
@@ -465,18 +520,57 @@ export default function PhoneCallLogPage() {
 
                             <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                    Showing {logs.length > 0 ? 1 : 0} to {logs.length} of {logs.length} entries
+                                    Showing {total > 0 ? (page - 1) * limit + 1 : 0} to {Math.min(page * limit, total)} of {total} entries
                                 </p>
                                 <div className="flex items-center gap-2">
-                                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                        <ChevronDown className="h-4 w-4 rotate-90" />
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all bg-white"
+                                        onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={page === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
                                     </Button>
-                                    <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]">1</Button>
-                                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
-                                        <ChevronDown className="h-4 w-4 -rotate-90" />
-                                    </Button>
-                                </div>
-                            </div>
+                                    {Array.from({ length: lastPage }).map((_, i) => {
+                                        const p = i + 1;
+                                        const isCurrent = p === page;
+                                        const isAdjacent = Math.abs(p - page) <= 1;
+                                        const isEdge = p === 1 || p === lastPage;
+
+                                        if (isCurrent || isAdjacent || isEdge) {
+                                            return (
+                                                <Button
+                                                    key={p}
+                                                    className={cn(
+                                                        "h-8 w-8 rounded-lg font-bold transition-all active:scale-95",
+                                                        isCurrent
+                                                            ? "border-none p-0 text-white shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]"
+                                                            : "border-muted/50 text-muted-foreground hover:bg-card bg-transparent border"
+                                                    )}
+                                                    onClick={() => setPage(p)}
+                                                 >
+                                                    {p}
+                                                 </Button>
+                                             );
+                                         } else if (p === 2 && page > 3) {
+                                             return <span key={p} className="text-gray-400">...</span>;
+                                         } else if (p === lastPage - 1 && page < lastPage - 2) {
+                                             return <span key={p} className="text-gray-400">...</span>;
+                                         }
+                                         return null;
+                                     })}
+                                     <Button
+                                         variant="outline"
+                                         size="icon"
+                                         className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all bg-white"
+                                         onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
+                                         disabled={page === lastPage}
+                                     >
+                                         <ChevronRight className="h-4 w-4" />
+                                     </Button>
+                                 </div>
+                             </div>
                         </CardContent>
                     </Card>
                 </div>

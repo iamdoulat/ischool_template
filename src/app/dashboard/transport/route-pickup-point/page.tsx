@@ -48,16 +48,18 @@ import { Label } from "@/components/ui/label";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useSettings } from "@/components/providers/settings-provider";
 
 interface Stop {
-    id: number;
-    route_id: number;
-    pickup_point_id: number;
-    monthly_fees: string;
-    distance: string;
-    pickup_time: string;
-    pickup_point?: {
-        name: string;
+    id: number; // This might be the pickup_point_id if it's the model
+    name: string;
+    pivot: {
+        id: number; // Mapping ID
+        route_id: number;
+        pickup_point_id: number;
+        monthly_fees: string;
+        distance: string;
+        pickup_time: string;
     };
 }
 
@@ -69,6 +71,8 @@ interface RouteMapping {
 
 export default function RoutePickupPointPage() {
     const { toast } = useToast();
+    const { settings } = useSettings();
+    const [currencySymbol, setCurrencySymbol] = useState("₹");
     const [searchTerm, setSearchTerm] = useState("");
     const [mappings, setMappings] = useState<RouteMapping[]>([]);
     const [loading, setLoading] = useState(true);
@@ -92,14 +96,24 @@ export default function RoutePickupPointPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [mappingsRes, routesRes, pointsRes] = await Promise.all([
+            const [mappingsRes, routesRes, pointsRes, currenciesRes] = await Promise.all([
                 api.get("/transport/route-pickup-points"),
                 api.get("/transport/routes"),
                 api.get("/transport/pickup-points"),
+                api.get("/system-setting/currencies"),
             ]);
             setMappings(mappingsRes.data.data);
             setRoutes(routesRes.data.data);
             setPickupPoints(pointsRes.data.data);
+
+            // Find active currency symbol
+            const activeCurrency = currenciesRes.data.data?.find((c: any) => c.is_active);
+            if (activeCurrency) {
+                setCurrencySymbol(activeCurrency.symbol);
+            } else if (settings?.currency_format) {
+                // Fallback to settings if no active currency found in list
+                setCurrencySymbol(settings.currency_format);
+            }
         } catch (error) {
             console.error("Error fetching transport data:", error);
             toast("error", "Failed to load transport data");
@@ -141,14 +155,14 @@ export default function RoutePickupPointPage() {
         }
     };
 
-    const handleEdit = (mapping: any, stop: any) => {
-        setEditingMapping(stop);
+    const handleEdit = (mapping: any, stop: Stop) => {
+        setEditingMapping(stop.pivot);
         setFormState({
             route_id: mapping.id.toString(),
-            pickup_point_id: stop.pickup_point_id.toString(),
-            monthly_fees: stop.monthly_fees.toString(),
-            distance: stop.distance?.toString() || "",
-            pickup_time: stop.pickup_time || "",
+            pickup_point_id: stop.id.toString(),
+            monthly_fees: stop.pivot.monthly_fees?.toString() || "",
+            distance: stop.pivot.distance?.toString() || "",
+            pickup_time: stop.pivot.pickup_time || "",
         });
         setIsEditModalOpen(true);
     };
@@ -175,12 +189,12 @@ export default function RoutePickupPointPage() {
     // Export Functions
     const exportToExcel = () => {
         const dataToExport = mappings.flatMap(route =>
-            route.pickup_points.map((stop, index) => ({
+            route.pickup_points.map((stop) => ({
                 'Route': route.title,
-                'Pickup Point': stop.pickup_point?.name || `Point ${index + 1}`,
-                'Monthly Fees': stop.monthly_fees,
-                'Distance (km)': stop.distance,
-                'Pickup Time': stop.pickup_time
+                'Pickup Point': stop.name,
+                'Monthly Fees': stop.pivot.monthly_fees,
+                'Distance (km)': stop.pivot.distance,
+                'Pickup Time': stop.pivot.pickup_time
             }))
         );
         const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -193,12 +207,12 @@ export default function RoutePickupPointPage() {
         const doc = new jsPDF();
         doc.text("Route Pickup Point Mappings", 14, 15);
         const tableData = mappings.flatMap(route =>
-            route.pickup_points.map((stop, index) => [
+            route.pickup_points.map((stop) => [
                 route.title,
-                stop.pickup_point?.name || `Point ${index + 1}`,
-                stop.monthly_fees,
-                stop.distance,
-                stop.pickup_time
+                stop.name,
+                stop.pivot.monthly_fees,
+                stop.pivot.distance,
+                stop.pivot.pickup_time
             ])
         );
         autoTable(doc, {
@@ -211,8 +225,8 @@ export default function RoutePickupPointPage() {
 
     const copyToClipboard = () => {
         const text = mappings.flatMap(route =>
-            route.pickup_points.map((stop, index) =>
-                `${route.title}\t${stop.pickup_point?.name}\t${stop.monthly_fees}\t${stop.distance}\t${stop.pickup_time}`
+            route.pickup_points.map((stop) =>
+                `${route.title}\t${stop.name}\t${stop.pivot.monthly_fees}\t${stop.pivot.distance}\t${stop.pivot.pickup_time}`
             )
         ).join('\n');
         navigator.clipboard.writeText(text);
@@ -252,7 +266,6 @@ export default function RoutePickupPointPage() {
 
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1.5 mr-2">
-                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{itemsPerPage}</span>
                                 <Select
                                     value={itemsPerPage.toString()}
                                     onValueChange={(val) => {
@@ -298,7 +311,7 @@ export default function RoutePickupPointPage() {
                                 <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
                                     <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Route</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Pickup Point</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Monthly Fees (₹)</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Monthly Fees ({currencySymbol})</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Distance (km)</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Pickup Time</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
@@ -321,8 +334,7 @@ export default function RoutePickupPointPage() {
                                                 <div className="space-y-1">
                                                     {item.pickup_points.map((stop, i) => (
                                                         <div key={i} className="flex items-center gap-2">
-                                                            <span className="text-gray-400 font-bold w-4">{i + 1}</span>
-                                                            <span className="text-gray-600 font-medium">{stop.pickup_point?.name}</span>
+                                                            <span className="text-gray-600 font-medium">{stop.name}</span>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -330,21 +342,21 @@ export default function RoutePickupPointPage() {
                                             <TableCell className="py-4">
                                                 <div className="space-y-1">
                                                     {item.pickup_points.map((stop, i) => (
-                                                        <div key={i} className="flex items-center h-4 text-gray-600">{stop.monthly_fees}</div>
+                                                        <div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.monthly_fees}</div>
                                                     ))}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4">
                                                 <div className="space-y-1">
                                                     {item.pickup_points.map((stop, i) => (
-                                                        <div key={i} className="flex items-center h-4 text-gray-600">{stop.distance || '-'}</div>
+                                                        <div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.distance || '-'}</div>
                                                     ))}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4">
                                                 <div className="space-y-1">
                                                     {item.pickup_points.map((stop, i) => (
-                                                        <div key={i} className="flex items-center h-4 text-gray-600">{stop.pickup_time || '-'}</div>
+                                                        <div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.pickup_time || '-'}</div>
                                                     ))}
                                                 </div>
                                             </TableCell>
@@ -355,7 +367,7 @@ export default function RoutePickupPointPage() {
                                                             <Button onClick={() => handleEdit(item, stop)} size="icon" variant="ghost" className="h-5 w-5 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
                                                                 <Pencil className="h-2.5 w-2.5" />
                                                             </Button>
-                                                            <Button onClick={() => handleDelete(stop.id)} size="icon" variant="ghost" className="h-5 w-5 bg-red-500 hover:bg-red-600 text-white rounded">
+                                                            <Button onClick={() => handleDelete(stop.pivot.id)} size="icon" variant="ghost" className="h-5 w-5 bg-red-500 hover:bg-red-600 text-white rounded">
                                                                 <Trash2 className="h-2.5 w-2.5" />
                                                             </Button>
                                                         </div>
@@ -417,11 +429,14 @@ export default function RoutePickupPointPage() {
 
             {/* Add/Edit Modal */}
             <Dialog open={isAddModalOpen || isEditModalOpen} onOpenChange={(open) => { if (!open) { setIsAddModalOpen(false); setIsEditModalOpen(false); } }}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>{isEditModalOpen ? "Edit Mapping" : "Add Route Mapping"}</DialogTitle>
+                <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-none shadow-2xl bg-white">
+                    <DialogHeader className="p-6 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-left">
+                        <DialogTitle className="text-white text-xl font-bold tracking-tight">
+                            {isEditModalOpen ? "Edit Mapping" : "Add Route Mapping"}
+                        </DialogTitle>
+                        <p className="text-indigo-100 text-xs font-medium opacity-90">Assign pickup points to routes and set fees.</p>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    <div className="p-6">
                         <div className="grid gap-2">
                             <Label htmlFor="route">Route <span className="text-red-500">*</span></Label>
                             <Select

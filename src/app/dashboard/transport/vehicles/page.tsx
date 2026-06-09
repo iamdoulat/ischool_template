@@ -390,7 +390,7 @@ export default function VehiclePage() {
             {/* Vehicle Modal */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl bg-white">
-                    <DialogHeader className="p-6 bg-gradient-to-r from-indigo-600 to-violet-600">
+                    <DialogHeader className="p-6 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
                         <DialogTitle className="text-white text-xl font-bold tracking-tight">
                             {isEditing ? "Edit Vehicle" : "Add New Vehicle"}
                         </DialogTitle>
@@ -467,8 +467,8 @@ export default function VehiclePage() {
                                         <SelectValue placeholder="Select Driver" />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-[200px]">
-                                        {staffList.map((staff) => (
-                                            <SelectItem key={staff.id} value={staff.name}>{staff.name} {staff.role === 'Driver' ? '(Driver)' : ''}</SelectItem>
+                                        {staffList.filter(staff => staff.role === 'Driver').map((staff) => (
+                                            <SelectItem key={staff.id} value={staff.name}>{staff.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>

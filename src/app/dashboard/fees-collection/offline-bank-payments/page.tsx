@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -33,6 +34,9 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 interface OfflinePayment {
     id: number;
@@ -69,10 +73,20 @@ export default function OfflineBankPaymentsPage() {
     const [rejectionReason, setRejectionReason] = useState("");
     const [processing, setProcessing] = useState(false);
     const { toast } = useToast();
+    const { symbol } = useCurrencyFormatter();
+
+    // Pagination states
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
 
     useEffect(() => {
         fetchPayments();
+        setCurrentPage(1);
     }, [filterStatus]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
     const fetchPayments = async () => {
         setLoading(true);
@@ -125,9 +139,76 @@ export default function OfflineBankPaymentsPage() {
 
     const filteredPayments = payments.filter(p => 
         p.student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.student.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.student.admission_no.includes(searchQuery) ||
         p.reference_no?.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const totalPages = Math.ceil(filteredPayments.length / pageSize);
+    const paginatedPayments = filteredPayments.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+    const handlePrint = () => { window.print(); };
+
+    const handleExportExcel = () => {
+        const data = filteredPayments.map(p => ({
+            "Request ID": `#${p.id}`,
+            "Student Name": `${p.student.name} ${p.student.last_name}`,
+            "Admission No": p.student.admission_no,
+            "Class & Section": `${p.student.school_class.class} (${p.student.section.section})`,
+            "Payment Fee Type": p.student_fee_master?.fee_master.fee_type.name || 'General Payment',
+            "Reference No": p.reference_no || 'N/A',
+            "Payment Date": new Date(p.payment_date).toLocaleDateString(),
+            "Bank Name": p.bank_name || 'N/A',
+            "Account No": p.bank_account_no || 'N/A',
+            [`Amount (${symbol})`]: p.amount,
+            "Status": p.status
+        }));
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Offline Payments");
+        XLSX.writeFile(workbook, "offline_payments.xlsx");
+        toast("success", "Exported to Excel");
+    };
+
+    const handleExportCSV = () => {
+        const data = filteredPayments.map(p => ({
+            "Request ID": `#${p.id}`,
+            "Student Name": `${p.student.name} ${p.student.last_name}`,
+            "Admission No": p.student.admission_no,
+            "Class & Section": `${p.student.school_class.class} (${p.student.section.section})`,
+            "Payment Fee Type": p.student_fee_master?.fee_master.fee_type.name || 'General Payment',
+            "Reference No": p.reference_no || 'N/A',
+            "Payment Date": new Date(p.payment_date).toLocaleDateString(),
+            "Bank Name": p.bank_name || 'N/A',
+            "Account No": p.bank_account_no || 'N/A',
+            [`Amount (${symbol})`]: p.amount,
+            "Status": p.status
+        }));
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const csv = XLSX.utils.sheet_to_csv(worksheet);
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "offline_payments.csv";
+        link.click();
+        toast("success", "Exported to CSV");
+    };
+
+    const handleExportPDF = () => {
+        const doc = new jsPDF();
+        doc.text("Offline Bank Payments Report", 14, 15);
+        const tableColumn = ["Request ID", "Student Name", "Payment Info", `Amount (${symbol})`, "Status"];
+        const tableRows = filteredPayments.map(p => [
+            `#${p.id}`,
+            `${p.student.name} ${p.student.last_name}`,
+            `${p.student_fee_master?.fee_master.fee_type.name || 'General Payment'} (Ref: ${p.reference_no || 'N/A'})`,
+            `${symbol}${p.amount.toFixed(2)}`,
+            p.status
+        ]);
+        (doc as any).autoTable({ head: [tableColumn], body: tableRows, startY: 20 });
+        doc.save("offline_payments.pdf");
+        toast("success", "Exported to PDF");
+    };
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -196,29 +277,58 @@ export default function OfflineBankPaymentsPage() {
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-1">
-                                {[
-                                    { icon: FileSpreadsheet, label: "Excel" },
-                                    { icon: FileText, label: "CSV" },
-                                    { icon: FileCode, label: "PDF" },
-                                    { icon: Printer, label: "Print" }
-                                ].map((tool, i) => (
-                                    <Button
-                                        key={i}
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
-                                    >
-                                        <tool.icon className="h-4 w-4" />
-                                    </Button>
-                                ))}
-                            </div>
-                            <div className="h-8 w-px bg-muted/50 mx-2" />
-                            <select className="h-11 px-4 rounded-lg border border-muted/50 bg-muted/30 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold text-muted-foreground">
-                                <option>50</option>
-                                <option>100</option>
-                                <option>All</option>
+                            <select 
+                                value={pageSize === Number.MAX_SAFE_INTEGER ? "All" : pageSize}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setPageSize(val === "All" ? Number.MAX_SAFE_INTEGER : Number(val));
+                                    setCurrentPage(1);
+                                }}
+                                className="h-11 px-4 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold text-muted-foreground transition-all cursor-pointer"
+                            >
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="All">All</option>
                             </select>
+                            <div className="h-8 w-px bg-muted/50 mx-2" />
+                            <div className="flex items-center gap-1">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={handleExportExcel}
+                                    className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
+                                    title="Excel"
+                                >
+                                    <FileSpreadsheet className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={handleExportCSV}
+                                    className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
+                                    title="CSV"
+                                >
+                                    <FileText className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={handleExportPDF}
+                                    className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
+                                    title="PDF"
+                                >
+                                    <FileCode className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={handlePrint}
+                                    className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
+                                    title="Print"
+                                >
+                                    <Printer className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
@@ -229,7 +339,7 @@ export default function OfflineBankPaymentsPage() {
                                 <thead>
                                     <tr className="bg-muted/10">
                                         {[
-                                            "Request ID", "Student Detail", "Payment Info", "Amount ($)", "Status", "Action"
+                                            "Request ID", "Student Detail", "Payment Info", `Amount (${symbol})`, "Status", "Action"
                                         ].map((header) => (
                                             <th key={header} className={cn(
                                                 "px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 border-b border-muted/20 whitespace-nowrap",
@@ -259,7 +369,7 @@ export default function OfflineBankPaymentsPage() {
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredPayments.map((payment) => (
+                                        paginatedPayments.map((payment) => (
                                             <tr key={payment.id} className="hover:bg-muted/10 transition-colors group/row">
                                                 <td className="px-6 py-6 text-sm font-bold text-muted-foreground">#{payment.id}</td>
                                                 <td className="px-6 py-6">
@@ -277,7 +387,7 @@ export default function OfflineBankPaymentsPage() {
                                                         <span className="text-[10px] text-muted-foreground font-medium">Date: {new Date(payment.payment_date).toLocaleDateString()}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-6 text-sm font-black text-foreground">${payment.amount.toFixed(2)}</td>
+                                                <td className="px-6 py-6 text-sm font-black text-foreground">{formatCurrency(payment.amount)}</td>
                                                 <td className="px-6 py-6">{getStatusBadge(payment.status)}</td>
                                                 <td className="px-6 py-6">
                                                     <div className="flex justify-center">
@@ -301,6 +411,38 @@ export default function OfflineBankPaymentsPage() {
                             </table>
                         </div>
                     </div>
+
+                    {/* Pagination */}
+                    {filteredPayments.length > 0 && (
+                        <div className="p-6 border-t border-muted/20 flex items-center justify-between">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                                Showing {Math.min((currentPage - 1) * pageSize + 1, filteredPayments.length)} to {Math.min(currentPage * pageSize, filteredPayments.length)} of {filteredPayments.length} entries
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    disabled={currentPage === 1}
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                >
+                                    <ChevronDown className="h-4 w-4 rotate-90" />
+                                </Button>
+                                <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#6366F1]">
+                                    {currentPage}
+                                </Button>
+                                <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    disabled={currentPage >= totalPages}
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                >
+                                    <ChevronDown className="h-4 w-4 -rotate-90" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </Card>
 

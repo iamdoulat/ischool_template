@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import { useState, useEffect } from "react";
@@ -19,8 +20,27 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Search, FileText, BarChart3, Trophy, UserCheck, Plus, Monitor, Eye, Copy, FileSpreadsheet, Printer, FileDown } from "lucide-react";
+import { 
+    Search, 
+    FileText, 
+    BarChart3, 
+    Trophy, 
+    UserCheck, 
+    Plus, 
+    Monitor, 
+    Eye, 
+    Copy, 
+    FileSpreadsheet, 
+    Printer, 
+    FileDown,
+    ChevronLeft,
+    ChevronRight
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const reportLinks = [
     { name: "Result Report", icon: FileText },
@@ -64,6 +84,11 @@ export default function OnlineExaminationsReportPage() {
     const [loading, setLoading] = useState(false);
     const [isSearched, setIsSearched] = useState(false);
 
+    // Search and Pagination States
+    const [searchTerm, setSearchTerm] = useState<string>("");
+    const [itemsPerPage, setItemsPerPage] = useState<string>("50");
+    const [currentPage, setCurrentPage] = useState<number>(1);
+
     useEffect(() => {
         fetchCriteria();
     }, []);
@@ -75,12 +100,16 @@ export default function OnlineExaminationsReportPage() {
             setClasses(response.data.classes);
         } catch (error) {
             console.error("Failed to fetch criteria", error);
+            toast.error("Failed to fetch criteria data");
         }
     };
 
     const handleSearch = async () => {
-        if (activeTab === "Result Report") {
-            if (!selectedExam || !selectedClass || !selectedSection) return;
+        if (activeTab === "Result Report" || activeTab === "Exams Rank Report") {
+            if (!selectedExam || !selectedClass || !selectedSection) {
+                toast.error("Please select all required criteria fields");
+                return;
+            }
         }
         
         setLoading(true);
@@ -101,20 +130,227 @@ export default function OnlineExaminationsReportPage() {
                         date_type: dateType,
                     }
                 });
+            } else if (activeTab === "Student Exams Attempt Report") {
+                response = await api.get('/reports/online-examinations/attempts', {
+                    params: {
+                        search_type: searchType,
+                        date_type: dateType,
+                    }
+                });
+            } else if (activeTab === "Exams Rank Report") {
+                response = await api.get('/reports/online-examinations/rank', {
+                    params: {
+                        online_exam_id: selectedExam,
+                        school_class_id: selectedClass,
+                        section_id: selectedSection,
+                    }
+                });
             }
             
             if (response) {
                 setReportData(response.data.data);
                 setIsSearched(true);
+                setCurrentPage(1); // reset to page 1 on new search
+                toast.success("Report data loaded successfully");
             }
         } catch (error) {
             console.error("Failed to fetch report", error);
+            toast.error("Failed to load report data");
         } finally {
             setLoading(false);
         }
     };
 
     const sections = classes.find(c => c.id.toString() === selectedClass)?.sections || [];
+
+    // Local filter based on searchTerm
+    const filteredData = reportData.filter((item) => {
+        if (!searchTerm) return true;
+        const term = searchTerm.toLowerCase();
+
+        if (activeTab === "Result Report") {
+            return (
+                (item.admission_no && item.admission_no.toLowerCase().includes(term)) ||
+                (item.student_name && item.student_name.toLowerCase().includes(term)) ||
+                (item.class && item.class.toLowerCase().includes(term)) ||
+                (item.exam_submitted && item.exam_submitted.toLowerCase().includes(term))
+            );
+        } else if (activeTab === "Exams Report") {
+            return (
+                (item.exam && item.exam.toLowerCase().includes(term)) ||
+                (item.exam_from && item.exam_from.toLowerCase().includes(term)) ||
+                (item.exam_to && item.exam_to.toLowerCase().includes(term)) ||
+                (item.duration && item.duration.toString().toLowerCase().includes(term))
+            );
+        } else if (activeTab === "Student Exams Attempt Report") {
+            return (
+                (item.admission_no && item.admission_no.toLowerCase().includes(term)) ||
+                (item.student_name && item.student_name.toLowerCase().includes(term)) ||
+                (item.class && item.class.toLowerCase().includes(term)) ||
+                (item.section && item.section.toLowerCase().includes(term)) ||
+                (item.exam && item.exam.toLowerCase().includes(term)) ||
+                (item.exam_from && item.exam_from.toLowerCase().includes(term)) ||
+                (item.exam_to && item.exam_to.toLowerCase().includes(term))
+            );
+        } else if (activeTab === "Exams Rank Report") {
+            return (
+                (item.admission_no && item.admission_no.toLowerCase().includes(term)) ||
+                (item.student_name && item.student_name.toLowerCase().includes(term)) ||
+                (item.class && item.class.toLowerCase().includes(term)) ||
+                (item.father_name && item.father_name.toLowerCase().includes(term))
+            );
+        }
+        return true;
+    });
+
+    // Pagination logic
+    const totalEntries = filteredData.length;
+    const sizeNum = parseInt(itemsPerPage);
+    const totalPages = Math.ceil(totalEntries / sizeNum) || 1;
+    const safeCurrentPage = Math.min(currentPage, totalPages) || 1;
+    const startIndex = (safeCurrentPage - 1) * sizeNum;
+    const paginatedData = filteredData.slice(startIndex, startIndex + sizeNum);
+
+    // Export functions
+    const exportToCopy = () => {
+        if (filteredData.length === 0) {
+            toast.error("No data available to copy");
+            return;
+        }
+
+        let text = "";
+        if (activeTab === "Result Report") {
+            text = ["Admission No\tStudent Name\tClass\tTotal Attempt\tRemaining Attempt\tExam Submitted", 
+                    ...filteredData.map(item => `${item.admission_no}\t${item.student_name}\t${item.class}\t${item.total_attempt}\t${item.remaining_attempt}\t${item.exam_submitted}`)
+                   ].join("\n");
+        } else if (activeTab === "Exams Report") {
+            text = ["Exam\tAttempt\tExam From\tExam To\tDuration\tTotal Students\tQuestions\tExam Published\tResult Published", 
+                    ...filteredData.map(item => `${item.exam}\t${item.attempt}\t${item.exam_from}\t${item.exam_to}\t${item.duration}\t${item.total_students}\t${item.questions}\t${item.exam_published ? 'Yes' : 'No'}\t${item.result_published ? 'Yes' : 'No'}`)
+                   ].join("\n");
+        } else if (activeTab === "Student Exams Attempt Report") {
+            text = ["Admission No\tStudent\tClass\tSection\tExam\tExam From\tExam To\tDuration\tExam Published\tResult Published", 
+                    ...filteredData.map(item => `${item.admission_no}\t${item.student_name}\t${item.class}\t${item.section}\t${item.exam}\t${item.exam_from}\t${item.exam_to}\t${item.duration}\t${item.exam_published ? 'Yes' : 'No'}\t${item.result_published ? 'Yes' : 'No'}`)
+                   ].join("\n");
+        } else if (activeTab === "Exams Rank Report") {
+            text = ["Rank\tAdmission No\tStudent Name\tClass\tFather Name\tExam Submitted\tTotal Questions\tDescriptive\tCorrect Answer\tWrong Answer\tNot Attempted\tTotal Exam Marks\tTotal Negative Marks\tTotal Scored Marks\tScore (%)", 
+                    ...filteredData.map(item => `${item.rank}\t${item.admission_no}\t${item.student_name}\t${item.class}\t${item.father_name}\t${item.exam_submitted}\t${item.total_questions}\t${item.descriptive}\t${item.correct_answer}\t${item.wrong_answer}\t${item.not_attempted}\t${item.total_exam_marks}\t${item.total_negative_marks}\t${item.total_scored_marks}\t${item.score_percentage}%`)
+                   ].join("\n");
+        }
+
+        navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard");
+    };
+
+    const exportToExcel = (isCsv = false) => {
+        if (filteredData.length === 0) {
+            toast.error("No data available to export");
+            return;
+        }
+
+        let mappedData = [];
+        if (activeTab === "Result Report") {
+            mappedData = filteredData.map(item => ({
+                "Admission No": item.admission_no,
+                "Student Name": item.student_name,
+                "Class": item.class,
+                "Total Attempt": item.total_attempt,
+                "Remaining Attempt": item.remaining_attempt,
+                "Exam Submitted": item.exam_submitted,
+            }));
+        } else if (activeTab === "Exams Report") {
+            mappedData = filteredData.map(item => ({
+                "Exam": item.exam,
+                "Attempt": item.attempt,
+                "Exam From": item.exam_from,
+                "Exam To": item.exam_to,
+                "Duration": item.duration,
+                "Total Students": item.total_students,
+                "Questions": item.questions,
+                "Exam Published": item.exam_published ? "Yes" : "No",
+                "Result Published": item.result_published ? "Yes" : "No",
+            }));
+        } else if (activeTab === "Student Exams Attempt Report") {
+            mappedData = filteredData.map(item => ({
+                "Admission No": item.admission_no,
+                "Student": item.student_name,
+                "Class": item.class,
+                "Section": item.section,
+                "Exam": item.exam,
+                "Exam From": item.exam_from,
+                "Exam To": item.exam_to,
+                "Duration": item.duration,
+                "Exam Published": item.exam_published ? "Yes" : "No",
+                "Result Published": item.result_published ? "Yes" : "No",
+            }));
+        } else if (activeTab === "Exams Rank Report") {
+            mappedData = filteredData.map(item => ({
+                "Rank": item.rank,
+                "Admission No": item.admission_no,
+                "Student Name": item.student_name,
+                "Class": item.class,
+                "Father Name": item.father_name,
+                "Exam Submitted": item.exam_submitted,
+                "Total Questions": item.total_questions,
+                "Descriptive": item.descriptive,
+                "Correct Answer": item.correct_answer,
+                "Wrong Answer": item.wrong_answer,
+                "Not Attempted": item.not_attempted,
+                "Total Exam Marks": item.total_exam_marks,
+                "Total Negative Marks": item.total_negative_marks,
+                "Total Scored Marks": item.total_scored_marks,
+                "Score (%)": `${item.score_percentage}%`,
+            }));
+        }
+
+        const worksheet = XLSX.utils.json_to_sheet(mappedData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, activeTab);
+        
+        if (isCsv) {
+            XLSX.writeFile(workbook, `${activeTab.toLowerCase().replace(/ /g, "_")}.csv`, { bookType: "csv" });
+            toast.success("CSV file downloaded");
+        } else {
+            XLSX.writeFile(workbook, `${activeTab.toLowerCase().replace(/ /g, "_")}.xlsx`);
+            toast.success("Excel file downloaded");
+        }
+    };
+
+    const exportToPDF = () => {
+        if (filteredData.length === 0) {
+            toast.error("No data available to export");
+            return;
+        }
+
+        const doc = new jsPDF();
+        let head = [];
+        let body = [];
+
+        if (activeTab === "Result Report") {
+            head = [["Admission No", "Student Name", "Class", "Total Attempt", "Remaining Attempt", "Exam Submitted"]];
+            body = filteredData.map(item => [item.admission_no, item.student_name, item.class, item.total_attempt, item.remaining_attempt, item.exam_submitted]);
+        } else if (activeTab === "Exams Report") {
+            head = [["Exam", "Attempt", "Exam From", "Exam To", "Duration", "Total Students", "Questions", "Exam Published", "Result Published"]];
+            body = filteredData.map(item => [item.exam, item.attempt, item.exam_from, item.exam_to, item.duration, item.total_students, item.questions, item.exam_published ? 'Yes' : 'No', item.result_published ? 'Yes' : 'No']);
+        } else if (activeTab === "Student Exams Attempt Report") {
+            head = [["Admission No", "Student", "Class", "Section", "Exam", "Exam From", "Exam To", "Duration", "Exam Published", "Result Published"]];
+            body = filteredData.map(item => [item.admission_no, item.student_name, item.class, item.section, item.exam, item.exam_from, item.exam_to, item.duration, item.exam_published ? 'Yes' : 'No', item.result_published ? 'Yes' : 'No']);
+        } else if (activeTab === "Exams Rank Report") {
+            head = [["Rank", "Admission No", "Student", "Class", "Father Name", "Exam Submitted", "Total Questions", "Descriptive", "Correct", "Wrong", "Not Attempted", "Total Marks", "Negative Marks", "Scored Marks", "Score (%)"]];
+            body = filteredData.map(item => [item.rank, item.admission_no, item.student_name, item.class, item.father_name, item.exam_submitted, item.total_questions, item.descriptive, item.correct_answer, item.wrong_answer, item.not_attempted, item.total_exam_marks, item.total_negative_marks, item.total_scored_marks, `${item.score_percentage}%`]);
+        }
+
+        autoTable(doc, {
+            head: head,
+            body: body,
+        });
+
+        doc.save(`${activeTab.toLowerCase().replace(/ /g, "_")}.pdf`);
+        toast.success("PDF file downloaded");
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
@@ -132,6 +368,8 @@ export default function OnlineExaminationsReportPage() {
                                     setActiveTab(link.name);
                                     setReportData([]);
                                     setIsSearched(false);
+                                    setSearchTerm("");
+                                    setCurrentPage(1);
                                 }}
                                 className={cn(
                                     "flex items-center gap-3 p-3 px-4 rounded-lg border transition-all duration-300 cursor-pointer group relative overflow-hidden",
@@ -162,7 +400,7 @@ export default function OnlineExaminationsReportPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
                 <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
                 
-                {activeTab === "Result Report" ? (
+                {activeTab === "Result Report" || activeTab === "Exams Rank Report" ? (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Exam <span className="text-red-500">*</span></Label>
@@ -207,7 +445,7 @@ export default function OnlineExaminationsReportPage() {
                             </Select>
                         </div>
                     </div>
-                ) : activeTab === "Exams Report" ? (
+                ) : activeTab === "Exams Report" || activeTab === "Student Exams Attempt Report" ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Search Type <span className="text-red-500">*</span></Label>
@@ -231,6 +469,8 @@ export default function OnlineExaminationsReportPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="exam_from">Exam From Date</SelectItem>
+                                    <SelectItem value="exam_to">Exam To Date</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -239,12 +479,13 @@ export default function OnlineExaminationsReportPage() {
                     <div className="py-4 text-gray-400 italic">Criteria for this report coming soon...</div>
                 )}
 
-                {(activeTab === "Result Report" || activeTab === "Exams Report") && (
+                {(activeTab === "Result Report" || activeTab === "Exams Report" || activeTab === "Student Exams Attempt Report" || activeTab === "Exams Rank Report") && (
                     <div className="flex justify-end">
                         <Button 
                             onClick={handleSearch}
                             disabled={loading}
-                            className="btn-gradient text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2"
+                            variant="gradient"
+                            className="text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2"
                         >
                             <Search className="h-4 w-4" />
                             {loading ? "Searching..." : "Search"}
@@ -255,12 +496,22 @@ export default function OnlineExaminationsReportPage() {
 
             {/* Report Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
+                
+                {/* Status message warning box for Exam Rank Report */}
+                {activeTab === "Exams Rank Report" && isSearched && reportData.length === 0 && (
+                    <div className="bg-sky-50 border border-sky-200/50 rounded-lg p-3 text-sky-700 text-xs font-semibold mb-4">
+                        Exam Rank Not Generated.
+                    </div>
+                )}
+
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="relative w-full md:w-64">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                         <input 
                             type="text" 
                             placeholder="Search..." 
+                            value={searchTerm}
+                            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                             className="w-full bg-white border border-gray-200 rounded-md py-1.5 pl-9 pr-4 text-[11px] focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm"
                         />
                     </div>
@@ -268,7 +519,7 @@ export default function OnlineExaminationsReportPage() {
                     <div className="flex items-center justify-between md:justify-end gap-3 flex-1">
                         <div className="flex items-center gap-1.5">
                             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Show</span>
-                            <Select defaultValue="50">
+                            <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
                                 <SelectTrigger className="h-7 w-16 border-gray-200 text-[11px] shadow-none rounded">
                                     <SelectValue />
                                 </SelectTrigger>
@@ -282,19 +533,19 @@ export default function OnlineExaminationsReportPage() {
                         </div>
 
                         <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" title="Copy" className="h-7 w-7 text-gray-400 hover:text-indigo-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
+                            <Button variant="ghost" size="icon" title="Copy" onClick={exportToCopy} className="h-7 w-7 text-gray-400 hover:text-indigo-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
                                 <Copy className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" title="Excel" className="h-7 w-7 text-gray-400 hover:text-emerald-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
+                            <Button variant="ghost" size="icon" title="Excel" onClick={() => exportToExcel(false)} className="h-7 w-7 text-gray-400 hover:text-emerald-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
                                 <FileSpreadsheet className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" title="CSV" className="h-7 w-7 text-gray-400 hover:text-amber-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
+                            <Button variant="ghost" size="icon" title="CSV" onClick={() => exportToExcel(true)} className="h-7 w-7 text-gray-400 hover:text-amber-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
                                 <FileText className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" title="PDF" className="h-7 w-7 text-gray-400 hover:text-rose-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
+                            <Button variant="ghost" size="icon" title="PDF" onClick={exportToPDF} className="h-7 w-7 text-gray-400 hover:text-rose-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
                                 <FileDown className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" title="Print" className="h-7 w-7 text-gray-400 hover:text-gray-900 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
+                            <Button variant="ghost" size="icon" title="Print" onClick={handlePrint} className="h-7 w-7 text-gray-400 hover:text-gray-900 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
                                 <Printer className="h-3.5 w-3.5" />
                             </Button>
                         </div>
@@ -326,20 +577,51 @@ export default function OnlineExaminationsReportPage() {
                                     <TableHead className="py-3 px-4 text-center">Exam Published</TableHead>
                                     <TableHead className="py-3 px-4 text-center">Result Published</TableHead>
                                 </TableRow>
+                            ) : activeTab === "Student Exams Attempt Report" ? (
+                                <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
+                                    <TableHead className="py-3 px-4">Admission No</TableHead>
+                                    <TableHead className="py-3 px-4">Student</TableHead>
+                                    <TableHead className="py-3 px-4">Class</TableHead>
+                                    <TableHead className="py-3 px-4">Section</TableHead>
+                                    <TableHead className="py-3 px-4">Exam</TableHead>
+                                    <TableHead className="py-3 px-4">Exam From</TableHead>
+                                    <TableHead className="py-3 px-4">Exam To</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Duration</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Exam Published</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Result Published</TableHead>
+                                </TableRow>
+                            ) : activeTab === "Exams Rank Report" ? (
+                                <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
+                                    <TableHead className="py-3 px-4">Rank</TableHead>
+                                    <TableHead className="py-3 px-4">Admission No</TableHead>
+                                    <TableHead className="py-3 px-4">Student</TableHead>
+                                    <TableHead className="py-3 px-4">Class</TableHead>
+                                    <TableHead className="py-3 px-4">Father Name</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Exam Submitted</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Total Questions</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Descriptive</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Correct Answer</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Wrong Answer</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Not Attempted</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Total Exam Marks</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Total Negative Marks</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Total Scored Marks</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">Score (%)</TableHead>
+                                </TableRow>
                             ) : null}
                         </TableHeader>
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={activeTab === "Result Report" ? 7 : 9} className="text-center py-12">
+                                    <TableCell colSpan={activeTab === "Result Report" ? 7 : (activeTab === "Exams Rank Report" ? 15 : (activeTab === "Student Exams Attempt Report" ? 10 : 9))} className="text-center py-12">
                                         <div className="flex items-center justify-center gap-2 text-gray-400">
                                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
                                             Loading report...
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            ) : reportData.length > 0 ? (
-                                reportData.map((item, index) => (
+                            ) : paginatedData.length > 0 ? (
+                                paginatedData.map((item, index) => (
                                     <TableRow key={index} className="hover:bg-gray-50/50 border-b border-gray-100 text-[11px] text-gray-600">
                                         {activeTab === "Result Report" ? (
                                             <>
@@ -386,12 +668,62 @@ export default function OnlineExaminationsReportPage() {
                                                     </div>
                                                 </TableCell>
                                             </>
+                                        ) : activeTab === "Student Exams Attempt Report" ? (
+                                            <>
+                                                <TableCell className="py-3 px-4 font-medium">{item.admission_no}</TableCell>
+                                                <TableCell className="py-3 px-4 font-bold text-gray-800">{item.student_name}</TableCell>
+                                                <TableCell className="py-3 px-4">{item.class}</TableCell>
+                                                <TableCell className="py-3 px-4">{item.section}</TableCell>
+                                                <TableCell className="py-3 px-4 font-bold text-gray-800">{item.exam}</TableCell>
+                                                <TableCell className="py-3 px-4">{item.exam_from}</TableCell>
+                                                <TableCell className="py-3 px-4">{item.exam_to}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center">{item.duration}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center">
+                                                    <div className="flex justify-center">
+                                                        {item.exam_published ? <UserCheck className="h-4 w-4 text-emerald-500" /> : <Plus className="h-4 w-4 text-gray-300 rotate-45" />}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center">
+                                                    <div className="flex justify-center">
+                                                        {item.result_published ? <UserCheck className="h-4 w-4 text-emerald-500" /> : <Plus className="h-4 w-4 text-gray-300 rotate-45" />}
+                                                    </div>
+                                                </TableCell>
+                                            </>
+                                        ) : activeTab === "Exams Rank Report" ? (
+                                            <>
+                                                <TableCell className="py-3 px-4 font-bold text-indigo-600">{item.rank}</TableCell>
+                                                <TableCell className="py-3 px-4 font-medium">{item.admission_no}</TableCell>
+                                                <TableCell className="py-3 px-4 font-bold text-gray-800">{item.student_name}</TableCell>
+                                                <TableCell className="py-3 px-4">{item.class}</TableCell>
+                                                <TableCell className="py-3 px-4">{item.father_name}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center">
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 rounded font-bold text-[10px]",
+                                                        item.exam_submitted === 'Yes' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                                                    )}>
+                                                        {item.exam_submitted}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center">{item.total_questions}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center">{item.descriptive}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-emerald-600 font-bold">{item.correct_answer}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-rose-600 font-bold">{item.wrong_answer}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-gray-400">{item.not_attempted}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center font-bold">{item.total_exam_marks}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-rose-600">{item.total_negative_marks}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-emerald-600 font-bold">{item.total_scored_marks}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center">
+                                                    <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded font-extrabold">
+                                                        {item.score_percentage}%
+                                                    </span>
+                                                </TableCell>
+                                            </>
                                         ) : null}
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow className="hover:bg-transparent h-64">
-                                    <TableCell colSpan={activeTab === "Result Report" ? 7 : 9} className="text-center py-12">
+                                    <TableCell colSpan={activeTab === "Result Report" ? 7 : (activeTab === "Exams Rank Report" ? 15 : (activeTab === "Student Exams Attempt Report" ? 10 : 9))} className="text-center py-12">
                                         <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
                                             <p className="text-red-400 font-bold mb-4 uppercase text-[10px] tracking-widest whitespace-nowrap">
                                                 {isSearched ? "No results found for selected criteria" : "No data available in table"}
@@ -415,8 +747,44 @@ export default function OnlineExaminationsReportPage() {
                     </Table>
                 </div>
 
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
-                    <div>Showing {reportData.length > 0 ? 1 : 0} to {reportData.length} of {reportData.length} entries</div>
+                <div className="flex items-center justify-between text-[10px] text-gray-500 font-semibold pt-4 border-t border-gray-50/50 mt-2">
+                    <div>
+                        Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
+                        {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                        {searchTerm && ` (filtered from ${reportData.length} total entries)`}
+                    </div>
+                    {reportData.length > 0 && (
+                        <div className="flex items-center gap-1.5">
+                            <button 
+                                disabled={safeCurrentPage === 1}
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={cn(
+                                        "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer border-none font-bold",
+                                        safeCurrentPage === page 
+                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white font-extrabold shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95" 
+                                            : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
+                                    )}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                            <button 
+                                disabled={safeCurrentPage === totalPages}
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none"
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

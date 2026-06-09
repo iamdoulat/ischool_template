@@ -231,86 +231,90 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                         )}
                     </div>
 
-                    <div className="md:hidden">
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl bg-muted/30">
-                                    <MoreVertical className="h-5 w-5" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-fit p-2 bg-card/95 backdrop-blur-md border-muted/50 shadow-xl rounded-2xl" align="end" sideOffset={8}>
-                                <div className="flex flex-row items-center gap-1">
-                                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                                        <LayoutGrid className="h-5 w-5" />
+                    {mounted && (
+                        <div className="md:hidden">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl bg-muted/30">
+                                        <MoreVertical className="h-5 w-5" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                                        <ArrowLeftRight className="h-5 w-5" />
-                                    </Button>
-                                    <CurrencySwitcher />
+                                </PopoverTrigger>
+                                <PopoverContent className="w-fit p-2 bg-card/95 backdrop-blur-md border-muted/50 shadow-xl rounded-2xl" align="end" sideOffset={8}>
+                                    <div className="flex flex-row items-center gap-1">
+                                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
+                                            <LayoutGrid className="h-5 w-5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
+                                            <ArrowLeftRight className="h-5 w-5" />
+                                        </Button>
+                                        <CurrencySwitcher />
 
-                                    <LanguageSelector />
+                                        <LanguageSelector />
 
-                                    <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                                        <Bell className="h-5 w-5" />
-                                        <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-destructive rounded-full border-2 border-card animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                                        <MessageSquare className="h-5 w-5" />
-                                    </Button>
-                                    {mounted && (
-                                        <ThemeToggle className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl" />
-                                    )}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
+                                        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
+                                            <Bell className="h-5 w-5" />
+                                            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-destructive rounded-full border-2 border-card animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
+                                            <MessageSquare className="h-5 w-5" />
+                                        </Button>
+                                        {mounted && (
+                                            <ThemeToggle className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl" />
+                                        )}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    )}
                 </div>
 
                 <div className="h-8 w-[1px] bg-border mx-1" />
 
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <div className="relative group cursor-pointer active:scale-95 transition-transform">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-primary to-indigo-500 rounded-full blur opacity-25 group-hover:opacity-60 transition duration-300" />
-                            <Avatar className="h-9 w-9 border-2 border-background shadow-lg relative rounded-full ring-2 ring-primary/20 transition-all duration-300 group-hover:ring-primary/50">
-                                <AvatarImage
-                                    src={user?.avatar ? user.avatar : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2000&auto=format&fit=crop"}
-                                    alt={user?.name}
-                                />
-                                <AvatarFallback className="bg-gradient-to-br from-primary to-indigo-600 text-white font-bold text-xs ring-inset ring-1 ring-white/20">
-                                    {user?.name ? user.name.substring(0, 2).toUpperCase() : "AD"}
-                                </AvatarFallback>
-                            </Avatar>
-                        </div>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-2 bg-card/95 backdrop-blur-md border-muted/50 shadow-2xl rounded-2xl" align="end" sideOffset={12}>
-                        <div className="p-3 border-b border-muted/50 mb-2">
-                            <p className="text-sm font-bold text-foreground truncate">{user?.name || "Loading..."}</p>
-                            <p className="text-[10px] md:text-xs font-medium text-muted-foreground truncate">{user?.email || "..."}</p>
-                            <div className="mt-2 text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary w-fit px-2 py-0.5 rounded-full ring-1 ring-primary/20">
-                                {user?.role || "Staff"}
+                {mounted && (
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <div className="relative group cursor-pointer active:scale-95 transition-transform">
+                                <div className="absolute -inset-1 bg-gradient-to-r from-primary to-indigo-500 rounded-full blur opacity-25 group-hover:opacity-60 transition duration-300" />
+                                <Avatar className="h-9 w-9 border-2 border-background shadow-lg relative rounded-full ring-2 ring-primary/20 transition-all duration-300 group-hover:ring-primary/50">
+                                    <AvatarImage
+                                        src={user?.avatar ? user.avatar : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2000&auto=format&fit=crop"}
+                                        alt={user?.name}
+                                    />
+                                    <AvatarFallback className="bg-gradient-to-br from-primary to-indigo-600 text-white font-bold text-xs ring-inset ring-1 ring-white/20">
+                                        {user?.name ? user.name.substring(0, 2).toUpperCase() : "AD"}
+                                    </AvatarFallback>
+                                </Avatar>
                             </div>
-                        </div>
-                        <div className="space-y-1">
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start gap-3 h-10 text-sm font-medium rounded-xl hover:bg-primary/10 hover:text-primary transition-all"
-                                onClick={() => router.push(`/dashboard/hr/staff-directory/edit/${user?.staff_id}`)}
-                            >
-                                <UserIcon className="h-4 w-4" />
-                                My Profile
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                onClick={handleLogout}
-                                className="w-full justify-start gap-3 h-10 text-sm font-semibold rounded-xl text-destructive hover:bg-destructive/10 transition-all mt-2"
-                            >
-                                <LogOut className="h-4 w-4" />
-                                Sign Out
-                            </Button>
-                        </div>
-                    </PopoverContent>
-                </Popover>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2 bg-card/95 backdrop-blur-md border-muted/50 shadow-2xl rounded-2xl" align="end" sideOffset={12}>
+                            <div className="p-3 border-b border-muted/50 mb-2">
+                                <p className="text-sm font-bold text-foreground truncate">{user?.name || "Loading..."}</p>
+                                <p className="text-[10px] md:text-xs font-medium text-muted-foreground truncate">{user?.email || "..."}</p>
+                                <div className="mt-2 text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary w-fit px-2 py-0.5 rounded-full ring-1 ring-primary/20">
+                                    {user?.role || "Staff"}
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <Button
+                                    variant="ghost"
+                                    className="w-full justify-start gap-3 h-10 text-sm font-medium rounded-xl hover:bg-primary/10 hover:text-primary transition-all"
+                                    onClick={() => router.push(`/dashboard/hr/staff-directory/edit/${user?.staff_id}`)}
+                                >
+                                    <UserIcon className="h-4 w-4" />
+                                    My Profile
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    onClick={handleLogout}
+                                    className="w-full justify-start gap-3 h-10 text-sm font-semibold rounded-xl text-destructive hover:bg-destructive/10 transition-all mt-2"
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                    Sign Out
+                                </Button>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                )}
             </div>
         </header>
     );

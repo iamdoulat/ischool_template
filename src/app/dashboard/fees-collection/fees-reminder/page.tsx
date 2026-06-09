@@ -171,9 +171,10 @@ export default function FeesReminderPage() {
 
                     <div className="p-8 border-t border-muted/20 bg-muted/5 flex justify-end">
                         <Button
+                            variant="gradient"
                             onClick={handleSave}
                             disabled={saving || loading}
-                            className="h-12 px-12 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center gap-2 group/save"
+                            className="h-12 px-12 flex items-center gap-2"
                         >
                             {saving ? (
                                 <Loader2 className="h-5 w-5 animate-spin" />

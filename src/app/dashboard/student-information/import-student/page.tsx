@@ -35,17 +35,26 @@ export default function ImportStudentPage() {
 
     const fetchPrerequisites = async () => {
         try {
-            const [classesRes, sectionsRes] = await Promise.all([
-                api.get("/academics/classes?no_paginate=true"),
-                api.get("/academics/sections?no_paginate=true")
-            ]);
-            setClasses(classesRes.data.data?.data || classesRes.data.data || []);
-            setSections(sectionsRes.data.data?.data || sectionsRes.data.data || []);
+            const response = await api.get("/academics/classes?no_paginate=true");
+            setClasses(response.data.data?.data || response.data.data || []);
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
-            toast("error", "Failed to load classes and sections");
+            toast("error", "Failed to load classes");
         } finally {
             setFetchingPrereqs(false);
+        }
+    };
+
+    const fetchSections = async (classId: string) => {
+        if (!classId) {
+            setSections([]);
+            return;
+        }
+        try {
+            const response = await api.get(`/academics/sections?school_class_id=${classId}&no_paginate=true`);
+            setSections(response.data.data?.data || response.data.data || []);
+        } catch (error) {
+            console.error("Error fetching sections:", error);
         }
     };
 
@@ -108,8 +117,8 @@ export default function ImportStudentPage() {
                     </div>
                 </div>
                 <Button
-                    variant="default"
-                    className="h-10 px-6 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white rounded-lg shadow-lg shadow-primary/20"
+                    variant="gradient"
+                    className="h-10 px-6 rounded-lg"
                     onClick={() => {
                         const csvContent = sampleColumns.join(",") + "\n" + sampleColumns.map(() => "").join(",");
                         const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -193,7 +202,11 @@ export default function ImportStudentPage() {
                                 <select
                                     className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     value={filters.school_class_id}
-                                    onChange={(e) => setFilters(prev => ({ ...prev, school_class_id: e.target.value }))}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setFilters(prev => ({ ...prev, school_class_id: val, section_id: "" }));
+                                        fetchSections(val);
+                                    }}
                                 >
                                     <option value="">Select</option>
                                     {classes.map(c => (
@@ -246,8 +259,8 @@ export default function ImportStudentPage() {
 
                     <div className="flex justify-end pt-4">
                         <Button
-                            variant="default"
-                            className="h-12 px-12 text-lg bg-[#8B5CF6] hover:bg-[#7C3AED] text-white rounded-lg shadow-lg shadow-primary/20"
+                            variant="gradient"
+                            className="h-12 px-12 text-lg rounded-lg"
                             onClick={handleImport}
                             disabled={loading}
                         >

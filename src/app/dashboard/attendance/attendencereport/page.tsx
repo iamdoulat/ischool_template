@@ -20,6 +20,8 @@ interface Student {
     attendances: {
         attendance: string;
         note: string;
+        entry_time?: string | null;
+        exit_time?: string | null;
     }[];
 }
 
@@ -106,6 +108,18 @@ export default function AttendanceReportPage() {
         return record.note;
     };
 
+    const getEntryTime = (student: Student) => {
+        const record = student.attendances?.[0];
+        if (!record || !record.entry_time) return "-";
+        return record.entry_time;
+    };
+
+    const getExitTime = (student: Student) => {
+        const record = student.attendances?.[0];
+        if (!record || !record.exit_time) return "-";
+        return record.exit_time;
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status.toLowerCase()) {
             case "present":
@@ -118,6 +132,8 @@ export default function AttendanceReportPage() {
                 return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Half Day</Badge>;
             case "holiday":
                 return <Badge className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Holiday</Badge>;
+            case "on_leave":
+                return <Badge className="bg-purple-50 text-purple-700 hover:bg-purple-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all flex items-center gap-1"><span className="text-purple-500 text-[11px]">●</span> On Leave</Badge>;
             default:
                 return <Badge className="bg-gray-50 text-gray-400 hover:bg-gray-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Not Marked</Badge>;
         }
@@ -219,6 +235,8 @@ export default function AttendanceReportPage() {
                                         <TableHead className="py-4 px-6">Roll No</TableHead>
                                         <TableHead className="py-4 px-6">Student Name</TableHead>
                                         <TableHead className="py-4 px-6 text-center">Attendance</TableHead>
+                                        <TableHead className="py-4 px-6 text-center">Entry Time</TableHead>
+                                        <TableHead className="py-4 px-6 text-center">Exit Time</TableHead>
                                         <TableHead className="py-4 px-6">Note</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -231,6 +249,12 @@ export default function AttendanceReportPage() {
                                             <TableCell className="py-4 px-6 font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{student.name}</TableCell>
                                             <TableCell className="py-4 px-6 text-center">
                                                 {getStatusBadge(getAttendanceStatus(student))}
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6 text-center text-gray-600 text-[11px] font-mono">
+                                                {getEntryTime(student)}
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6 text-center text-gray-600 text-[11px] font-mono">
+                                                {getExitTime(student)}
                                             </TableCell>
                                             <TableCell className="py-4 px-6 text-gray-500 font-medium italic">
                                                 {getAttendanceNote(student)}

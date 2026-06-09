@@ -57,6 +57,10 @@ export default function MarksGradePage() {
     // Delete State
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage, setRowsPerPage] = useState("50");
+
     useEffect(() => {
         fetchGrades();
     }, [searchTerm]);
@@ -76,15 +80,17 @@ export default function MarksGradePage() {
     };
 
     const groupedData = useMemo(() => {
+        const limit = parseInt(rowsPerPage);
+        const sliced = grades.slice(0, limit);
         const groups: { [key: string]: GradeEntry[] } = {};
-        grades.forEach((entry) => {
+        sliced.forEach((entry) => {
             if (!groups[entry.exam_type]) {
                 groups[entry.exam_type] = [];
             }
             groups[entry.exam_type].push(entry);
         });
         return Object.entries(groups);
-    }, [grades]);
+    }, [grades, rowsPerPage]);
 
     const handleSave = async () => {
         if (!formData.exam_type || !formData.name || !formData.percent_from || !formData.percent_upto || !formData.grade_point) {
@@ -248,16 +254,16 @@ export default function MarksGradePage() {
                                 />
                             </div>
 
-                            <div className="flex gap-2 pt-4">
+                            <div className="flex gap-2 pt-4 justify-end">
                                 {editMode && (
-                                    <Button onClick={resetForm} variant="outline" className="flex-1 h-11 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-200">
+                                    <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5">
                                         Cancel
                                     </Button>
                                 )}
                                 <Button 
                                     onClick={handleSave} 
                                     disabled={submitting}
-                                    className="btn-gradient flex-[2] text-white h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
                                 >
                                     {submitting ? "Saving..." : editMode ? "Update" : "Save"}
                                 </Button>
@@ -274,22 +280,35 @@ export default function MarksGradePage() {
                                 <GraduationCap className="h-5 w-5 text-indigo-500" />
                                 Grade List
                             </h2>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                    <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                    <FileSpreadsheet className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                    <FileText className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                    <Printer className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                    <Columns className="h-4 w-4" />
-                                </Button>
+                            <div className="flex items-center gap-2">
+                                <Select value={rowsPerPage} onValueChange={(v) => { setRowsPerPage(v); setCurrentPage(1); }}>
+                                    <SelectTrigger className="w-[65px] h-8 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder="50" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="20">20</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                        <SelectItem value="500">500</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <div className="flex items-center gap-1 text-gray-400">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                        <FileSpreadsheet className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                        <FileText className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                        <Printer className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                        <Columns className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
@@ -367,7 +386,7 @@ export default function MarksGradePage() {
                                                         {entry.description || "No description"}
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6 text-right">
-                                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                                                        <div className="flex items-center justify-end gap-2">
                                                             <Button size="icon" variant="ghost" onClick={() => handleEdit(entry)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-all">
                                                                 <Pencil className="h-4 w-4" />
                                                             </Button>

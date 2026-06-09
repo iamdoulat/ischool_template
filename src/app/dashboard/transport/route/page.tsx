@@ -177,8 +177,8 @@ export default function RoutePage() {
                             <div className="flex flex-col gap-3 pt-2">
                                 <Button
                                     onClick={handleSubmit}
-                                    variant="primary"
-                                    className="w-full h-11 text-xs font-bold uppercase tracking-widest transition-all rounded-lg shadow-lg shadow-primary/20"
+                                    variant="gradient"
+                                    className="w-full h-11 text-xs font-bold uppercase tracking-widest transition-all rounded-lg shadow-lg"
                                 >
                                     {isEditing ? "Update Route" : "Save Route"}
                                 </Button>
@@ -220,38 +220,39 @@ export default function RoutePage() {
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-100">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm transition-all rounded-lg text-gray-500" onClick={copyToClipboard}>
-                                        <Copy className="h-4 w-4" />
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1 text-gray-400">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
+                                        <Copy className="h-3.5 w-3.5" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm transition-all rounded-lg text-gray-500" onClick={exportToExcel}>
-                                        <FileSpreadsheet className="h-4 w-4 text-green-600" />
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
+                                        <FileSpreadsheet className="h-3.5 w-3.5 text-green-600" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm transition-all rounded-lg text-gray-500" onClick={exportToPDF}>
-                                        <FileText className="h-4 w-4 text-red-600" />
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
+                                        <FileText className="h-3.5 w-3.5 text-red-600" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm transition-all rounded-lg text-gray-500" onClick={() => window.print()}>
-                                        <Printer className="h-4 w-4" />
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
+                                        <Printer className="h-3.5 w-3.5" />
                                     </Button>
                                 </div>
-                                <div className="h-8 w-px bg-gray-100" />
-                                <Select
-                                    value={itemsPerPage.toString()}
-                                    onValueChange={(val) => {
-                                        setItemsPerPage(parseInt(val));
-                                        setCurrentPage(1);
-                                    }}
-                                >
-                                    <SelectTrigger className="h-10 w-20 text-xs border-gray-200 focus:ring-primary rounded-lg shadow-none bg-white">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-lg">
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <div className="flex items-center gap-1.5 mr-2">
+                                    <Select
+                                        value={itemsPerPage.toString()}
+                                        onValueChange={(val) => {
+                                            setItemsPerPage(parseInt(val));
+                                            setCurrentPage(1);
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-lg">
+                                            <SelectItem value="10">10</SelectItem>
+                                            <SelectItem value="25">25</SelectItem>
+                                            <SelectItem value="50">50</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
 
@@ -295,22 +296,22 @@ export default function RoutePage() {
                                             <TableRow key={route.id} className="text-sm border-b border-gray-50 hover:bg-gray-50/30 transition-colors group">
                                                 <TableCell className="py-4 px-6 text-gray-700 font-medium">{route.title}</TableCell>
                                                 <TableCell className="py-4 px-6 text-right">
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex items-center justify-end gap-2">
                                                         <Button 
                                                             onClick={() => handleEdit(route)} 
                                                             size="icon" 
                                                             variant="ghost" 
-                                                            className="h-8 w-8 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-colors"
+                                                            className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded transition-colors shadow-sm"
                                                         >
-                                                            <Pencil className="h-4 w-4" />
+                                                            <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button 
                                                             onClick={() => handleDelete(route.id)} 
                                                             size="icon" 
                                                             variant="ghost" 
-                                                            className="h-8 w-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                                                            className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded transition-colors shadow-sm"
                                                         >
-                                                            <Trash2 className="h-4 w-4" />
+                                                            <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
                                                 </TableCell>
@@ -341,13 +342,11 @@ export default function RoutePage() {
                                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                                         <Button
                                             key={page}
-                                            variant={currentPage === page ? "primary" : "outline"}
+                                            variant={currentPage === page ? "gradient" : "outline"}
                                             onClick={() => setCurrentPage(page)}
                                             className={cn(
-                                                "h-9 min-w-[36px] rounded-lg text-xs font-bold transition-all",
-                                                currentPage === page 
-                                                    ? "shadow-lg shadow-primary/20 scale-105" 
-                                                    : "border-gray-100 text-gray-400 hover:text-primary hover:border-primary/20 hover:bg-primary/5"
+                                                "h-8 w-8 rounded-lg text-[10px] font-bold p-0 transition-all",
+                                                currentPage === page ? "shadow-md scale-105" : "border-gray-100 text-gray-400 hover:text-indigo-600"
                                             )}
                                         >
                                             {page}
