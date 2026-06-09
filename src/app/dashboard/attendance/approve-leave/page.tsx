@@ -28,11 +28,11 @@ interface LeaveRequest {
         id: number;
         name: string;
         admission_no: string;
-        school_class: { name: string };
-        section: { name: string };
+        school_class: { id?: number; name: string };
+        section: { id?: number; name: string };
         avatar?: string | null;
     };
-    leave_type: { name: string };
+    leave_type: { id?: number; name: string };
     apply_date: string;
     leave_from: string;
     leave_to: string;
