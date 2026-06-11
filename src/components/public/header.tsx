@@ -57,7 +57,7 @@ export function PublicHeader() {
     }, []);
 
     const defaultNavItems = [
-        { name: "Home", href: `${frontendUrl}/` },
+        { name: "Home", href: "/" },
         { name: "Academics", href: "#" },
         { name: "Admissions", href: `${frontendUrl}/online_admission` },
         { name: "Exam Results", href: `${frontendUrl}/exam-results` },
