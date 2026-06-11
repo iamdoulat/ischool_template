@@ -80,8 +80,21 @@ export default function PagesListPage() {
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [showHtml, setShowHtml] = useState(false);
 
     const ReactQuill = useMemo(() => dynamic(() => import("react-quill-new"), { ssr: false }), []);
+
+    const quillModules = {
+        toolbar: [
+            [{ 'header': [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'align': [] }],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            ['blockquote', 'code-block'],
+            ['link', 'image'],
+            ['clean'],
+        ],
+    };
 
     useEffect(() => {
         fetchPages();
@@ -373,14 +386,35 @@ export default function PagesListPage() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">Content</Label>
+                            <div className="flex items-center justify-between">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Content</Label>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setShowHtml(!showHtml)}
+                                    className="h-6 px-2 text-[10px] font-bold text-gray-400 hover:text-indigo-500 uppercase"
+                                >
+                                    {showHtml ? "Rich Text" : "HTML"}
+                                </Button>
+                            </div>
                             <div className="min-h-[200px] border border-gray-200 rounded-md overflow-hidden">
-                                <ReactQuill
-                                    theme="snow"
-                                    value={formData.content}
-                                    onChange={(content) => setFormData({ ...formData, content })}
-                                    className="h-full bg-white"
-                                />
+                                {showHtml ? (
+                                    <textarea
+                                        value={formData.content}
+                                        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                                        className="w-full min-h-[200px] p-3 text-[11px] font-mono border-0 focus:outline-none resize-y"
+                                        placeholder="<h1>Your HTML content here...</h1>"
+                                    />
+                                ) : (
+                                    <ReactQuill
+                                        theme="snow"
+                                        value={formData.content}
+                                        onChange={(content) => setFormData({ ...formData, content })}
+                                        modules={quillModules}
+                                        className="h-full bg-white"
+                                    />
+                                )}
                             </div>
                         </div>
                     </div>
