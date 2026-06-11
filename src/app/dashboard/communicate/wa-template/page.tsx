@@ -48,7 +48,7 @@ import { cn } from "@/lib/utils";
 import EmojiPicker from "@/components/ui/emoji-picker";
 import VariablePicker from "@/components/ui/variable-picker";
 
-interface SMSTemplate {
+interface WaTemplate {
     id: number;
     title: string;
     template_id?: string;
@@ -63,11 +63,11 @@ interface PaginationData {
     to: number;
 }
 
-export default function SMSTemplatePage() {
+export default function WaTemplatePage() {
     const { toast } = useToast();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [templates, setTemplates] = useState<SMSTemplate[]>([]);
+    const [templates, setTemplates] = useState<WaTemplate[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
     const [loading, setLoading] = useState(false);
     const [limit, setLimit] = useState("50");
@@ -82,23 +82,12 @@ export default function SMSTemplatePage() {
         message: "",
     });
 
-    const GSM7_REGEX = /^[\x00-\x7F]*$/;
-    const SMS_LIMIT_GSM7 = 160;
-    const SMS_LIMIT_UNICODE = 70;
-    const SMS_MULTI_GSM7 = 153;
-    const SMS_MULTI_UNICODE = 67;
-
-    const getSmsInfo = (text: string) => {
-        if (!text) return { chars: 0, segments: 0, perSegment: SMS_LIMIT_GSM7, isUnicode: false };
-        const isGsm = GSM7_REGEX.test(text);
-        const maxLen = isGsm ? SMS_LIMIT_GSM7 : SMS_LIMIT_UNICODE;
-        const multiLen = isGsm ? SMS_MULTI_GSM7 : SMS_MULTI_UNICODE;
-        const len = text.length;
-        if (len <= maxLen) return { chars: len, segments: len > 0 ? 1 : 0, perSegment: maxLen, isUnicode: !isGsm };
-        return { chars: len, segments: Math.ceil(len / multiLen), perSegment: maxLen, isUnicode: !isGsm };
+    const getWaInfo = (text: string) => {
+        if (!text) return { chars: 0 };
+        return { chars: text.length };
     };
 
-    const smsInfo = getSmsInfo(formData.message);
+    const waInfo = getWaInfo(formData.message);
 
     useEffect(() => {
         fetchTemplates();
@@ -107,7 +96,7 @@ export default function SMSTemplatePage() {
     const fetchTemplates = async (page = 1) => {
         setLoading(true);
         try {
-            const response = await api.get(`/communicate/sms-templates?page=${page}&limit=${limit}&search=${searchTerm}`);
+            const response = await api.get(`/communicate/wa-templates?page=${page}&limit=${limit}&search=${searchTerm}`);
             setTemplates(response.data.data);
             setPagination({
                 current_page: response.data.current_page,
@@ -118,7 +107,7 @@ export default function SMSTemplatePage() {
             });
         } catch (error) {
             console.error("Error fetching templates:", error);
-            toast({ title: "Error", description: "Failed to fetch SMS templates", variant: "destructive" });
+            toast({ title: "Error", description: "Failed to fetch WA Templates", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -127,10 +116,10 @@ export default function SMSTemplatePage() {
     const handleSave = async () => {
         try {
             if (editMode && selectedId) {
-                await api.put(`/communicate/sms-templates/${selectedId}`, formData);
+                await api.put(`/communicate/wa-templates/${selectedId}`, formData);
                 toast({ title: "Success", description: "Template updated successfully" });
             } else {
-                await api.post('/communicate/sms-templates', formData);
+                await api.post('/communicate/wa-templates', formData);
                 toast({ title: "Success", description: "Template added successfully" });
             }
             setIsDialogOpen(false);
@@ -148,7 +137,7 @@ export default function SMSTemplatePage() {
         }
     };
 
-    const handleEdit = (template: SMSTemplate) => {
+    const handleEdit = (template: WaTemplate) => {
         setFormData({ title: template.title, template_id: template.template_id || "", message: template.message });
         setSelectedId(template.id);
         setEditMode(true);
@@ -156,7 +145,7 @@ export default function SMSTemplatePage() {
         setIsDialogOpen(true);
     };
 
-    const handleView = (template: SMSTemplate) => {
+    const handleView = (template: WaTemplate) => {
         setFormData({ title: template.title, template_id: template.template_id || "", message: template.message });
         setViewMode(true);
         setEditMode(false);
@@ -167,7 +156,7 @@ export default function SMSTemplatePage() {
     const handleDelete = async (id: number) => {
         if (confirm("Are you sure you want to delete this template?")) {
             try {
-                await api.delete(`/communicate/sms-templates/${id}`);
+                await api.delete(`/communicate/wa-templates/${id}`);
                 toast({ title: "Success", description: "Template deleted successfully" });
                 fetchTemplates();
             } catch (error) {
@@ -222,7 +211,7 @@ export default function SMSTemplatePage() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", "sms_templates.csv");
+        link.setAttribute("download", "wa_templates.csv");
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -241,7 +230,7 @@ export default function SMSTemplatePage() {
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
              {/* Header Section */}
             <div className="flex justify-between items-center mb-2">
-                <h1 className="text-sm font-medium text-gray-800">SMS Template List</h1>
+                <h1 className="text-sm font-medium text-gray-800">WA Template List</h1>
                 <Button onClick={() => { setEditMode(false); setViewMode(false); setSelectedId(null); setFormData({ title: "", template_id: "", message: "" }); setIsDialogOpen(true); }} className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
                     <Plus className="h-4 w-4" /> Add Template
                 </Button>
@@ -392,7 +381,7 @@ export default function SMSTemplatePage() {
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-bold text-gray-800">
-                            {viewMode ? "View SMS Template" : editMode ? "Edit SMS Template" : "Add SMS Template"}
+                            {viewMode ? "View WA Template" : editMode ? "Edit WA Template" : "Add WA Template"}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -416,7 +405,7 @@ export default function SMSTemplatePage() {
                                 value={formData.template_id}
                                 onChange={(e) => setFormData({ ...formData, template_id: e.target.value })}
                                 readOnly={viewMode}
-                                placeholder="e.g. DLT Template ID"
+                                placeholder="e.g. Meta Template ID"
                                 className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500"
                             />
                         </div>
@@ -435,7 +424,7 @@ export default function SMSTemplatePage() {
                                             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                                             placeholder="Enter template message content..."
                                             className="border-gray-200 text-xs shadow-none min-h-[120px] focus-visible:ring-indigo-500 leading-relaxed pb-8"
-                                            maxLength={smsInfo.isUnicode ? 918 : 4590}
+                                            maxLength={65536}
                                         />
                                         <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
                                             <VariablePicker onSelect={handleVariableSelect} />
@@ -446,17 +435,10 @@ export default function SMSTemplatePage() {
                                         <MessageSquare className="h-3 w-3 text-indigo-400" />
                                         <span className={cn(
                                             "transition-colors",
-                                            smsInfo.chars === 0 ? "text-gray-300" :
-                                            smsInfo.segments <= 1 ? "text-green-600" :
-                                            smsInfo.segments <= 3 ? "text-amber-600" :
-                                            "text-red-600"
+                                            waInfo.chars === 0 ? "text-gray-300" :
+                                            "text-green-600"
                                         )}>
-                                            {smsInfo.chars.toLocaleString()} Characters ({smsInfo.segments} SMS{smsInfo.segments !== 1 ? 'es' : ''})
-                                            {smsInfo.chars > 0 && (
-                                                <span className="text-gray-400 ml-1">
-                                                    — {smsInfo.perSegment} per segment{smsInfo.isUnicode ? ' (Unicode)' : ''}
-                                                </span>
-                                            )}
+                                            {waInfo.chars.toLocaleString()} Characters
                                         </span>
                                     </div>
                                 </>

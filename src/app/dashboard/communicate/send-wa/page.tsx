@@ -33,7 +33,7 @@ import {
 import { format } from "date-fns";
 import VariablePicker from "@/components/ui/variable-picker";
 
-interface SmsTemplate {
+interface WaTemplate {
     id: number;
     title: string;
     message: string;
@@ -57,11 +57,11 @@ interface ClassItem {
     sections?: { id: number; name: string }[];
 }
 
-export default function SendSMSPage() {
+export default function SendWaPage() {
     const { toast } = useToast();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [activeTab, setActiveTab] = useState("Group");
-    const [templates, setTemplates] = useState<SmsTemplate[]>([]);
+    const [templates, setTemplates] = useState<WaTemplate[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -91,11 +91,11 @@ export default function SendSMSPage() {
     const [formData, setFormData] = useState({
         title: "",
         message: "",
-        send_through: ["sms"] as string[],
+        send_through: ["whatsapp"] as string[],
         recipients: [] as string[],
         send_type: "now" as "now" | "schedule",
         scheduled_at: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        sms_template_id: ""
+        wa_template_id: ""
     });
 
     useEffect(() => {
@@ -120,7 +120,7 @@ export default function SendSMSPage() {
 
     const fetchTemplates = async () => {
         try {
-            const response = await api.get('/communicate/sms-templates');
+            const response = await api.get('/communicate/wa-templates');
             setTemplates(response.data.data || response.data);
         } catch (error) {
             console.error("Failed to fetch templates");
@@ -192,7 +192,7 @@ export default function SendSMSPage() {
         if (template) {
             setFormData(prev => ({
                 ...prev,
-                sms_template_id: id,
+                wa_template_id: id,
                 title: template.title,
                 message: template.message
             }));
@@ -272,11 +272,11 @@ export default function SendSMSPage() {
             recipients: getRecipientsArray()
         };
         try {
-            await api.post('/communicate/send-sms', payload);
-            toast({ title: "Success", description: formData.send_type === 'now' ? "SMS sent successfully" : "SMS scheduled successfully" });
+            const res = await api.post('/communicate/send-wa', payload);
+            toast({ title: "Success", description: res.data?.message || (formData.send_type === 'now' ? "WhatsApp message sent successfully" : "WhatsApp message scheduled successfully") });
             resetForm();
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to send SMS", variant: "destructive" });
+        } catch (error: any) {
+            toast({ title: "Error", description: error.response?.data?.message || "Failed to Send WhatsApp", variant: "destructive" });
         } finally {
             setSubmitting(false);
         }
@@ -286,11 +286,11 @@ export default function SendSMSPage() {
         setFormData({
             title: "",
             message: "",
-            send_through: ["sms"],
+            send_through: ["whatsapp"],
             recipients: [],
             send_type: "now",
             scheduled_at: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-            sms_template_id: ""
+            wa_template_id: ""
         });
         setSelectedRoles([]);
         setSelectedUsers(new Set());
@@ -330,8 +330,8 @@ export default function SendSMSPage() {
                         <MessageSquare className="h-5 w-5 text-indigo-500" />
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">Send SMS</h1>
-                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5">Broadcast SMS to the entire school community</p>
+                        <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">Send WhatsApp</h1>
+                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5">Broadcast WhatsApp to the entire school community</p>
                     </div>
                 </div>
 
@@ -364,9 +364,9 @@ export default function SendSMSPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-2">
                                 <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                    <Layout className="h-3 w-3" /> SMS Template
+                                    <Layout className="h-3 w-3" /> WA Template
                                 </Label>
-                                <Select value={formData.sms_template_id} onValueChange={handleTemplateChange}>
+                                <Select value={formData.wa_template_id} onValueChange={handleTemplateChange}>
                                     <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm focus:ring-indigo-500 rounded-lg shadow-none">
                                         <SelectValue placeholder="Quick Templates" />
                                     </SelectTrigger>
@@ -397,14 +397,14 @@ export default function SendSMSPage() {
                                     Send Through <span className="text-red-500">*</span>
                                 </Label>
                                 <div className="flex items-center gap-6">
-                                    <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 hover:bg-indigo-50 transition-colors cursor-pointer group" onClick={() => toggleSendThrough('sms')}>
+                                    <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 hover:bg-indigo-50 transition-colors cursor-pointer group" onClick={() => toggleSendThrough('whatsapp')}>
                                         <Checkbox
-                                            id="sms"
-                                            checked={formData.send_through.includes('sms')}
-                                            onCheckedChange={() => toggleSendThrough('sms')}
+                                            id="whatsapp"
+                                            checked={formData.send_through.includes('whatsapp')}
+                                            onCheckedChange={() => toggleSendThrough('whatsapp')}
                                             className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-5 w-5 rounded-md"
                                         />
-                                        <Label htmlFor="sms" className="text-[11px] text-gray-600 font-bold uppercase tracking-tight cursor-pointer group-hover:text-indigo-600 transition-colors">SMS Gateway</Label>
+                                        <Label htmlFor="whatsapp" className="text-[11px] text-gray-600 font-bold uppercase tracking-tight cursor-pointer group-hover:text-indigo-600 transition-colors">WhatsApp Gateway</Label>
                                     </div>
                                     <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 hover:bg-indigo-50 transition-colors cursor-pointer group" onClick={() => toggleSendThrough('mobile_app')}>
                                         <Checkbox
@@ -435,16 +435,16 @@ export default function SendSMSPage() {
                                     <VariablePicker onSelect={handleVariableSelect} />
                                     <span className={cn(
                                         "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                                        formData.message.length > 160 ? "bg-amber-50 text-amber-600" : "bg-indigo-50 text-indigo-600"
+                                        "bg-indigo-50 text-indigo-600"
                                     )}>
-                                        {formData.message.length} Characters ({Math.ceil(formData.message.length / 160)} SMS)
+                                        {formData.message.length} Characters
                                     </span>
                                 </div>
                             </div>
                             <Textarea
                                 ref={textareaRef}
                                 className="w-full min-h-[200px] p-4 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 resize-none transition-all shadow-none group-hover:border-indigo-200 leading-relaxed"
-                                placeholder="Type your SMS message here..."
+                                placeholder="Type your WhatsApp message here..."
                                 value={formData.message}
                                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                             />
@@ -698,10 +698,10 @@ export default function SendSMSPage() {
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">Confirm SMS Dispatch</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">Confirm WhatsApp Dispatch</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            You are about to {formData.send_type === 'now' ? 'send' : 'schedule'} an SMS to <span className="font-bold text-indigo-600">{getRecipientsArray().length} recipient(s)</span>.
-                            This action will consume SMS credits and cannot be undone. Are you sure you want to proceed?
+                            You are about to {formData.send_type === 'now' ? 'send' : 'schedule'} a WhatsApp message to <span className="font-bold text-indigo-600">{getRecipientsArray().length} recipient(s)</span>.
+                            This action will consume WhatsApp credits and cannot be undone. Are you sure you want to proceed?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">

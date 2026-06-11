@@ -264,6 +264,7 @@ export default function GeneralSettingPage() {
         youtube_url: "",
         linkedin_url: "",
         pinterest_url: "",
+        contact_form_receiver_email: "",
     });
 
     const { toast } = useToast();
@@ -360,6 +361,7 @@ export default function GeneralSettingPage() {
         try {
             const payload = { ...formData } as Record<string, any>;
             Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null; });
+            if (payload.contact_form_receiver_email === null) delete payload.contact_form_receiver_email;
             const response = await api.post("/system-setting/general-setting", payload);
             if (response.data.status === "Success") {
                 await refreshSettings();
@@ -612,6 +614,21 @@ export default function GeneralSettingPage() {
                                             value={formData.linkedin_url}
                                             onChange={(e) => handleChange("linkedin_url", e.target.value)}
                                             placeholder="https://linkedin.com/..."
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
+                                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Contact Form</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Receiver Email</Label>
+                                        <Input
+                                            value={formData.contact_form_receiver_email}
+                                            onChange={(e) => handleChange("contact_form_receiver_email", e.target.value)}
+                                            placeholder="admin@school.com"
                                             className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                         />
                                     </div>

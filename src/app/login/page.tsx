@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -13,11 +13,19 @@ import api from "@/lib/api";
 
 export default function LoginPage() {
     const router = useRouter();
-    const [email, setEmail] = useState("");
+    const [emailOrUsername, setEmailOrUsername] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState("admin");
+    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string } | null>(null);
+
+    useEffect(() => {
+        api.get("/system-setting/general-setting").then(r => {
+            const data = r.data?.data || r.data || {};
+            setSettings(data);
+        }).catch(() => {});
+    }, []);
 
     const handleLogin = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -25,7 +33,7 @@ export default function LoginPage() {
         setError("");
 
         try {
-            const response = await api.post("/login", { email, password });
+            const response = await api.post("/login", { email_or_username: emailOrUsername, password });
             const { access_token } = response.data.data;
 
             // Store token
@@ -44,8 +52,8 @@ export default function LoginPage() {
     };
 
     const handleRoleFill = (roleEmail: string) => {
-        setEmail(roleEmail);
-        setPassword("password");
+        setEmailOrUsername(roleEmail);
+        setPassword(roleEmail === "admin@ischool.com" ? "admin1234" : "password123");
     };
 
     return (
@@ -61,9 +69,17 @@ export default function LoginPage() {
                 <div className="w-full max-w-md space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="text-center space-y-2">
                         <div className="flex justify-center mb-4">
-                            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-4 rounded-3xl shadow-xl shadow-indigo-500/30 border border-white/10">
-                                <GraduationCap className="h-12 w-12 text-white" />
-                            </div>
+                            {settings?.app_logo ? (
+                                <img
+                                    src={settings.app_logo}
+                                    alt={settings?.school_name || "School Logo"}
+                                    className="h-16 w-auto object-contain"
+                                />
+                            ) : (
+                                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-3 rounded-2xl shadow-xl shadow-indigo-500/30 border border-white/10">
+                                    <GraduationCap className="h-10 w-10 text-white" />
+                                </div>
+                            )}
                         </div>
                         <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
                             iSchool <span className="text-indigo-400 italic">Cloud</span>
@@ -110,10 +126,10 @@ export default function LoginPage() {
                                             <Input
                                                 id="email"
                                                 type="text"
-                                                placeholder="Username"
+                                                placeholder="Email / Username"
                                                 required
-                                                value={email}
-                                                onChange={(e) => setEmail(e.target.value)}
+                                                value={emailOrUsername}
+                                                onChange={(e) => setEmailOrUsername(e.target.value)}
                                                 className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-12 text-base rounded-md"
                                             />
                                             <div className="absolute right-3 top-3 h-6 w-6 bg-slate-300 rounded flex items-center justify-center">

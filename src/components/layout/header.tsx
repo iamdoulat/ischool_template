@@ -14,7 +14,9 @@ import {
     ArrowLeftRight,
     LogOut,
     User as UserIcon,
-    Settings
+    Settings,
+    Check,
+    Trash2
 } from "lucide-react";
 import { CurrencySwitcher } from "./currency-switcher";
 import { ThemeToggle } from "./theme-toggle";
@@ -56,6 +58,130 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
     const { settings, loading } = useSettings();
     const { selectedLanguage, setSelectedLanguage, t } = useLanguage();
     const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
+
+    const NotificationBell = () => {
+        const [notifications, setNotifications] = useState<any[]>([]);
+        const [unreadCount, setUnreadCount] = useState(0);
+        const [loadingNotifs, setLoadingNotifs] = useState(false);
+        const [isOpen, setIsOpen] = useState(false);
+
+        const fetchNotifications = async () => {
+            try {
+                const res = await api.get('/notifications');
+                setNotifications(res.data.data.data || []);
+            } catch (error) {
+                console.error("Failed to fetch notifications:", error);
+            }
+        };
+
+        const fetchUnreadCount = async () => {
+            try {
+                const res = await api.get('/notifications/unread-count');
+                setUnreadCount(res.data.data.count || 0);
+            } catch (error) {
+                console.error("Failed to fetch unread count:", error);
+            }
+        };
+
+        useEffect(() => {
+            if (user) {
+                fetchUnreadCount();
+                const interval = setInterval(fetchUnreadCount, 60000); // Poll every minute
+                return () => clearInterval(interval);
+            }
+        }, [user]);
+
+        useEffect(() => {
+            if (isOpen && user) {
+                fetchNotifications();
+            }
+        }, [isOpen, user]);
+
+        const markAsRead = async (id: number) => {
+            try {
+                await api.post(`/notifications/${id}/read`);
+                setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            } catch (error) {
+                console.error("Failed to mark as read", error);
+            }
+        };
+
+        const markAllAsRead = async () => {
+            try {
+                await api.post('/notifications/read-all');
+                setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+                setUnreadCount(0);
+            } catch (error) {
+                console.error("Failed to mark all as read", error);
+            }
+        };
+
+        return (
+            <Popover open={isOpen} onOpenChange={setIsOpen}>
+                <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
+                        <Bell className="h-5 w-5" />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-destructive rounded-full border-2 border-card animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                        )}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 bg-card/95 backdrop-blur-md border-muted/50 shadow-2xl rounded-2xl overflow-hidden" align="end" sideOffset={12}>
+                    <div className="flex items-center justify-between p-3 border-b border-muted/50 bg-muted/20">
+                        <h4 className="text-sm font-bold text-foreground">Notifications</h4>
+                        {unreadCount > 0 && (
+                            <Button variant="ghost" size="sm" onClick={markAllAsRead} className="h-6 text-[10px] uppercase text-primary hover:bg-primary/10 hover:text-primary px-2 rounded-md font-semibold">
+                                Mark all as read
+                            </Button>
+                        )}
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                        {notifications.length === 0 ? (
+                            <div className="p-6 text-center text-xs text-muted-foreground italic flex flex-col items-center gap-2">
+                                <Bell className="h-6 w-6 opacity-20" />
+                                No notifications yet
+                            </div>
+                        ) : (
+                            <div className="flex flex-col">
+                                {notifications.map((notif) => (
+                                    <div 
+                                        key={notif.id} 
+                                        className={cn(
+                                            "flex items-start gap-3 p-3 border-b border-muted/30 hover:bg-muted/30 transition-colors cursor-pointer",
+                                            !notif.is_read ? "bg-primary/5" : ""
+                                        )}
+                                        onClick={() => !notif.is_read && markAsRead(notif.id)}
+                                    >
+                                        <div className={cn(
+                                            "mt-1 w-2 h-2 rounded-full flex-shrink-0",
+                                            !notif.is_read ? "bg-primary" : "bg-transparent"
+                                        )} />
+                                        <div className="flex-1 space-y-1">
+                                            <p className={cn("text-xs leading-tight", !notif.is_read ? "font-semibold text-foreground" : "text-muted-foreground font-medium")}>
+                                                {notif.title}
+                                            </p>
+                                            <p className="text-[11px] text-muted-foreground/80 line-clamp-2">
+                                                {notif.body}
+                                            </p>
+                                            <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">
+                                                {new Date(notif.created_at).toLocaleString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <div className="p-2 border-t border-muted/50 bg-muted/20 text-center">
+                        <Button variant="ghost" className="w-full h-8 text-[11px] uppercase font-bold text-muted-foreground hover:text-primary rounded-xl">
+                            View All Notifications
+                        </Button>
+                    </div>
+                </PopoverContent>
+            </Popover>
+        );
+    };
 
     useEffect(() => {
         setMounted(true);
@@ -217,10 +343,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
 
                         <LanguageSelector />
 
-                        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                            <Bell className="h-5 w-5" />
-                            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-destructive rounded-full border-2 border-card animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                        </Button>
+                        <NotificationBell />
 
                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
                             <MessageSquare className="h-5 w-5" />
@@ -251,10 +374,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
 
                                         <LanguageSelector />
 
-                                        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                                            <Bell className="h-5 w-5" />
-                                            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-destructive rounded-full border-2 border-card animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                                        </Button>
+                                        <NotificationBell />
                                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
                                             <MessageSquare className="h-5 w-5" />
                                         </Button>

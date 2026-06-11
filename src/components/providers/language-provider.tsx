@@ -76,6 +76,13 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     };
 
     const t = (key: string): string => {
+        if (key === 'send_wa') return 'Send WA';
+        if (key === 'wa_template') return 'WA Template';
+        if (key === 'whatsapp_messaging') return 'WhatsApp Gateway';
+        if (key === 'sms_setting') return 'SMS Gateway';
+        if (key === 'email_setting') return 'Email Gateway';
+        if (key === 'email_sms_log') return 'Email / SMS / WA Logs';
+        if (key === 'schedule_email_sms_log') return 'Schedule Email / SMS / WA Logs';
         if (translations[key]) return translations[key];
 
         // Built-in English fallbacks — shown when no translation file is loaded
@@ -104,7 +111,13 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
             // Sessions
             session_settings: "Session Settings",
             // WhatsApp / SMS
-            whatsapp_messaging: "WhatsApp Messaging",
+            whatsapp_messaging: "WhatsApp Gateway",
+            sms_setting: "SMS Gateway",
+            email_setting: "Email Gateway",
+            send_wa: "Send WA",
+            wa_template: "WA Template",
+            email_sms_log: "Email / SMS / WA Logs",
+            schedule_email_sms_log: "Schedule Email / SMS / WA Logs",
             // Common table labels
             no_records: "No records found",
             loading: "Loading...",

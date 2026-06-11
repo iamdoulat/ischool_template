@@ -12,30 +12,57 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Loader2, Send, CheckCircle2, XCircle, Smartphone } from "lucide-react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
-const tabs = ["Meta WhatsApp Official", "Twilio"];
+const gatewaysConfig: Record<string, { providerName: string, fields: { key: string, label: string, type: string, options?: string[], optionLabels?: Record<string, string> }[], guideUrl?: string }> = {
+    "Meta WhatsApp Official": {
+        providerName: "whatsapp_meta",
+        guideUrl: "https://business.facebook.com/",
+        fields: [
+            { key: "access_token", label: "Access Token", type: "password" },
+            { key: "phone_number_id", label: "Phone Number ID", type: "text" },
+            { key: "phone_number", label: "Registered Phone Number", type: "text" },
+            { key: "language", label: "Language", type: "text" },
+        ]
+    },
+    "Twilio": {
+        providerName: "whatsapp_twilio",
+        guideUrl: "https://www.twilio.com/console",
+        fields: [
+            { key: "account_sid", label: "Account SID", type: "text" },
+            { key: "auth_token", label: "Auth Token", type: "password" },
+            { key: "sender_phone", label: "Sender Phone Number", type: "text" },
+        ]
+    },
+    "BipSMS": {
+        providerName: "whatsapp_bipsms",
+        guideUrl: "https://app.bipsms.com",
+        fields: [
+            { key: "secret", label: "API Secret", type: "password" },
+            { key: "account", label: "WhatsApp Account ID", type: "text" },
+            { key: "priority", label: "Priority", type: "select", options: ["1", "2"], optionLabels: { "1": "Yes (send immediately)", "2": "No (queue)" } },
+        ]
+    }
+};
+
+const gateways = Object.keys(gatewaysConfig);
+
+type ProviderData = {
+    config: Record<string, string>;
+    status: "enabled" | "disabled";
+};
 
 export default function WhatsappMessagingPage() {
-    const { toast } = useToast();
     const [activeTab, setActiveTab] = useState("Meta WhatsApp Official");
-
-    // States for Meta WhatsApp Official
-    const [metaToken, setMetaToken] = useState("");
-    const [metaPhone, setMetaPhone] = useState("");
-    const [metaLanguage, setMetaLanguage] = useState("");
-    const [metaStatus, setMetaStatus] = useState("enabled");
-
-    // States for Twilio
-    const [twilioSid, setTwilioSid] = useState("");
-    const [twilioToken, setTwilioToken] = useState("");
-    const [twilioPhone, setTwilioPhone] = useState("");
-    const [twilioStatus, setTwilioStatus] = useState("enabled");
-
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [testing, setTesting] = useState(false);
+    const [testPhone, setTestPhone] = useState("");
+    const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+    const [settingsData, setSettingsData] = useState<Record<string, ProviderData>>({});
 
     useEffect(() => {
         fetchSettings();
@@ -45,64 +72,123 @@ export default function WhatsappMessagingPage() {
         setLoading(true);
         try {
             const res = await api.get('/system-setting/sms-settings');
-            if (res.data?.status === 'success') {
-                const settings = res.data.data;
-                const meta = settings.find((s: any) => s.provider === 'whatsapp_meta');
-                const twilio = settings.find((s: any) => s.provider === 'twilio');
-
-                if (meta) {
-                    setMetaToken(meta.config.access_token || "");
-                    setMetaPhone(meta.config.phone_number || "");
-                    setMetaLanguage(meta.config.language || "");
-                    setMetaStatus(meta.status ? "enabled" : "disabled");
-                }
-
-                if (twilio) {
-                    setTwilioSid(twilio.config.account_sid || "");
-                    setTwilioToken(twilio.config.auth_token || "");
-                    setTwilioPhone(twilio.config.sender_phone || "");
-                    setTwilioStatus(twilio.status ? "enabled" : "disabled");
-                }
+            const list = res.data?.data;
+            if (Array.isArray(list)) {
+                const formattedData: Record<string, ProviderData> = {};
+                list.forEach((setting: { provider: string; config: Record<string, string>; status: boolean }) => {
+                    formattedData[setting.provider] = {
+                        config: setting.config || {},
+                        status: setting.status ? "enabled" : "disabled"
+                    };
+                });
+                setSettingsData(formattedData);
             }
-        } catch (error) {
-            toast({ variant: "destructive", title: "Error", description: "Failed to fetch settings" });
+        } catch {
+            toast.error("Failed to load WhatsApp settings");
         } finally {
             setLoading(false);
         }
     };
 
+    const handleFieldChange = (providerKey: string, fieldKey: string, value: string) => {
+        setSettingsData(prev => ({
+            ...prev,
+            [providerKey]: {
+                config: { ...(prev[providerKey]?.config || {}), [fieldKey]: value },
+                status: prev[providerKey]?.status || "disabled"
+            }
+        }));
+    };
+
+    const handleStatusChange = (providerKey: string, status: string) => {
+        setSettingsData(prev => ({
+            ...prev,
+            [providerKey]: {
+                config: prev[providerKey]?.config || {},
+                status: status as "enabled" | "disabled"
+            }
+        }));
+    };
+
     const handleSave = async () => {
         setSaving(true);
+        setTestResult(null);
         try {
-            const isMeta = activeTab === "Meta WhatsApp Official";
-            const payload = isMeta
-                ? {
-                    provider: 'whatsapp_meta',
-                    config: {
-                        access_token: metaToken,
-                        phone_number: metaPhone,
-                        language: metaLanguage
-                    },
-                    status: metaStatus === "enabled"
-                }
-                : {
-                    provider: 'twilio',
-                    config: {
-                        account_sid: twilioSid,
-                        auth_token: twilioToken,
-                        sender_phone: twilioPhone
-                    },
-                    status: twilioStatus === "enabled"
-                };
+            const activeConfig = gatewaysConfig[activeTab];
+            const providerKey = activeConfig.providerName;
+            const currentData = settingsData[providerKey] || { config: {}, status: 'disabled' };
+
+            const payload = {
+                provider: providerKey,
+                config: currentData.config,
+                status: currentData.status === "enabled"
+            };
 
             const res = await api.post('/system-setting/sms-settings', payload);
-            if (res.data?.status === 'success') {
-                toast({ title: "Saved", description: `${activeTab} configuration saved successfully` });
+            const resStatus = res.data?.status;
+            const isSuccess = resStatus === 'success' || resStatus === 200;
+
+            if (isSuccess) {
+                const updated = res.data.data;
+                if (updated && typeof updated === 'object' && updated !== true) {
+                    setSettingsData(prev => ({
+                        ...prev,
+                        [providerKey]: {
+                            config: updated.config || currentData.config,
+                            status: updated.status ? "enabled" : "disabled"
+                        }
+                    }));
+                }
+                toast.success(res.data?.message || `${activeTab} configuration saved`);
+            } else {
+                toast.error(res.data?.message || `Failed to save ${activeTab} configuration`);
             }
-        } catch (error) {
-            toast({ variant: "destructive", title: "Error", description: `Failed to save ${activeTab} configuration` });
+        } catch (err: unknown) {
+            const msg =
+                err && typeof err === "object" && "response" in err
+                    ? ((err as { response: { data: { message: string } } }).response?.data?.message ?? `Failed to save ${activeTab} configuration`)
+                    : `Failed to save ${activeTab} configuration`;
+            toast.error(msg);
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleTestMessage = async () => {
+        if (!testPhone.trim()) {
+            toast.error("Enter a phone number to send the test message");
+            return;
+        }
+        setTesting(true);
+        setTestResult(null);
+        try {
+            const activeConfig = gatewaysConfig[activeTab];
+            const providerKey = activeConfig.providerName;
+            const res = await api.post('/system-setting/sms-settings/test', {
+                provider: providerKey,
+                phone: testPhone.trim()
+            });
+            const resStatus = res.data?.status;
+            const isSuccess = resStatus === 'success' || resStatus === 200;
+
+            if (isSuccess) {
+                const successMsg = res.data?.message || "Test message sent successfully";
+                setTestResult({ ok: true, message: successMsg });
+                toast.success(successMsg);
+            } else {
+                const errorMsg = res.data?.message || "Test message failed";
+                setTestResult({ ok: false, message: errorMsg });
+                toast.error(errorMsg);
+            }
+        } catch (err: unknown) {
+            const msg =
+                err && typeof err === "object" && "response" in err
+                    ? ((err as { response: { data: { message: string } } }).response?.data?.message ?? "Failed to send test message")
+                    : "Failed to send test message";
+            setTestResult({ ok: false, message: msg });
+            toast.error(msg);
+        } finally {
+            setTesting(false);
         }
     };
 
@@ -114,193 +200,178 @@ export default function WhatsappMessagingPage() {
         );
     }
 
+    const currentActiveConfig = gatewaysConfig[activeTab];
+    const providerKey = currentActiveConfig.providerName;
+    const currentData = settingsData[providerKey] || { config: {}, status: "disabled" };
+    const isConfigured = Object.keys(currentData.config).length > 0;
+
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">WhatsApp / SMS Messaging Setting</h1>
+            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">WhatsApp Gateway</h1>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden min-h-[400px]">
-                {/* Tabs */}
-                <div className="flex border-b border-gray-100 bg-gray-50/30">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={cn(
-                                "px-6 py-3 text-[11px] font-bold uppercase transition-all relative",
-                                activeTab === tab
-                                    ? "text-indigo-600 bg-white border-b-2 border-indigo-500 shadow-sm"
-                                    : "text-gray-400 hover:text-gray-600"
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                <div className="border-b border-gray-100 bg-white">
+                    <div className="flex overflow-x-auto no-scrollbar">
+                        {gateways.map((gateway) => {
+                            const gwProviderKey = gatewaysConfig[gateway].providerName;
+                            const gwData = settingsData[gwProviderKey];
+                            const gwConfigured = gwData && Object.keys(gwData.config).length > 0;
+                            const gwEnabled = gwData?.status === "enabled";
+                            return (
+                                <button
+                                    key={gateway}
+                                    onClick={() => { setActiveTab(gateway); setTestResult(null); }}
+                                    className={cn(
+                                        "px-5 py-3 text-[11px] font-bold uppercase transition-all whitespace-nowrap border-b-2 flex items-center gap-2",
+                                        activeTab === gateway
+                                            ? "text-indigo-600 border-indigo-500 bg-indigo-50/10"
+                                            : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50"
+                                    )}
+                                >
+                                    {gwConfigured && (gwEnabled
+                                        ? <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
+                                        : <XCircle className="h-3 w-3 text-gray-300 shrink-0" />
+                                    )}
+                                    {gateway}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="flex-1 p-8 max-w-6xl mx-auto w-full">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start animate-in fade-in duration-300">
+                        <div className="space-y-6">
+                            {currentActiveConfig.fields.map((field) => (
+                                <div key={field.key} className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
+                                    <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">
+                                        {field.label} <span className="text-red-500">*</span>
+                                    </Label>
+                                    <div className="md:col-span-2">
+                                        {field.type === "select" && field.options ? (
+                                            <Select
+                                                value={currentData.config[field.key] || ""}
+                                                onValueChange={(val) => handleFieldChange(providerKey, field.key, val)}
+                                            >
+                                                <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                                    <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {field.options.map((opt) => (
+                                                        <SelectItem key={opt} value={opt}>
+                                                            {field.optionLabels?.[opt] || opt.charAt(0).toUpperCase() + opt.slice(1)}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            <Input
+                                                type={field.type}
+                                                value={currentData.config[field.key] || ""}
+                                                onChange={(e) => handleFieldChange(providerKey, field.key, e.target.value)}
+                                                placeholder={`Enter ${field.label.toLowerCase()}`}
+                                                className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 mt-6">
+                                <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Status <span className="text-red-500">*</span></Label>
+                                <div className="md:col-span-2">
+                                    <Select value={currentData.status} onValueChange={(val) => handleStatusChange(providerKey, val)}>
+                                        <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                            <SelectValue placeholder="Select" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="enabled">Enabled</SelectItem>
+                                            <SelectItem value="disabled">Disabled</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 pt-4 border-t border-gray-50">
+                                <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Test Message</Label>
+                                <div className="md:col-span-2 space-y-2">
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="text"
+                                            value={testPhone}
+                                            onChange={(e) => setTestPhone(e.target.value)}
+                                            placeholder="+1234567890"
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded flex-1"
+                                        />
+                                        <Button
+                                            onClick={handleTestMessage}
+                                            disabled={testing || !isConfigured || currentData.status !== "enabled"}
+                                            size="sm"
+                                            className="h-8 text-[10px] font-bold uppercase px-3 bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white rounded-full shadow-none"
+                                        >
+                                            {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                                        </Button>
+                                    </div>
+                                    {testResult && (
+                                        <div className={cn(
+                                            "flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded",
+                                            testResult.ok ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
+                                        )}>
+                                            {testResult.ok ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                            {testResult.message}
+                                        </div>
+                                    )}
+                                    <p className="text-[9px] text-gray-400 italic">Save configuration before testing</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col items-center justify-center p-8 space-y-6">
+                            {currentActiveConfig.guideUrl && (
+                                <>
+                                    <div className={cn(
+                                        "p-6 rounded-lg flex items-center justify-center transition-all",
+                                        isConfigured ? "bg-green-50 border border-green-100" : "bg-white"
+                                    )}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "flex items-center justify-center",
+                                                isConfigured ? "text-green-500" : "text-gray-300"
+                                            )}>
+                                                <Smartphone className={cn("h-10 w-10", isConfigured && "text-green-500")} />
+                                            </div>
+                                            <div className="text-left">
+                                                <p className={cn(
+                                                    "text-xs font-bold uppercase tracking-wider",
+                                                    isConfigured ? "text-green-700" : "text-gray-400"
+                                                )}>
+                                                    {isConfigured ? "Configured" : "Not Configured"}
+                                                </p>
+                                                <p className={cn(
+                                                    "text-[10px] mt-0.5",
+                                                    isConfigured ? "text-green-500" : "text-gray-300"
+                                                )}>
+                                                    {currentData.status === "enabled" ? "Active" : "Disabled"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <a
+                                        href={currentActiveConfig.guideUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-indigo-500 hover:text-indigo-600 hover:underline flex items-center gap-1.5 font-medium transition-colors"
+                                    >
+                                        {currentActiveConfig.guideUrl}
+                                        <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                </>
                             )}
-                        >
-                            {tab}
-                        </button>
-                    ))}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Content Area */}
-                <div className="p-8 max-w-6xl mx-auto">
-                    {activeTab === "Meta WhatsApp Official" ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start animate-in fade-in duration-300">
-
-                            {/* Form Fields */}
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Access Token <span className="text-red-500">*</span></Label>
-                                    <div className="md:col-span-2">
-                                        <Input
-                                            value={metaToken}
-                                            onChange={(e) => setMetaToken(e.target.value)}
-                                            placeholder="Enter access token"
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Registered Phone Number <span className="text-red-500">*</span></Label>
-                                    <div className="md:col-span-2">
-                                        <Input
-                                            value={metaPhone}
-                                            onChange={(e) => setMetaPhone(e.target.value)}
-                                            placeholder="Enter registered phone number"
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Language <span className="text-red-500">*</span></Label>
-                                    <div className="md:col-span-2">
-                                        <Input
-                                            value={metaLanguage}
-                                            onChange={(e) => setMetaLanguage(e.target.value)}
-                                            placeholder="e.g., en"
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Status <span className="text-red-500">*</span></Label>
-                                    <div className="md:col-span-2">
-                                        <Select value={metaStatus} onValueChange={setMetaStatus}>
-                                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="enabled">Enabled</SelectItem>
-                                                <SelectItem value="disabled">Disabled</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Meta Brand Card */}
-                            <div className="flex flex-col items-center justify-center p-8 space-y-4">
-                                <div className="w-56 h-32 bg-blue-600 rounded-lg shadow-lg flex items-center justify-center relative overflow-hidden group">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-                                    <div className="bg-white p-3 rounded-lg shadow-xl transform transition-transform group-hover:scale-110">
-                                        <svg className="w-12 h-12 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12.001 3.5c-3.111 0-5.875 1.579-7.534 3.993C3.012 10.016 3.012 13.984 4.467 16.507c1.659 2.414 4.423 3.993 7.534 3.993h.001c3.111 0 5.875-1.579 7.534-3.993 1.455-2.523 1.455-6.491 0-9.014-1.659-2.414-4.423-3.993-7.534-3.993s-5.875 1.579-7.534 3.993zM12.001 2c3.5 0 6.666 1.834 8.5 4.5 1.667 3 1.667 7.5 0 10.5-1.834 2.666-5 4.5-8.5 4.5h-.001c-3.5 0-6.666-1.834-8.5-4.5-1.667-3-1.667-7.5 0-10.5 1.834-2.666 5-4.5 8.5-4.5h.001z" />
-                                            <path d="M12.001 8c-1.381 0-2.5 1.119-2.5 2.5s1.119 2.5 2.5 2.5c1.381 0 2.5-1.119 2.5-2.5s-1.119-2.5-2.5-2.5zm5.5 2.5c0 3.038-2.462 5.5-5.5 5.5s-5.5-2.462-5.5-5.5 2.462-5.5 5.5-5.5 5.5 2.462 5.5 5.5z" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <a
-                                    href="https://business.facebook.com/"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-blue-500 hover:underline flex items-center gap-1.5 font-medium"
-                                >
-                                    https://business.facebook.com/
-                                    <ExternalLink className="h-3 w-3" />
-                                </a>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start animate-in fade-in duration-300">
-                            {/* Twilio Form Fields */}
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Account SID <span className="text-red-500">*</span></Label>
-                                    <div className="md:col-span-2">
-                                        <Input
-                                            value={twilioSid}
-                                            onChange={(e) => setTwilioSid(e.target.value)}
-                                            placeholder="Enter Twilio Account SID"
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Auth Token <span className="text-red-500">*</span></Label>
-                                    <div className="md:col-span-2">
-                                        <Input
-                                            type="password"
-                                            value={twilioToken}
-                                            onChange={(e) => setTwilioToken(e.target.value)}
-                                            placeholder="Enter Twilio Auth Token"
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Sender Phone Number <span className="text-red-500">*</span></Label>
-                                    <div className="md:col-span-2">
-                                        <Input
-                                            value={twilioPhone}
-                                            onChange={(e) => setTwilioPhone(e.target.value)}
-                                            placeholder="e.g. +1234567890"
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Status <span className="text-red-500">*</span></Label>
-                                    <div className="md:col-span-2">
-                                        <Select value={twilioStatus} onValueChange={setTwilioStatus}>
-                                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="enabled">Enabled</SelectItem>
-                                                <SelectItem value="disabled">Disabled</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Twilio Brand Card */}
-                            <div className="flex flex-col items-center justify-center p-8 space-y-4">
-                                <div className="w-56 h-32 bg-[#F22F46] rounded-lg shadow-lg flex items-center justify-center relative overflow-hidden group">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
-                                    <div className="bg-white p-3 rounded-lg shadow-xl transform transition-transform group-hover:scale-110">
-                                        <svg className="w-12 h-12 text-[#F22F46]" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12z" fill="#F22F46" />
-                                            <path d="M7.4 17.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zm9.2 0c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zm-9.2-5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zm9.2 0c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#FFF" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <a
-                                    href="https://www.twilio.com/"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-[#F22F46] hover:underline flex items-center gap-1.5 font-medium"
-                                >
-                                    https://www.twilio.com/
-                                    <ExternalLink className="h-3 w-3" />
-                                </a>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="border-t border-gray-50 p-6 bg-white flex justify-center">
+                <div className="border-t border-gray-50 p-6 bg-white flex justify-center mt-auto">
                     <Button
                         onClick={handleSave}
                         disabled={saving}

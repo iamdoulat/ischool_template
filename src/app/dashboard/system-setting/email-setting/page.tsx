@@ -89,7 +89,7 @@ export default function EmailSettingPage() {
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Email Setting</h1>
+            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Email Gateway</h1>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col items-center">
 

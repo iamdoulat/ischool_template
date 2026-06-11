@@ -16,6 +16,7 @@ import {
     MessageSquare,
     Loader2,
     X,
+    Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
@@ -338,7 +339,17 @@ export default function NotificationSettingPage() {
                             <TableHeader className="bg-transparent border-b border-gray-100">
                                 <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/30">
                                     <TableHead className="py-3 px-4 w-[200px]">Event</TableHead>
-                                    <TableHead className="py-3 px-4 w-[180px]">Destination</TableHead>
+                                    <TableHead className="py-3 px-4 w-[180px]">
+                                        <div className="flex items-center gap-1">
+                                            Destination
+                                            <div className="group/tooltip relative">
+                                                <Info className="h-3 w-3 text-muted-foreground hover:text-indigo-500 cursor-pointer" />
+                                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 hidden group-hover/tooltip:block w-48 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg normal-case font-medium z-50 text-center">
+                                                    "Mobile App" triggers in-app notifications (Bell icon).
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </TableHead>
                                     <TableHead className="py-3 px-4 w-[150px]">Recipient</TableHead>
                                     <TableHead className="py-3 px-4 w-[180px]">SMS Template ID</TableHead>
                                     <TableHead className="py-3 px-4 w-[220px]">WhatsApp Template Id</TableHead>

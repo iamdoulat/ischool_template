@@ -12,13 +12,14 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { ExternalLink, MessageSquare, Loader2 } from "lucide-react";
+import { ExternalLink, MessageSquare, Loader2, Send, CheckCircle2, XCircle, Smartphone } from "lucide-react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "sonner";
 
-const gatewaysConfig: Record<string, { providerName: string, fields: { key: string, label: string, type: string }[] }> = {
+const gatewaysConfig: Record<string, { providerName: string, fields: { key: string, label: string, type: string, options?: string[], showWhen?: { field: string, value: string } }[], guideUrl?: string }> = {
     "Clickatell Sms Gateway": {
         providerName: "clickatell",
+        guideUrl: "https://www.clickatell.com",
         fields: [
             { key: "username", label: "Clickatell Username", type: "text" },
             { key: "password", label: "Clickatell Password", type: "password" },
@@ -27,6 +28,7 @@ const gatewaysConfig: Record<string, { providerName: string, fields: { key: stri
     },
     "Twilio SMS Gateway": {
         providerName: "twilio",
+        guideUrl: "https://www.twilio.com/console",
         fields: [
             { key: "account_sid", label: "Account SID", type: "text" },
             { key: "auth_token", label: "Auth Token", type: "password" },
@@ -35,6 +37,7 @@ const gatewaysConfig: Record<string, { providerName: string, fields: { key: stri
     },
     "MSG91": {
         providerName: "msg91",
+        guideUrl: "https://control.msg91.com",
         fields: [
             { key: "auth_key", label: "Auth Key", type: "text" },
             { key: "sender_id", label: "Sender ID", type: "text" }
@@ -42,6 +45,7 @@ const gatewaysConfig: Record<string, { providerName: string, fields: { key: stri
     },
     "Text Local": {
         providerName: "text_local",
+        guideUrl: "https://www.textlocal.in",
         fields: [
             { key: "api_key", label: "API Key", type: "text" },
             { key: "sender_id", label: "Sender ID", type: "text" }
@@ -49,6 +53,7 @@ const gatewaysConfig: Record<string, { providerName: string, fields: { key: stri
     },
     "SMS Country": {
         providerName: "sms_country",
+        guideUrl: "https://www.smscountry.com",
         fields: [
             { key: "username", label: "Username", type: "text" },
             { key: "password", label: "Password", type: "password" },
@@ -57,6 +62,7 @@ const gatewaysConfig: Record<string, { providerName: string, fields: { key: stri
     },
     "Bulk SMS": {
         providerName: "bulk_sms",
+        guideUrl: "https://www.bulksms.com",
         fields: [
             { key: "username", label: "Username", type: "text" },
             { key: "password", label: "Password", type: "password" }
@@ -64,6 +70,7 @@ const gatewaysConfig: Record<string, { providerName: string, fields: { key: stri
     },
     "Mobi Reach": {
         providerName: "mobi_reach",
+        guideUrl: "https://www.mobireach.com.bd",
         fields: [
             { key: "auth_key", label: "Auth Key", type: "text" },
             { key: "route_id", label: "Route ID", type: "text" }
@@ -71,6 +78,7 @@ const gatewaysConfig: Record<string, { providerName: string, fields: { key: stri
     },
     "Nexmo": {
         providerName: "nexmo",
+        guideUrl: "https://dashboard.nexmo.com",
         fields: [
             { key: "api_key", label: "API Key", type: "text" },
             { key: "api_secret", label: "API Secret", type: "password" },
@@ -79,6 +87,7 @@ const gatewaysConfig: Record<string, { providerName: string, fields: { key: stri
     },
     "AfricasTalking": {
         providerName: "africas_talking",
+        guideUrl: "https://africastalking.com",
         fields: [
             { key: "username", label: "Username", type: "text" },
             { key: "api_key", label: "API Key", type: "text" }
@@ -86,6 +95,7 @@ const gatewaysConfig: Record<string, { providerName: string, fields: { key: stri
     },
     "SMS Egypt": {
         providerName: "sms_egypt",
+        guideUrl: "https://www.smsegypt.com",
         fields: [
             { key: "username", label: "Username", type: "text" },
             { key: "password", label: "Password", type: "password" },
@@ -94,9 +104,22 @@ const gatewaysConfig: Record<string, { providerName: string, fields: { key: stri
     },
     "SMS Gateway Hub": {
         providerName: "sms_gateway_hub",
+        guideUrl: "https://www.smsgatewayhub.com",
         fields: [
             { key: "api_key", label: "API Key", type: "text" },
             { key: "sender_id", label: "Sender ID", type: "text" }
+        ]
+    },
+    "BipSMS": {
+        providerName: "bipsms",
+        guideUrl: "https://app.bipsms.com",
+        fields: [
+            { key: "secret", label: "API Secret", type: "password" },
+            { key: "mode", label: "Mode (devices/credits)", type: "select", options: ["devices", "credits"] },
+            { key: "device", label: "Device ID (for devices mode)", type: "text", showWhen: { field: "mode", value: "devices" } },
+            { key: "gateway", label: "Gateway ID (for credits mode)", type: "text", showWhen: { field: "mode", value: "credits" } },
+            { key: "sim", label: "SIM Slot (1/2)", type: "text" },
+            { key: "priority", label: "Priority (0/1/2)", type: "text" }
         ]
     },
     "Custom SMS Gateway": {
@@ -111,14 +134,20 @@ const gatewaysConfig: Record<string, { providerName: string, fields: { key: stri
 
 const gateways = Object.keys(gatewaysConfig);
 
+type ProviderData = {
+    config: Record<string, string>;
+    status: "enabled" | "disabled";
+};
+
 export default function SmsSettingPage() {
-    const { toast } = useToast();
     const [activeTab, setActiveTab] = useState("Clickatell Sms Gateway");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [testing, setTesting] = useState(false);
+    const [testPhone, setTestPhone] = useState("");
+    const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
-    // State to hold settings for all providers: { "clickatell": { config: {...}, status: "enabled" }, ... }
-    const [settingsData, setSettingsData] = useState<Record<string, { config: any, status: string }>>({});
+    const [settingsData, setSettingsData] = useState<Record<string, ProviderData>>({});
 
     useEffect(() => {
         fetchSettings();
@@ -128,21 +157,19 @@ export default function SmsSettingPage() {
         setLoading(true);
         try {
             const res = await api.get('/system-setting/sms-settings');
-            if (res.data?.status === 'success') {
-                const fetchedSettings = res.data.data;
-                const formattedData: any = {};
-
-                fetchedSettings.forEach((setting: any) => {
+            const list = res.data?.data;
+            if (Array.isArray(list)) {
+                const formattedData: Record<string, ProviderData> = {};
+                list.forEach((setting: { provider: string; config: Record<string, string>; status: boolean }) => {
                     formattedData[setting.provider] = {
                         config: setting.config || {},
                         status: setting.status ? "enabled" : "disabled"
                     };
                 });
-
                 setSettingsData(formattedData);
             }
-        } catch (error) {
-            toast("error", "Failed to fetch SMS settings");
+        } catch {
+            toast.error("Failed to load SMS settings");
         } finally {
             setLoading(false);
         }
@@ -152,11 +179,7 @@ export default function SmsSettingPage() {
         setSettingsData(prev => ({
             ...prev,
             [providerKey]: {
-                ...prev[providerKey],
-                config: {
-                    ...(prev[providerKey]?.config || {}),
-                    [fieldKey]: value
-                },
+                config: { ...(prev[providerKey]?.config || {}), [fieldKey]: value },
                 status: prev[providerKey]?.status || "disabled"
             }
         }));
@@ -166,15 +189,15 @@ export default function SmsSettingPage() {
         setSettingsData(prev => ({
             ...prev,
             [providerKey]: {
-                ...prev[providerKey],
                 config: prev[providerKey]?.config || {},
-                status: status
+                status: status as "enabled" | "disabled"
             }
         }));
     };
 
     const handleSave = async () => {
         setSaving(true);
+        setTestResult(null);
         try {
             const activeConfig = gatewaysConfig[activeTab];
             const providerKey = activeConfig.providerName;
@@ -187,13 +210,70 @@ export default function SmsSettingPage() {
             };
 
             const res = await api.post('/system-setting/sms-settings', payload);
-            if (res.data?.status === 'success') {
-                toast("success", `${activeTab} Configuration Saved`);
+            const resStatus = res.data?.status;
+            const isSuccess = resStatus === 'success' || resStatus === 200;
+
+            if (isSuccess) {
+                const updated = res.data.data;
+                if (updated && typeof updated === 'object' && updated !== true) {
+                    setSettingsData(prev => ({
+                        ...prev,
+                        [providerKey]: {
+                            config: updated.config || currentData.config,
+                            status: updated.status ? "enabled" : "disabled"
+                        }
+                    }));
+                }
+                toast.success(res.data?.message || `${activeTab} configuration saved`);
+            } else {
+                toast.error(res.data?.message || `Failed to save ${activeTab} configuration`);
             }
-        } catch (error) {
-            toast("error", `Failed to save ${activeTab} configuration`);
+        } catch (err: unknown) {
+            const msg =
+                err && typeof err === "object" && "response" in err
+                    ? ((err as { response: { data: { message: string } } }).response?.data?.message ?? `Failed to save ${activeTab} configuration`)
+                    : `Failed to save ${activeTab} configuration`;
+            toast.error(msg);
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleTestSms = async () => {
+        if (!testPhone.trim()) {
+            toast.error("Enter a phone number to send the test SMS");
+            return;
+        }
+        setTesting(true);
+        setTestResult(null);
+        try {
+            const activeConfig = gatewaysConfig[activeTab];
+            const providerKey = activeConfig.providerName;
+            const res = await api.post('/system-setting/sms-settings/test', {
+                provider: providerKey,
+                phone: testPhone.trim()
+            });
+            const resStatus = res.data?.status;
+            const isSuccess = resStatus === 'success' || resStatus === 200;
+
+            if (isSuccess) {
+                const successMsg = res.data?.message || "Test SMS sent successfully";
+                setTestResult({ ok: true, message: successMsg });
+                toast.success(successMsg);
+            } else {
+                const errorMsg = res.data?.message || "Test SMS failed";
+                setTestResult({ ok: false, message: errorMsg });
+                toast.error(errorMsg);
+            }
+        } catch (err: unknown) {
+            const msg =
+                err && typeof err === "object" && "response" in err
+                    ? ((err as { response: { data: { message: string } } }).response?.data?.message ?? "Failed to send test SMS")
+                    : "Failed to send test SMS";
+            setTestResult({ ok: false, message: msg });
+            toast.error(msg);
+        } finally {
+            setTesting(false);
         }
     };
 
@@ -208,54 +288,87 @@ export default function SmsSettingPage() {
     const currentActiveConfig = gatewaysConfig[activeTab];
     const providerKey = currentActiveConfig.providerName;
     const currentData = settingsData[providerKey] || { config: {}, status: "disabled" };
+    const isConfigured = Object.keys(currentData.config).length > 0;
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">SMS Setting</h1>
+            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">SMS Gateway</h1>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden min-h-[500px] flex flex-col">
-                {/* Scrollable Tabs */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
                 <div className="border-b border-gray-100 bg-white">
                     <div className="flex overflow-x-auto no-scrollbar">
-                        {gateways.map((gateway) => (
-                            <button
-                                key={gateway}
-                                onClick={() => setActiveTab(gateway)}
-                                className={cn(
-                                    "px-5 py-3 text-[11px] font-bold uppercase transition-all whitespace-nowrap border-b-2",
-                                    activeTab === gateway
-                                        ? "text-indigo-600 border-indigo-500 bg-indigo-50/10"
-                                        : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50"
-                                )}
-                            >
-                                {gateway}
-                            </button>
-                        ))}
+                        {gateways.map((gateway) => {
+                            const gwProviderKey = gatewaysConfig[gateway].providerName;
+                            const gwData = settingsData[gwProviderKey];
+                            const gwConfigured = gwData && Object.keys(gwData.config).length > 0;
+                            const gwEnabled = gwData?.status === "enabled";
+                            return (
+                                <button
+                                    key={gateway}
+                                    onClick={() => { setActiveTab(gateway); setTestResult(null); }}
+                                    className={cn(
+                                        "px-5 py-3 text-[11px] font-bold uppercase transition-all whitespace-nowrap border-b-2 flex items-center gap-2",
+                                        activeTab === gateway
+                                            ? "text-indigo-600 border-indigo-500 bg-indigo-50/10"
+                                            : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50"
+                                    )}
+                                >
+                                    {gwConfigured && (gwEnabled
+                                        ? <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
+                                        : <XCircle className="h-3 w-3 text-gray-300 shrink-0" />
+                                    )}
+                                    {gateway}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
-                {/* Content Area */}
                 <div className="flex-1 p-8 max-w-6xl mx-auto w-full">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start animate-in fade-in duration-300">
-
-                        {/* Left: Configuration Form */}
                         <div className="space-y-6">
-                            {currentActiveConfig.fields.map((field) => (
-                                <div key={field.key} className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                                    <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">
-                                        {field.label} <span className="text-red-500">*</span>
-                                    </Label>
-                                    <div className="md:col-span-2">
-                                        <Input
-                                            type={field.type}
-                                            value={currentData.config[field.key] || ""}
-                                            onChange={(e) => handleFieldChange(providerKey, field.key, e.target.value)}
-                                            placeholder={`Enter ${field.label.toLowerCase()}`}
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
+                            {currentActiveConfig.fields.map((field) => {
+                                // Handle conditional visibility
+                                if (field.showWhen) {
+                                    const dependentValue = currentData.config[field.showWhen.field] || "";
+                                    if (dependentValue !== field.showWhen.value) return null;
+                                }
+
+                                return (
+                                    <div key={field.key} className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
+                                        <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">
+                                            {field.label} <span className="text-red-500">*</span>
+                                        </Label>
+                                        <div className="md:col-span-2">
+                                            {field.type === "select" && field.options ? (
+                                                <Select
+                                                    value={currentData.config[field.key] || ""}
+                                                    onValueChange={(val) => handleFieldChange(providerKey, field.key, val)}
+                                                >
+                                                    <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                                        <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {field.options.map((opt) => (
+                                                            <SelectItem key={opt} value={opt}>
+                                                                {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : (
+                                                <Input
+                                                    type={field.type}
+                                                    value={currentData.config[field.key] || ""}
+                                                    onChange={(e) => handleFieldChange(providerKey, field.key, e.target.value)}
+                                                    placeholder={`Enter ${field.label.toLowerCase()}`}
+                                                    className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                                />
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
 
                             <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 mt-6">
                                 <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Status <span className="text-red-500">*</span></Label>
@@ -271,27 +384,78 @@ export default function SmsSettingPage() {
                                     </Select>
                                 </div>
                             </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 pt-4 border-t border-gray-50">
+                                <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Test SMS</Label>
+                                <div className="md:col-span-2 space-y-2">
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="text"
+                                            value={testPhone}
+                                            onChange={(e) => setTestPhone(e.target.value)}
+                                            placeholder="+1234567890"
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded flex-1"
+                                        />
+                                        <Button
+                                            onClick={handleTestSms}
+                                            disabled={testing || !isConfigured || currentData.status !== "enabled"}
+                                            size="sm"
+                                            className="h-8 text-[10px] font-bold uppercase px-3 bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white rounded-full shadow-none"
+                                        >
+                                            {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                                        </Button>
+                                    </div>
+                                    {testResult && (
+                                        <div className={cn(
+                                            "flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded",
+                                            testResult.ok ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
+                                        )}>
+                                            {testResult.ok ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                            {testResult.message}
+                                        </div>
+                                    )}
+                                    <p className="text-[9px] text-gray-400 italic">Save configuration before testing</p>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Right: Brand Card */}
                         <div className="flex flex-col items-center justify-center p-8 space-y-6">
-                            {activeTab === "Clickatell Sms Gateway" ? (
+                            {currentActiveConfig.guideUrl ? (
                                 <>
-                                    <div className="p-6 bg-white rounded-lg flex items-center justify-center">
-                                        <div className="flex items-center gap-2 text-3xl font-bold tracking-tighter text-gray-700">
-                                            <div className="h-8 w-8 rounded-full border-[3px] border-emerald-400 flex items-center justify-center">
-                                                <div className="h-3 w-3 rounded-full bg-emerald-500" />
+                                    <div className={cn(
+                                        "p-6 rounded-lg flex items-center justify-center transition-all",
+                                        isConfigured ? "bg-green-50 border border-green-100" : "bg-white"
+                                    )}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "flex items-center justify-center",
+                                                isConfigured ? "text-green-500" : "text-gray-300"
+                                            )}>
+                                                <Smartphone className={cn("h-10 w-10", isConfigured && "text-green-500")} />
                                             </div>
-                                            <span className="text-gray-600">Clickatell</span>
+                                            <div className="text-left">
+                                                <p className={cn(
+                                                    "text-xs font-bold uppercase tracking-wider",
+                                                    isConfigured ? "text-green-700" : "text-gray-400"
+                                                )}>
+                                                    {isConfigured ? "Configured" : "Not Configured"}
+                                                </p>
+                                                <p className={cn(
+                                                    "text-[10px] mt-0.5",
+                                                    isConfigured ? "text-green-500" : "text-gray-300"
+                                                )}>
+                                                    {currentData.status === "enabled" ? "Active" : "Disabled"}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                     <a
-                                        href="https://www.clickatell.com"
+                                        href={currentActiveConfig.guideUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-xs text-indigo-500 hover:text-indigo-600 hover:underline flex items-center gap-1.5 font-medium transition-colors"
                                     >
-                                        https://www.clickatell.com
+                                        {currentActiveConfig.guideUrl}
                                         <ExternalLink className="h-3 w-3" />
                                     </a>
                                 </>
@@ -304,11 +468,9 @@ export default function SmsSettingPage() {
                                 </>
                             )}
                         </div>
-
                     </div>
                 </div>
 
-                {/* Footer Save Action */}
                 <div className="border-t border-gray-50 p-6 bg-white flex justify-center mt-auto">
                     <Button
                         onClick={handleSave}

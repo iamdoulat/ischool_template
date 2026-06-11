@@ -23,7 +23,9 @@ import {
     Columns,
     ChevronLeft,
     ChevronRight,
-    Send
+    Send,
+    ChevronsLeft,
+    ChevronsRight
 } from "lucide-react";
 import {
     Select,
@@ -33,7 +35,7 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 interface StudentCredential {
     id: number;
@@ -71,6 +73,8 @@ export default function LoginCredentialsSendPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
+    const [perPage, setPerPage] = useState(20);
+    const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
         fetchClasses();
@@ -99,6 +103,7 @@ export default function LoginCredentialsSendPage() {
             return;
         }
         setLoading(true);
+        setCurrentPage(1);
         try {
             const response = await api.post('/communicate/search-students', {
                 class_id: selectedClass,
@@ -114,11 +119,24 @@ export default function LoginCredentialsSendPage() {
         }
     };
 
+    const filteredStudents = students.filter(s => {
+        const term = searchTerm.toLowerCase();
+        return !term || s.admission_no?.toLowerCase().includes(term) ||
+            s.name?.toLowerCase().includes(term) ||
+            `${s.name} ${s.last_name}`.toLowerCase().includes(term);
+    });
+
+    const totalPages = Math.max(1, Math.ceil(filteredStudents.length / perPage));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+    const startIndex = (safeCurrentPage - 1) * perPage;
+    const endIndex = Math.min(startIndex + perPage, filteredStudents.length);
+    const paginatedStudents = filteredStudents.slice(startIndex, endIndex);
+
     const toggleSelectAll = () => {
-        if (selectedStudentIds.length === students.length) {
+        if (selectedStudentIds.length === filteredStudents.length) {
             setSelectedStudentIds([]);
         } else {
-            setSelectedStudentIds(students.map(s => s.id));
+            setSelectedStudentIds(filteredStudents.map(s => s.id));
         }
     };
 
@@ -229,10 +247,11 @@ export default function LoginCredentialsSendPage() {
                         <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Select All</Label>
                         <div className="flex items-center gap-3">
                             <Checkbox 
-                                checked={students.length > 0 && selectedStudentIds.length === students.length}
+                                checked={filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length}
                                 onCheckedChange={toggleSelectAll}
                                 className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-6 w-6 rounded-md transition-all" 
                             />
+                            <span className="text-[11px] text-gray-400 font-medium">({selectedStudentIds.length} Selected)</span>
                             <span className="text-[11px] text-gray-400 font-medium">({selectedStudentIds.length} Selected)</span>
                         </div>
                     </div>
@@ -281,6 +300,21 @@ export default function LoginCredentialsSendPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-400 font-medium">Per page:</span>
+                            <Select value={String(perPage)} onValueChange={(v) => { setPerPage(Number(v)); setCurrentPage(1); }}>
+                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none px-2">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="20">20</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="200">200</SelectItem>
+                                    <SelectItem value="500">500</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                         <div className="flex items-center gap-1.5 text-gray-400">
                             {toolbarActions.map((action, i) => (
                                 <Button 
@@ -305,7 +339,7 @@ export default function LoginCredentialsSendPage() {
                             <TableRow className="hover:bg-transparent border-gray-100">
                                 <TableHead className="w-[50px] py-4">
                                     <Checkbox 
-                                        checked={students.length > 0 && selectedStudentIds.length === students.length}
+                                        checked={filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length}
                                         onCheckedChange={toggleSelectAll}
                                         className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4" 
                                     />
@@ -319,14 +353,14 @@ export default function LoginCredentialsSendPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {students.length === 0 ? (
+                            {paginatedStudents.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="h-32 text-center text-gray-400 text-xs italic">
                                         No students found. Please search by class and section.
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                students.map((student) => (
+                                paginatedStudents.map((student) => (
                                     <TableRow key={student.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/20 transition-colors">
                                         <TableCell className="py-4">
                                             <Checkbox 
@@ -338,7 +372,7 @@ export default function LoginCredentialsSendPage() {
                                         <TableCell className="py-4 text-gray-500 font-medium">{student.admission_no}</TableCell>
                                         <TableCell className="py-4 text-gray-800 font-bold uppercase tracking-tight">{student.name} {student.last_name || ''}</TableCell>
                                         <TableCell className="py-4 text-gray-400 font-medium">{student.school_class?.name} ({student.section?.name})</TableCell>
-                                        <TableCell className="py-4 text-gray-500">{student.dob}</TableCell>
+                                        <TableCell className="py-4 text-gray-500">{formatDate(student.dob, "dd/MM/yyyy")}</TableCell>
                                         <TableCell className="py-4 text-gray-500 uppercase">{student.gender}</TableCell>
                                         <TableCell className="py-4 text-right text-indigo-600 font-bold">{student.phone || "-"}</TableCell>
                                     </TableRow>
@@ -351,9 +385,69 @@ export default function LoginCredentialsSendPage() {
                  {/* Footer */}
                 <div className="flex flex-col md:flex-row items-center justify-between pt-6 border-t border-gray-50">
                     <div className="text-[11px] text-gray-400 font-medium mb-4 md:mb-0">
-                        {students.length > 0 ? `Showing 1 to ${students.length} of ${students.length} entries` : "No entries to show"}
+                        {filteredStudents.length > 0
+                            ? `Showing ${startIndex + 1} to ${endIndex} of ${filteredStudents.length} entries`
+                            : "No entries to show"}
                     </div>
-                    <div className="flex gap-6 items-center">
+                    <div className="flex items-center gap-4">
+                        {totalPages > 1 && (
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    onClick={() => setCurrentPage(1)}
+                                    disabled={safeCurrentPage <= 1}
+                                    className="px-2 py-1.5 text-[10px] font-bold rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >
+                                    <ChevronsLeft className="h-3 w-3" />
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage(safeCurrentPage - 1)}
+                                    disabled={safeCurrentPage <= 1}
+                                    className="px-2 py-1.5 text-[10px] font-bold rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >
+                                    <ChevronLeft className="h-3 w-3" />
+                                </button>
+                                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                                    let pageNum: number;
+                                    if (totalPages <= 5) {
+                                        pageNum = i + 1;
+                                    } else if (safeCurrentPage <= 3) {
+                                        pageNum = i + 1;
+                                    } else if (safeCurrentPage >= totalPages - 2) {
+                                        pageNum = totalPages - 4 + i;
+                                    } else {
+                                        pageNum = safeCurrentPage - 2 + i;
+                                    }
+                                    return (
+                                        <button
+                                            key={pageNum}
+                                            onClick={() => setCurrentPage(pageNum)}
+                                            className={cn(
+                                                "w-7 h-7 text-[10px] font-bold rounded-lg transition-all",
+                                                pageNum === safeCurrentPage
+                                                    ? "bg-indigo-500 text-white shadow-md"
+                                                    : "border border-gray-200 text-gray-500 hover:bg-gray-50"
+                                            )}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+                                <button
+                                    onClick={() => setCurrentPage(safeCurrentPage + 1)}
+                                    disabled={safeCurrentPage >= totalPages}
+                                    className="px-2 py-1.5 text-[10px] font-bold rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >
+                                    <ChevronRight className="h-3 w-3" />
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage(totalPages)}
+                                    disabled={safeCurrentPage >= totalPages}
+                                    className="px-2 py-1.5 text-[10px] font-bold rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >
+                                    <ChevronsRight className="h-3 w-3" />
+                                </button>
+                            </div>
+                        )}
                         <Button 
                             onClick={handleSend} 
                             disabled={sending || selectedStudentIds.length === 0}

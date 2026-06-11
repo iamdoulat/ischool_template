@@ -56,6 +56,7 @@ interface GeneralSettings {
     youtube_url?: string;
     linkedin_url?: string;
     pinterest_url?: string;
+    contact_form_receiver_email?: string;
     app_version?: string;
     maintenance_mode?: boolean;
 }
@@ -106,6 +107,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     'staff_attendance_settings', 'student_attendance_settings',
                     'footer_contact_title', 'footer_contact_info_label',
                     'facebook_url', 'twitter_url', 'instagram_url', 'youtube_url', 'linkedin_url', 'pinterest_url',
+                    'contact_form_receiver_email',
                     'app_version',
                     'maintenance_mode'
                 ];
@@ -184,6 +186,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 youtube_url: "",
                 linkedin_url: "",
                 pinterest_url: "",
+                contact_form_receiver_email: "",
                 app_version: "7.2.0",
                 maintenance_mode: false
             };

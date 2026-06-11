@@ -215,7 +215,7 @@ export function PublicFooter() {
                     <p>© {new Date().getFullYear()} {settings?.school_name || "Smart School"}. All rights reserved.</p>
                     <div className="flex gap-6">
                         <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
-                        <Link href="/terms-conditions" className="hover:text-white transition-colors">Terms & Condition</Link>
+                        <Link href="/terms-and-conditions" className="hover:text-white transition-colors">Terms & Condition</Link>
                     </div>
                 </div>
             </div>

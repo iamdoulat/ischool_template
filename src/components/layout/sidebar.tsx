@@ -66,6 +66,7 @@ const formatLabel = (name: string) => {
         .map(word => {
             const lowerWord = word.toLowerCase();
             if (lowerWord === 'sms') return 'SMS';
+            if (lowerWord === 'wa') return 'WA';
             if (lowerWord === 'cv') return 'CV';
             if (lowerWord === 'qr') return 'QR';
             if (lowerWord === 'cms') return 'CMS';
@@ -254,11 +255,13 @@ const menuItems = [
                     { name: "notice_board", href: "/dashboard/communicate/notice-board" },
                     { name: "send_email", href: "/dashboard/communicate/send-email" },
                     { name: "send_sms", href: "/dashboard/communicate/send-sms" },
+                    { name: "send_wa", href: "/dashboard/communicate/send-wa" },
                     { name: "email_sms_log", href: "/dashboard/communicate/email-sms-log" },
                     { name: "schedule_email_sms_log", href: "/dashboard/communicate/schedule-email-sms-log" },
                     { name: "login_credentials_send", href: "/dashboard/communicate/login-credentials-send" },
                     { name: "email_template", href: "/dashboard/communicate/email-template" },
                     { name: "sms_template", href: "/dashboard/communicate/sms-template" },
+                    { name: "wa_template", href: "/dashboard/communicate/wa-template" },
                 ]
             },
             {

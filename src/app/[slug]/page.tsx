@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { PublicHeader } from "@/components/public/header";
 import { PublicFooter } from "@/components/public/footer";
+import { ContactFormSection } from "@/components/public/contact-form";
+import { NoticeBoardSection } from "@/components/public/notice-board-section";
 import api from "@/lib/api";
 import { Loader2 } from "lucide-react";
 
@@ -85,16 +87,61 @@ export default function DynamicPage() {
 
                 {/* Content Section */}
                 <div className="container mx-auto px-4 md:px-8 py-16">
-                    {page.content ? (
-                        <div 
-                            className="prose prose-indigo prose-lg max-w-none prose-headings:uppercase prose-headings:tracking-tight prose-headings:font-bold"
-                            dangerouslySetInnerHTML={{ __html: page.content }}
-                        />
-                    ) : (
-                        <div className="text-center py-20 text-gray-400">
-                            <p>No content available for this page.</p>
-                        </div>
-                    )}
+                    {(() => {
+                        if (!page.content) {
+                            return (
+                                <div className="text-center py-20 text-gray-400">
+                                    <p>No content available for this page.</p>
+                                </div>
+                            );
+                        }
+
+                        const shortcodeRegex = /\[(contact_form|notice_board)\]/g;
+                        const tokens: { type: 'html' | 'shortcode'; value: string }[] = [];
+                        let lastIndex = 0;
+                        let match;
+
+                        while ((match = shortcodeRegex.exec(page.content)) !== null) {
+                            if (match.index > lastIndex) {
+                                tokens.push({ type: 'html', value: page.content.slice(lastIndex, match.index) });
+                            }
+                            tokens.push({ type: 'shortcode', value: match[1] });
+                            lastIndex = match.index + match[0].length;
+                        }
+                        if (lastIndex < page.content.length) {
+                            tokens.push({ type: 'html', value: page.content.slice(lastIndex) });
+                        }
+
+                        if (tokens.length === 0) {
+                            return (
+                                <div
+                                    className="prose prose-indigo prose-lg max-w-none prose-headings:uppercase prose-headings:tracking-tight prose-headings:font-bold prose-img:max-w-full prose-img:h-auto prose-table:w-full prose-table:max-w-full prose-pre:overflow-x-auto prose-p:break-words max-w-full overflow-x-hidden"
+                                    dangerouslySetInnerHTML={{ __html: page.content }}
+                                />
+                            );
+                        }
+
+                        return (
+                            <div className="space-y-8">
+                                {tokens.map((token, i) => (
+                                    <div key={i}>
+                                        {token.type === 'html' && token.value && (
+                                            <div
+                                                className="prose prose-indigo prose-lg max-w-none prose-headings:uppercase prose-headings:tracking-tight prose-headings:font-bold prose-img:max-w-full prose-img:h-auto prose-table:w-full prose-table:max-w-full prose-pre:overflow-x-auto prose-p:break-words max-w-full overflow-x-hidden"
+                                                dangerouslySetInnerHTML={{ __html: token.value }}
+                                            />
+                                        )}
+                                        {token.type === 'shortcode' && token.value === 'contact_form' && (
+                                            <ContactFormSection />
+                                        )}
+                                        {token.type === 'shortcode' && token.value === 'notice_board' && (
+                                            <NoticeBoardSection />
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })()}
                 </div>
             </main>
             <PublicFooter />

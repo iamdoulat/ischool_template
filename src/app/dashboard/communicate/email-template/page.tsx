@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -10,7 +11,6 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,9 @@ import {
     Columns,
     ChevronLeft,
     ChevronRight,
+    Paperclip,
+    CloudUpload,
+    Download,
 } from "lucide-react";
 import {
     Select,
@@ -43,11 +46,17 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import VariablePicker from "@/components/ui/variable-picker";
+
+const CKEditorWrapper = dynamic(() => import("@/components/ui/ckeditor"), { ssr: false });
 
 interface EmailTemplate {
     id: number;
     title: string;
+    template_id?: string;
     message: string;
+    attachment?: string | null;
+    original_filename?: string | null;
 }
 
 interface PaginationData {
@@ -60,6 +69,8 @@ interface PaginationData {
 
 export default function EmailTemplatePage() {
     const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const ckeditorRef = useRef<{ insertText: (text: string) => void }>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -70,8 +81,13 @@ export default function EmailTemplatePage() {
     const [editMode, setEditMode] = useState(false);
     const [viewMode, setViewMode] = useState(false);
     const [selectedId, setSelectedId] = useState<number | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [existingAttachment, setExistingAttachment] = useState<string | null | undefined>(null);
+    const [existingFilename, setExistingFilename] = useState<string | null | undefined>(null);
+    const [removeAttachment, setRemoveAttachment] = useState(false);
     const [formData, setFormData] = useState({
         title: "",
+        template_id: "",
         message: "",
     });
 
@@ -99,47 +115,87 @@ export default function EmailTemplatePage() {
         }
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setSelectedFile(e.target.files[0]);
+            setRemoveAttachment(false);
+        }
+    };
+
+    const handleRemoveSelectedFile = () => {
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
     const handleSave = async () => {
         try {
+            const data = new FormData();
+            data.append('title', formData.title);
+            data.append('template_id', formData.template_id);
+            data.append('message', formData.message);
+            if (selectedFile) {
+                data.append('attachment', selectedFile);
+            }
+            if (editMode && removeAttachment && !selectedFile) {
+                data.append('remove_attachment', '1');
+            }
+
             if (editMode && selectedId) {
-                await api.put(`/communicate/email-templates/${selectedId}`, formData);
+                data.append('_method', 'PUT');
+                await api.post(`/communicate/email-templates/${selectedId}`, data, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
                 toast({ title: "Success", description: "Template updated successfully" });
             } else {
-                await api.post('/communicate/email-templates', formData);
+                await api.post('/communicate/email-templates', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
                 toast({ title: "Success", description: "Template added successfully" });
             }
             setIsDialogOpen(false);
             resetForm();
             fetchTemplates();
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { message?: string } } };
             toast({
                 title: "Error",
-                description: error.response?.data?.message || "Failed to save template",
+                description: err.response?.data?.message || "Failed to save template",
                 variant: "destructive",
             });
         }
     };
 
     const handleEdit = (template: EmailTemplate) => {
-        setFormData({ title: template.title, message: template.message });
+        setFormData({ title: template.title, template_id: template.template_id || "", message: template.message });
         setSelectedId(template.id);
         setEditMode(true);
         setViewMode(false);
+        setSelectedFile(null);
+        setExistingAttachment(template.attachment);
+        setExistingFilename(template.original_filename);
+        setRemoveAttachment(false);
         setIsDialogOpen(true);
     };
 
     const handleView = (template: EmailTemplate) => {
-        setFormData({ title: template.title, message: template.message });
+        setFormData({ title: template.title, template_id: template.template_id || "", message: template.message });
         setViewMode(true);
         setEditMode(false);
+        setSelectedFile(null);
+        setExistingAttachment(template.attachment);
+        setExistingFilename(template.original_filename);
         setIsDialogOpen(true);
     };
 
     const resetForm = () => {
-        setFormData({ title: "", message: "" });
+        setFormData({ title: "", template_id: "", message: "" });
         setEditMode(false);
         setViewMode(false);
         setSelectedId(null);
+        setSelectedFile(null);
+        setExistingAttachment(null);
+        setExistingFilename(null);
+        setRemoveAttachment(false);
     };
 
     const handleDelete = async (id: number) => {
@@ -151,6 +207,30 @@ export default function EmailTemplatePage() {
             } catch (error) {
                 toast({ title: "Error", description: "Failed to delete template", variant: "destructive" });
             }
+        }
+    };
+
+    const handleVariableSelect = (variable: string) => {
+        if (ckeditorRef.current) {
+            ckeditorRef.current.insertText(variable);
+        }
+    };
+
+    const handleDownloadAttachment = async (id: number) => {
+        try {
+            const response = await api.get(`/communicate/email-templates/${id}/download-attachment`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            const template = templates.find(t => t.id === id);
+            const filename = template?.original_filename || 'attachment';
+            link.setAttribute('download', filename);
+            link.click();
+            window.URL.revokeObjectURL(url);
+        } catch {
+            toast({ title: "Error", description: "Failed to download attachment", variant: "destructive" });
         }
     };
 
@@ -243,14 +323,16 @@ export default function EmailTemplatePage() {
                         <TableHeader className="bg-gray-50/50">
                             <TableRow className="hover:bg-transparent border-b border-gray-100">
                                 <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 w-[200px]">Title</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 w-[150px]">Template ID</TableHead>
                                 <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Message</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right w-[100px]">Action</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 w-[80px]">Attach</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right w-[120px]">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                          <TableBody>
                             {templates.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="h-32 text-center text-gray-400 text-xs italic">
+                                    <TableCell colSpan={5} className="h-32 text-center text-gray-400 text-xs italic">
                                         No email templates found.
                                     </TableCell>
                                 </TableRow>
@@ -258,8 +340,23 @@ export default function EmailTemplatePage() {
                                 templates.map((template) => (
                                     <TableRow key={template.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
                                         <TableCell className="py-4 text-gray-700 font-bold uppercase tracking-tight align-top w-[200px]">{template.title}</TableCell>
-                                        <TableCell className="py-4 text-gray-500 leading-relaxed font-normal align-top">
+                                        <TableCell className="py-4 text-gray-500 font-medium align-top w-[150px]">{template.template_id || '--'}</TableCell>
+                                        <TableCell className="py-4 text-gray-500 leading-relaxed font-normal align-top truncate max-w-[300px]">
                                             {template.message}
+                                        </TableCell>
+                                        <TableCell className="py-4 align-top w-[80px]">
+                                            {template.attachment ? (
+                                                <button
+                                                    onClick={() => handleDownloadAttachment(template.id)}
+                                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded-md transition-colors"
+                                                    title={template.original_filename || 'Download attachment'}
+                                                >
+                                                    <Paperclip className="h-3 w-3" />
+                                                    File
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-300 text-[10px]">--</span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="py-4 text-right align-top w-[120px]">
                                             <div className="flex items-center justify-end gap-1.5">
@@ -325,7 +422,7 @@ export default function EmailTemplatePage() {
 
             {/* Add/Edit/View Template Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[600px]">
+                <DialogContent className="sm:max-w-[900px]">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-bold text-gray-800">
                             {viewMode ? "View Email Template" : editMode ? "Edit Email Template" : "Add Email Template"}
@@ -343,14 +440,109 @@ export default function EmailTemplatePage() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Message <span className="text-red-500">*</span></Label>
-                            <Textarea 
-                                value={formData.message}
-                                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Template ID <span className="text-gray-300 font-normal normal-case tracking-normal">(optional)</span></Label>
+                            <Input 
+                                value={formData.template_id}
+                                onChange={(e) => setFormData({ ...formData, template_id: e.target.value })}
                                 readOnly={viewMode}
-                                placeholder="Enter email template content..."
-                                className="border-gray-200 text-xs shadow-none min-h-[200px] focus-visible:ring-indigo-500 leading-relaxed"
+                                placeholder="e.g. SendGrid Template ID"
+                                className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500"
                             />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Message <span className="text-red-500">*</span></Label>
+                            {viewMode ? (
+                                <div className="border border-gray-100 rounded-lg p-4 min-h-[200px] prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-headings:font-bold prose-a:text-indigo-600 prose-img:max-w-full prose-img:h-auto prose-table:w-full prose-pre:overflow-x-auto"
+                                    dangerouslySetInnerHTML={{ __html: formData.message }}
+                                />
+                            ) : (
+                                <>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <div />
+                                        <VariablePicker onSelect={handleVariableSelect} />
+                                    </div>
+                                    <div className="border border-gray-100 rounded-lg overflow-hidden">
+                                        <CKEditorWrapper
+                                            ref={ckeditorRef}
+                                            value={formData.message}
+                                            onChange={(value) => setFormData({ ...formData, message: value })}
+                                            placeholder="Enter email template content..."
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Attachment Section */}
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                Attachment <span className="text-gray-300 font-normal normal-case tracking-normal">(optional)</span>
+                            </Label>
+                            {viewMode ? (
+                                <div>
+                                    {existingAttachment ? (
+                                        <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                            <Paperclip className="h-4 w-4 text-amber-500 shrink-0" />
+                                            <span className="text-xs text-amber-700 font-medium truncate flex-1">{existingFilename || 'Attachment'}</span>
+                                            <button
+                                                onClick={() => handleDownloadAttachment(selectedId!)}
+                                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 hover:text-amber-800 transition-colors"
+                                            >
+                                                <Download className="h-3 w-3" /> Download
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-gray-400 italic">No attachment</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <div>
+                                    {existingAttachment && !selectedFile && !removeAttachment ? (
+                                        <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg mb-2">
+                                            <Paperclip className="h-4 w-4 text-amber-500 shrink-0" />
+                                            <span className="text-xs text-amber-700 font-medium truncate flex-1">{existingFilename || 'Attachment'}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setRemoveAttachment(true)}
+                                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-500 hover:text-red-700 transition-colors"
+                                            >
+                                                <X className="h-3 w-3" /> Remove
+                                            </button>
+                                        </div>
+                                    ) : selectedFile ? (
+                                        <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-200 rounded-lg mb-2">
+                                            <Paperclip className="h-4 w-4 text-indigo-500 shrink-0" />
+                                            <span className="text-xs text-indigo-700 font-medium truncate flex-1">{selectedFile.name}</span>
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveSelectedFile}
+                                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-500 hover:text-red-700 transition-colors"
+                                            >
+                                                <X className="h-3 w-3" /> Remove
+                                            </button>
+                                        </div>
+                                    ) : null}
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all"
+                                    >
+                                        <CloudUpload className="h-5 w-5 text-gray-300 mx-auto mb-1" />
+                                        <p className="text-[11px] text-gray-400 font-medium">
+                                            Click to upload or drag and drop
+                                        </p>
+                                        <p className="text-[9px] text-gray-300 mt-0.5">
+                                            PDF, JPG, PNG, DOC, DOCX, PPTX, XLSX, TXT (max 5MB)
+                                        </p>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.pptx,.xlsx,.txt"
+                                            onChange={handleFileChange}
+                                            className="hidden"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <DialogFooter>
