@@ -88,22 +88,36 @@ export function PublicHeader() {
             <div className="bg-primary text-primary-foreground py-2 px-4 md:px-8 text-xs md:text-sm transition-all duration-300">
                 <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
                     <div className="flex items-center gap-4">
-                        <a href="tel:+1234567890" className="flex items-center gap-1 hover:opacity-80 transition-opacity">
-                            <Phone className="h-3 w-3 md:h-4 md:w-4" />
-                            <span>+1 234 567 8900</span>
-                        </a>
-                        <a href="mailto:info@smartschool.com.bd" className="flex items-center gap-1 hover:opacity-80 transition-opacity">
-                            <Mail className="h-3 w-3 md:h-4 md:w-4" />
-                            <span>info@smartschool.com.bd</span>
-                        </a>
+                        {settings?.phone && (
+                            <a href={`tel:${settings.phone}`} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
+                                <Phone className="h-3 w-3 md:h-4 md:w-4" />
+                                <span>{settings.phone}</span>
+                            </a>
+                        )}
+                        {settings?.email && (
+                            <a href={`mailto:${settings.email}`} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
+                                <Mail className="h-3 w-3 md:h-4 md:w-4" />
+                                <span>{settings.email}</span>
+                            </a>
+                        )}
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-3">
-                            <a href="#" className="hover:opacity-80 transition-opacity"><Facebook className="h-3 w-3 md:h-4 md:w-4" /></a>
-                            <a href="#" className="hover:opacity-80 transition-opacity"><Twitter className="h-3 w-3 md:h-4 md:w-4" /></a>
-                            <a href="#" className="hover:opacity-80 transition-opacity"><Instagram className="h-3 w-3 md:h-4 md:w-4" /></a>
-                            <a href="#" className="hover:opacity-80 transition-opacity"><Youtube className="h-3 w-3 md:h-4 md:w-4" /></a>
-                            <a href="#" className="hover:opacity-80 transition-opacity"><Linkedin className="h-3 w-3 md:h-4 md:w-4" /></a>
+                            {settings?.facebook_url && (
+                                <a href={settings.facebook_url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity"><Facebook className="h-3 w-3 md:h-4 md:w-4" /></a>
+                            )}
+                            {settings?.twitter_url && (
+                                <a href={settings.twitter_url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity"><Twitter className="h-3 w-3 md:h-4 md:w-4" /></a>
+                            )}
+                            {settings?.instagram_url && (
+                                <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity"><Instagram className="h-3 w-3 md:h-4 md:w-4" /></a>
+                            )}
+                            {settings?.youtube_url && (
+                                <a href={settings.youtube_url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity"><Youtube className="h-3 w-3 md:h-4 md:w-4" /></a>
+                            )}
+                            {settings?.linkedin_url && (
+                                <a href={settings.linkedin_url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity"><Linkedin className="h-3 w-3 md:h-4 md:w-4" /></a>
+                            )}
                         </div>
                         <div className="w-px h-4 bg-primary-foreground/30 hidden md:block" />
                         <Link href="/login">

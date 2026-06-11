@@ -547,24 +547,72 @@ export default function GeneralSettingPage() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-medium text-gray-600">Phone <span className="text-red-500">*</span></Label>
-                                    <Input
-                                        value={formData.phone}
-                                        onChange={(e) => handleChange("phone", e.target.value)}
-                                        placeholder="Enter Phone Number"
-                                        className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-medium text-gray-600">Email <span className="text-red-500">*</span></Label>
-                                    <Input
-                                        value={formData.email}
-                                        onChange={(e) => handleChange("email", e.target.value)}
-                                        placeholder="Enter School Email"
-                                        className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                    />
+                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
+                                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Top Bar</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Phone <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.phone}
+                                            onChange={(e) => handleChange("phone", e.target.value)}
+                                            placeholder="Enter Phone Number"
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Email <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.email}
+                                            onChange={(e) => handleChange("email", e.target.value)}
+                                            placeholder="Enter School Email"
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Facebook URL</Label>
+                                        <Input
+                                            value={formData.facebook_url}
+                                            onChange={(e) => handleChange("facebook_url", e.target.value)}
+                                            placeholder="https://facebook.com/..."
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Twitter URL</Label>
+                                        <Input
+                                            value={formData.twitter_url}
+                                            onChange={(e) => handleChange("twitter_url", e.target.value)}
+                                            placeholder="https://twitter.com/..."
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Instagram URL</Label>
+                                        <Input
+                                            value={formData.instagram_url}
+                                            onChange={(e) => handleChange("instagram_url", e.target.value)}
+                                            placeholder="https://instagram.com/..."
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">YouTube URL</Label>
+                                        <Input
+                                            value={formData.youtube_url}
+                                            onChange={(e) => handleChange("youtube_url", e.target.value)}
+                                            placeholder="https://youtube.com/..."
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">LinkedIn URL</Label>
+                                        <Input
+                                            value={formData.linkedin_url}
+                                            onChange={(e) => handleChange("linkedin_url", e.target.value)}
+                                            placeholder="https://linkedin.com/..."
+                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -751,65 +799,7 @@ export default function GeneralSettingPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
-                                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Social Media Links</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[11px] font-medium text-gray-600">Facebook URL</Label>
-                                        <Input
-                                            value={formData.facebook_url}
-                                            onChange={(e) => handleChange("facebook_url", e.target.value)}
-                                            placeholder="https://facebook.com/..."
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[11px] font-medium text-gray-600">Twitter URL</Label>
-                                        <Input
-                                            value={formData.twitter_url}
-                                            onChange={(e) => handleChange("twitter_url", e.target.value)}
-                                            placeholder="https://twitter.com/..."
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[11px] font-medium text-gray-600">Instagram URL</Label>
-                                        <Input
-                                            value={formData.instagram_url}
-                                            onChange={(e) => handleChange("instagram_url", e.target.value)}
-                                            placeholder="https://instagram.com/..."
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[11px] font-medium text-gray-600">YouTube URL</Label>
-                                        <Input
-                                            value={formData.youtube_url}
-                                            onChange={(e) => handleChange("youtube_url", e.target.value)}
-                                            placeholder="https://youtube.com/..."
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[11px] font-medium text-gray-600">LinkedIn URL</Label>
-                                        <Input
-                                            value={formData.linkedin_url}
-                                            onChange={(e) => handleChange("linkedin_url", e.target.value)}
-                                            placeholder="https://linkedin.com/..."
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[11px] font-medium text-gray-600">Pinterest URL</Label>
-                                        <Input
-                                            value={formData.pinterest_url}
-                                            onChange={(e) => handleChange("pinterest_url", e.target.value)}
-                                            placeholder="https://pinterest.com/..."
-                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+
                         </div>
                     </div>
                 );
