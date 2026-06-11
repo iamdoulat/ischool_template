@@ -58,27 +58,26 @@ export function PublicHeader() {
 
     const defaultNavItems = [
         { name: "Home", href: "/" },
-        { name: "Academics", href: "#" },
-        { name: "Admissions", href: `${frontendUrl}/online_admission` },
-        { name: "Exam Results", href: `${frontendUrl}/exam-results` },
-        { name: "Notices", href: `${frontendUrl}/notices` },
-        { name: "About Us", href: `${frontendUrl}/about-us` },
-        { name: "Contact", href: `${frontendUrl}/contact-us` },
+        { name: "Academics", href: "/academics" },
+        { name: "Admissions", href: "/online_admission" },
+        { name: "Exam Results", href: "/exam-results" },
+        { name: "Notices", href: "/notices" },
+        { name: "About Us", href: "/about-us" },
+        { name: "Contact", href: "/contact-us" },
     ];
 
     const displayMenus = dynamicMenus.length > 0 ? dynamicMenus.map(m => {
-        const cleanBase = frontendUrl.replace(/\/$/, '');
-        let path = '';
+        let href = '';
         if (!!m.is_external) {
-            path = m.url || '';
+            href = m.url || '';
         } else {
             const pageSlug = m.page === 'home' ? '' : (m.page === 'admission' ? 'online_admission' : (m.page || ''));
-            path = pageSlug.startsWith('/') ? pageSlug : `/${pageSlug}`;
+            href = pageSlug.startsWith('/') ? pageSlug : `/${pageSlug}`;
         }
-        
+
         return {
             name: m.title,
-            href: !!m.is_external ? path : `${cleanBase}${path}`,
+            href,
             newTab: !!m.open_new_tab
         };
     }) : defaultNavItems;
