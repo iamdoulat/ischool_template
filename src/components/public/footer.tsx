@@ -49,13 +49,13 @@ export function PublicFooter() {
     };
 
     const renderMenuLink = (item: MenuItem) => {
-        const href = item.is_external 
-            ? item.url || "#" 
+        const href = item.is_external
+            ? item.url || "#"
             : `${appUrl.replace(/\/$/, '')}/${(item.page || '').replace(/^\//, '')}`;
-        
+
         return (
-            <Link 
-                href={href} 
+            <Link
+                href={href}
                 target={item.open_new_tab ? "_blank" : "_self"}
                 className="hover:text-primary transition-colors block py-1"
             >
@@ -101,7 +101,7 @@ export function PublicFooter() {
                         <p className="text-sm leading-relaxed text-slate-400">
                             {settings?.school_description || "Empowering students with knowledge, character, and skills for a bright future. Excellence in education since 2026."}
                         </p>
-                        
+
                         {/* Dynamic Column 1 Links */}
                         <div className="pt-2 space-y-1">
                             {getColumnMenus(1).map(item => (
@@ -151,6 +151,9 @@ export function PublicFooter() {
                                     <li><Link href="#" className="hover:text-primary transition-colors">About Us</Link></li>
                                     <li><Link href="#" className="hover:text-primary transition-colors">Academics</Link></li>
                                     <li><Link href="#" className="hover:text-primary transition-colors">Admissions</Link></li>
+                                    <li><Link href="#" className="hover:text-primary transition-colors">Notices</Link></li>
+                                    <li><Link href="#" className="hover:text-primary transition-colors">Exam Results</Link></li>
+                                    <li><Link href="#" className="hover:text-primary transition-colors">Contact Us</Link></li>
                                 </>
                             )}
                         </ul>
@@ -166,6 +169,9 @@ export function PublicFooter() {
                                 ))
                             ) : (
                                 <>
+                                    <li><Link href="#" className="hover:text-primary transition-colors">Message From Principal</Link></li>
+                                    <li><Link href="#" className="hover:text-primary transition-colors">Message From Chairman</Link></li>
+                                    <li><Link href="#" className="hover:text-primary transition-colors">Mission & Vision</Link></li>
                                     <li><Link href="#" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
                                     <li><Link href="#" className="hover:text-primary transition-colors">Terms & Conditions</Link></li>
                                 </>
@@ -206,10 +212,10 @@ export function PublicFooter() {
             {/* Copyright Bar */}
             <div className="border-t border-slate-800 bg-slate-950/50">
                 <div className="container mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[12px] text-slate-500">
-                    <p>© 2026 Smart School. All rights reserved.</p>
+                    <p>© {new Date().getFullYear()} {settings?.school_name || "Smart School"}. All rights reserved.</p>
                     <div className="flex gap-6">
-                        <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>
-                        <Link href="#" className="hover:text-white transition-colors">Terms of Use</Link>
+                        <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                        <Link href="/terms-conditions" className="hover:text-white transition-colors">Terms & Condition</Link>
                     </div>
                 </div>
             </div>

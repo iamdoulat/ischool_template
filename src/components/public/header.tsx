@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
     Phone,
     Mail,
@@ -36,6 +37,7 @@ interface MenuItem {
 
 export function PublicHeader() {
     const { settings } = useSettings();
+    const pathname = usePathname();
     console.log("PublicHeader Settings:", settings);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [dynamicMenus, setDynamicMenus] = useState<MenuItem[]>([]);
@@ -63,25 +65,29 @@ export function PublicHeader() {
         { name: "Admissions", href: "/online_admission" },
         { name: "Exam Results", href: "/exam-results" },
         { name: "Notices", href: "/notices" },
-        { name: "About Us", href: "/about-us" },
-        { name: "Contact", href: "/contact-us" },
+        { name: "Contact Us", href: "/contact-us" },
     ];
 
-    const displayMenus = dynamicMenus.length > 0 ? dynamicMenus.map(m => {
-        let href = '';
-        if (!!m.is_external) {
-            href = m.url || '';
-        } else {
-            const pageSlug = m.page === 'home' ? '' : (m.page === 'admission' ? 'online_admission' : (m.page || ''));
-            href = pageSlug.startsWith('/') ? pageSlug : `/${pageSlug}`;
-        }
+    const displayMenus = dynamicMenus.length > 0 ? [
+        { name: "Home", href: "/" },
+        ...dynamicMenus
+            .filter(m => m.title.toLowerCase() !== 'home')
+            .map(m => {
+                let href = '';
+                if (!!m.is_external) {
+                    href = m.url || '';
+                } else {
+                    const pageSlug = m.page === 'home' ? '' : (m.page === 'admission' ? 'online_admission' : (m.page || ''));
+                    href = pageSlug.startsWith('/') ? pageSlug : `/${pageSlug}`;
+                }
 
-        return {
-            name: m.title,
-            href,
-            newTab: !!m.open_new_tab
-        };
-    }) : defaultNavItems;
+                return {
+                    name: m.title,
+                    href,
+                    newTab: !!m.open_new_tab
+                };
+            })
+    ] : defaultNavItems;
 
     return (
         <header className="w-full flex flex-col z-50 sticky top-0 bg-white shadow-md">
@@ -161,17 +167,25 @@ export function PublicHeader() {
 
                     {/* Desktop Menu */}
                     <nav className="hidden md:flex items-center gap-1">
-                        {displayMenus.map((item) => (
-                            <Link
-                                key={item.name}
-                                href={item.href || '#'}
-                                target={(item as any).newTab ? "_blank" : "_self"}
-                                className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-primary hover:bg-primary/5 rounded-md transition-all"
-                            >
-                                {item.name === "Home" && <House className="h-4 w-4 mr-1" />}
-                                {item.name}
-                            </Link>
-                        ))}
+                        {displayMenus.map((item) => {
+                            const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                            return (
+                                <Link
+                                    key={item.name}
+                                    href={item.href || '#'}
+                                    target={(item as any).newTab ? "_blank" : "_self"}
+                                    className={cn(
+                                        "px-4 py-2 text-sm font-semibold rounded-md transition-all flex items-center",
+                                        isActive
+                                            ? "text-primary bg-primary/10 font-bold"
+                                            : "text-gray-700 hover:text-[#FF9800] hover:bg-orange-50"
+                                    )}
+                                >
+                                    {item.name === "Home" && <House className="h-4 w-4 mr-1" />}
+                                    {item.name}
+                                </Link>
+                            );
+                        })}
                         <Button asChild className="ml-4 font-semibold">
                             <Link href="/online_admission">Apply Now</Link>
                         </Button>
@@ -192,18 +206,26 @@ export function PublicHeader() {
                 {isMenuOpen && (
                     <div className="md:hidden border-t bg-white absolute w-full left-0 shadow-lg animate-in slide-in-from-top-2">
                         <div className="flex flex-col p-4 space-y-2">
-                            {displayMenus.map((item) => (
-                                <Link
-                                    key={item.name}
-                                    href={item.href || '#'}
-                                    target={(item as any).newTab ? "_blank" : "_self"}
-                                    className="px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 rounded-lg"
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    {item.name === "Home" && <House className="h-4 w-4 mr-1" />}
-                                    {item.name}
-                                </Link>
-                            ))}
+                            {displayMenus.map((item) => {
+                                const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                                return (
+                                    <Link
+                                        key={item.name}
+                                        href={item.href || '#'}
+                                        target={(item as any).newTab ? "_blank" : "_self"}
+                                        className={cn(
+                                            "px-4 py-3 text-sm font-medium rounded-lg flex items-center",
+                                            isActive
+                                                ? "text-primary bg-primary/10 font-bold"
+                                                : "text-gray-700 hover:text-[#FF9800] hover:bg-orange-50"
+                                        )}
+                                        onClick={() => setIsMenuOpen(false)}
+                                    >
+                                        {item.name === "Home" && <House className="h-4 w-4 mr-1" />}
+                                        {item.name}
+                                    </Link>
+                                );
+                            })}
                             <div className="pt-2">
                                 <Button asChild className="w-full">
                                     <Link href="/online_admission">Apply Now</Link>

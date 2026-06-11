@@ -65,7 +65,7 @@ export default function PagesListPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [pages, setPages] = useState<PageItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const appUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "https://ischool.com";
+    const appUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);

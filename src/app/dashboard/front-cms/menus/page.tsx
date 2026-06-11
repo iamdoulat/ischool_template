@@ -55,7 +55,7 @@ export default function MenusPage() {
     const [menus, setMenus] = useState<MenuItem[]>([]);
     const [pages, setPages] = useState<{ id: number, title: string, url: string }[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "https://ischool.com";
+    const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || (typeof window !== 'undefined' ? window.location.origin : '');
     
     const [formData, setFormData] = useState({
         title: "",
