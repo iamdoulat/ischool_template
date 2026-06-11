@@ -12,7 +12,8 @@ import {
     LogIn,
     GraduationCap,
     Menu,
-    X
+    X,
+    House
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -167,6 +168,7 @@ export function PublicHeader() {
                                 target={(item as any).newTab ? "_blank" : "_self"}
                                 className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-primary hover:bg-primary/5 rounded-md transition-all"
                             >
+                                {item.name === "Home" && <House className="h-4 w-4 mr-1" />}
                                 {item.name}
                             </Link>
                         ))}
@@ -198,6 +200,7 @@ export function PublicHeader() {
                                     className="px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 rounded-lg"
                                     onClick={() => setIsMenuOpen(false)}
                                 >
+                                    {item.name === "Home" && <House className="h-4 w-4 mr-1" />}
                                     {item.name}
                                 </Link>
                             ))}

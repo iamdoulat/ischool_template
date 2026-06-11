@@ -358,7 +358,9 @@ export default function GeneralSettingPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            const response = await api.post("/system-setting/general-setting", formData);
+            const payload = { ...formData };
+            Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null; });
+            const response = await api.post("/system-setting/general-setting", payload);
             if (response.data.status === "Success") {
                 await refreshSettings();
                 toast("success", "General settings updated successfully!");
