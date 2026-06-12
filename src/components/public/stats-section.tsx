@@ -36,26 +36,28 @@ const Counter: React.FC<CounterProps> = ({ end, duration = 2000, suffix = "" }) 
         if (!isVisible) return;
 
         let startTimestamp: number | null = null;
+        let rafId: number;
         const step = (timestamp: number) => {
             if (!startTimestamp) startTimestamp = timestamp;
             const progress = Math.min((timestamp - startTimestamp) / duration, 1);
             setCount(Math.floor(progress * end));
             if (progress < 1) {
-                window.requestAnimationFrame(step);
+                rafId = window.requestAnimationFrame(step);
             }
         };
-        window.requestAnimationFrame(step);
+        rafId = window.requestAnimationFrame(step);
+        return () => cancelAnimationFrame(rafId);
     }, [isVisible, end, duration]);
 
     return <span ref={countRef}>{count.toLocaleString()}{suffix}</span>;
 };
 
-export function StatsSection() {
+export function StatsSection({ students = 2500, teachers = 150, awards = 50, courses = 30 }: { students?: number; teachers?: number; awards?: number; courses?: number }) {
     const stats = [
-        { label: "Students", value: 2500, suffix: "+", icon: Users },
-        { label: "Teachers", value: 150, suffix: "+", icon: GraduationCap },
-        { label: "Awards", value: 50, suffix: "+", icon: Trophy },
-        { label: "Courses", value: 30, suffix: "+", icon: BookOpen },
+        { label: "Students", value: students, suffix: "+", icon: Users },
+        { label: "Teachers", value: teachers, suffix: "+", icon: GraduationCap },
+        { label: "Awards", value: awards, suffix: "+", icon: Trophy },
+        { label: "Courses", value: courses, suffix: "+", icon: BookOpen },
     ];
 
     return (

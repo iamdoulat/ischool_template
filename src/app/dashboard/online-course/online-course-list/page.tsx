@@ -1,53 +1,38 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import {
     Search,
-    LayoutGrid,
-    List,
     Plus,
+    ChevronLeft,
+    ChevronRight,
     ChevronDown,
-    Monitor,
+    Loader2,
     BookOpen,
-    Clock,
-    FileText,
-    HelpCircle,
-    PenTool,
-    MoreVertical,
-    Eye,
-    Settings,
-    LayoutDashboard,
-    RefreshCw,
-    GraduationCap,
-    Info,
+    Pencil,
     Trash2,
-    Edit3,
+    Eye,
+    Upload,
+    Play,
     Check,
-    X,
-    ShieldAlert,
-    ShieldCheck,
-    Target,
-    Zap
+    Copy,
+    FileSpreadsheet,
+    FileText,
+    Printer,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
+    DialogFooter,
 } from "@/components/ui/dialog";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -58,13 +43,75 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+const activeGradient = "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:from-[#FF9800] hover:to-[#6366F1]";
+
+function getYoutubeId(url: string): string | null {
+    if (!url) return null;
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+        /^([a-zA-Z0-9_-]{11})$/,
+    ];
+    for (const p of patterns) {
+        const m = url.match(p);
+        if (m) return m[1];
+    }
+    return null;
+}
+
+interface OutlineItem {
+    id: number;
+    title: string;
+    description: string;
+    video_url?: string;
+}
+
+interface LiveClassItem {
+    id: number;
+    title: string;
+    description: string;
+    live_link: string;
+}
+
+interface QuizItem {
+    id: number;
+    title: string;
+    description: string;
+    option_1: string;
+    option_2: string;
+    option_3: string;
+    option_4: string;
+    correct_option: number;
+    points: number;
+}
 
 interface Course {
     id: string;
     title: string;
+    subtitle?: string;
     description: string;
     category: string;
-    instructor: { name: string, id: string, admission_no: string, avatar: string, updated_at: string };
+    instructor: { name: string; id: string; admission_no: string; avatar: string; updated_at: string };
     price: number;
     original_price: number;
     image: string;
@@ -74,480 +121,867 @@ interface Course {
     total_exams: number;
     total_assignments: number;
     total_quizzes: number;
+    outline?: OutlineItem[];
+    live_classes?: LiveClassItem[];
+    quizzes?: QuizItem[];
 }
 
 export default function OnlineCoursePage() {
     const { toast } = useToast();
-    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+    const { symbol, formatCurrency } = useCurrencyFormatter();
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState("");
+    const [saving, setSaving] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
     const [courses, setCourses] = useState<Course[]>([]);
-    const [totalEntries, setTotalEntries] = useState(0);
-    
-    // Modal States
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [deleteId, setDeleteId] = useState<string | null>(null);
-    const [submitting, setSubmitting] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [from, setFrom] = useState(0);
+    const [to, setTo] = useState(0);
 
-    // Form States
-    const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-    const [formState, setFormState] = useState({
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [perPage, setPerPage] = useState(20);
+    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [viewCourse, setViewCourse] = useState<Course | null>(null);
+    const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+    const [showFullDetails, setShowFullDetails] = useState(false);
+
+    const [form, setForm] = useState({
         title: "",
+        subtitle: "",
         category: "",
         price: "",
         original_price: "",
         description: "",
-        class_name: ""
+        class_name: "",
+        instructor_name: "",
+        thumbnail: null as File | null,
+        thumbnail_preview: "",
+        outline: [] as OutlineItem[],
+        live_classes: [] as LiveClassItem[],
+        quizzes: [] as QuizItem[],
     });
 
-    useEffect(() => {
-        fetchCourses();
-    }, []);
-
-    const fetchCourses = async () => {
+    const fetchCourses = useCallback(async (page?: number) => {
         setLoading(true);
         try {
-            const response = await api.get('/online-course/courses', {
-                params: { search: searchQuery }
+            const res = await api.get("/online-course/courses", {
+                params: { search: searchTerm, page: page || currentPage, per_page: perPage },
             });
-            setCourses(response.data.data || []);
-            setTotalEntries(response.data.total || 0);
-        } catch (error) {
-            toast({ title: "Registry Failure", description: "Failed to synchronize institutional course matrix.", variant: "destructive" });
+            const d = res.data;
+            if (d.data) {
+                const list = (Array.isArray(d.data) ? d.data : d.data.data || []).map((c: any) => ({
+                    ...c,
+                    outline: typeof c.outline === "string" ? JSON.parse(c.outline) : c.outline || [],
+                    live_classes: typeof c.live_classes === "string" ? JSON.parse(c.live_classes) : c.live_classes || [],
+                    quizzes: typeof c.quizzes === "string" ? JSON.parse(c.quizzes) : c.quizzes || [],
+                }));
+                setCourses(list);
+                setTotal(d.total || d.meta?.total || 0);
+                setLastPage(d.last_page || d.meta?.last_page || 1);
+                setCurrentPage(d.current_page || d.meta?.current_page || 1);
+                setFrom(d.from || d.meta?.from || 0);
+                setTo(d.to || d.meta?.to || 0);
+            } else {
+                setCourses([]);
+            }
+        } catch {
+            toast("error", "Failed to fetch courses");
         } finally {
             setLoading(false);
         }
+    }, [searchTerm, currentPage, perPage]);
+
+    useEffect(() => {
+        fetchCourses(1);
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => fetchCourses(1), 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const resetForm = () => {
+        setForm({ title: "", subtitle: "", category: "", price: "", original_price: "", description: "", class_name: "", instructor_name: "", thumbnail: null, thumbnail_preview: "", outline: [], live_classes: [], quizzes: [] });
+        setEditingId(null);
     };
 
     const handleOpenAdd = () => {
-        setFormState({ title: "", category: "", price: "", original_price: "", description: "", class_name: "" });
-        setIsAddModalOpen(true);
+        resetForm();
+        setIsDialogOpen(true);
     };
 
     const handleOpenEdit = (course: Course) => {
-        setSelectedCourse(course);
-        setFormState({
+        setEditingId(course.id);
+        setForm({
             title: course.title,
+            subtitle: course.subtitle || "",
             category: course.category,
             price: course.price.toString(),
             original_price: (course.original_price || "").toString(),
             description: course.description,
-            class_name: course.class_name
+            class_name: course.class_name,
+            instructor_name: course.instructor?.name || "",
+            thumbnail: null,
+            thumbnail_preview: course.image || "",
+            outline: course.outline || [],
+            live_classes: course.live_classes || [],
+            quizzes: course.quizzes || [],
         });
-        setIsEditModalOpen(true);
+        setIsDialogOpen(true);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        setSubmitting(true);
+        setSaving(true);
         try {
-            if (isEditModalOpen && selectedCourse) {
-                await api.put(`/online-course/courses/${selectedCourse.id}`, formState);
-                toast({ title: "Protocol Updated", description: "Course node parameters successfully re-indexed." });
+            const fd = new FormData();
+            fd.append("title", form.title);
+            fd.append("subtitle", form.subtitle);
+            fd.append("category", form.category);
+            fd.append("price", form.price);
+            fd.append("original_price", form.original_price);
+            fd.append("description", form.description);
+            fd.append("class_name", form.class_name);
+            fd.append("instructor_name", form.instructor_name);
+            fd.append("outline", JSON.stringify(form.outline));
+            fd.append("live_classes", JSON.stringify(form.live_classes));
+            fd.append("quizzes", JSON.stringify(form.quizzes));
+            if (form.thumbnail) fd.append("image", form.thumbnail);
+
+            if (editingId) {
+                fd.append("_method", "PUT");
+                await api.post(`/online-course/courses/${editingId}`, fd, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+                toast("success", "Course updated successfully");
             } else {
-                await api.post('/online-course/courses', formState);
-                toast({ title: "Node Integrated", description: "New curriculum asset successfully integrated into registry." });
+                await api.post("/online-course/courses", fd, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+                toast("success", "Course created successfully");
             }
-            setIsAddModalOpen(false);
-            setIsEditModalOpen(false);
-            fetchCourses();
-        } catch (error) {
-            toast({ title: "Integration Error", description: "Transaction failed. Check analytical logs.", variant: "destructive" });
+            setIsDialogOpen(false);
+            resetForm();
+            fetchCourses(1);
+        } catch {
+            toast("error", "Failed to save course");
         } finally {
-            setSubmitting(false);
+            setSaving(false);
         }
     };
 
-    const executeDelete = async () => {
+    const handleOpenView = (course: Course) => {
+        setViewCourse({
+            ...course,
+            outline: typeof course.outline === "string" ? JSON.parse(course.outline) : course.outline || [],
+            live_classes: typeof course.live_classes === "string" ? JSON.parse(course.live_classes) : course.live_classes || [],
+            quizzes: typeof course.quizzes === "string" ? JSON.parse(course.quizzes) : course.quizzes || [],
+        });
+        setShowFullDetails(false);
+        setIsViewDialogOpen(true);
+    };
+
+    const confirmDelete = (id: string) => {
+        setDeleteId(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleDelete = async () => {
         if (!deleteId) return;
         try {
             await api.delete(`/online-course/courses/${deleteId}`);
-            toast({ title: "Asset Purged", description: "Course node successfully de-indexed from registry." });
-            fetchCourses();
-        } catch (error) {
-            toast({ title: "Purge Failed", description: "Failed to execute deletion protocol.", variant: "destructive" });
+            toast("success", "Course deleted successfully");
+            fetchCourses(1);
+        } catch {
+            toast("error", "Failed to delete course");
         } finally {
+            setIsDeleteDialogOpen(false);
             setDeleteId(null);
         }
     };
 
+    const exportToCopy = () => {
+        const text = courses.map((c) => `${c.title}\t${c.category}\t${formatCurrency(c.price)}\t${c.class_name}`).join("\n");
+        navigator.clipboard.writeText(text);
+        toast("success", "Copied to clipboard");
+    };
+
+    const exportToExcel = () => {
+        const data = courses.map((c) => ({
+            Title: c.title,
+            Category: c.category,
+            Price: c.price,
+            Class: c.class_name,
+            Instructor: c.instructor?.name || "",
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Courses");
+        XLSX.writeFile(wb, "courses.xlsx");
+    };
+
+    const exportToPDF = () => {
+        const doc = new jsPDF();
+        autoTable(doc, {
+            head: [["Title", "Category", "Price", "Class", "Instructor"]],
+            body: courses.map((c) => [c.title, c.category, formatCurrency(c.price), c.class_name, c.instructor?.name || ""]),
+        });
+        doc.save("courses.pdf");
+    };
+
+    const exportToPrint = () => {
+        const win = window.open("", "_blank");
+        if (!win) return;
+        win.document.write(`
+            <html><head><title>Courses</title>
+            <style>table { width:100%; border-collapse:collapse; } th,td { border:1px solid #ddd; padding:8px; text-align:left; } th { background:#f5f5f5; }</style>
+            </head><body><h2>Courses</h2><table>
+            <thead><tr><th>Title</th><th>Category</th><th>Price</th><th>Class</th><th>Instructor</th></tr></thead>
+            <tbody>${courses.map((c) => `<tr><td>${c.title}</td><td>${c.category}</td><td>${formatCurrency(c.price)}</td><td>${c.class_name}</td><td>${c.instructor?.name || ""}</td></tr>`).join("")}
+            </tbody></table></body></html>`);
+        win.document.close();
+        win.print();
+    };
+
     return (
-        <div className="space-y-8 animate-in fade-in duration-700 pb-20 font-sans text-slate-800">
-            {/* High-Fidelity Header */}
-            <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-[0_8px_40px_rgb(0,0,0,0.02)] flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 text-indigo-600">
-                    <GraduationCap className="h-48 w-48" />
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-xl font-semibold text-gray-800 tracking-tight">Online Courses</h1>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">Manage your course catalog</p>
                 </div>
-                
-                <div className="flex items-center gap-6 relative z-10">
-                    <div className="h-16 w-16 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner transform -rotate-3 transition-transform group-hover:rotate-0 duration-500">
-                        <LayoutDashboard className="h-8 w-8" />
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-black text-gray-800 uppercase tracking-tight flex items-center gap-4">
-                            Course Matrix
-                        </h1>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.25em] mt-1.5 flex items-center gap-2">
-                            <Target className="h-3 w-3 text-indigo-400" /> Institutional registry of active virtual assessment nodes
-                        </p>
-                    </div>
+                <Button onClick={handleOpenAdd} className={cn("h-9 px-5 text-xs font-bold rounded-full shadow-md flex items-center gap-2", activeGradient)}>
+                    <Plus className="h-4 w-4" /> Add Course
+                </Button>
+            </div>
+
+            {/* Search + Export */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="relative w-full md:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                    <Input
+                        placeholder="Search courses..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 h-9 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
+                    />
                 </div>
-
-                <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto relative z-10">
-                    <div className="relative flex-1 lg:w-80 group/search">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within/search:text-indigo-500 transition-colors" />
-                        <Input
-                            placeholder="Identify Nodal Asset..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && fetchCourses()}
-                            className="pl-12 h-14 rounded-lg bg-slate-50 border-transparent focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-indigo-500/10 focus-visible:border-indigo-500 transition-all font-bold text-sm shadow-inner"
-                        />
-                        <div onClick={fetchCourses} className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg bg-white flex items-center justify-center shadow-sm hover:bg-indigo-50 cursor-pointer text-indigo-500 active:scale-90 transition-all">
-                            <Search className="h-4 w-4" />
-                        </div>
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+                        <span>Show</span>
+                        <Select value={String(perPage)} onValueChange={(v) => { setPerPage(Number(v)); setCurrentPage(1); }}>
+                            <SelectTrigger className="h-7 text-xs w-16 border-gray-200">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="20">20</SelectItem>
+                                <SelectItem value="50">50</SelectItem>
+                                <SelectItem value="100">100</SelectItem>
+                                <SelectItem value="500">500</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <span>entries</span>
                     </div>
-
-                    <div className="flex items-center bg-slate-50 border border-slate-100 rounded-lg p-1.5 shadow-inner">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className={cn("h-11 w-11 rounded-lg transition-all duration-300", viewMode === "grid" ? "bg-white text-indigo-500 shadow-md scale-105" : "text-slate-400 hover:text-slate-600")}
-                            onClick={() => setViewMode("grid")}
-                        >
-                            <LayoutGrid className="h-5 w-5" />
+                    <div className="flex items-center gap-1 text-gray-400">
+                        <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="Copy">
+                            <Copy className="h-3.5 w-3.5" />
                         </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className={cn("h-11 w-11 rounded-lg transition-all duration-300", viewMode === "list" ? "bg-white text-indigo-500 shadow-md scale-105" : "text-slate-400 hover:text-slate-600")}
-                            onClick={() => setViewMode("list")}
-                        >
-                            <List className="h-5 w-5" />
+                        <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="Excel">
+                            <FileSpreadsheet className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="PDF">
+                            <FileText className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button onClick={exportToPrint} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="Print">
+                            <Printer className="h-3.5 w-3.5" />
                         </Button>
                     </div>
-
-                    <Button onClick={handleOpenAdd} className="h-14 px-10 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[11px] font-black uppercase tracking-[0.2em] gap-3 shadow-2xl shadow-orange-200/50 hover:shadow-orange-300/60 active:scale-95 transition-all">
-                        <Plus className="h-5 w-5" />
-                        Integrate Asset
-                    </Button>
                 </div>
             </div>
 
-            {/* Content Matrix */}
-            {loading ? (
-                <div className="h-[60vh] flex flex-col items-center justify-center space-y-4">
-                    <div className="h-20 w-20 rounded-[2.5rem] bg-indigo-50 flex items-center justify-center text-indigo-500 animate-pulse shadow-inner">
-                        <RefreshCw className="h-10 w-10 animate-spin" />
-                    </div>
-                    <div className="space-y-1 text-center">
-                        <p className="text-[12px] font-black uppercase tracking-[0.4em] text-indigo-600">Syncing Matrix Hub</p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1 italic">Accessing institutional registry nodes...</p>
-                    </div>
+            {/* Table */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+                <div className="rounded-md border border-gray-100 overflow-hidden min-h-[300px] relative">
+                    {loading && (
+                        <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+                            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                        </div>
+                    )}
+                    <Table>
+                        <TableHeader className="bg-gray-50/50 text-[11px] uppercase">
+                            <TableRow className="hover:bg-transparent border-gray-100">
+                                <TableHead className="font-bold text-gray-700 py-3">Course</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3">Category</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3">Class</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3">Instructor</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3 text-right">Price ({symbol})</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3 text-right">Action</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {courses.length === 0 && !loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="h-40 text-center text-gray-400 text-sm">
+                                        <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                                        <p className="font-medium">No courses found</p>
+                                        <p className="text-xs mt-1">Click &quot;Add Course&quot; to create one.</p>
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                courses.map((course) => (
+                                    <TableRow key={course.id} className="text-[13px] hover:bg-gray-50/50 border-b last:border-0 border-gray-50">
+                                        <TableCell className="py-3.5 align-middle">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-14 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                                                    {course.image ? (
+                                                        <img src={course.image} className="h-full w-full object-cover" alt="" />
+                                                    ) : (
+                                                        <div className="h-full w-full flex items-center justify-center text-gray-300"><BookOpen className="h-4 w-4" /></div>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-medium text-gray-800 truncate">{course.title}</p>
+                                                    <p className="text-[11px] text-gray-400 truncate">{course.description?.slice(0, 60)}...</p>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-gray-600 py-3.5 align-middle capitalize">{course.category || "-"}</TableCell>
+                                        <TableCell className="text-gray-600 py-3.5 align-middle">{course.class_name || "-"}</TableCell>
+                                        <TableCell className="text-gray-600 py-3.5 align-middle">{course.instructor?.name || "-"}</TableCell>
+                                        <TableCell className="text-right py-3.5 align-middle font-medium text-gray-800">{formatCurrency(course.price)}</TableCell>
+                                        <TableCell className="text-right py-3.5 align-middle">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button onClick={() => handleOpenView(course)} size="icon" variant="ghost" className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm">
+                                                    <Eye className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button onClick={() => handleOpenEdit(course)} size="icon" variant="ghost" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm">
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button onClick={() => confirmDelete(course.id)} size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded shadow-sm">
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
                 </div>
-            ) : courses.length === 0 ? (
-                <div className="h-[50vh] flex flex-col items-center justify-center space-y-8">
-                    <div className="p-12 rounded-[3.5rem] bg-slate-50 text-slate-300 transform rotate-6 shadow-inner border border-white">
-                        <GraduationCap className="h-20 w-20 opacity-20" />
-                    </div>
-                    <div className="space-y-3 text-center max-w-sm">
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-rose-500 bg-rose-50 px-8 py-2.5 rounded-full border border-rose-100 shadow-sm">
-                            Matrix Registry Empty
-                        </span>
-                        <p className="text-[10px] uppercase font-bold text-gray-400 tracking-tight leading-relaxed italic">
-                            No course nodes identified in the current institutional sector. Initiate asset integration to populate the matrix.
-                        </p>
-                    </div>
-                </div>
-            ) : (
-                <div className={cn(
-                    "grid gap-8",
-                    viewMode === "grid" 
-                        ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
-                        : "grid-cols-1"
-                )}>
-                    {courses.map((course, index) => (
-                        <CourseCard 
-                            key={course.id} 
-                            course={course} 
-                            viewMode={viewMode} 
-                            index={index}
-                            onEdit={() => handleOpenEdit(course)}
-                            onDelete={() => setDeleteId(course.id)}
-                        />
-                    ))}
-                </div>
-            )}
 
-            {/* Matrix Pagination */}
-            <div className="mt-12 p-8 bg-white/50 backdrop-blur-sm rounded-lg border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-muted-foreground shadow-sm">
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.25em]">
-                    Institutional Summary: <span className="text-indigo-600">{courses.length}</span> active assets identified out of <span className="text-indigo-600">{totalEntries}</span> nodes
-                </p>
-                <div className="flex items-center gap-3">
-                    <Button variant="outline" size="icon" className="h-12 w-12 rounded-lg border-gray-100 bg-white text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 active:scale-95 transition-all shadow-sm" disabled>
-                        <ChevronDown className="h-5 w-5 rotate-90" />
-                    </Button>
-                    <Button className="h-12 w-12 rounded-lg border-none p-0 text-white font-black text-xs active:scale-95 transition-all shadow-xl shadow-indigo-200/50 bg-gradient-to-r from-indigo-500 to-indigo-700">
-                        1
-                    </Button>
-                    <Button variant="outline" size="icon" className="h-12 w-12 rounded-lg border-gray-100 bg-white text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 active:scale-95 transition-all shadow-sm" disabled>
-                        <ChevronDown className="h-5 w-5 -rotate-90" />
-                    </Button>
+                {/* Pagination */}
+                <div className="flex items-center justify-between text-xs text-gray-500 font-medium px-4 py-3 border-t border-gray-100">
+                    <div className="flex items-center gap-1.5">
+                        <span>Showing {from} to {to} of {total}</span>
+                    </div>
+                    <div className="flex gap-1">
+                        <Button variant="outline" size="sm" className="h-7 w-7 p-0 border-gray-200" disabled={currentPage === 1} onClick={() => fetchCourses(currentPage - 1)}>
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        {Array.from({ length: lastPage }, (_, i) => i + 1).map((page) => (
+                            <Button key={page} variant={currentPage === page ? "default" : "outline"} size="sm" className={`h-7 w-7 p-0 border-gray-200 ${currentPage === page ? activeGradient : "hover:bg-indigo-50 hover:text-indigo-600"}`} onClick={() => fetchCourses(page)}>
+                                {page}
+                            </Button>
+                        ))}
+                        <Button variant="outline" size="sm" className="h-7 w-7 p-0 border-gray-200" disabled={currentPage === lastPage} onClick={() => fetchCourses(currentPage + 1)}>
+                            <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
                 </div>
             </div>
 
-            {/* Asset Integration/Edit Dialog */}
-            <Dialog open={isAddModalOpen || isEditModalOpen} onOpenChange={(open) => {
-                if (!open) {
-                    setIsAddModalOpen(false);
-                    setIsEditModalOpen(false);
-                }
-            }}>
-                <DialogContent className="sm:max-w-[700px] rounded-[3rem] border-none shadow-2xl overflow-hidden p-0 bg-white">
-                    <DialogHeader className="p-10 bg-gradient-to-r from-indigo-600 to-indigo-800 text-white relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 opacity-10 transform rotate-12 scale-150">
-                            <GraduationCap className="h-24 w-24" />
-                        </div>
-                        <div className="flex items-center gap-6 relative z-10">
-                            <div className="h-16 w-16 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xl">
-                                <Plus className="h-8 w-8" />
-                            </div>
-                            <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">
-                                    {isEditModalOpen ? "Modify Nodal Asset" : "Integrate Course Protocol"}
-                                </DialogTitle>
-                                <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-1.5 flex items-center gap-2">
-                                    <ShieldCheck className="h-3 w-3" /> Execute curriculum integration and nodal registry
-                                </p>
-                            </div>
-                        </div>
+            {/* Add/Edit Dialog */}
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setIsDialogOpen(false); resetForm(); } }}>
+                <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto rounded-lg border-none shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-base font-bold text-gray-800 flex items-center gap-2">
+                            <BookOpen className="h-5 w-5 text-indigo-500" />
+                            {editingId ? "Edit Course" : "Add Course"}
+                        </DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleSubmit} className="p-10 space-y-8 bg-white">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <FormInput 
-                                label="Course Identity Title" 
-                                value={formState.title}
-                                icon={<BookOpen className="h-3.5 w-3.5" />}
-                                onChange={(val) => setFormState({...formState, title: val})}
-                                placeholder="Enter nodal title..."
-                            />
-                            <FormInput 
-                                label="Sector Classification" 
-                                value={formState.category}
-                                icon={<Target className="h-3.5 w-3.5" />}
-                                onChange={(val) => setFormState({...formState, category: val})}
-                                placeholder="Institutional sector..."
-                            />
-                            <FormInput 
-                                label="Commitment Price ($)" 
-                                type="number"
-                                value={formState.price}
-                                icon={<Zap className="h-3.5 w-3.5 text-orange-500" />}
-                                onChange={(val) => setFormState({...formState, price: val})}
-                                placeholder="0.00"
-                            />
-                            <FormInput 
-                                label="Institutional Class" 
-                                value={formState.class_name}
-                                icon={<GraduationCap className="h-3.5 w-3.5" />}
-                                onChange={(val) => setFormState({...formState, class_name: val})}
-                                placeholder="Class identity node..."
-                            />
+                    <form onSubmit={handleSave} className="space-y-5">
+                        {/* Thumbnail */}
+                        <div className="space-y-2">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Thumbnail</Label>
+                            <div className="flex items-center gap-4">
+                                <div
+                                    onClick={() => document.getElementById("thumb-input")?.click()}
+                                    className="h-20 w-36 rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/50 flex items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all overflow-hidden relative group"
+                                >
+                                    {form.thumbnail_preview ? (
+                                        <>
+                                            <img src={form.thumbnail_preview} className="h-full w-full object-cover" alt="" />
+                                            <div className="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <Upload className="h-5 w-5 text-indigo-600" />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-1 text-gray-400">
+                                            <Upload className="h-5 w-5" />
+                                            <span className="text-[8px] font-bold uppercase">Upload</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <input
+                                    id="thumb-input"
+                                    type="file"
+                                    accept="image/*"
+                                    hidden
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            setForm({ ...form, thumbnail: file, thumbnail_preview: URL.createObjectURL(file) });
+                                        }
+                                    }}
+                                />
+                                <p className="text-[10px] text-gray-400">Recommended: 1200x628px</p>
+                            </div>
                         </div>
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1 flex items-center gap-2">
-                                <Info className="h-3.5 w-3.5" /> Curriculum Insight Node
-                            </label>
-                            <textarea 
-                                required
-                                className="w-full min-h-[120px] rounded-lg border-2 border-slate-50 bg-slate-50/30 p-6 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/10 focus-visible:border-indigo-500 focus-visible:bg-white transition-all font-bold text-sm shadow-inner"
-                                placeholder="Provide high-fidelity description of the curriculum assets..."
-                                value={formState.description}
-                                onChange={(e) => setFormState({...formState, description: e.target.value})}
-                            />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Title</Label>
+                                <Input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="Course title" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Sub Title</Label>
+                                <Input value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="Course subtitle" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Category</Label>
+                                <Input required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="Science, Arts..." />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Instructor Name</Label>
+                                <Input value={form.instructor_name} onChange={(e) => setForm({ ...form, instructor_name: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="John Doe" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Class</Label>
+                                <Input value={form.class_name} onChange={(e) => setForm({ ...form, class_name: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="e.g. Class 10" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Price ({symbol})</Label>
+                                <Input required type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="0.00" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Original Price ({symbol})</Label>
+                                <Input type="number" step="0.01" value={form.original_price} onChange={(e) => setForm({ ...form, original_price: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="0.00" />
+                            </div>
                         </div>
-                        <div className="flex justify-end pt-4 gap-4">
-                            <Button type="button" variant="outline" onClick={() => {setIsAddModalOpen(false); setIsEditModalOpen(false);}} className="h-14 px-10 rounded-full text-[10px] font-black uppercase tracking-widest border-slate-100 hover:bg-slate-50 transition-all">
-                                Abort Protocol
+                        <div className="space-y-2">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Description</Label>
+                            <Textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="min-h-[100px] text-xs border-gray-200 rounded-lg" placeholder="Course description..." />
+                        </div>
+
+                        {/* Course Outline Accordions */}
+                        <div className="space-y-3 border-t border-gray-100 pt-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Course Outline</Label>
+                                <Button type="button" onClick={() => setForm({ ...form, outline: [...form.outline, { id: Date.now(), title: "", description: "", video_url: "" }] })} className="h-7 text-[9px] font-bold rounded-full px-3 flex items-center gap-1 bg-gradient-to-r from-orange-400 to-indigo-500 text-white">
+                                    <Plus size={12} /> Add Outline Item
+                                </Button>
+                            </div>
+                            {form.outline.length === 0 && (
+                                <p className="text-[11px] text-gray-400 italic">No outline items added yet.</p>
+                            )}
+                            {form.outline.map((item, idx) => (
+                                <div key={item.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50/20 space-y-3 relative group">
+                                    <Button type="button" size="icon" onClick={() => setForm({ ...form, outline: form.outline.filter((o) => o.id !== item.id) })} className="absolute top-3 right-3 h-7 w-7 bg-red-500 text-white rounded-[8px] shadow-md opacity-0 group-hover:opacity-100">
+                                        <Trash2 size={14} />
+                                    </Button>
+                                    <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                                        <ChevronDown size={12} className="text-indigo-400" />
+                                        Item {idx + 1}
+                                    </div>
+                                    <div className="space-y-2 pr-8">
+                                        <Input value={item.title} onChange={(e) => { const o = [...form.outline]; o[idx] = { ...o[idx], title: e.target.value }; setForm({ ...form, outline: o }); }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder="Outline title..." />
+                                        <div className="flex items-center gap-2">
+                                            <Input value={item.video_url || ""} onChange={(e) => { const o = [...form.outline]; o[idx] = { ...o[idx], video_url: e.target.value }; setForm({ ...form, outline: o }); }} className="h-8 text-[11px] bg-white border-gray-100 rounded-lg flex-1" placeholder="YouTube video URL (optional)..." />
+                                            {item.video_url && (
+                                                <Play size={14} className="text-red-400 shrink-0" />
+                                            )}
+                                        </div>
+                                        <Textarea value={item.description} onChange={(e) => { const o = [...form.outline]; o[idx] = { ...o[idx], description: e.target.value }; setForm({ ...form, outline: o }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg" placeholder="Outline description..." />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Live Class Accordions */}
+                        <div className="space-y-3 border-t border-gray-100 pt-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Live Class</Label>
+                                <Button type="button" onClick={() => setForm({ ...form, live_classes: [...form.live_classes, { id: Date.now(), title: "", description: "", live_link: "" }] })} className="h-7 text-[9px] font-bold rounded-full px-3 flex items-center gap-1 bg-gradient-to-r from-orange-400 to-indigo-500 text-white">
+                                    <Plus size={12} /> Add Live Class
+                                </Button>
+                            </div>
+                            {form.live_classes.length === 0 && (
+                                <p className="text-[11px] text-gray-400 italic">No live classes added yet.</p>
+                            )}
+                            {form.live_classes.map((item, idx) => (
+                                <div key={item.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50/20 space-y-3 relative group">
+                                    <Button type="button" size="icon" onClick={() => setForm({ ...form, live_classes: form.live_classes.filter((o) => o.id !== item.id) })} className="absolute top-3 right-3 h-7 w-7 bg-red-500 text-white rounded-[8px] shadow-md opacity-0 group-hover:opacity-100">
+                                        <Trash2 size={14} />
+                                    </Button>
+                                    <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                                        <Play size={12} className="text-cyan-400" />
+                                        Live Class {idx + 1}
+                                    </div>
+                                    <div className="space-y-2 pr-8">
+                                        <Input value={item.title} onChange={(e) => { const o = [...form.live_classes]; o[idx] = { ...o[idx], title: e.target.value }; setForm({ ...form, live_classes: o }); }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder="Live class title..." />
+                                        <Input value={item.live_link} onChange={(e) => { const o = [...form.live_classes]; o[idx] = { ...o[idx], live_link: e.target.value }; setForm({ ...form, live_classes: o }); }} className="h-8 text-[11px] bg-white border-gray-100 rounded-lg" placeholder="Live class link (e.g. https://meet.google.com/...)" />
+                                        <Textarea value={item.description} onChange={(e) => { const o = [...form.live_classes]; o[idx] = { ...o[idx], description: e.target.value }; setForm({ ...form, live_classes: o }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg" placeholder="Live class description..." />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Quizzes Accordions */}
+                        <div className="space-y-3 border-t border-gray-100 pt-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Quizzes</Label>
+                                <Button type="button" onClick={() => setForm({ ...form, quizzes: [...form.quizzes, { id: Date.now(), title: "", description: "", option_1: "", option_2: "", option_3: "", option_4: "", correct_option: 1, points: 1 }] })} className="h-7 text-[9px] font-bold rounded-full px-3 flex items-center gap-1 bg-gradient-to-r from-orange-400 to-indigo-500 text-white">
+                                    <Plus size={12} /> Add Question
+                                </Button>
+                            </div>
+                            {form.quizzes.length === 0 && (
+                                <p className="text-[11px] text-gray-400 italic">No quiz questions added yet.</p>
+                            )}
+                            {form.quizzes.map((item, idx) => (
+                                <div key={item.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50/20 space-y-3 relative group">
+                                    <Button type="button" size="icon" onClick={() => setForm({ ...form, quizzes: form.quizzes.filter((o) => o.id !== item.id) })} className="absolute top-3 right-3 h-7 w-7 bg-red-500 text-white rounded-[8px] shadow-md opacity-0 group-hover:opacity-100">
+                                        <Trash2 size={14} />
+                                    </Button>
+                                    <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                                        <Check size={12} className="text-rose-400" />
+                                        Question {idx + 1}
+                                    </div>
+                                    <div className="space-y-2 pr-8">
+                                        <Input value={item.title} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], title: e.target.value }; setForm({ ...form, quizzes: o }); }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder="Question title..." />
+                                        <Textarea value={item.description} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], description: e.target.value }; setForm({ ...form, quizzes: o }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg" placeholder="Question description..." />
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <Input value={item.option_1} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_1: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 1 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder="Option 1" />
+                                            <Input value={item.option_2} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_2: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 2 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder="Option 2" />
+                                            <Input value={item.option_3} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_3: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 3 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder="Option 3" />
+                                            <Input value={item.option_4} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_4: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 4 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder="Option 4" />
+                                        </div>
+                                        <div className="flex gap-3 items-center">
+                                            <div className="flex items-center gap-2">
+                                                <Label className="text-[9px] font-bold text-gray-400 uppercase">Correct</Label>
+                                                <select value={item.correct_option} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], correct_option: Number(e.target.value) }; setForm({ ...form, quizzes: o }); }} className="h-8 text-[11px] bg-white border border-gray-200 rounded-lg px-2 text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                    <option value={1}>Option 1</option>
+                                                    <option value={2}>Option 2</option>
+                                                    <option value={3}>Option 3</option>
+                                                    <option value={4}>Option 4</option>
+                                                </select>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Label className="text-[9px] font-bold text-gray-400 uppercase">Points</Label>
+                                                <Input type="number" min={1} value={item.points} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], points: Number(e.target.value) }; setForm({ ...form, quizzes: o }); }} className="h-8 w-16 text-[11px] bg-white border-gray-100 rounded-lg text-center" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <DialogFooter className="pt-2">
+                            <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }} className="h-9 text-xs font-bold rounded-full px-6">
+                                Cancel
                             </Button>
-                            <Button 
-                                disabled={submitting}
-                                className="h-14 px-12 rounded-full bg-indigo-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-indigo-200 active:scale-95 transition-all gap-3 hover:bg-indigo-700"
-                            >
-                                {submitting ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-                                {isEditModalOpen ? "Commit Re-index" : "Initialize Asset"}
+                            <Button disabled={saving} className={cn("h-9 text-xs font-bold rounded-full px-6 shadow-md", activeGradient)}>
+                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                                {editingId ? "Update" : "Save"}
                             </Button>
-                        </div>
+                        </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
 
-            {/* Purge Confirmation Dialog */}
-            <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-[3rem] border-0 shadow-2xl p-12 max-w-lg bg-white">
+            {/* Delete Confirmation */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
                     <AlertDialogHeader>
-                        <div className="h-24 w-24 rounded-[2.5rem] bg-rose-50 flex items-center justify-center text-rose-500 border-2 border-rose-100 mb-10 shadow-inner transform rotate-6 animate-in zoom-in duration-300">
-                            <ShieldAlert className="h-12 w-12" />
-                        </div>
-                        <AlertDialogTitle className="text-3xl font-black text-slate-800 uppercase tracking-tight leading-none">Execute Purge Protocol?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-sm text-slate-500 leading-relaxed mt-6 font-bold uppercase tracking-tight opacity-70">
-                            Warning: You are about to de-index a core curriculum node. This operation is irreversible and will purge all associated metadata from the institutional matrix.
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete this course. This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-12 gap-4 flex-col sm:flex-row">
-                        <AlertDialogCancel className="h-14 px-10 rounded-full text-[11px] font-black uppercase tracking-widest border-slate-100 hover:bg-slate-50 transition-all sm:flex-1">Abort De-index</AlertDialogCancel>
-                        <AlertDialogAction 
-                            onClick={executeDelete} 
-                            className="bg-rose-500 hover:bg-rose-600 h-14 px-12 rounded-full text-[11px] font-black uppercase tracking-widest border-0 shadow-2xl shadow-rose-200 active:scale-95 transition-all flex gap-3 sm:flex-1"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                            Purge Asset
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="h-9 text-xs font-bold rounded-full px-6">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="h-9 text-xs font-bold rounded-full px-6 bg-red-600 hover:bg-red-700">
+                            Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
-    );
-}
 
-function CourseCard({ course, viewMode, index, onEdit, onDelete }: { course: Course, viewMode: "grid" | "list", index: number, onEdit: () => void, onDelete: () => void }) {
-    return (
-        <Card className={cn(
-            "group border-none shadow-[0_15px_45px_rgb(0,0,0,0.03)] bg-card/50 backdrop-blur-md overflow-hidden hover:shadow-[0_25px_60px_rgb(0,0,0,0.08)] transition-all duration-500 flex relative animate-in fade-in slide-in-from-bottom-8",
-            viewMode === "grid" ? "flex-col rounded-[2.5rem]" : "flex-row h-72 rounded-lg",
-            `delay-[${index * 50}ms]`
-        )}>
-            {/* Asset Visual Node */}
-            <div className={cn(
-                "relative overflow-hidden shrink-0",
-                viewMode === "grid" ? "aspect-[16/11]" : "w-96 h-full"
-            )}>
-                <img
-                    src={course.image || `https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2070&auto=format&fit=crop&sig=${course.id}`}
-                    alt={course.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 blur-[0.2px] group-hover:blur-0"
-                />
+            {/* View Detail Dialog */}
+            <Dialog open={isViewDialogOpen} onOpenChange={(open) => { if (!open) { setIsViewDialogOpen(false); setPlayingVideoId(null); setShowFullDetails(false); } }}>
+                <DialogContent className="sm:max-w-[650px] max-h-[85vh] overflow-y-auto rounded-lg border-none shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-base font-bold text-gray-800 flex items-center gap-2">
+                            <BookOpen className="h-5 w-5 text-indigo-500" />
+                            {viewCourse?.title || "Course Details"}
+                        </DialogTitle>
+                    </DialogHeader>
+                    {viewCourse && (
+                        <div className="space-y-6">
+                            {/* Hero */}
+                            <div className="flex flex-col sm:flex-row gap-5">
+                                {viewCourse.image && (
+                                    <div className="w-full sm:w-48 h-32 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                                        <img src={viewCourse.image} className="h-full w-full object-cover" alt="" />
+                                    </div>
+                                )}
+                                <div className="flex-1 space-y-2 min-w-0">
+                                    {viewCourse.subtitle && (
+                                        <p className="text-[12px] font-medium text-indigo-500">{viewCourse.subtitle}</p>
+                                    )}
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600">{viewCourse.category}</span>
+                                        <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">{viewCourse.class_name}</span>
+                                    </div>
+                                    <p className="text-sm text-gray-600 leading-relaxed">{viewCourse.description}</p>
+                                </div>
+                            </div>
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
+                            {/* Stats */}
+                            <div className="grid grid-cols-5 gap-2">
+                                <div className="bg-indigo-50 rounded-lg py-2 px-2 text-center border border-indigo-100">
+                                    <p className="text-sm font-black text-indigo-600">{viewCourse.total_lessons || 0}</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-indigo-400">Lessons</p>
+                                </div>
+                                <div className="bg-emerald-50 rounded-lg py-2 px-2 text-center border border-emerald-100">
+                                    <p className="text-[11px] font-black text-emerald-600">{viewCourse.total_hours || "0"}</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">Hours</p>
+                                </div>
+                                <div className="bg-amber-50 rounded-lg py-2 px-2 text-center border border-amber-100">
+                                    <p className="text-sm font-black text-amber-600">{viewCourse.total_exams || 0}</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-amber-400">Exams</p>
+                                </div>
+                                <div className="bg-cyan-50 rounded-lg py-2 px-2 text-center border border-cyan-100">
+                                    <p className="text-sm font-black text-cyan-600">0</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-cyan-400">Live Class</p>
+                                </div>
+                                <div className="bg-rose-50 rounded-lg py-2 px-2 text-center border border-rose-100">
+                                    <p className="text-sm font-black text-rose-600">{viewCourse.total_quizzes || 0}</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-rose-400">Quizzes</p>
+                                </div>
+                            </div>
 
-                {/* Identity Overlay */}
-                <div className="absolute inset-x-0 bottom-0 p-5 z-10 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                    <div className="flex items-center gap-4 bg-white/10 backdrop-blur-xl p-3 rounded-lg border border-white/20 shadow-2xl">
-                        <div className="h-10 w-10 rounded-lg overflow-hidden border-2 border-white/30 shadow-inner bg-indigo-500/20 flex items-center justify-center text-xs font-black text-white uppercase">
-                            {course.instructor?.avatar ? <img src={course.instructor.avatar} className="w-full h-full object-cover" /> : course.instructor?.name?.[0]}
+                            {/* Pricing & Instructor */}
+                            <div className="flex gap-2">
+                                <div className="flex-1 bg-gradient-to-br from-sky-50 to-blue-50 rounded-lg py-2.5 px-3 text-center border border-sky-100">
+                                    <p className="text-[8px] font-bold uppercase tracking-widest text-sky-400">Pricing</p>
+                                    <div className="flex items-center justify-center gap-1.5">
+                                        <span className="text-base font-black text-gray-800">{formatCurrency(viewCourse.price)}</span>
+                                        {viewCourse.original_price > 0 && (
+                                            <span className="text-[10px] font-semibold text-gray-400 line-through">{formatCurrency(viewCourse.original_price)}</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex-1 bg-gradient-to-br from-purple-50 to-fuchsia-50 rounded-lg py-2.5 px-3 text-center border border-purple-100">
+                                    <p className="text-[8px] font-bold uppercase tracking-widest text-purple-400">Instructor</p>
+                                    <p className="text-xs font-bold text-gray-700 truncate">{viewCourse.instructor?.name || "N/A"}</p>
+                                </div>
+                            </div>
+
+                            {showFullDetails ? (
+                                <>
+                                    {/* Course Outline */}
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Course Outline</p>
+                                        {viewCourse.outline && viewCourse.outline.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {viewCourse.outline.map((item, idx) => {
+                                                    const colors = [
+                                                        { border: "border-l-indigo-400", bg: "bg-indigo-50/30", hover: "hover:bg-indigo-100/50", badge: "bg-indigo-500 text-white" },
+                                                        { border: "border-l-emerald-400", bg: "bg-emerald-50/30", hover: "hover:bg-emerald-100/50", badge: "bg-emerald-500 text-white" },
+                                                        { border: "border-l-amber-400", bg: "bg-amber-50/30", hover: "hover:bg-amber-100/50", badge: "bg-amber-500 text-white" },
+                                                        { border: "border-l-rose-400", bg: "bg-rose-50/30", hover: "hover:bg-rose-100/50", badge: "bg-rose-500 text-white" },
+                                                        { border: "border-l-cyan-400", bg: "bg-cyan-50/30", hover: "hover:bg-cyan-100/50", badge: "bg-cyan-500 text-white" },
+                                                    ];
+                                                    const c = colors[idx % colors.length];
+                                                    return (
+                                                        <details key={item.id || idx} className="group border border-gray-100 border-l-4 rounded-lg overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md">
+                                                            <summary className={`flex items-center justify-between px-4 py-3 text-xs font-semibold text-gray-700 border-l-4 border-transparent ${c.bg} cursor-pointer ${c.hover} transition-all duration-200 scale-[1.00] group-hover:scale-[1.01] list-none ${c.border}`}>
+                                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                                    <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[9px] font-bold ${c.badge} shrink-0`}>{idx + 1}</span>
+                                                                    <span className="truncate">{item.title}</span>
+                                                                    {item.video_url && <Play size={12} className="text-red-400 shrink-0" />}
+                                                                </div>
+                                                                <ChevronDown size={14} className="text-gray-400 transition-all duration-300 group-open:rotate-180 group-hover:text-gray-600 shrink-0" />
+                                                            </summary>
+                                                            <div className="border-t border-gray-100 bg-white">
+                                                                {item.video_url && (() => {
+                                                                    const vid = getYoutubeId(item.video_url!);
+                                                                    if (!vid) return null;
+                                                                    const isPlaying = playingVideoId === vid;
+                                                                    return (
+                                                                        <div className="relative w-full aspect-video bg-black">
+                                                                            {isPlaying ? (
+                                                                                <iframe
+                                                                                    src={`https://www.youtube.com/embed/${vid}?autoplay=1&rel=0&modestbranding=1`}
+                                                                                    className="w-full h-full"
+                                                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                                    allowFullScreen
+                                                                                />
+                                                                            ) : (
+                                                                                <>
+                                                                                    <img src={`https://img.youtube.com/vi/${vid}/hqdefault.jpg`} className="w-full h-full object-cover" alt="" />
+                                                                                    <button onClick={() => setPlayingVideoId(vid)} className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors group/vid">
+                                                                                        <span className="flex items-center justify-center h-14 w-14 rounded-full bg-red-600 text-white shadow-lg transition-transform group-hover/vid:scale-110">
+                                                                                            <Play size={24} className="ml-1" />
+                                                                                        </span>
+                                                                                    </button>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                                {item.description && (
+                                                                    <div className="px-4 py-3 text-[12px] text-gray-600 leading-relaxed">
+                                                                        {item.description}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </details>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <p className="text-[11px] text-gray-400 italic">No outline items available.</p>
+                                        )}
+                                    </div>
+
+                                    {/* Live Class */}
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Live Class</p>
+                                        {viewCourse.live_classes && viewCourse.live_classes.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {viewCourse.live_classes.map((item, idx) => {
+                                                    const colors = [
+                                                        { border: "border-l-cyan-400", bg: "bg-cyan-50/30", hover: "hover:bg-cyan-100/50", badge: "bg-cyan-500 text-white" },
+                                                        { border: "border-l-teal-400", bg: "bg-teal-50/30", hover: "hover:bg-teal-100/50", badge: "bg-teal-500 text-white" },
+                                                        { border: "border-l-sky-400", bg: "bg-sky-50/30", hover: "hover:bg-sky-100/50", badge: "bg-sky-500 text-white" },
+                                                        { border: "border-l-blue-400", bg: "bg-blue-50/30", hover: "hover:bg-blue-100/50", badge: "bg-blue-500 text-white" },
+                                                    ];
+                                                    const c = colors[idx % colors.length];
+                                                    return (
+                                                        <div key={item.id || idx} className="border border-gray-100 border-l-4 rounded-lg overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md">
+                                                            <div className={`px-4 py-3 text-xs font-semibold text-gray-700 ${c.bg} ${c.border}`}>
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                                        <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[9px] font-bold ${c.badge} shrink-0`}>{idx + 1}</span>
+                                                                        <span className="truncate">{item.title}</span>
+                                                                    </div>
+                                                                    {item.live_link && (
+                                                                        <a href={item.live_link} target="_blank" rel="noopener noreferrer">
+                                                                            <Button className="h-7 text-[10px] font-bold rounded-full px-4 shadow-sm bg-gradient-to-r from-orange-400 to-rose-500 text-white hover:shadow-md transition-shadow">
+                                                                                <Play size={11} className="mr-1" /> Join
+                                                                            </Button>
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            {item.description && (
+                                                                <div className="px-4 py-3 text-[12px] text-gray-600 leading-relaxed bg-white border-t border-gray-100">
+                                                                    {item.description}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <p className="text-[11px] text-gray-400 italic">No live classes available.</p>
+                                        )}
+                                    </div>
+
+                                    {/* Quizzes */}
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Quizzes</p>
+                                        {viewCourse.quizzes && viewCourse.quizzes.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {viewCourse.quizzes.map((item, idx) => {
+                                                    const totalPoints = viewCourse.quizzes!.reduce((s, q) => s + q.points, 0);
+                                                    const optColors = ["border-l-indigo-400", "border-l-emerald-400", "border-l-amber-400", "border-l-rose-400"];
+                                                    const optLabels = ["A", "B", "C", "D"];
+                                                    return (
+                                                        <div key={item.id || idx} className="border border-gray-100 rounded-lg overflow-hidden shadow-sm">
+                                                            <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full text-[9px] font-bold bg-rose-500 text-white shrink-0">{idx + 1}</span>
+                                                                        <span className="text-xs font-semibold text-gray-700">{item.title}</span>
+                                                                    </div>
+                                                                    <span className="text-[10px] font-bold text-amber-600 shrink-0 ml-2">{item.points} pts</span>
+                                                                </div>
+                                                                {item.description && (
+                                                                    <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">{item.description}</p>
+                                                                )}
+                                                            </div>
+                                                            <div className="px-4 py-2 bg-white space-y-1.5">
+                                                                {[item.option_1, item.option_2, item.option_3, item.option_4].map((opt, oi) => {
+                                                                    const isCorrect = oi + 1 === item.correct_option;
+                                                                    return (
+                                                                        <div key={oi} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] border ${isCorrect ? "border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold" : "border-gray-100 bg-gray-50/50 text-gray-600"}`}>
+                                                                            <span className={`inline-flex items-center justify-center h-5 w-5 rounded text-[9px] font-bold shrink-0 ${isCorrect ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-500"}`}>{optLabels[oi]}</span>
+                                                                            <span className="flex-1">{opt}</span>
+                                                                            {isCorrect && <Check size={12} className="text-emerald-500 shrink-0" />}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                                {(() => {
+                                                    const totalPts = viewCourse.quizzes!.reduce((s, q) => s + q.points, 0);
+                                                    return (
+                                                        <div className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 text-xs font-semibold text-gray-600">
+                                                            <span>Total Points: <span className="text-indigo-600">{totalPts}</span></span>
+                                                            <span>Pass: <span className="text-emerald-600">{Math.ceil(totalPts * 0.5)} pts</span></span>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        ) : (
+                                            <p className="text-[11px] text-gray-400 italic">No quiz questions available.</p>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-8 px-4 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 text-center">
+                                    <BookOpen className="h-10 w-10 text-gray-300 mb-3" />
+                                    <p className="text-sm font-semibold text-gray-600">Apply to view full course details</p>
+                                    <p className="text-[11px] text-gray-400 mt-1 mb-4">Outline, live classes, and quizzes are hidden until you apply.</p>
+                                    <Button onClick={() => setShowFullDetails(true)} className="h-9 text-xs font-bold rounded-full px-6 shadow-md bg-gradient-to-r from-orange-400 to-indigo-500 text-white">
+                                        Apply Now
+                                    </Button>
+                                </div>
+                            )}
+
+                            <DialogFooter>
+                                <Button onClick={() => setIsViewDialogOpen(false)} className="h-9 text-xs font-bold rounded-full px-6">
+                                    Close
+                                </Button>
+                                <a href="/online_admission" target="_blank" rel="noopener noreferrer">
+                                    <Button className="h-9 text-xs font-bold rounded-full px-6 shadow-md bg-gradient-to-r from-orange-400 to-indigo-500 text-white">
+                                        Apply Now
+                                    </Button>
+                                </a>
+                            </DialogFooter>
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[11px] font-black text-white truncate leading-none uppercase tracking-tight">
-                                {course.instructor?.name || 'Institutional Host'}
-                            </p>
-                            <p className="text-[8px] font-black text-white/50 uppercase tracking-[0.2em] mt-1.5 flex items-center gap-1.5">
-                                <ShieldCheck className="h-2.5 w-2.5" /> Verified Node
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Sector Badge */}
-                <div className="absolute top-5 left-5 z-10">
-                    <span className="text-[9px] font-black text-white uppercase tracking-[0.2em] bg-indigo-500/80 backdrop-blur-md px-4 py-2 rounded-lg border border-white/20 shadow-xl">
-                        {course.category}
-                    </span>
-                </div>
-            </div>
-
-            {/* Protocol Action Menu */}
-            <div className="absolute top-5 right-5 z-10 opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all duration-300">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" size="icon" className="h-11 w-11 rounded-[1.2rem] bg-white/90 backdrop-blur-md border border-white shadow-2xl hover:bg-white text-slate-600 hover:text-indigo-500 active:scale-90 transition-all">
-                            <MoreVertical className="h-5 w-5" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rounded-[1.5rem] border-0 shadow-[0_20px_70px_rgb(0,0,0,0.15)] p-2 min-w-[180px] bg-white animate-in zoom-in-95 duration-200">
-                        <DropdownMenuItem onClick={onEdit} className="rounded-lg px-4 py-3 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-4 text-slate-600 focus:bg-indigo-50 focus:text-indigo-600 transition-colors">
-                            <Edit3 className="h-4 w-4" /> Manage Protocol
-                        </DropdownMenuItem>
-                        <div className="h-px bg-slate-50 my-1 mx-2" />
-                        <DropdownMenuItem onClick={onDelete} className="rounded-lg px-4 py-3 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-4 text-rose-500 focus:bg-rose-50 focus:text-rose-600 transition-colors">
-                            <Trash2 className="h-4 w-4" /> Purge Asset
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-
-            <CardContent className="p-8 flex flex-col flex-1 relative bg-white/40">
-                {/* Title and Intel */}
-                <div className="space-y-2 mb-6">
-                    <h3 className="text-lg font-black text-slate-800 leading-[1.2] group-hover:text-indigo-600 transition-colors line-clamp-1 uppercase tracking-tight">
-                        {course.title}
-                    </h3>
-                    <p className="text-[12px] text-slate-500/80 line-clamp-2 leading-relaxed font-bold italic">
-                        "{course.description}"
-                    </p>
-                </div>
-
-                {/* Analytical Matrix */}
-                <div className="grid grid-cols-2 gap-y-4 gap-x-6 mb-6 border-y border-slate-100 py-6 relative">
-                    <StatItem icon={Monitor} label="Node:" value={course.class_name} />
-                    <StatItem icon={BookOpen} label="Asset" value={course.total_lessons} />
-                    <StatItem icon={Clock} label="" value={course.total_hours} className="col-span-2 text-indigo-500" />
-                    <StatItem icon={FileText} label="Matrix" value={course.total_exams} />
-                    <StatItem icon={PenTool} label="Task" value={course.total_assignments} />
-                </div>
-
-                {/* Valuation */}
-                <div className="flex items-baseline gap-4 mb-8">
-                    <div className="flex items-center gap-2">
-                        <span className="text-2xl font-black text-slate-800 tabular-nums">${course.price}</span>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Commitment</span>
-                    </div>
-                    {course.original_price > 0 && <span className="text-[11px] font-bold text-slate-300 line-through tabular-nums">${course.original_price}</span>}
-                </div>
-
-                {/* Tactical Actions */}
-                <div className="flex gap-4 mt-auto">
-                    <Button className="flex-[1.5] h-12 rounded-full bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.25em] shadow-xl shadow-slate-200 hover:bg-slate-900 active:scale-95 transition-all">
-                        Curriculum
-                    </Button>
-                    <Button variant="outline" className="flex-1 h-12 rounded-full border-slate-100 bg-white text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 active:scale-95 transition-all shadow-sm">
-                        <Eye className="h-4 w-4" />
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
-
-function StatItem({ icon: Icon, label, value, className }: { icon: any, label: string, value: any, className?: string }) {
-    return (
-        <div className={cn("flex items-center gap-4", className)}>
-            <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 shadow-inner group-hover:bg-indigo-50 group-hover:border-indigo-100 transition-colors">
-                <Icon className="h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-            </div>
-            <div className="flex flex-col min-w-0">
-                <p className="text-[10px] font-black text-slate-700 truncate uppercase tracking-tight">{value || 'N/A'}</p>
-                {label && <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest opacity-60 leading-none mt-0.5">{label}</p>}
-            </div>
-        </div>
-    );
-}
-
-function FormInput({ label, value, onChange, placeholder, type = "text", icon }: { label: string, value: string, onChange: (val: string) => void, placeholder: string, type?: string, icon?: React.ReactNode }) {
-    return (
-        <div className="space-y-3 group">
-            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1 flex items-center gap-2 group-focus-within:text-indigo-500 transition-colors">
-                {icon} {label}
-            </label>
-            <Input 
-                required 
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="h-14 rounded-[1.5rem] border-2 border-slate-50 bg-slate-50/50 focus-visible:ring-4 focus-visible:ring-indigo-500/10 focus-visible:border-indigo-500 focus-visible:bg-white transition-all font-bold text-sm px-6 shadow-inner" 
-                placeholder={placeholder}
-            />
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

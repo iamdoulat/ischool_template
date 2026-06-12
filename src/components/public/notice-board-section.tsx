@@ -160,7 +160,7 @@ export function NoticeBoardSection() {
                             </div>
 
                             <div className="border-t border-gray-100 pt-6">
-                                <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-headings:font-bold prose-a:text-indigo-600 prose-img:max-w-full prose-img:h-auto prose-table:w-full prose-pre:overflow-x-auto"
+                                <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-headings:font-bold prose-a:text-indigo-600 prose-img:max-w-full prose-img:h-auto prose-table:w-full prose-pre:overflow-x-auto break-words [&_*]:break-words"
                                     dangerouslySetInnerHTML={{ __html: viewNotice.message }}
                                 />
                             </div>

@@ -23,7 +23,6 @@ import {
     Globe, 
     Share2, 
     LayoutPanelLeft, 
-    FileText, 
     Users, 
     GraduationCap, 
     Info,
@@ -32,8 +31,15 @@ import {
     X,
     Save,
     Pencil,
-    Eye
+    Eye,
+    Image as ImageIcon,
+    Search,
+    Check,
+    Upload,
+    BarChart3,
+    Trophy,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -54,6 +60,10 @@ export default function FrontCmsSettingPage() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [coursePickerOpen, setCoursePickerOpen] = useState(false);
+    const [onlineCourses, setOnlineCourses] = useState<any[]>([]);
+    const [loadingCourses, setLoadingCourses] = useState(false);
+    const [courseSearch, setCourseSearch] = useState("");
 
     const [settings, setSettings] = useState<any>({
         is_active: true,
@@ -77,7 +87,18 @@ export default function FrontCmsSettingPage() {
             linkedin: "https://www.linkedin.com/",
         },
         current_theme: "material_pink",
-        about_us: { title: "Welcome to Smart School", description: "Providing quality education for over two decades...", image_url: "" },
+        about_us: {
+            section_title: "About Us",
+            section_subtitle: "Fusce sem dolor, interdum in fficitur at, faucibus nec lorem. Sed nec molestie justo.",
+            title: "Welcome to Smart School",
+            description: "Providing quality education for over two decades...",
+            image_url: "",
+            accordions: [
+                { id: 1, title: "Collapsible Group Item #1", content: "Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch." },
+                { id: 2, title: "Collapsible Group Item #2", content: "Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore." },
+                { id: 3, title: "Collapsible Group Item #3", content: "Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS." },
+            ]
+        },
         main_courses: [
             { id: 1, title: "English Literature", description: "Advanced study of classic literature", price: "Free" },
             { id: 2, title: "Computer Science", description: "Modern programming and algorithms", price: "Free" }
@@ -93,6 +114,32 @@ export default function FrontCmsSettingPage() {
         header_footer_sections: {
             header_text: "Enrolment Open: 2026-27",
             header_link: "#",
+            hero_background: "https://images.unsplash.com/photo-1606092195730-5d7b9af1efc5?q=80&w=2070&auto=format&fit=crop",
+            hero_title_part1: "Empowering",
+            hero_title_highlight: "Minds",
+            hero_title_part2: "Shaping",
+            hero_title_gradient: "Futures",
+            hero_subtitle: "Provide your children with the best education possible. We focus on holistic development, academic excellence, and character building.",
+            hero_btn1_text: "Apply for Admission",
+            hero_btn1_link: "/online_admission",
+            hero_btn2_text: "Take a Tour",
+            hero_btn2_link: "#",
+            courses_section_title: "Our Main Courses",
+            courses_section_subtitle: "Fusce sem dolor, interdum in fficitur at, faucibus nec lorem. Sed nec molestie justo.",
+            staff_section_title: "Our Experienced Staffs",
+            staff_section_subtitle: "Considering desire as primary motivation for the generation of narratives is a useful concept.",
+            header_enabled: true,
+            hero_enabled: true,
+            about_enabled: true,
+            courses_enabled: true,
+            staff_enabled: true,
+            notices_enabled: true,
+            stats_enabled: true,
+            stats_students: 2500,
+            stats_teachers: 150,
+            stats_awards: 50,
+            stats_courses: 30,
+            footer_enabled: true,
             footer_links: [
                 { title: "Privacy Policy", url: "/privacy" },
                 { title: "Terms of Service", url: "/terms" }
@@ -118,7 +165,10 @@ export default function FrontCmsSettingPage() {
                     ...fetched,
                     logo_preview: fetched.logo_url || "",
                     favicon_preview: fetched.favicon_url || "",
-                    // Ensure arrays are initialized if null
+                    footer_text: fetched.footer_text || prev.footer_text,
+                    google_analytics: fetched.google_analytics || "",
+                    cookie_consent: fetched.cookie_consent || "",
+                    header_footer_sections: { ...prev.header_footer_sections, ...(fetched.header_footer_sections || {}) },
                     social_media: fetched.social_media || prev.social_media,
                     about_us: fetched.about_us || prev.about_us,
                     main_courses: fetched.main_courses || prev.main_courses,
@@ -183,6 +233,42 @@ export default function FrontCmsSettingPage() {
         setSettings({ ...settings, [section]: [...settings[section], { ...item, id: Date.now() }] });
     };
 
+    const openCoursePicker = async () => {
+        setCoursePickerOpen(true);
+        setLoadingCourses(true);
+        setCourseSearch("");
+        try {
+            const res = await api.get("online-course/courses?per_page=100");
+            const result = res.data?.data?.data || res.data?.data || [];
+            setOnlineCourses(Array.isArray(result) ? result : []);
+        } catch {
+            setOnlineCourses([]);
+        } finally {
+            setLoadingCourses(false);
+        }
+    };
+
+    const addOnlineCourse = (course: any) => {
+        const exists = settings.main_courses.some((c: any) => c.online_course_id === course.id);
+        if (exists) return;
+        setSettings({
+            ...settings,
+            main_courses: [
+                ...settings.main_courses,
+                {
+                    id: Date.now(),
+                    online_course_id: course.id,
+                    title: course.title,
+                    description: course.description || "",
+                    price: course.price?.toString() || "",
+                    category: course.category || "General",
+                    image: course.image || "",
+                    link: course.link || "/online_admission",
+                }
+            ]
+        });
+    };
+
     const removeListItem = (section: string, id: number) => {
         setSettings({ ...settings, [section]: settings[section].filter((item: any) => item.id !== id) });
     };
@@ -230,6 +316,9 @@ export default function FrontCmsSettingPage() {
                     </TabsTrigger>
                     <TabsTrigger value="social" className="text-[11px] font-bold uppercase gap-2 px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-400 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg transition-all duration-300">
                         <Share2 size={14} className="stroke-[2.5px]" /> Social Links
+                    </TabsTrigger>
+                    <TabsTrigger value="hero" className="text-[11px] font-bold uppercase gap-2 px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-400 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg transition-all duration-300">
+                        <ImageIcon size={14} className="stroke-[2.5px]" /> Hero
                     </TabsTrigger>
                     <TabsTrigger value="sections" className="text-[11px] font-bold uppercase gap-2 px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-400 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg transition-all duration-300">
                         <LayoutPanelLeft size={14} className="stroke-[2.5px]" /> Sections
@@ -337,6 +426,57 @@ export default function FrontCmsSettingPage() {
                             </div>
                         </div>
 
+                        {/* Section Visibility Toggles */}
+                        <div className="pt-8 border-t border-gray-100">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-6 block">Section Visibility</Label>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-lg border border-gray-100">
+                                    <Label className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">Header</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Switch
+                                            checked={settings.header_footer_sections?.header_enabled !== false}
+                                            onCheckedChange={(v) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, header_enabled: v } })}
+                                            className="data-[state=checked]:bg-indigo-500"
+                                        />
+                                        <span className="text-[9px] text-gray-400 font-medium w-12">{settings.header_footer_sections?.header_enabled !== false ? 'On' : 'Off'}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-lg border border-gray-100">
+                                    <Label className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">Notices Board</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Switch
+                                            checked={settings.header_footer_sections?.notices_enabled !== false}
+                                            onCheckedChange={(v) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, notices_enabled: v } })}
+                                            className="data-[state=checked]:bg-indigo-500"
+                                        />
+                                        <span className="text-[9px] text-gray-400 font-medium w-12">{settings.header_footer_sections?.notices_enabled !== false ? 'On' : 'Off'}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-lg border border-gray-100">
+                                    <Label className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">Stats Counter</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Switch
+                                            checked={settings.header_footer_sections?.stats_enabled !== false}
+                                            onCheckedChange={(v) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, stats_enabled: v } })}
+                                            className="data-[state=checked]:bg-indigo-500"
+                                        />
+                                        <span className="text-[9px] text-gray-400 font-medium w-12">{settings.header_footer_sections?.stats_enabled !== false ? 'On' : 'Off'}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-lg border border-gray-100">
+                                    <Label className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">Footer</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Switch
+                                            checked={settings.header_footer_sections?.footer_enabled !== false}
+                                            onCheckedChange={(v) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, footer_enabled: v } })}
+                                            className="data-[state=checked]:bg-indigo-500"
+                                        />
+                                        <span className="text-[9px] text-gray-400 font-medium w-12">{settings.header_footer_sections?.footer_enabled !== false ? 'On' : 'Off'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Theme Selection */}
                         <div className="pt-8 border-t border-gray-100">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-6 block">Interface Theme Style</Label>
@@ -401,27 +541,174 @@ export default function FrontCmsSettingPage() {
                     </div>
                 </TabsContent>
 
+                {/* HERO TAB */}
+                <TabsContent value="hero" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-8">
+                        <div className="flex items-center justify-between border-b border-gray-50 pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+                                    <ImageIcon size={18} className="stroke-[2.5px]" />
+                                </div>
+                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Hero Section Configuration</h2>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{settings.header_footer_sections?.hero_enabled !== false ? 'Enabled' : 'Disabled'}</span>
+                                <Switch
+                                    checked={settings.header_footer_sections?.hero_enabled !== false}
+                                    onCheckedChange={(v) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_enabled: v } })}
+                                    className="data-[state=checked]:bg-indigo-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-8">
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Background Image URL</Label>
+                                    <div className="flex gap-3">
+                                        <Input value={settings.header_footer_sections?.hero_background || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_background: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30 flex-1" placeholder="https://..." />
+                                        {settings.header_footer_sections?.hero_background && (
+                                            <div className="h-9 w-16 rounded-lg overflow-hidden border border-gray-200 shrink-0">
+                                                <img src={settings.header_footer_sections.hero_background} className="h-full w-full object-cover" alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Badge Text</Label>
+                                    <Input value={settings.header_footer_sections?.header_text || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, header_text: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Admissions Open for 2026-27" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Title Part 1 (before highlight)</Label>
+                                    <Input value={settings.header_footer_sections?.hero_title_part1 || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_part1: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Empowering" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Title Highlighted Word</Label>
+                                    <Input value={settings.header_footer_sections?.hero_title_highlight || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_highlight: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Minds" />
+                                </div>
+                            </div>
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Title Part 2 (after highlight)</Label>
+                                    <Input value={settings.header_footer_sections?.hero_title_part2 || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_part2: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Shaping" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Title Gradient Word</Label>
+                                    <Input value={settings.header_footer_sections?.hero_title_gradient || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_gradient: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Futures" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Subtitle / Description</Label>
+                                    <Textarea value={settings.header_footer_sections?.hero_subtitle || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_subtitle: e.target.value } })} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder="Hero description text..." />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 pt-2">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Button 1 Text</Label>
+                                        <Input value={settings.header_footer_sections?.hero_btn1_text || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_btn1_text: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Apply for Admission" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Button 1 Link</Label>
+                                        <Input value={settings.header_footer_sections?.hero_btn1_link || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_btn1_link: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="/online_admission" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Button 2 Text</Label>
+                                        <Input value={settings.header_footer_sections?.hero_btn2_text || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_btn2_text: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Take a Tour" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Button 2 Link</Label>
+                                        <Input value={settings.header_footer_sections?.hero_btn2_link || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_btn2_link: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="#" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </TabsContent>
+
                 {/* SECTIONS TAB */}
                 <TabsContent value="sections" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
 
                     {/* About Us */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 bg-indigo-500 h-full" />
-                        <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
-                            <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
-                                <Info size={18} className="stroke-[2.5px]" />
+                        <div className="flex items-center justify-between border-b border-gray-50 pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+                                    <Info size={18} className="stroke-[2.5px]" />
+                                </div>
+                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Welcome / About Us Section</h2>
                             </div>
-                            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Welcome / About Us Section</h2>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{settings.header_footer_sections?.about_enabled !== false ? 'Enabled' : 'Disabled'}</span>
+                                <Switch
+                                    checked={settings.header_footer_sections?.about_enabled !== false}
+                                    onCheckedChange={(v) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, about_enabled: v } })}
+                                    className="data-[state=checked]:bg-indigo-500"
+                                />
+                            </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
                             <div className="md:col-span-8 space-y-5">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Headline Title</Label>
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Section Heading (H1)</Label>
+                                    <Input value={settings.about_us.section_title || ""} onChange={(e) => updateNestedField("about_us", "section_title", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" placeholder="About Us" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Section Subtitle</Label>
+                                    <Input value={settings.about_us.section_subtitle || ""} onChange={(e) => updateNestedField("about_us", "section_subtitle", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" placeholder="Section subtitle..." />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Right Side Headline Title</Label>
                                     <Input value={settings.about_us.title} onChange={(e) => updateNestedField("about_us", "title", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Introduction Content</Label>
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Right Side Content</Label>
                                     <Textarea value={settings.about_us.description} onChange={(e) => updateNestedField("about_us", "description", e.target.value)} className="min-h-[140px] text-[11px] leading-relaxed rounded-lg bg-gray-50/30" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Left Image URL</Label>
+                                    <div className="flex gap-3">
+                                        <Input value={settings.about_us.image_url || ""} onChange={(e) => updateNestedField("about_us", "image_url", e.target.value)} className="h-10 text-[11px] rounded-lg bg-gray-50/30 flex-1" placeholder="https://..." />
+                                        {settings.about_us.image_url && (
+                                            <div className="h-10 w-20 rounded-lg overflow-hidden border border-gray-200 shrink-0">
+                                                <img src={settings.about_us.image_url} className="h-full w-full object-cover" alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Accordion Items */}
+                                <div className="space-y-3 pt-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Accordion Items</Label>
+                                        <Button onClick={() => {
+                                            const accordions = [...(settings.about_us.accordions || [])];
+                                            accordions.push({ id: Date.now(), title: "", content: "" });
+                                            updateNestedField("about_us", "accordions", accordions);
+                                        }} className="bg-gradient-to-r from-orange-400 to-indigo-500 text-white h-7 text-[9px] font-bold rounded-full px-3 flex items-center gap-1">
+                                            <Plus size={12} /> Add Item
+                                        </Button>
+                                    </div>
+                                    {(settings.about_us.accordions || []).map((acc: any, idx: number) => (
+                                        <div key={acc.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50/20 space-y-3 relative group">
+                                            <Button size="icon" onClick={() => {
+                                                const accordions = [...(settings.about_us.accordions || [])].filter((a: any) => a.id !== acc.id);
+                                                updateNestedField("about_us", "accordions", accordions);
+                                            }} className="absolute top-3 right-3 h-7 w-7 bg-red-500 text-white rounded-[8px] shadow-md opacity-0 group-hover:opacity-100 transition-all border-0">
+                                                <Trash2 size={14} />
+                                            </Button>
+                                            <div className="space-y-2 pr-8">
+                                                <Input value={acc.title} onChange={(e) => {
+                                                    const accordions = [...(settings.about_us.accordions || [])];
+                                                    accordions[idx].title = e.target.value;
+                                                    updateNestedField("about_us", "accordions", accordions);
+                                                }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder="Accordion title..." />
+                                                <Textarea value={acc.content} onChange={(e) => {
+                                                    const accordions = [...(settings.about_us.accordions || [])];
+                                                    accordions[idx].content = e.target.value;
+                                                    updateNestedField("about_us", "accordions", accordions);
+                                                }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg leading-relaxed" placeholder="Accordion content..." />
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -437,12 +724,32 @@ export default function FrontCmsSettingPage() {
                                 </div>
                                 <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Our Main Courses Showcase</h2>
                             </div>
-                            <Button 
-                                onClick={() => addListItem("main_courses", { title: "", description: "", price: "" })} 
-                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
-                            >
-                                <Plus size={14} className="stroke-[3px]" /> Add New Course
-                            </Button>
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{settings.header_footer_sections?.courses_enabled !== false ? 'Enabled' : 'Disabled'}</span>
+                                    <Switch
+                                        checked={settings.header_footer_sections?.courses_enabled !== false}
+                                        onCheckedChange={(v) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, courses_enabled: v } })}
+                                        className="data-[state=checked]:bg-orange-500"
+                                    />
+                                </div>
+                                <Button 
+                                    onClick={openCoursePicker}
+                                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
+                                >
+                                    <Plus size={14} className="stroke-[3px]" /> Browse Courses
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Section Heading (H1)</Label>
+                                <Input value={settings.header_footer_sections?.courses_section_title || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, courses_section_title: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Our Main Courses" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Section Subtitle</Label>
+                                <Input value={settings.header_footer_sections?.courses_section_subtitle || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, courses_section_subtitle: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Section subtitle..." />
+                            </div>
                         </div>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {settings.main_courses.map((course: any, idx: number) => (
@@ -454,32 +761,80 @@ export default function FrontCmsSettingPage() {
                                     >
                                         <X size={16} className="stroke-[3.5px]" />
                                     </Button>
-                                    <div className="space-y-4 pr-10">
-                                        <Input 
-                                            placeholder="Course Name" 
-                                            value={course.title} 
-                                            onChange={(e) => {
-                                                const newCourses = [...settings.main_courses];
-                                                newCourses[idx].title = e.target.value;
-                                                setSettings({ ...settings, main_courses: newCourses });
-                                            }} 
-                                            className="h-9 text-[11px] font-bold bg-white border-gray-100 rounded-lg" 
-                                        />
-                                        <Textarea 
-                                            placeholder="What will students learn?" 
-                                            value={course.description} 
-                                            onChange={(e) => {
-                                                const newCourses = [...settings.main_courses];
-                                                newCourses[idx].description = e.target.value;
-                                                setSettings({ ...settings, main_courses: newCourses });
-                                            }} 
-                                            className="min-h-[80px] text-[11px] bg-white border-gray-100 rounded-lg leading-relaxed" 
-                                        />
+                                    <div className="flex gap-4 pr-10">
+                                        <div className="h-16 w-24 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                                            {course.image ? <img src={course.image} className="h-full w-full object-cover" alt="" /> : <div className="h-full w-full flex items-center justify-center text-gray-300 text-[10px] font-bold uppercase">No img</div>}
+                                        </div>
+                                        <div className="flex-1 space-y-3">
+                                    <div className="flex gap-3">
+                                        <div className="flex-1">
+                                            <Input placeholder="Course Name" value={course.title} onChange={(e) => { const n = [...settings.main_courses]; n[idx].title = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] font-bold bg-white border-gray-100 rounded-lg" />
+                                        </div>
+                                        <div className="w-28">
+                                            <Input placeholder="Category" value={course.category || ""} onChange={(e) => { const n = [...settings.main_courses]; n[idx].category = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] bg-white border-gray-100 rounded-lg" />
+                                        </div>
+                                        <div className="w-24">
+                                            <Input placeholder="Price" value={course.price || ""} onChange={(e) => { const n = [...settings.main_courses]; n[idx].price = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] bg-white border-gray-100 rounded-lg" />
+                                        </div>
+                                        <div className="w-32">
+                                            <Input placeholder="Apply Link" value={course.link || ""} onChange={(e) => { const n = [...settings.main_courses]; n[idx].link = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] bg-white border-gray-100 rounded-lg" />
+                                        </div>
+                                    </div>
+                                    <Textarea placeholder="Description" value={course.description} onChange={(e) => { const n = [...settings.main_courses]; n[idx].description = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg leading-relaxed" />
+                                        </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
+
+                    <Dialog open={coursePickerOpen} onOpenChange={setCoursePickerOpen}>
+                        <DialogContent className="sm:max-w-[700px] max-h-[80vh] flex flex-col p-0 rounded-lg border-none shadow-2xl">
+                            <DialogHeader className="p-6 pb-0">
+                                <DialogTitle className="text-sm font-bold uppercase tracking-tight flex items-center gap-2">
+                                    <BookOpen size={16} /> Browse Online Courses
+                                </DialogTitle>
+                            </DialogHeader>
+                            <div className="px-6 pt-4">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Input value={courseSearch} onChange={(e) => setCourseSearch(e.target.value)} className="h-10 pl-9 text-[11px] border-gray-200 rounded-lg bg-gray-50/50" placeholder="Search courses..." />
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-6 space-y-2 min-h-[300px]">
+                                {loadingCourses ? (
+                                    <div className="flex items-center justify-center py-16">
+                                        <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                                    </div>
+                                ) : onlineCourses.length === 0 ? (
+                                    <div className="text-center py-16 text-gray-400 text-[11px] font-bold uppercase tracking-tight">No courses found</div>
+                                ) : (
+                                    onlineCourses
+                                        .filter((c: any) => !courseSearch || c.title?.toLowerCase().includes(courseSearch.toLowerCase()))
+                                        .map((course: any) => {
+                                            const alreadyAdded = settings.main_courses.some((mc: any) => mc.online_course_id === course.id);
+                                            return (
+                                                <div key={course.id} className={`flex items-center gap-4 p-4 rounded-lg border transition-all ${alreadyAdded ? 'border-green-200 bg-green-50/50 opacity-60' : 'border-gray-100 hover:border-orange-200 hover:shadow-md bg-white'}`}>
+                                                    <div className="h-14 w-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                                                        {course.image ? <img src={course.image} className="h-full w-full object-cover" alt="" /> : <div className="h-full w-full flex items-center justify-center text-gray-300"><BookOpen size={20} /></div>}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="text-[12px] font-bold text-gray-800 truncate">{course.title}</h4>
+                                                        <p className="text-[10px] text-gray-400 font-medium truncate">{course.category || "General"} · ${course.price || "0"}</p>
+                                                    </div>
+                                                    <Button size="sm" disabled={alreadyAdded} onClick={() => { addOnlineCourse(course); }} className={`h-8 text-[10px] font-bold rounded-full px-4 ${alreadyAdded ? 'bg-green-100 text-green-600 border-0' : 'bg-gradient-to-r from-orange-400 to-indigo-500 text-white'}`}>
+                                                        {alreadyAdded ? <><Check size={12} className="mr-1" /> Added</> : "Select"}
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })
+                                )}
+                            </div>
+                            <DialogFooter className="p-4 border-t border-gray-100">
+                                <Button variant="outline" onClick={() => setCoursePickerOpen(false)} className="h-9 text-[10px] font-bold rounded-full px-6">Close</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
 
                     {/* Experienced Staff */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
@@ -491,12 +846,32 @@ export default function FrontCmsSettingPage() {
                                 </div>
                                 <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Experienced Faculty Members</h2>
                             </div>
-                            <Button 
-                                onClick={() => addListItem("experienced_staffs", { name: "", role: "" })} 
-                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
-                            >
-                                <Plus size={14} className="stroke-[3px]" /> Add Faculty Member
-                            </Button>
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{settings.header_footer_sections?.staff_enabled !== false ? 'Enabled' : 'Disabled'}</span>
+                                    <Switch
+                                        checked={settings.header_footer_sections?.staff_enabled !== false}
+                                        onCheckedChange={(v) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, staff_enabled: v } })}
+                                        className="data-[state=checked]:bg-green-500"
+                                    />
+                                </div>
+                                <Button 
+                                    onClick={() => addListItem("experienced_staffs", { name: "", role: "", image_url: "" })} 
+                                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
+                                >
+                                    <Plus size={14} className="stroke-[3px]" /> Add Faculty Member
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Section Heading (H1)</Label>
+                                <Input value={settings.header_footer_sections?.staff_section_title || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, staff_section_title: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Our Experienced Staffs" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Section Subtitle</Label>
+                                <Input value={settings.header_footer_sections?.staff_section_subtitle || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, staff_section_subtitle: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Section subtitle..." />
+                            </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {settings.experienced_staffs.map((staff: any, idx: number) => (
@@ -508,9 +883,36 @@ export default function FrontCmsSettingPage() {
                                     >
                                         <X size={14} className="stroke-[3.5px]" />
                                     </Button>
-                                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-indigo-50 to-green-50 border border-indigo-100 flex items-center justify-center text-indigo-400 shadow-inner group-hover:scale-110 transition-transform">
-                                        <Users size={32} className="stroke-[1.5px]" />
-                                    </div>
+                                    <label className="cursor-pointer">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            className="hidden" 
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onload = (ev) => {
+                                                        const newList = [...settings.experienced_staffs];
+                                                        newList[idx].image_url = ev.target?.result as string;
+                                                        setSettings({ ...settings, experienced_staffs: newList });
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                                e.target.value = "";
+                                            }} 
+                                        />
+                                        <div className="relative h-20 w-20 rounded-full overflow-hidden bg-gradient-to-br from-indigo-50 to-green-50 border border-indigo-100 flex items-center justify-center text-indigo-400 shadow-inner group-hover:scale-110 transition-transform group-hover:shadow-lg">
+                                            {staff.image_url ? (
+                                                <img src={staff.image_url} alt={staff.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <Users size={32} className="stroke-[1.5px]" />
+                                            )}
+                                            <div className="absolute inset-0 bg-black/0 hover:bg-black/30 transition-colors flex items-center justify-center">
+                                                <Upload size={16} className="text-white opacity-0 hover:opacity-100 transition-opacity" />
+                                            </div>
+                                        </div>
+                                    </label>
                                     <div className="w-full space-y-2">
                                         <Input 
                                             placeholder="Full Name" 
@@ -538,74 +940,69 @@ export default function FrontCmsSettingPage() {
                         </div>
                     </div>
 
-                    {/* Latest Notices */}
+                    {/* Stats Counter */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-6 relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 bg-red-400 h-full" />
+                        <div className="absolute top-0 left-0 w-1 bg-amber-500 h-full" />
                         <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                             <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500">
-                                    <FileText size={18} className="stroke-[2.5px]" />
+                                <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+                                    <BarChart3 size={18} className="stroke-[2.5px]" />
                                 </div>
-                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Recent Announcements / Notices</h2>
+                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Stats Counter</h2>
                             </div>
-                            <Button 
-                                onClick={() => addListItem("latest_notices", { title: "", date: "" })} 
-                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
-                            >
-                                <Plus size={14} className="stroke-[3px]" /> Post Notice
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{settings.header_footer_sections?.stats_enabled !== false ? 'Enabled' : 'Disabled'}</span>
+                                <Switch
+                                    checked={settings.header_footer_sections?.stats_enabled !== false}
+                                    onCheckedChange={(v) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, stats_enabled: v } })}
+                                    className="data-[state=checked]:bg-amber-500"
+                                />
+                            </div>
                         </div>
-                        <div className="space-y-3">
-                            {settings.latest_notices.map((notice: any, idx: number) => (
-                                <div key={notice.id} className="flex gap-4 items-center p-4 border border-gray-50 rounded-lg bg-gray-50/20 group hover:bg-white hover:border-red-100 hover:shadow-md transition-all">
-                                    <div className="h-2 w-2 rounded-full bg-red-400 animate-pulse" />
-                                    <Input 
-                                        placeholder="Enter notice headline..." 
-                                        value={notice.title} 
-                                        onChange={(e) => {
-                                            const newList = [...settings.latest_notices];
-                                            newList[idx].title = e.target.value;
-                                            setSettings({ ...settings, latest_notices: newList });
-                                        }} 
-                                        className="h-9 text-[11px] font-medium bg-white flex-1 border-gray-100 rounded-lg" 
-                                    />
-                                    <Input 
-                                        type="date" 
-                                        value={notice.date} 
-                                        onChange={(e) => {
-                                            const newList = [...settings.latest_notices];
-                                            newList[idx].date = e.target.value;
-                                            setSettings({ ...settings, latest_notices: newList });
-                                        }} 
-                                        className="h-9 text-[11px] w-48 bg-white border-gray-100 rounded-lg text-gray-500 font-bold" 
-                                    />
-                                    <Button 
-                                        size="icon" 
-                                        onClick={() => removeListItem("latest_notices", notice.id)} 
-                                        className="h-8 w-8 bg-red-500 text-white rounded-[10px] shadow-md border-0 transition-transform hover:scale-105"
-                                    >
-                                        <Trash2 size={16} />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                        
-                        {/* Standard Pagination Footer for Sections */}
-                        <div className="flex items-center justify-between text-[10px] text-gray-400 font-medium pt-6 border-t border-gray-50">
-                            <div>Showing {settings.latest_notices.length} notices in library</div>
-                            <div className="flex gap-2 items-center">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-gray-50/50 border border-gray-100 hover:bg-gray-100">
-                                    <ChevronLeft size={14} className="stroke-[3px]" />
-                                </Button>
-                                <Button className="h-8 w-8 p-0 bg-gradient-to-r from-orange-400 to-indigo-500 text-white border-0 font-bold text-[12px] rounded-lg shadow-md">
-                                    1
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-gray-50/50 border border-gray-100 hover:bg-gray-100">
-                                    <ChevronRight size={14} className="stroke-[3px]" />
-                                </Button>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div className="p-6 border border-gray-100 rounded-lg bg-gray-50/30 space-y-3">
+                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest flex items-center gap-2"><Users size={14} /> Students</Label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    value={settings.header_footer_sections?.stats_students ?? 2500}
+                                    onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, stats_students: parseInt(e.target.value) || 0 } })}
+                                    className="h-10 text-[14px] font-bold text-center bg-white border-gray-100 rounded-lg"
+                                />
+                            </div>
+                            <div className="p-6 border border-gray-100 rounded-lg bg-gray-50/30 space-y-3">
+                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest flex items-center gap-2"><GraduationCap size={14} /> Teachers</Label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    value={settings.header_footer_sections?.stats_teachers ?? 150}
+                                    onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, stats_teachers: parseInt(e.target.value) || 0 } })}
+                                    className="h-10 text-[14px] font-bold text-center bg-white border-gray-100 rounded-lg"
+                                />
+                            </div>
+                            <div className="p-6 border border-gray-100 rounded-lg bg-gray-50/30 space-y-3">
+                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest flex items-center gap-2"><Trophy size={14} /> Awards</Label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    value={settings.header_footer_sections?.stats_awards ?? 50}
+                                    onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, stats_awards: parseInt(e.target.value) || 0 } })}
+                                    className="h-10 text-[14px] font-bold text-center bg-white border-gray-100 rounded-lg"
+                                />
+                            </div>
+                            <div className="p-6 border border-gray-100 rounded-lg bg-gray-50/30 space-y-3">
+                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest flex items-center gap-2"><BookOpen size={14} /> Courses</Label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    value={settings.header_footer_sections?.stats_courses ?? 30}
+                                    onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, stats_courses: parseInt(e.target.value) || 0 } })}
+                                    className="h-10 text-[14px] font-bold text-center bg-white border-gray-100 rounded-lg"
+                                />
                             </div>
                         </div>
                     </div>
+
                 </TabsContent>
             </Tabs>
 
