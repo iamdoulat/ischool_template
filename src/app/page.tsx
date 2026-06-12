@@ -52,43 +52,45 @@ export default function Home() {
     fetchData();
   }, []);
 
+  const hfs: any = cms?.header_footer_sections || {};
+
   return (
     <div className="min-h-screen flex flex-col font-sans">
-      {cms?.header_footer_sections?.header_enabled !== false && <PublicHeader />}
+      {hfs.header_enabled !== false && <PublicHeader />}
 
       <main className="flex-1">
         {/* Hero Section */}
-        {cms?.header_footer_sections?.hero_enabled !== false && (
+        {hfs.hero_enabled !== false && (
         <section className="relative bg-gradient-to-br from-indigo-900 via-slate-800 to-slate-900 text-white overflow-hidden py-[50px]">
           <div
             className="absolute inset-0 opacity-40 bg-cover bg-center mix-blend-overlay"
-            style={cms?.header_footer_sections?.hero_background ? { backgroundImage: `url('${cms.header_footer_sections.hero_background}')` } : {}}
+            style={hfs.hero_background ? { backgroundImage: `url('${hfs.hero_background}')` } : {}}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
           <div className="container mx-auto px-4 md:px-8 relative z-10">
             <div className="max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-1000">
-              {cms?.header_footer_sections?.header_text && (
+              {hfs.header_text && (
                 <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground border-none text-sm py-1.5 px-4 font-semibold uppercase tracking-wider mb-2">
-                  {cms.header_footer_sections.header_text}
+                  {hfs.header_text}
                 </Badge>
               )}
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1]">
-                {cms?.header_footer_sections?.hero_title_part1 || "Empowering"} <span className="text-primary">{cms?.header_footer_sections?.hero_title_highlight || "Minds"}</span>,<br />
-                {cms?.header_footer_sections?.hero_title_part2 || "Shaping"} <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-green-400">{cms?.header_footer_sections?.hero_title_gradient || "Futures"}</span>.
+                {hfs.hero_title_part1 || "Empowering"} <span className="text-primary">{hfs.hero_title_highlight || "Minds"}</span>,<br />
+                {hfs.hero_title_part2 || "Shaping"} <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-green-400">{hfs.hero_title_gradient || "Futures"}</span>.
               </h1>
               <p className="text-lg md:text-xl text-slate-200 max-w-2xl leading-relaxed font-light">
-                {cms?.header_footer_sections?.hero_subtitle || "Provide your children with the best education possible. We focus on holistic development, academic excellence, and character building."}
+                {hfs.hero_subtitle || "Provide your children with the best education possible. We focus on holistic development, academic excellence, and character building."}
               </p>
               <div className="flex flex-col sm:flex-row gap-5 pt-6">
                 <Button asChild size="lg" className="text-base font-bold px-10 h-14 rounded-full shadow-lg hover:shadow-primary/20 hover:scale-105 transition-all duration-300">
-                  <Link href={cms?.header_footer_sections?.hero_btn1_link || "/online_admission"}>
-                    {cms?.header_footer_sections?.hero_btn1_text || "Apply for Admission"}
+                  <Link href={hfs.hero_btn1_link || "/online_admission"}>
+                    {hfs.hero_btn1_text || "Apply for Admission"}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
                 <Button variant="outline" size="lg" className="text-base font-bold px-10 h-14 rounded-full bg-white/10 text-white border-white/20 hover:bg-white hover:text-slate-900 backdrop-blur-sm transition-all duration-300">
-                  <Link href={cms?.header_footer_sections?.hero_btn2_link || "#"}>
-                    {cms?.header_footer_sections?.hero_btn2_text || "Take a Tour"}
+                  <Link href={hfs.hero_btn2_link || "#"}>
+                    {hfs.hero_btn2_text || "Take a Tour"}
                   </Link>
                 </Button>
               </div>
@@ -98,20 +100,20 @@ export default function Home() {
         )}
 
         {/* New About Section */}
-        {cms?.header_footer_sections?.about_enabled !== false && <AboutSection about={cms?.about_us} />}
+        {hfs.about_enabled !== false && <AboutSection about={cms?.about_us} />}
 
         {/* New Courses Section */}
-        {cms?.header_footer_sections?.courses_enabled !== false && (
-        <CoursesSection courses={cms?.main_courses} sectionTitle={cms?.header_footer_sections?.courses_section_title} sectionSubtitle={cms?.header_footer_sections?.courses_section_subtitle} />
+        {hfs.courses_enabled !== false && (
+        <CoursesSection courses={cms?.main_courses} sectionTitle={hfs.courses_section_title} sectionSubtitle={hfs.courses_section_subtitle} />
         )}
 
         {/* New Staff Section */}
-        {cms?.header_footer_sections?.staff_enabled !== false && (
-        <StaffSection staff={cms?.experienced_staffs} sectionTitle={cms?.header_footer_sections?.staff_section_title} sectionSubtitle={cms?.header_footer_sections?.staff_section_subtitle} />
+        {hfs.staff_enabled !== false && (
+        <StaffSection staff={cms?.experienced_staffs} sectionTitle={hfs.staff_section_title} sectionSubtitle={hfs.staff_section_subtitle} />
         )}
 
         {/* Notice Board Section */}
-        {cms?.header_footer_sections?.notices_enabled !== false && (
+        {hfs.notices_enabled !== false && (
         <section id="notices" className="py-[50px] bg-slate-50 border-t border-slate-200">
           <div className="container mx-auto px-4 md:px-8">
             <div className="max-w-4xl mx-auto space-y-8">
@@ -243,18 +245,18 @@ export default function Home() {
         </Dialog>
 
         {/* Animated Stats Section */}
-        {cms?.header_footer_sections?.stats_enabled !== false && (
+        {hfs.stats_enabled !== false && (
         <StatsSection
-            students={cms?.header_footer_sections?.stats_students ?? 2500}
-            teachers={cms?.header_footer_sections?.stats_teachers ?? 150}
-            awards={cms?.header_footer_sections?.stats_awards ?? 50}
-            courses={cms?.header_footer_sections?.stats_courses ?? 30}
+            students={hfs.stats_students ?? 2500}
+            teachers={hfs.stats_teachers ?? 150}
+            awards={hfs.stats_awards ?? 50}
+            courses={hfs.stats_courses ?? 30}
         />
         )}
 
       </main>
 
-      {cms?.header_footer_sections?.footer_enabled !== false && <PublicFooter />}
+      {hfs.footer_enabled !== false && <PublicFooter />}
     </div>
   );
 }
