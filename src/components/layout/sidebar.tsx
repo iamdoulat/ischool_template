@@ -689,16 +689,33 @@ export function Sidebar({
         if (fetchingSidebar || sidebarConfig.length === 0) {
             return menuItems; // Fallback during loading or if empty
         }
- 
+  
         // Create a map for quick lookup
         const configMap = new Map(sidebarConfig.map(c => [c.name, c]));
- 
+  
         return menuItems.map(group => {
             const filteredItems = group.items
                 .map(item => {
                     const config = configMap.get(item.name);
+                    let submenus = item.submenus;
+                    if (config?.submenu_order && config.submenu_order.length > 0) {
+                        const orderMap = new Map(submenus.map(s => [s.name, s]));
+                        const ordered: typeof submenus = [];
+                        const seen = new Set<string>();
+                        for (const name of config.submenu_order) {
+                            if (orderMap.has(name)) {
+                                ordered.push(orderMap.get(name)!);
+                                seen.add(name);
+                            }
+                        }
+                        for (const s of submenus) {
+                            if (!seen.has(s.name)) ordered.push(s);
+                        }
+                        submenus = ordered;
+                    }
                     return {
                         ...item,
+                        submenus,
                         label: config?.label,
                         is_visible: config ? config.is_visible : true,
                         sort_order: config?.sort_order ?? 0
@@ -706,7 +723,7 @@ export function Sidebar({
                 })
                 .filter(item => item.is_visible)
                 .sort((a, b) => a.sort_order - b.sort_order);
- 
+  
             return { ...group, items: filteredItems };
         }).filter(group => group.items.length > 0);
     }, [sidebarConfig, fetchingSidebar]);
