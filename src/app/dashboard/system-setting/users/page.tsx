@@ -56,7 +56,7 @@ export default function UsersPage() {
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get("/users", {
+            const response = await api.get("/system-setting/users", {
                 params: {
                     role: activeTab,
                     search: searchTerm,
@@ -80,7 +80,7 @@ export default function UsersPage() {
 
     const toggleStatus = async (id: number, currentStatus: boolean) => {
         try {
-            await api.patch(`/users/${id}`, { active: !currentStatus });
+            await api.patch(`/system-setting/users/${id}`, { active: !currentStatus });
             fetchUsers();
         } catch (error) {
             console.error("Failed to update status:", error);

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Table,
     TableBody,
@@ -29,18 +30,21 @@ import {
     Trash2,
     ChevronLeft,
     ChevronRight,
+    ChevronDown,
+    ChevronRight as ChevronRightIcon,
     Loader2,
     ShieldCheck,
-    Check
+    Check,
+    Save,
+    X,
+    LayoutDashboard
 } from "lucide-react";
-import Link from "next/link";
 import api from "@/lib/api";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
     Select,
     SelectContent,
@@ -48,8 +52,360 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-// Simple Tooltip component
+const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
+    dashboard: [],
+    front_office: [
+        { name: "admission_enquiry", label: "Admission Enquiry" },
+        { name: "visitor_book", label: "Visitor Book" },
+        { name: "phone_call_log", label: "Phone Call Log" },
+        { name: "postal_dispatch", label: "Postal Dispatch" },
+        { name: "postal_receive", label: "Postal Receive" },
+        { name: "complain", label: "Complain" },
+        { name: "setup_front_office", label: "Setup Front Office" },
+    ],
+    student_information: [
+        { name: "student_details", label: "Student Details" },
+        { name: "student_admission", label: "Student Admission" },
+        { name: "online_admission", label: "Online Admission" },
+        { name: "disabled_students", label: "Disabled Students" },
+        { name: "multi_class_student", label: "Multi Class Student" },
+        { name: "bulk_delete", label: "Bulk Delete" },
+        { name: "student_categories", label: "Student Categories" },
+        { name: "student_house", label: "Student House" },
+        { name: "disable_reason", label: "Disable Reason" },
+    ],
+    fees_collection: [
+        { name: "collect_fees", label: "Collect Fees" },
+        { name: "offline_bank_payments", label: "Offline Bank Payments" },
+        { name: "search_fees_payment", label: "Search Fees Payment" },
+        { name: "search_due_fees", label: "Search Due Fees" },
+        { name: "fees_master", label: "Fees Master" },
+        { name: "quick_fees", label: "Quick Fees" },
+        { name: "fees_group", label: "Fees Group" },
+        { name: "fees_type", label: "Fees Type" },
+        { name: "fees_discount", label: "Fees Discount" },
+        { name: "fees_carry_forward", label: "Fees Carry Forward" },
+        { name: "fees_reminder", label: "Fees Reminder" },
+    ],
+    income: [
+        { name: "add_income", label: "Add Income" },
+        { name: "search_income", label: "Search Income" },
+        { name: "income_head", label: "Income Head" },
+    ],
+    expenses: [
+        { name: "add_expense", label: "Add Expense" },
+        { name: "search_expense", label: "Search Expense" },
+        { name: "expense_head", label: "Expense Head" },
+    ],
+    attendance: [
+        { name: "student_attendance", label: "Student Attendance" },
+        { name: "approve_leave", label: "Approve Leave" },
+        { name: "attendance_by_date", label: "Attendance By Date" },
+        { name: "leave_type", label: "Leave Type" },
+    ],
+    examinations: [
+        { name: "exam_group", label: "Exam Group" },
+        { name: "exam_schedule", label: "Exam Schedule" },
+        { name: "exam_result", label: "Exam Result" },
+        { name: "design_admit_card", label: "Design Admit Card" },
+        { name: "print_admit_card", label: "Print Admit Card" },
+        { name: "design_marksheet", label: "Design Marksheet" },
+        { name: "print_marksheet", label: "Print Marksheet" },
+        { name: "marks_grade", label: "Marks Grade" },
+        { name: "marks_division", label: "Marks Division" },
+    ],
+    cbse_examination: [
+        { name: "exam", label: "Exam" },
+        { name: "exam_schedule", label: "Exam Schedule" },
+        { name: "print_marksheet", label: "Print Marksheet" },
+        { name: "template", label: "Template" },
+        { name: "assign_observation", label: "Assign Observation" },
+        { name: "reports", label: "Reports" },
+        { name: "setting", label: "Setting" },
+    ],
+    online_examinations: [
+        { name: "online_exam", label: "Online Exam" },
+        { name: "question_bank", label: "Question Bank" },
+    ],
+    academics: [
+        { name: "class_timetable", label: "Class Timetable" },
+        { name: "teachers_timetable", label: "Teachers Timetable" },
+        { name: "assign_class_teacher", label: "Assign Class Teacher" },
+        { name: "promote_students", label: "Promote Students" },
+        { name: "subject_group", label: "Subject Group" },
+        { name: "subjects", label: "Subjects" },
+        { name: "class", label: "Class" },
+        { name: "sections", label: "Sections" },
+    ],
+    human_resource: [
+        { name: "staff_directory", label: "Staff Directory" },
+        { name: "staff_attendance", label: "Staff Attendance" },
+        { name: "payroll", label: "Payroll" },
+        { name: "approve_leave_request", label: "Approve Leave Request" },
+        { name: "apply_leave", label: "Apply Leave" },
+        { name: "leave_type", label: "Leave Type" },
+        { name: "teachers_rating", label: "Teachers Rating" },
+        { name: "department", label: "Department" },
+        { name: "designation", label: "Designation" },
+        { name: "disabled_staff", label: "Disabled Staff" },
+    ],
+    communicate: [
+        { name: "notice_board", label: "Notice Board" },
+        { name: "send_email", label: "Send Email" },
+        { name: "send_sms", label: "Send SMS" },
+        { name: "send_wa", label: "Send WA" },
+        { name: "email_sms_log", label: "Email SMS Log" },
+        { name: "schedule_email_sms_log", label: "Schedule Email SMS Log" },
+        { name: "login_credentials_send", label: "Login Credentials Send" },
+        { name: "email_template", label: "Email Template" },
+        { name: "sms_template", label: "SMS Template" },
+        { name: "wa_template", label: "WA Template" },
+    ],
+    download_center: [
+        { name: "upload_share_content", label: "Upload Share Content" },
+        { name: "content_share_list", label: "Content Share List" },
+        { name: "video_tutorial", label: "Video Tutorial" },
+        { name: "content_type", label: "Content Type" },
+    ],
+    homework: [
+        { name: "add_homework", label: "Add Homework" },
+        { name: "daily_assignment", label: "Daily Assignment" },
+    ],
+    online_course: [
+        { name: "online_course", label: "Online Course" },
+        { name: "question_bank", label: "Question Bank" },
+        { name: "offline_payment", label: "Offline Payment" },
+        { name: "online_course_report", label: "Online Course Report" },
+        { name: "setting", label: "Setting" },
+    ],
+    library: [
+        { name: "book_list", label: "Book List" },
+        { name: "issue_return", label: "Issue & Return" },
+        { name: "add_student", label: "Add Student" },
+        { name: "add_staff_member", label: "Add Staff Member" },
+    ],
+    inventory: [
+        { name: "issue_item", label: "Issue Item" },
+        { name: "add_item_stock", label: "Add Item Stock" },
+        { name: "add_item", label: "Add Item" },
+        { name: "item_category", label: "Item Category" },
+        { name: "item_store", label: "Item Store" },
+        { name: "item_supplier", label: "Item Supplier" },
+    ],
+    transport: [
+        { name: "fees_master", label: "Fees Master" },
+        { name: "pickup_point", label: "Pickup Point" },
+        { name: "routes", label: "Routes" },
+        { name: "vehicles", label: "Vehicles" },
+        { name: "assign_vehicle", label: "Assign Vehicle" },
+        { name: "route_pickup_point", label: "Route Pickup Point" },
+        { name: "student_transport_fees", label: "Student Transport Fees" },
+    ],
+    hostel: [
+        { name: "hostel_room", label: "Hostel Room" },
+        { name: "room_type", label: "Room Type" },
+        { name: "hostel", label: "Hostel" },
+    ],
+    certificate: [
+        { name: "transfer_certificate", label: "Transfer Certificate" },
+        { name: "student_certificate", label: "Student Certificate" },
+        { name: "generate_certificate", label: "Generate Certificate" },
+        { name: "student_id_card", label: "Student ID Card" },
+        { name: "generate_id_card", label: "Generate ID Card" },
+        { name: "staff_id_card", label: "Staff ID Card" },
+        { name: "generate_staff_id_card", label: "Generate Staff ID Card" },
+    ],
+    multi_branch: [
+        { name: "overview", label: "Overview" },
+        { name: "report", label: "Report" },
+        { name: "setting", label: "Setting" },
+    ],
+    behaviour_records: [
+        { name: "assign_incident", label: "Assign Incident" },
+        { name: "incidents", label: "Incidents" },
+        { name: "reports", label: "Reports" },
+        { name: "setting", label: "Setting" },
+    ],
+    reports: [
+        { name: "student_information", label: "Student Information" },
+        { name: "finance", label: "Finance" },
+        { name: "attendance", label: "Attendance" },
+        { name: "examinations", label: "Examinations" },
+        { name: "online_examinations", label: "Online Examinations" },
+        { name: "lesson_plan", label: "Lesson Plan" },
+        { name: "human_resource", label: "Human Resource" },
+        { name: "homework", label: "Homework" },
+        { name: "library", label: "Library" },
+        { name: "inventory", label: "Inventory" },
+        { name: "transport", label: "Transport" },
+        { name: "hostel", label: "Hostel" },
+        { name: "alumni", label: "Alumni" },
+        { name: "user_log", label: "User Log" },
+        { name: "audit_trail_report", label: "Audit Trail Report" },
+    ],
+    gmeet_live_classes: [
+        { name: "live_classes", label: "Live Classes" },
+        { name: "live_meeting", label: "Live Meeting" },
+        { name: "live_classes_report", label: "Live Classes Report" },
+        { name: "live_meeting_report", label: "Live Meeting Report" },
+        { name: "setting", label: "Setting" },
+    ],
+    zoom_live_classes: [
+        { name: "live_meeting", label: "Live Meeting" },
+        { name: "live_classes", label: "Live Classes" },
+        { name: "live_classes_report", label: "Live Classes Report" },
+        { name: "live_meeting_report", label: "Live Meeting Report" },
+        { name: "setting", label: "Setting" },
+    ],
+    lesson_plan: [
+        { name: "copy_old_lessons", label: "Copy Old Lessons" },
+        { name: "manage_lesson_plan", label: "Manage Lesson Plan" },
+        { name: "manage_syllabus_status", label: "Manage Syllabus Status" },
+        { name: "lesson", label: "Lesson" },
+        { name: "topic", label: "Topic" },
+    ],
+    student_cv: [
+        { name: "build_cv", label: "Build CV" },
+        { name: "download_cv", label: "Download CV" },
+    ],
+    alumni: [
+        { name: "manage_alumni", label: "Manage Alumni" },
+        { name: "events", label: "Events" },
+    ],
+    annual_calendar: [
+        { name: "annual_calendar", label: "Annual Calendar" },
+        { name: "holiday_type", label: "Holiday Type" },
+    ],
+    front_cms: [
+        { name: "event", label: "Event" },
+        { name: "gallery", label: "Gallery" },
+        { name: "news", label: "News" },
+        { name: "media_manager", label: "Media Manager" },
+        { name: "pages", label: "Pages" },
+        { name: "menus", label: "Menus" },
+        { name: "banner_images", label: "Banner Images" },
+    ],
+    qr_code_attendance: [
+        { name: "attendance", label: "Attendance" },
+        { name: "terminal", label: "Terminal" },
+        { name: "face_registration", label: "Face Registration" },
+        { name: "qr_code_generation", label: "QR Code Generation" },
+        { name: "nfc_assignment", label: "NFC Assignment" },
+        { name: "setting", label: "Setting" },
+        { name: "smart_attendance_settings", label: "Smart Attendance Settings" },
+    ],
+    system_setting: [
+        { name: "general_setting", label: "General Setting" },
+        { name: "session_setting", label: "Session Setting" },
+        { name: "notification_setting", label: "Notification Setting" },
+        { name: "whatsapp_messaging", label: "WhatsApp Messaging" },
+        { name: "sms_setting", label: "SMS Setting" },
+        { name: "email_setting", label: "Email Setting" },
+        { name: "payment_methods", label: "Payment Methods" },
+        { name: "print_header_footer", label: "Print Header Footer" },
+        { name: "thermal_print", label: "Thermal Print" },
+        { name: "front_cms_setting", label: "Front CMS Setting" },
+        { name: "backup_restore", label: "Backup & Restore" },
+        { name: "currency", label: "Currency" },
+        { name: "users", label: "Users" },
+        { name: "roles_permissions", label: "Roles & Permissions" },
+        { name: "languages", label: "Languages" },
+        { name: "addons", label: "Addons" },
+        { name: "modules", label: "Modules" },
+        { name: "custom_fields", label: "Custom Fields" },
+        { name: "captcha_setting", label: "Captcha Setting" },
+        { name: "system_fields", label: "System Fields" },
+        { name: "student_profile_setting", label: "Student Profile Setting" },
+        { name: "online_admission", label: "Online Admission" },
+        { name: "file_types", label: "File Types" },
+        { name: "sidebar_menu", label: "Sidebar Menu" },
+        { name: "system_update", label: "System Update" },
+    ],
+};
+
+const modulePermissionMap: Record<string, string[]> = {
+    front_office: ["Front Office"],
+    student_information: ["Student Information", "Multi Class"],
+    fees_collection: ["Fees Collection", "Quick Fees"],
+    income: ["Income"],
+    expenses: ["Expense"],
+    attendance: ["Student Attendance"],
+    examinations: ["Examination"],
+    cbse_examination: ["CBSE Examination"],
+    online_examinations: ["Online Examination"],
+    academics: ["Academics"],
+    human_resource: ["Human Resource"],
+    communicate: ["Communicate"],
+    download_center: ["Download Center"],
+    homework: ["Homework"],
+    online_course: ["Online Course"],
+    library: ["Library"],
+    inventory: ["Inventory"],
+    transport: ["Transport"],
+    hostel: ["Hostel"],
+    certificate: ["Certificate"],
+    multi_branch: ["Multi Branch"],
+    behaviour_records: ["Behaviour Records"],
+    reports: ["Reports"],
+    gmeet_live_classes: ["Gmeet Live Classes"],
+    zoom_live_classes: ["Zoom Live Classes"],
+    lesson_plan: ["Lesson Plan"],
+    student_cv: ["Student CV"],
+    alumni: ["Alumni"],
+    annual_calendar: ["Annual Calendar"],
+    front_cms: ["Front CMS"],
+    qr_code_attendance: ["QR Code Attendance"],
+    system_setting: ["System Settings", "Thermal Print", "Whatsapp Messaging"],
+};
+
+const sidebarModuleLabels: Record<string, string> = {
+    dashboard: "Dashboard",
+    front_office: "Front Office",
+    student_information: "Student Information",
+    fees_collection: "Fees Collection",
+    income: "Income",
+    expenses: "Expenses",
+    attendance: "Attendance",
+    examinations: "Examinations",
+    cbse_examination: "CBSE Examination",
+    online_examinations: "Online Examinations",
+    academics: "Academics",
+    human_resource: "Human Resource",
+    communicate: "Communicate",
+    download_center: "Download Center",
+    homework: "Homework",
+    online_course: "Online Course",
+    library: "Library",
+    inventory: "Inventory",
+    transport: "Transport",
+    hostel: "Hostel",
+    certificate: "Certificate",
+    multi_branch: "Multi Branch",
+    behaviour_records: "Behaviour Records",
+    reports: "Reports",
+    gmeet_live_classes: "GMeet Live Classes",
+    zoom_live_classes: "Zoom Live Classes",
+    lesson_plan: "Lesson Plan",
+    student_cv: "Student CV",
+    alumni: "Alumni",
+    annual_calendar: "Annual Calendar",
+    front_cms: "Front CMS",
+    qr_code_attendance: "QR Code Attendance",
+    system_setting: "System Setting",
+};
+
 const Tooltip = ({ children, content }: { children: React.ReactNode; content: string }) => {
     return (
         <div className="group relative inline-flex items-center justify-center">
@@ -79,6 +435,28 @@ export default function RolesPermissionsPage() {
     });
     const [limit, setLimit] = useState("50");
 
+    const [modules, setModules] = useState<any[]>([]);
+    const [permissionsMatrix, setPermissionsMatrix] = useState<any>({});
+    const [checkedModules, setCheckedModules] = useState<Set<string>>(new Set());
+    const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+    const [savingPermissions, setSavingPermissions] = useState(false);
+    const [permissionsLoading, setPermissionsLoading] = useState(false);
+    const [checkedWidgets, setCheckedWidgets] = useState<Set<string>>(new Set());
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+
+    const dashboardWidgets: { key: string; title: string; section?: string }[] = [
+        { key: "fees_awaiting_payment", title: "Fees Awaiting Payment" },
+        { key: "staff_approved_leave", title: "Staff Approved Leave" },
+        { key: "student_approved_leave", title: "Student Approved Leave" },
+        { key: "converted_leads", title: "Converted Leads" },
+        { key: "staff_present_today", title: "Staff Present Today" },
+        { key: "student_present_today", title: "Students Present Today" },
+        { key: "charts_section", title: "Charts & Graphs", section: "true" },
+        { key: "overview_section", title: "Overview Cards", section: "true" },
+        { key: "summary_section", title: "Summary Cards", section: "true" },
+    ];
+
     const fetchRoles = useCallback(async (page = 1) => {
         setLoading(true);
         try {
@@ -105,7 +483,100 @@ export default function RolesPermissionsPage() {
         return () => clearTimeout(timeoutId);
     }, [fetchRoles]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [modulesRes, permsRes] = await Promise.all([
+                    api.get("/system-setting/modules"),
+                    api.get("/permissions"),
+                ]);
+                if (modulesRes.data.success) {
+                    setModules(modulesRes.data.data || []);
+                }
+                setPermissionsMatrix(permsRes.data.data || {});
+            } catch (error) {
+                console.error("Failed to fetch module/permission data:", error);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const activeModuleKeys = useMemo(() => {
+        const activeAliases = new Set(
+            modules.filter((m: any) => m.is_active_system).map((m: any) => m.alias)
+        );
+        const allModuleAliases = new Set(modules.map((m: any) => m.alias));
+        return Object.keys(moduleSubmenus).filter(key => {
+            if (key === "dashboard") return true;
+            if (!allModuleAliases.has(key)) return true;
+            return activeAliases.has(key);
+        });
+    }, [modules]);
+
+    const moduleKeys = activeModuleKeys;
+
+    const buildAllPermNames = useCallback((moduleKey: string): string[] => {
+        const permModuleNames = modulePermissionMap[moduleKey] || [];
+        const names: string[] = [];
+        for (const permModule of permModuleNames) {
+            const features = permissionsMatrix[permModule];
+            if (features) {
+                for (const perms of Object.values(features) as any) {
+                    for (const p of perms as any) {
+                        names.push(p.name);
+                    }
+                }
+            }
+        }
+        return names;
+    }, [permissionsMatrix]);
+
+    const loadRolePermissions = useCallback(async (roleId: number) => {
+        setPermissionsLoading(true);
+        try {
+            const [roleRes, permsRes, widgetRes] = await Promise.all([
+                api.get(`/roles/${roleId}`),
+                api.get(`/roles/${roleId}/permissions`),
+                api.get(`/roles/${roleId}/dashboard-widgets`),
+            ]);
+            setEditingRole(roleRes.data.data);
+            const rolePermNames = new Set(permsRes.data.data || []);
+            const checked = new Set<string>();
+            for (const modKey of moduleKeys) {
+                const permNames = buildAllPermNames(modKey);
+                if (permNames.length > 0 && permNames.every(n => rolePermNames.has(n))) {
+                    checked.add(modKey);
+                }
+            }
+            setCheckedModules(checked);
+            setCheckedWidgets(new Set(widgetRes.data.data || []));
+        } catch (error) {
+            console.error("Failed to load role permissions:", error);
+            setCheckedModules(new Set());
+            setCheckedWidgets(new Set());
+        } finally {
+            setPermissionsLoading(false);
+        }
+    }, [moduleKeys, buildAllPermNames]);
+
+    const handleEdit = (role: any) => {
+        if (role.name === 'Super Admin') return;
+        setRoleName(role.name);
+        setExpandedModules(new Set());
+        setCheckedModules(new Set());
+        setCheckedWidgets(new Set());
+        loadRolePermissions(role.id);
+    };
+
+    const handleCancel = () => {
+        setEditingRole(null);
+        setRoleName("");
+        setCheckedModules(new Set());
+        setExpandedModules(new Set());
+        setCheckedWidgets(new Set());
+    };
+
+    const handleChange = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!roleName.trim()) return;
 
@@ -114,13 +585,12 @@ export default function RolesPermissionsPage() {
             if (editingRole) {
                 await api.patch(`/roles/${editingRole.id}`, { name: roleName });
             } else {
-                await api.post("/roles", {
+                const res = await api.post("/roles", {
                     name: roleName,
                     is_system: false
                 });
+                setEditingRole({ id: res.data.data.id, name: roleName, is_system: false });
             }
-            setRoleName("");
-            setEditingRole(null);
             fetchRoles();
         } catch (error) {
             console.error("Failed to save role:", error);
@@ -129,22 +599,88 @@ export default function RolesPermissionsPage() {
         }
     };
 
-    const handleEdit = (role: any) => {
-        if (role.name === 'Super Admin') return;
-        setEditingRole(role);
-        setRoleName(role.name);
-    };
-
-    const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this role?")) return;
-
+    const handleSavePermissions = async () => {
+        if (!editingRole) return;
+        setSavingPermissions(true);
         try {
-            await api.delete(`/roles/${id}`);
-            fetchRoles();
-        } catch (error) {
-            console.error("Failed to delete role:", error);
+            const permNames: string[] = [];
+            for (const modKey of moduleKeys) {
+                if (checkedModules.has(modKey)) {
+                    permNames.push(...buildAllPermNames(modKey));
+                }
+            }
+            const uniqueNames = [...new Set(permNames)];
+            const [permRes] = await Promise.all([
+                api.put(`/roles/${editingRole.id}/permissions`, {
+                    permissions: uniqueNames
+                }),
+                api.put(`/roles/${editingRole.id}/dashboard-widgets`, {
+                    widgets: [...checkedWidgets]
+                }),
+            ]);
+            toast.success(permRes.data?.message || "Permissions saved successfully");
+            handleCancel();
+        } catch (error: any) {
+            const msg = error.response?.data?.message || error.message || "Failed to save permissions";
+            toast.error(msg);
+        } finally {
+            setSavingPermissions(false);
         }
     };
+
+    const handleDeleteConfirm = async () => {
+        if (deleteId === null) return;
+        try {
+            await api.delete(`/roles/${deleteId}`);
+            toast.success("Role deleted successfully");
+            fetchRoles();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to delete role");
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setDeleteId(null);
+        }
+    };
+
+    const promptDelete = (id: number) => {
+        setDeleteId(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const toggleWidget = (widgetKey: string) => {
+        setCheckedWidgets(prev => {
+            const next = new Set(prev);
+            if (next.has(widgetKey)) {
+                next.delete(widgetKey);
+            } else {
+                next.add(widgetKey);
+            }
+            return next;
+        });
+    };
+
+    const toggleModule = (modKey: string) => {
+        setCheckedModules(prev => {
+            const next = new Set(prev);
+            if (next.has(modKey)) {
+                next.delete(modKey);
+            } else {
+                next.add(modKey);
+            }
+            return next;
+        });
+    };
+
+    const toggleExpand = (modKey: string) => {
+        setExpandedModules(prev => {
+            const next = new Set(prev);
+            if (next.has(modKey)) next.delete(modKey);
+            else next.add(modKey);
+            return next;
+        });
+    };
+
+    const isModuleFullyChecked = (modKey: string) => checkedModules.has(modKey);
 
     const toggleColumn = (column: keyof typeof visibleColumns) => {
         setVisibleColumns(prev => ({
@@ -163,7 +699,6 @@ export default function RolesPermissionsPage() {
         const { headers, rows } = getExportData();
         const content = [headers.join("\t"), ...rows.map(r => r.join("\t"))].join("\n");
         navigator.clipboard.writeText(content);
-        alert("Role list copied to clipboard (Tab-separated)");
     };
 
     const handleExportCSV = () => {
@@ -218,19 +753,33 @@ export default function RolesPermissionsPage() {
         }
     };
 
+    const permissionRoleId = editingRole?.id;
+
     return (
         <div className="p-4 grid grid-cols-1 lg:grid-cols-4 gap-6 bg-gray-50/10 min-h-screen font-sans">
 
-            {/* Role Creation Form */}
-            <div className="lg:col-span-1">
-                <Card className="border-none shadow-sm h-fit">
-                    <CardHeader className="pb-3 border-b border-gray-50">
-                        <CardTitle className="text-sm font-medium text-gray-700">Role</CardTitle>
+            {/* Left Panel - Role Form + Module Tree */}
+            <div className="lg:col-span-1 space-y-4">
+                <Card className="border-none shadow-sm">
+                    <CardHeader className="pb-3 border-b border-gray-50 flex flex-row items-center justify-between">
+                        <CardTitle className="text-sm font-medium text-gray-700">
+                            {editingRole ? "Edit Role" : "New Role"}
+                        </CardTitle>
+                        {editingRole && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleCancel}
+                                className="h-6 w-6 text-gray-400 hover:text-red-500"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </Button>
+                        )}
                     </CardHeader>
-                    <form onSubmit={handleSubmit}>
-                        <CardContent className="pt-4 space-y-4">
+                    <form onSubmit={handleChange}>
+                        <CardContent className="pt-4 space-y-3">
                             <div className="space-y-2">
-                                <label className="text-[11px] font-medium text-gray-500">Name <span className="text-red-500">*</span></label>
+                                <label className="text-[11px] font-medium text-gray-500">Role Name <span className="text-red-500">*</span></label>
                                 <Input
                                     value={roleName}
                                     onChange={(e) => setRoleName(e.target.value)}
@@ -239,20 +788,130 @@ export default function RolesPermissionsPage() {
                                 />
                             </div>
                         </CardContent>
-                        <CardFooter className="flex justify-end pt-2">
+                        <CardFooter className="flex justify-end pt-2 pb-4 px-6">
                             <Button
                                 type="submit"
                                 disabled={submitting}
                                 className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white text-[12px] px-8 h-9 rounded-full shadow-md transition-all"
                             >
-                                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "SAVE"}
+                                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? "UPDATE" : "CREATE"}
                             </Button>
                         </CardFooter>
                     </form>
                 </Card>
+
+                {permissionRoleId && (
+                    <Card className="border-none shadow-sm">
+                        <CardHeader className="pb-3 border-b border-gray-50">
+                            <CardTitle className="text-sm font-medium text-gray-700">
+                                Module Permissions
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-4 space-y-1 max-h-[500px] overflow-y-auto">
+                            {!permissionsLoading && (
+                                <div className="px-1 py-1 mb-2">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <LayoutDashboard className="h-3.5 w-3.5 text-indigo-500" />
+                                        <span className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide">Dashboard Cards</span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {dashboardWidgets.filter(w => !w.section).map((w) => (
+                                            <div key={w.key} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50/50 rounded-md transition-colors">
+                                                <Checkbox
+                                                    checked={checkedWidgets.has(w.key)}
+                                                    onCheckedChange={() => toggleWidget(w.key)}
+                                                    className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
+                                                />
+                                                <span className="text-[11px] text-gray-600">{w.title}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="border-t border-gray-100 my-2" />
+                                    <div className="space-y-1">
+                                        {dashboardWidgets.filter(w => w.section).map((w) => (
+                                            <div key={w.key} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50/50 rounded-md transition-colors">
+                                                <Checkbox
+                                                    checked={checkedWidgets.has(w.key)}
+                                                    onCheckedChange={() => toggleWidget(w.key)}
+                                                    className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
+                                                />
+                                                <span className="text-[11px] font-medium text-indigo-600">{w.title}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {permissionsLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
+                                    <span className="ml-2 text-xs text-gray-400">Loading permissions...</span>
+                                </div>
+                            ) : moduleKeys.map((modKey) => {
+                                const subs = moduleSubmenus[modKey] || [];
+                                const label = sidebarModuleLabels[modKey] || modKey.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+                                const checked = isModuleFullyChecked(modKey);
+                                const hasSubs = subs.length > 0;
+                                const expanded = expandedModules.has(modKey);
+
+                                return (
+                                    <div key={modKey} className="border border-gray-100 rounded-md mb-1">
+                                        <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/50 rounded-md transition-colors">
+                                            {hasSubs && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleExpand(modKey)}
+                                                    className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                                                >
+                                                    {expanded ? (
+                                                        <ChevronDown className="h-3.5 w-3.5" />
+                                                    ) : (
+                                                        <ChevronRightIcon className="h-3.5 w-3.5" />
+                                                    )}
+                                                </button>
+                                            )}
+                                            {!hasSubs && <div className="w-3.5 flex-shrink-0" />}
+                                            <Checkbox
+                                                checked={checked}
+                                                onCheckedChange={() => toggleModule(modKey)}
+                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
+                                            />
+                                            <span className="text-[12px] font-medium text-gray-700">{label}</span>
+                                        </div>
+
+                                        {hasSubs && expanded && (
+                                            <div className="ml-8 pb-2 space-y-0.5 border-l-2 border-indigo-100 pl-3">
+                                                {subs.map((sub) => (
+                                                    <div key={sub.name} className="flex items-center gap-2 py-0.5">
+                                                        <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
+                                                        <span className="text-[11px] text-gray-500">{sub.label}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+
+                        </CardContent>
+                        <CardFooter className="flex justify-end pt-2 pb-4 px-6 border-t border-gray-50">
+                            <Button
+                                onClick={handleSavePermissions}
+                                disabled={savingPermissions}
+                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white text-[12px] px-8 h-9 rounded-full shadow-md transition-all gap-2"
+                            >
+                                {savingPermissions ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Save className="h-3.5 w-3.5" />
+                                )}
+                                SAVE PERMISSIONS
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                )}
             </div>
 
-            {/* Role List */}
+            {/* Right Panel - Role List */}
             <div className="lg:col-span-3">
                 <Card className="border-none shadow-sm min-h-[500px] flex flex-col">
                     <CardHeader className="pb-3 border-b border-gray-50">
@@ -380,7 +1039,7 @@ export default function RolesPermissionsPage() {
                                     </TableRow>
                                 ) : (
                                     roles.map((role) => (
-                                        <TableRow key={role.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors h-11 group">
+                                        <TableRow key={role.id} className={`border-b border-gray-50 hover:bg-gray-50/30 transition-colors h-11 group ${editingRole?.id === role.id ? 'bg-indigo-50/30' : ''}`}>
                                             {visibleColumns.role && (
                                                 <TableCell className="py-2 px-3 text-[12px] text-gray-600 font-medium truncate max-w-0" title={role.name}>
                                                     {role.name}
@@ -390,29 +1049,22 @@ export default function RolesPermissionsPage() {
                                             {visibleColumns.action && (
                                                 <TableCell className="py-2 px-3 text-right">
                                                     <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                        <Tooltip content="Assign Permission">
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg shadow-sm" asChild>
-                                                                <Link href={`/dashboard/system-setting/roles-permissions/assign-permission/${role.id}`}>
-                                                                    <ShieldCheck className="h-3.5 w-3.5" />
-                                                                </Link>
-                                                            </Button>
-                                                        </Tooltip>
-                                                        <Tooltip content="Edit Role">
+                                                        <Tooltip content={editingRole?.id === role.id ? "Currently editing" : "Edit & Assign Permissions"}>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 onClick={() => handleEdit(role)}
                                                                 disabled={role.name === 'Super Admin'}
-                                                                className={`h-7 w-7 ${role.name === 'Super Admin' ? 'bg-gray-100 text-gray-400' : 'bg-[#6366f1] text-white hover:bg-[#5558dd] shadow-sm'} rounded-lg`}
+                                                                className={`h-7 w-7 ${role.name === 'Super Admin' ? 'bg-gray-100 text-gray-400' : editingRole?.id === role.id ? 'bg-indigo-500 text-white' : 'bg-[#6366f1] text-white hover:bg-[#5558dd] shadow-sm'} rounded-lg`}
                                                             >
-                                                                <Pencil className="h-3.5 w-3.5" />
+                                                                <ShieldCheck className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </Tooltip>
                                                         <Tooltip content="Delete Role">
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                onClick={() => handleDelete(role.id)}
+                                                                onClick={() => promptDelete(role.id)}
                                                                 disabled={role.name === 'Super Admin'}
                                                                 className={`h-7 w-7 ${role.name === 'Super Admin' ? 'bg-gray-100 text-gray-400' : 'bg-red-500 text-white hover:bg-red-600 shadow-sm'} rounded-lg`}
                                                             >
@@ -465,6 +1117,21 @@ export default function RolesPermissionsPage() {
                     )}
                 </Card>
             </div>
+
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete this role.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-500 hover:bg-red-600 text-white">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <style jsx global>{`
                 @media print {

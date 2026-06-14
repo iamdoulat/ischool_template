@@ -55,7 +55,17 @@ export default function LoginPage() {
 
     const handleRoleFill = (roleEmail: string) => {
         setEmailOrUsername(roleEmail);
-        setPassword(roleEmail === "admin@ischool.com" ? "admin1234" : "password123");
+        const passwords: Record<string, string> = {
+            "superadmin@ischool.com": "superadmin@123",
+            "admin@ischool.com": "admin1234",
+            "teacher@ischool.com": "teacher@123",
+            "accountant@ischool.com": "accountant@123",
+            "receptionist@ischool.com": "receptionist@123",
+            "librarian@ischool.com": "librarian@123",
+            "student@ischool.com": "password123",
+            "parent@ischool.com": "password123",
+        };
+        setPassword(passwords[roleEmail] || "password123");
     };
 
     return (
