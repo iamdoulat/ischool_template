@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Lock, Mail, GraduationCap, User, Users, Shield, Briefcase, Calculator, BookOpen, PhoneCall } from "lucide-react";
+import { useImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 
 export default function LoginPage() {
@@ -18,7 +19,8 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState("admin");
-    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string } | null>(null);
+    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; base_url?: string } | null>(null);
+    const getImageUrl = useImageUrl();
 
     useEffect(() => {
         api.get("/system-setting/general-setting").then(r => {
@@ -69,12 +71,12 @@ export default function LoginPage() {
                 <div className="w-full max-w-md space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="text-center space-y-2">
                         <div className="flex justify-center mb-4">
-                            {settings?.app_logo ? (
-                                <img
-                                    src={settings.app_logo}
-                                    alt={settings?.school_name || "School Logo"}
-                                    className="h-16 w-auto object-contain"
-                                />
+{settings?.app_logo ? (
+                                    <img
+                                        src={getImageUrl(settings.app_logo)}
+                                        alt={settings?.school_name || "School Logo"}
+                                        className="h-16 w-auto object-contain"
+                                    />
                             ) : (
                                 <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-3 rounded-2xl shadow-xl shadow-indigo-500/30 border border-white/10">
                                     <GraduationCap className="h-10 w-10 text-white" />

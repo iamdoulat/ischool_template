@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
+import { useImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 
 interface MenuItem {
@@ -41,6 +42,7 @@ export function PublicHeader() {
     console.log("PublicHeader Settings:", settings);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [dynamicMenus, setDynamicMenus] = useState<MenuItem[]>([]);
+    const getImageUrl = useImageUrl();
     const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
 
     useEffect(() => {
@@ -144,7 +146,7 @@ export function PublicHeader() {
                     <Link href="/" className="flex items-center gap-3 text-primary group">
                         {settings?.app_logo ? (
                             <img
-                                src={settings.app_logo}
+                                src={getImageUrl(settings.app_logo)}
                                 alt={settings.school_name || "School Logo"}
                                 className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-105"
                             />

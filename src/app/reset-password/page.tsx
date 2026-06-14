@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, GraduationCap, ArrowLeft, Lock } from "lucide-react";
+import { useImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 
 export default function ResetPasswordPage() {
@@ -33,7 +34,8 @@ function ResetPasswordForm() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
-    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string } | null>(null);
+    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; base_url?: string } | null>(null);
+    const getImageUrl = useImageUrl();
 
     useEffect(() => {
         api.get("/system-setting/general-setting").then(r => {
@@ -84,7 +86,7 @@ function ResetPasswordForm() {
                         <div className="flex justify-center mb-4">
                             {settings?.app_logo ? (
                                 <img
-                                    src={settings.app_logo}
+                                    src={getImageUrl(settings.app_logo)}
                                     alt={settings?.school_name || "School Logo"}
                                     className="h-16 w-auto object-contain"
                                 />

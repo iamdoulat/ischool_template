@@ -57,6 +57,7 @@ import {
     AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useSettings } from "@/components/providers/settings-provider";
+import { useImageUrl } from "@/lib/image-url";
 import { useTranslation } from "@/hooks/use-translation";
 import { ThemeToggle } from "./theme-toggle";
  
@@ -637,6 +638,7 @@ export function Sidebar({
 }) {
     const pathname = usePathname();
     const { settings, loading: settingsLoading } = useSettings();
+    const getImageUrl = useImageUrl();
     const { t } = useTranslation();
 
     const [mounted, setMounted] = useState(false);
@@ -766,7 +768,7 @@ export function Sidebar({
                         {collapsed && !mobileOpen ? (
                             <div className="p-1.5 bg-white/20 backdrop-blur-md rounded-lg border border-white/10 shadow-sm overflow-hidden flex items-center justify-center h-9 w-9">
                                 {settings?.admin_small_logo ? (
-                                    <img src={settings.admin_small_logo} alt="S" className="h-5 w-5 object-contain" />
+                                    <img src={getImageUrl(settings.admin_small_logo)} alt="S" className="h-5 w-5 object-contain" />
                                 ) : (
                                     <GraduationCap className="h-6 w-6 text-white" />
                                 )}
@@ -775,7 +777,7 @@ export function Sidebar({
                             <div className="flex items-center gap-2">
                                 <div className="p-1.5 bg-white/20 backdrop-blur-md rounded-lg border border-white/10 shadow-sm overflow-hidden flex items-center justify-center">
                                     {settings?.admin_small_logo ? (
-                                        <img src={settings.admin_small_logo} alt="S" className="h-5 w-5 object-contain" />
+                                        <img src={getImageUrl(settings.admin_small_logo)} alt="S" className="h-5 w-5 object-contain" />
                                     ) : (
                                         <GraduationCap className="h-6 w-6 text-white" />
                                     )}
@@ -784,7 +786,7 @@ export function Sidebar({
                                     {settingsLoading ? (
                                         <div className="h-5 w-24 bg-white/20 animate-pulse rounded" />
                                     ) : settings?.admin_logo ? (
-                                        <img src={settings.admin_logo} alt={settings.school_name} className="h-6 object-contain" />
+                                        <img src={getImageUrl(settings.admin_logo)} alt={settings.school_name} className="h-6 object-contain" />
                                     ) : (
                                         <span className="font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300">
                                             {settings?.school_name || "Smart School"}

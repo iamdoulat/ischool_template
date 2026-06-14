@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, GraduationCap, ArrowLeft, Mail } from "lucide-react";
+import { useImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 
 export default function ForgotPasswordPage() {
@@ -13,6 +14,7 @@ export default function ForgotPasswordPage() {
     const [loading, setLoading] = useState(false);
     const [sent, setSent] = useState(false);
     const [error, setError] = useState("");
+    const getImageUrl = useImageUrl();
     const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string } | null>(null);
 
     useEffect(() => {
@@ -52,7 +54,7 @@ export default function ForgotPasswordPage() {
                         <div className="flex justify-center mb-4">
                             {settings?.app_logo ? (
                                 <img
-                                    src={settings.app_logo}
+                                    src={getImageUrl(settings.app_logo)}
                                     alt={settings?.school_name || "School Logo"}
                                     className="h-16 w-auto object-contain"
                                 />

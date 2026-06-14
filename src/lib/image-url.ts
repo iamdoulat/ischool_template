@@ -3,7 +3,19 @@ export function getImageUrl(
   baseUrl?: string
 ): string {
   if (!path) return "";
-  if (path.startsWith("http")) return path;
+
+  let cleanPath = path;
+
+  // If it's a full URL, extract the relative part after /storage/
+  if (path.startsWith("http")) {
+    const storageIndex = path.indexOf("/storage/");
+    if (storageIndex !== -1) {
+      cleanPath = path.substring(storageIndex + 9);
+    } else {
+      // No /storage/ segment — can't rebuild, return as-is
+      return path;
+    }
+  }
 
   const domain = baseUrl
     ? baseUrl.replace(/\/+$/, "")
@@ -12,7 +24,7 @@ export function getImageUrl(
         ""
       );
 
-  return `${domain}/storage/${path}`;
+  return `${domain}/storage/${cleanPath}`;
 }
 
 import { useSettings } from "@/components/providers/settings-provider";

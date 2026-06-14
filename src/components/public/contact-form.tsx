@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, CheckCircle2, AlertCircle, Mail, Phone, MapPin, GraduationCap } from "lucide-react";
 import { useSettings } from "@/components/providers/settings-provider";
+import { useImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 
 export function ContactFormSection() {
     const { settings } = useSettings();
+    const getImageUrl = useImageUrl();
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -22,7 +24,7 @@ export function ContactFormSection() {
                 <div className="space-y-3">
                     {settings?.app_logo ? (
                         <img
-                            src={settings.app_logo}
+                            src={getImageUrl(settings.app_logo)}
                             alt={settings.school_name || "School Logo"}
                             className="h-12 w-auto object-contain"
                         />

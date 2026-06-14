@@ -14,6 +14,7 @@ import {
     GraduationCap
 } from "lucide-react";
 import { useSettings } from "@/components/providers/settings-provider";
+import { useImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 
 interface MenuItem {
@@ -29,6 +30,7 @@ interface MenuItem {
 
 export function PublicFooter() {
     const { settings } = useSettings();
+    const getImageUrl = useImageUrl();
     const [footerMenus, setFooterMenus] = useState<MenuItem[]>([]);
     useEffect(() => {
         fetchFooterMenus();
@@ -76,7 +78,7 @@ export function PublicFooter() {
                         <Link href="/" className="flex items-center gap-3 text-white group">
                             {settings?.app_logo ? (
                                 <img
-                                    src={settings.app_logo}
+                                    src={getImageUrl(settings.app_logo)}
                                     alt={settings.school_name || "School Logo"}
                                     className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
                                 />
