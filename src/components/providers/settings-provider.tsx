@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import api from "@/lib/api";
 
+const fallbackBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
+
 interface GeneralSettings {
     school_name: string;
     school_slogan: string;
@@ -61,15 +63,76 @@ interface GeneralSettings {
     maintenance_mode?: boolean;
 }
 
+function createDefaultSettings(): GeneralSettings {
+    return {
+        school_name: "iSchool Management System",
+        school_slogan: "Excellence in Education",
+        school_description: "Comprehensive school management system",
+        school_code: "ISCHOOL",
+        address: "Default Address",
+        phone: "+1 234 567 890",
+        email: "admin@ischool.com",
+        session: "2026",
+        session_start_month: "4",
+        date_format: "d/m/Y",
+        timezone: "UTC",
+        start_day_of_week: "monday",
+        currency_format: "USD",
+        base_url: fallbackBaseUrl,
+        file_upload_path: "uploads/",
+        print_logo: "",
+        admin_logo: "",
+        admin_small_logo: "",
+        app_logo: "",
+        login_page_background_admin: "",
+        login_page_background_user: "",
+        theme_mode: "light",
+        skins: "default",
+        side_menu: "default",
+        primary_color: "#3b82f6",
+        box_content: "default",
+        mobile_api_url: fallbackBaseUrl,
+        mobile_primary_color: "#3b82f6",
+        mobile_secondary_color: "#64748b",
+        student_login: true,
+        parent_login: true,
+        student_login_admission_no: true,
+        student_login_mobile_no: true,
+        student_login_email: true,
+        parent_login_mobile_no: true,
+        parent_login_email: true,
+        allow_student_to_add_timeline: true,
+        attendance_type: "day_wise",
+        biometric_attendance: false,
+        devices: "",
+        low_attendance_limit: "75",
+        staff_attendance_settings: [],
+        student_attendance_settings: [],
+        footer_contact_title: "Contact Us",
+        footer_contact_info_label: "Contact Info",
+        facebook_url: "",
+        twitter_url: "",
+        instagram_url: "",
+        youtube_url: "",
+        linkedin_url: "",
+        pinterest_url: "",
+        contact_form_receiver_email: "",
+        app_version: "7.2.0",
+        maintenance_mode: false
+    };
+}
+
 interface SettingsContextType {
-    settings: GeneralSettings | null;
+    settings: GeneralSettings;
     loading: boolean;
     refreshSettings: () => Promise<void>;
     updateSettingsLocal: (newSettings: Partial<GeneralSettings>) => void;
 }
 
+const defaultCtxSettings = createDefaultSettings();
+
 const SettingsContext = createContext<SettingsContextType>({
-    settings: null,
+    settings: defaultCtxSettings,
     loading: true,
     refreshSettings: async () => { },
     updateSettingsLocal: () => { },
@@ -78,7 +141,7 @@ const SettingsContext = createContext<SettingsContextType>({
 export const useSettings = () => useContext(SettingsContext);
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
-    const [settings, setSettings] = useState<GeneralSettings | null>(null);
+    const [settings, setSettings] = useState<GeneralSettings>(createDefaultSettings());
     const [loading, setLoading] = useState(true);
 
     const { setTheme } = useTheme();
@@ -133,64 +196,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             }
         } catch (error) {
             console.error("Failed to fetch general settings:", error);
-            // Fallback: set default settings if API fails
-            const defaultSettings: GeneralSettings = {
-                school_name: "iSchool Management System",
-                school_slogan: "Excellence in Education",
-                school_description: "Comprehensive school management system",
-                school_code: "ISCHOOL",
-                address: "Default Address",
-                phone: "+1 234 567 890",
-                email: "admin@ischool.com",
-                session: "2026",
-                session_start_month: "4",
-                date_format: "d/m/Y",
-                timezone: "UTC",
-                start_day_of_week: "monday",
-                currency_format: "USD",
-                base_url: "/",
-                file_upload_path: "uploads/",
-                print_logo: "",
-                admin_logo: "",
-                admin_small_logo: "",
-                app_logo: "",
-                login_page_background_admin: "",
-                login_page_background_user: "",
-                theme_mode: "light",
-                skins: "default",
-                side_menu: "default",
-                primary_color: "#3b82f6",
-                box_content: "default",
-                mobile_api_url: "/",
-                mobile_primary_color: "#3b82f6",
-                mobile_secondary_color: "#64748b",
-                student_login: true,
-                parent_login: true,
-                student_login_admission_no: true,
-                student_login_mobile_no: true,
-                student_login_email: true,
-                parent_login_mobile_no: true,
-                parent_login_email: true,
-                allow_student_to_add_timeline: true,
-                attendance_type: "day_wise",
-                biometric_attendance: false,
-                devices: "",
-                low_attendance_limit: "75",
-                staff_attendance_settings: [],
-                student_attendance_settings: [],
-                footer_contact_title: "Contact Us",
-                footer_contact_info_label: "Contact Info",
-                facebook_url: "",
-                twitter_url: "",
-                instagram_url: "",
-                youtube_url: "",
-                linkedin_url: "",
-                pinterest_url: "",
-                contact_form_receiver_email: "",
-                app_version: "7.2.0",
-                maintenance_mode: false
-            };
-            setSettings(defaultSettings);
+            setSettings(createDefaultSettings());
         } finally {
             setLoading(false);
         }
@@ -198,8 +204,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
     const updateSettingsLocal = (newData: Partial<GeneralSettings>) => {
         setSettings(prev => {
-            const updated = prev ? { ...prev, ...newData } : null;
-            if (updated?.theme_mode) {
+            const updated = { ...prev, ...newData };
+            if (updated.theme_mode) {
                 setTheme(updated.theme_mode.toLowerCase());
             }
             return updated;
