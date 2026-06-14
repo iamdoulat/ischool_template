@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useImageUrl } from "@/lib/image-url";
 import {
     Search,
     ChevronDown,
@@ -54,6 +55,7 @@ interface Student {
 }
 
 export default function BulkDeletePage() {
+    const getImageUrl = useImageUrl();
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -375,7 +377,7 @@ export default function BulkDeletePage() {
                                                 <div className="h-10 w-10 rounded-full border-2 border-muted overflow-hidden bg-muted/20">
                                                     {student.avatar ? (
                                                         <img 
-                                                            src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}/storage/${student.avatar}`} 
+                                                            src={getImageUrl(student.avatar)} 
                                                             alt="Avatar" 
                                                             className="h-full w-full object-cover" 
                                                         />

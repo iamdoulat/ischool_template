@@ -680,7 +680,6 @@ export default function SidebarMenuPage() {
                                                                                                                 </button>
                                                                                                             </div>
                                                                                                         </div>
-                                                                                                        {subProvidedSnapshot.placeholder}
                                                                                                     </div>
                                                                                                 )}
                                                                                             </Draggable>

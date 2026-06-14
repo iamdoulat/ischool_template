@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useBaseUrl } from "@/lib/image-url";
 import { ConfirmDialog } from "@/components/dashboard/system-setting/backup-restore/confirm-dialog";
 
 interface BackupFile {
@@ -38,6 +39,8 @@ interface BackupFile {
 }
 
 export default function BackupRestorePage() {
+    const baseApiUrl = useBaseUrl();
+    const apiRoot = `${baseApiUrl}/api/v1`;
     const [backups, setBackups] = useState<BackupFile[]>([]);
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
@@ -156,7 +159,7 @@ export default function BackupRestorePage() {
     };
 
     const handleDownload = (id: number) => {
-        const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/system-setting/backups/${id}/download`;
+        const url = `${apiRoot}/system-setting/backups/${id}/download`;
         window.open(url, '_blank');
     };
 
@@ -212,7 +215,7 @@ export default function BackupRestorePage() {
     };
 
     const copyToClipboard = () => {
-        const cronCommand = `curl "${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/cron/backup-db?secret_key=${cronKey}"`;
+        const cronCommand = `curl "${apiRoot}/cron/backup-db?secret_key=${cronKey}"`;
         navigator.clipboard.writeText(cronCommand);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -427,7 +430,7 @@ export default function BackupRestorePage() {
                         </p>
                         <div className="bg-gray-900 rounded p-3 relative group">
                             <code className="text-gray-300 text-[10px] break-all block pr-8">
-                                0 0 * * * curl "{process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/cron/backup-db?secret_key={cronKey}"
+                                0 0 * * * curl "${apiRoot}/cron/backup-db?secret_key={cronKey}"
                             </code>
                             <button
                                 onClick={copyToClipboard}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useImageUrl } from "@/lib/image-url";
 import {
     ArrowLeft,
     Save,
@@ -22,6 +23,7 @@ import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 
 export default function EditAdmissionPage() {
+    const getImageUrl = useImageUrl();
     const { id } = useParams();
     const router = useRouter();
     const { toast } = useToast();
@@ -295,7 +297,7 @@ export default function EditAdmissionPage() {
                                         <div className="w-32 h-32 rounded-lg bg-muted/20 border-2 border-dashed border-muted flex items-center justify-center overflow-hidden transition-all group-hover:border-primary/50">
                                             {admission.student_photo ? (
                                                 <img 
-                                                    src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${admission.student_photo}`} 
+                                                    src={getImageUrl(admission.student_photo)} 
                                                     alt="Student" 
                                                     className="w-full h-full object-cover"
                                                 />

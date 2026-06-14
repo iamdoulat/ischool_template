@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useImageUrl } from "@/lib/image-url";
 
 function IconButton({ icon: Icon, onClick, title }: { icon: React.ComponentType<{ className?: string }>; onClick?: () => void; title?: string }) {
     return (
@@ -73,16 +74,13 @@ interface EventItem {
 
 const PAGE_SIZES = [20, 50, 100, 500];
 
-const storageBase = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1').replace('/api/v1', '/storage');
-
-function resolveImageUrl(path: string | null): string | null {
-    if (!path) return null;
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    const clean = path.replace(/^\/?storage\//, '');
-    return `${storageBase}/${clean}`;
-}
-
 export default function EventListPage() {
+    const resolvedGetImageUrl = useImageUrl();
+    const resolveImageUrl = (path: string | null): string | null => {
+        if (!path) return null;
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        return resolvedGetImageUrl(path.replace(/^\/?storage\//, ''));
+    };
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [events, setEvents] = useState<EventItem[]>([]);

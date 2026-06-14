@@ -15,6 +15,7 @@ import {
     FileIcon
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useImageUrl } from "@/lib/image-url";
 import { formatDate, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +58,7 @@ interface PaginationData {
 
 export default function UploadContentPage() {
     const { toast } = useToast();
+    const getImageUrl = useImageUrl();
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [searchTerm, setSearchTerm] = useState("");
     const [contents, setContents] = useState<ContentItem[]>([]);
@@ -174,7 +176,7 @@ export default function UploadContentPage() {
         if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
             return (
                 <div className="relative h-12 w-12 rounded-lg border border-gray-100 overflow-hidden shrink-0 shadow-sm">
-                    <Image src={`${process.env.NEXT_PUBLIC_API_URL}/storage/${item.file_path}`} alt={item.title} fill className="object-cover" />
+                    <Image src={getImageUrl(item.file_path)} alt={item.title} fill className="object-cover" />
                 </div>
             );
         }
@@ -271,7 +273,7 @@ export default function UploadContentPage() {
                                             <Button 
                                                 size="icon" 
                                                 variant="ghost" 
-                                                onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL}/storage/${item.file_path}`, '_blank')}
+                                                onClick={() => window.open(getImageUrl(item.file_path), '_blank')}
                                                 className="h-8 w-8 bg-indigo-50 text-indigo-500 hover:bg-indigo-500 hover:text-white rounded-full transition-all"
                                             >
                                                 <Download className="h-4 w-4" />

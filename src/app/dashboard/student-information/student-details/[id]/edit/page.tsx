@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useImageUrl } from "@/lib/image-url";
 import {
     Upload,
     Save,
@@ -42,6 +43,7 @@ export default function StudentEditPage() {
     const router = useRouter();
     const { toast } = useToast();
     const { symbol } = useCurrencyFormatter();
+    const getImageUrl = useImageUrl();
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
     const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
@@ -237,7 +239,7 @@ export default function StudentEditPage() {
             });
 
             if (student.avatar) {
-                setAvatarPreview(`${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}/storage/${student.avatar}`);
+                setAvatarPreview(getImageUrl(student.avatar));
             }
 
             if (student.siblings) {
@@ -246,7 +248,7 @@ export default function StudentEditPage() {
                     name: `${s.name} ${s.last_name || ""}`,
                     admission_no: s.admission_no,
                     photo: s.avatar || s.student_photo 
-                        ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}/storage/${s.avatar || s.student_photo}`
+                        ? getImageUrl(s.avatar || s.student_photo)
                         : null,
                     class_name: s.school_class?.name || s.class || "N/A",
                     section_name: s.section?.name || "N/A"
@@ -298,7 +300,7 @@ export default function StudentEditPage() {
             }));
 
             const photoUrl = student.avatar || student.student_photo
-                ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}/storage/${student.avatar || student.student_photo}`
+                ? getImageUrl(student.avatar || student.student_photo)
                 : null;
 
             const newSibling = {
@@ -573,7 +575,7 @@ export default function StudentEditPage() {
                                         <div className="h-20 w-20 rounded-lg bg-[#e9ecef] overflow-hidden border flex items-center justify-center shrink-0">
                                             {sibling.photo ? (
                                                 <img 
-                                                    src={sibling.photo.startsWith('http') ? sibling.photo : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}/storage/${sibling.photo}`} 
+                                                    src={sibling.photo.startsWith('http') ? sibling.photo : getImageUrl(sibling.photo)} 
                                                     alt={sibling.name} 
                                                     className="h-full w-full object-cover" 
                                                 />

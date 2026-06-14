@@ -12,6 +12,7 @@ import { Search, Plus, Pencil, X, Copy, FileSpreadsheet, FileText, Printer, Colu
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useImageUrl } from "@/lib/image-url";
 import {
     Dialog,
     DialogContent,
@@ -50,6 +51,7 @@ interface SchoolClass {
 }
 
 export default function ApproveLeavePage() {
+    const getImageUrl = useImageUrl();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
@@ -457,7 +459,7 @@ export default function ApproveLeavePage() {
                                         <TableCell className="py-4 px-6">
                                             {item.user.avatar ? (
                                                 <img
-                                                    src={(process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1').replace('/api/v1', '/storage') + '/' + item.user.avatar}
+                                                    src={getImageUrl(item.user.avatar)}
                                                     alt=""
                                                     className="h-9 w-9 rounded-full object-cover border-2 border-gray-100"
                                                 />
@@ -506,8 +508,7 @@ export default function ApproveLeavePage() {
                                                     size="sm"
                                                     variant="ghost"
                                                     onClick={() => {
-                                                        const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1').replace('/api/v1', '');
-                                                        window.open(`${baseUrl}/${item.attachment}`, '_blank');
+                                                        window.open(getImageUrl(item.attachment), '_blank');
                                                     }}
                                                     className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded p-0"
                                                 >

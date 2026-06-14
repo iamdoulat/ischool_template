@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useImageUrl } from "@/lib/image-url";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -51,14 +52,10 @@ interface MultiClassRecord {
     section: { name: string };
 }
 
-const getAvatarUrl = (avatarPath?: string | null) => {
-    if (!avatarPath) return undefined;
-    if (avatarPath.startsWith('http')) return avatarPath;
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/api\/v1\/?$/, '');
-    return `${baseUrl}/storage/${avatarPath}`;
-};
+
 
 export default function MultiClassStudentPage() {
+    const getImageUrl = useImageUrl();
     const [records, setRecords] = useState<MultiClassRecord[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -351,7 +348,7 @@ export default function MultiClassStudentPage() {
                                                 <div className="h-10 w-10 rounded-full border-2 border-muted overflow-hidden bg-muted/20">
                                                     {(record.student as any)?.avatar ? (
                                                         <img 
-                                                            src={getAvatarUrl((record.student as any).avatar)} 
+                                                            src={getImageUrl((record.student as any).avatar)} 
                                                             alt="Avatar" 
                                                             className="h-full w-full object-cover" 
                                                         />

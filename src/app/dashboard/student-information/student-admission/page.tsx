@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useImageUrl } from "@/lib/image-url";
 import {
     Upload,
     Save,
@@ -43,6 +44,7 @@ import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 
 export default function StudentAdmissionPage() {
+    const getImageUrl = useImageUrl();
     const { toast } = useToast();
     const { symbol } = useCurrencyFormatter();
     const [loading, setLoading] = useState(false);
@@ -255,7 +257,7 @@ export default function StudentAdmissionPage() {
             }));
 
             const photoUrl = student.student_photo || student.avatar 
-                ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}/storage/${student.student_photo || student.avatar}`
+                ? getImageUrl(student.student_photo || student.avatar)
                 : null;
 
             const newSibling = {
@@ -495,7 +497,7 @@ export default function StudentAdmissionPage() {
                                         <div className="h-20 w-20 rounded-lg bg-[#e9ecef] overflow-hidden border flex items-center justify-center shrink-0">
                                             {sibling.photo ? (
                                                 <img 
-                                                    src={sibling.photo.startsWith('http') ? sibling.photo : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}/storage/${sibling.photo}`} 
+                                                    src={sibling.photo.startsWith('http') ? sibling.photo : getImageUrl(sibling.photo)} 
                                                     alt={sibling.name} 
                                                     className="h-full w-full object-cover" 
                                                 />

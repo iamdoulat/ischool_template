@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useImageUrl } from "@/lib/image-url";
 
 interface User {
   id: number;
@@ -37,6 +38,7 @@ export default function FaceRegistrationPage() {
   const [isSaving, setIsSaving] = useState(false);
   
   const [descriptor, setDescriptor] = useState<Float32Array | null>(null);
+  const getImageUrl = useImageUrl();
   
   const fetchUsers = useCallback(async () => {
     try {
@@ -257,7 +259,7 @@ export default function FaceRegistrationPage() {
                     }`}
                   >
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={user.avatar ? `http://localhost:8000/storage/${user.avatar}` : ''} />
+                      <AvatarImage src={getImageUrl(user.avatar)} />
                       <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 overflow-hidden">
@@ -301,7 +303,7 @@ export default function FaceRegistrationPage() {
                 <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={selectedUser.avatar ? `http://localhost:8000/storage/${selectedUser.avatar}` : ''} />
+                      <AvatarImage src={getImageUrl(selectedUser.avatar)} />
                       <AvatarFallback>{selectedUser.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>

@@ -14,6 +14,7 @@ import {
   Maximize2, Minimize2
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useImageUrl } from "@/lib/image-url";
 
 interface User {
   id: number; name: string; role: string; avatar: string | null;
@@ -50,8 +51,6 @@ const methodColors: Record<string, string> = {
   qr: 'text-green-600 bg-green-50',
   nfc: 'text-purple-600 bg-purple-50',
 };
-const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://127.0.0.1:8000';
-
 function buildCameraProxyUrl(settings: QrSettings): string | null {
   if (!settings.ip_camera_url) return null;
   let baseIpOrUrl = settings.ip_camera_url.trim();
@@ -81,6 +80,7 @@ function buildCameraProxyUrl(settings: QrSettings): string | null {
 }
 
 export default function SmartAttendanceTerminalPage() {
+  const getImageUrl = useImageUrl();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cameraImgRef = useRef<HTMLImageElement>(null);
@@ -474,7 +474,7 @@ export default function SmartAttendanceTerminalPage() {
                   <div className="absolute inset-0 z-50 bg-green-500/90 backdrop-blur-sm flex flex-col items-center justify-center text-white p-6 animate-in fade-in zoom-in duration-300">
                     <CheckCircle2 className="h-20 w-20 mb-4" />
                     <Avatar className="h-24 w-24 border-4 border-white mb-4 shadow-lg">
-                      <AvatarImage src={matchedUser.avatar ? `${apiBase}/storage/${matchedUser.avatar}` : ''} />
+                      <AvatarImage src={getImageUrl(matchedUser.avatar)} />
                       <AvatarFallback className="text-3xl text-green-700">{matchedUser.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <h2 className="text-3xl font-bold">{matchedUser.name}</h2>
@@ -620,7 +620,7 @@ export default function SmartAttendanceTerminalPage() {
                   {records.map((r) => (
                     <div key={r.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
                       <Avatar className="h-9 w-9 border">
-                        <AvatarImage src={r.user?.avatar ? `${apiBase}/storage/${r.user.avatar}` : ''} />
+                        <AvatarImage src={getImageUrl(r.user?.avatar)} />
                         <AvatarFallback className="text-xs">{r.user?.name?.charAt(0) || '?'}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">

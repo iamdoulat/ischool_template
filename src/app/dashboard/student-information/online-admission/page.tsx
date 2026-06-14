@@ -32,6 +32,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useImageUrl } from "@/lib/image-url";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -42,12 +43,7 @@ const formatDate = (dateString?: string | null) => {
     return isNaN(date.getTime()) ? dateString : date.toLocaleDateString('en-GB');
 };
 
-const getAvatarUrl = (avatarPath?: string | null) => {
-    if (!avatarPath) return undefined;
-    if (avatarPath.startsWith('http')) return avatarPath;
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/api\/v1\/?$/, '');
-    return `${baseUrl}/storage/${avatarPath}`;
-};
+
 
 interface OnlineAdmission {
     id: string;
@@ -76,6 +72,7 @@ interface OnlineAdmission {
 }
 
 export default function OnlineAdmissionPage() {
+    const getImageUrl = useImageUrl();
     const [admissions, setAdmissions] = useState<OnlineAdmission[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -477,7 +474,7 @@ export default function OnlineAdmissionPage() {
                                 <div className="w-40 h-40 rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center overflow-hidden shadow-lg">
                                     {selectedAdmission.student_photo ? (
                                         <img 
-                                            src={getAvatarUrl(selectedAdmission.student_photo)} 
+                                            src={getImageUrl(selectedAdmission.student_photo)} 
                                             alt="Student" 
                                             className="w-full h-full object-cover"
                                         />

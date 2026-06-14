@@ -15,6 +15,7 @@ import {
   CheckCircle, AlertCircle, RefreshCw, Scan, Sparkles, Upload, Wifi,
 } from "lucide-react";
 import * as faceapi from "face-api.js";
+import { useImageUrl } from "@/lib/image-url";
 
 interface RegisteredUser {
   id: number; name: string; role: string;
@@ -34,8 +35,6 @@ interface QrSettings {
 }
 
 type CaptureMode = 'webcam' | 'ipcam' | 'upload' | null;
-
-const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://127.0.0.1:8000';
 
 function buildCameraProxyUrl(settings: QrSettings): string | null {
   if (!settings.ip_camera_url) return null;

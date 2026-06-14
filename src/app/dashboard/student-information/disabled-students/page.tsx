@@ -53,6 +53,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useImageUrl } from "@/lib/image-url";
 
 interface IDisabledStudent {
     id: string;
@@ -81,14 +82,10 @@ const formatDate = (dateString?: string) => {
     });
 };
 
-const getAvatarUrl = (avatarPath?: string | null) => {
-    if (!avatarPath) return undefined;
-    if (avatarPath.startsWith('http')) return avatarPath;
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/api\/v1\/?$/, '');
-    return `${baseUrl}/storage/${avatarPath}`;
-};
+
 
 export default function DisabledStudentsPage() {
+    const getImageUrl = useImageUrl();
     const [activeTab, setActiveTab] = useState("list");
     const [students, setStudents] = useState<IDisabledStudent[]>([]);
     const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
@@ -508,7 +505,7 @@ export default function DisabledStudentsPage() {
                                             <div className="relative space-y-4">
                                                 <div className="flex items-start justify-between">
                                                     <Avatar className="h-16 w-16 rounded-lg border-2 border-primary/20 shadow-lg group-hover:scale-105 transition-transform">
-                                                        <AvatarImage src={getAvatarUrl(student.avatar)} alt={student.name} />
+                                                        <AvatarImage src={getImageUrl(student.avatar)} alt={student.name} />
                                                         <AvatarFallback className="bg-gradient-to-br from-primary to-indigo-600 text-white font-bold text-xl uppercase">
                                                             {student.name?.substring(0, 2).toUpperCase() || "ST"}
                                                         </AvatarFallback>
@@ -639,7 +636,7 @@ export default function DisabledStudentsPage() {
                                     <div className="relative group">
                                         <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-lg blur opacity-30 group-hover:opacity-50 transition duration-500" />
                                         <Avatar className="h-32 w-32 md:h-40 md:w-40 rounded-lg border-4 border-white shadow-xl relative transition-transform duration-500 group-hover:scale-[1.02]">
-                                            <AvatarImage src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/storage/${selectedStudent?.avatar}`} />
+                                            <AvatarImage src={getImageUrl(selectedStudent?.avatar)} />
                                             <AvatarFallback className="bg-primary/5 text-primary text-4xl font-black">
                                                 {selectedStudent?.name?.substring(0, 2)?.toUpperCase() || "ST"}
                                             </AvatarFallback>

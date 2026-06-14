@@ -14,8 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as faceapi from "face-api.js";
-
-const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://127.0.0.1:8000';
+import { useImageUrl } from "@/lib/image-url";
 
 interface ScannedUser {
     name: string;
@@ -28,6 +27,7 @@ interface ScannedUser {
 }
 
 export default function QrCodeAttendancePage() {
+    const getImageUrl = useImageUrl();
     const [mode, setMode] = useState<"camera" | "sensor">("sensor");
     const [lensMode, setLensMode] = useState<"qr" | "face">("qr");
     const [loadingModels, setLoadingModels] = useState(false);
@@ -507,7 +507,7 @@ export default function QrCodeAttendancePage() {
                                     <div className="relative">
                                         <div className="h-24 w-24 rounded bg-white border-2 border-emerald-100 shadow-sm overflow-hidden flex items-center justify-center">
                                             {lastUser.avatar ? (
-                                                <img src={`${apiBase}/storage/${lastUser.avatar}`} alt="Profile" className="w-full h-full object-cover" />
+                                                <img src={getImageUrl(lastUser.avatar)} alt="Profile" className="w-full h-full object-cover" />
                                             ) : (
                                                 <UserCircle className="h-12 w-12 text-emerald-100" />
                                             )}

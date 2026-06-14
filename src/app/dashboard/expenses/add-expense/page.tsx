@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate } from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+import { useImageUrl, useBaseUrl } from "@/lib/image-url";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -36,6 +37,8 @@ interface ExpenseHead {
 
 export default function AddExpensePage() {
     const { formatCurrency } = useCurrencyFormatter();
+    const getImageUrl = useImageUrl();
+    const baseApiUrl = useBaseUrl();
     const [searchTerm, setSearchTerm] = useState("");
     const [rowsPerPage, setRowsPerPage] = useState("50");
     const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
@@ -287,8 +290,7 @@ export default function AddExpensePage() {
             try {
                 let imgUrl = header_image_url;
                 if (imgUrl.startsWith('/')) {
-                    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://127.0.0.1:8000';
-                    imgUrl = baseUrl + imgUrl;
+                    imgUrl = baseApiUrl + imgUrl;
                 }
                 imgUrl = imgUrl.replace('localhost', '127.0.0.1');
 
@@ -587,8 +589,7 @@ export default function AddExpensePage() {
                                                         size="sm"
                                                         variant="ghost"
                                                         onClick={() => {
-                                                            const storageBase = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1').replace('/api/v1', '/storage');
-                                                            window.open(`${storageBase}/${item.document}`, '_blank');
+                                                            window.open(getImageUrl(item.document), '_blank');
                                                         }}
                                                         className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded p-0"
                                                     >
