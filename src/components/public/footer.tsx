@@ -30,8 +30,6 @@ interface MenuItem {
 export function PublicFooter() {
     const { settings } = useSettings();
     const [footerMenus, setFooterMenus] = useState<MenuItem[]>([]);
-    const appUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
-
     useEffect(() => {
         fetchFooterMenus();
     }, []);
@@ -51,7 +49,7 @@ export function PublicFooter() {
     const renderMenuLink = (item: MenuItem) => {
         const href = item.is_external
             ? item.url || "#"
-            : `${appUrl.replace(/\/$/, '')}/${(item.page || '').replace(/^\//, '')}`;
+            : `/${(item.page || '').replace(/^\//, '')}`;
 
         return (
             <Link
