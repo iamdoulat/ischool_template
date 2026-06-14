@@ -6,6 +6,7 @@ import { PublicHeader } from "@/components/public/header";
 import { PublicFooter } from "@/components/public/footer";
 import { ContactFormSection } from "@/components/public/contact-form";
 import { NoticeBoardSection } from "@/components/public/notice-board-section";
+import { ExamResultSection } from "@/components/public/exam-result-section";
 import api from "@/lib/api";
 import { Loader2 } from "lucide-react";
 
@@ -96,7 +97,7 @@ export default function DynamicPage() {
                             );
                         }
 
-                        const shortcodeRegex = /\[(contact_form|notice_board)\]/g;
+                        const shortcodeRegex = /\[(contact_form|notice_board|exam_result)\]/g;
                         const tokens: { type: 'html' | 'shortcode'; value: string }[] = [];
                         let lastIndex = 0;
                         let match;
@@ -136,6 +137,9 @@ export default function DynamicPage() {
                                         )}
                                         {token.type === 'shortcode' && token.value === 'notice_board' && (
                                             <NoticeBoardSection />
+                                        )}
+                                        {token.type === 'shortcode' && token.value === 'exam_result' && (
+                                            <ExamResultSection />
                                         )}
                                     </div>
                                 ))}
