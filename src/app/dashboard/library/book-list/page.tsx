@@ -46,6 +46,17 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/components/providers/currency-provider";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Book {
     id: number;
@@ -75,6 +86,8 @@ interface PaginationData {
 
 export default function BookListPage() {
     const { toast } = useToast();
+    const { selectedCurrency } = useCurrency();
+    const currencySymbol = selectedCurrency?.symbol || "$";
     const [searchTerm, setSearchTerm] = useState("");
     const [books, setBooks] = useState<Book[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -82,6 +95,8 @@ export default function BookListPage() {
     const [limit, setLimit] = useState("50");
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [deleteBookId, setDeleteBookId] = useState<number | null>(null);
     const [editingBook, setEditingBook] = useState<Book | null>(null);
     const [formData, setFormData] = useState({
         title: "",
@@ -101,7 +116,7 @@ export default function BookListPage() {
         setLoading(true);
         try {
             const response = await api.get(`/library/books?page=${page}&search=${searchTerm}&limit=${limit}`);
-            setBooks(response.data.data);
+            setBooks(response.data.data ?? response.data ?? []);
             setPagination({
                 current_page: response.data.current_page,
                 last_page: response.data.last_page,
@@ -182,15 +197,21 @@ export default function BookListPage() {
         }
     };
 
-    const handleDelete = async (id: number) => {
-        if (confirm("Are you sure you want to delete this book?")) {
-            try {
-                await api.delete(`/library/books/${id}`);
-                toast({ title: "Success", description: "Book deleted successfully" });
-                fetchBooks();
-            } catch (error) {
-                toast({ title: "Error", description: "Failed to delete book", variant: "destructive" });
-            }
+    const handleDeleteClick = (id: number) => {
+        setDeleteBookId(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteBookId) return;
+        try {
+            await api.delete(`/library/books/${deleteBookId}`);
+            toast({ title: "Success", description: "Book deleted successfully" });
+            setIsDeleteDialogOpen(false);
+            setDeleteBookId(null);
+            fetchBooks();
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to delete book", variant: "destructive" });
         }
     };
 
@@ -336,23 +357,25 @@ export default function BookListPage() {
                                     <TableCell className="py-3 text-gray-500">{book.rack_number || "-"}</TableCell>
                                     <TableCell className="py-3 text-gray-500">{book.qty}</TableCell>
                                     <TableCell className="py-3 text-gray-500 font-bold text-indigo-600">{book.available}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{book.price ? `₹${book.price}` : "-"}</TableCell>
+                                    <TableCell className="py-3 text-gray-500">{book.price ? `${currencySymbol}${book.price}` : "-"}</TableCell>
                                     <TableCell className="py-3 text-gray-500">{book.post_date ? formatDate(book.post_date) : "-"}</TableCell>
                                     <TableCell className="py-3 text-right sticky right-0 bg-white group-hover:bg-gray-50/30 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button 
                                                 size="icon" 
                                                 onClick={() => handleEditClick(book)}
-                                                className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm"
+                                                className="h-7 w-7 btn-gradient text-white rounded-full shadow-md"
+                                                title="Edit"
                                             >
-                                                <Pencil className="h-3 w-3" />
+                                                <Pencil className="h-3.5 w-3.5" />
                                             </Button>
                                             <Button 
                                                 size="icon" 
-                                                onClick={() => handleDelete(book.id)}
-                                                className="h-6 w-6 bg-rose-500 hover:bg-rose-600 text-white rounded shadow-sm"
+                                                onClick={() => handleDeleteClick(book.id)}
+                                                className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-full shadow-md"
+                                                title="Delete"
                                             >
-                                                <Trash2 className="h-3 w-3" />
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         </div>
                                     </TableCell>
@@ -508,6 +531,22 @@ export default function BookListPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Delete Confirmation Dialog */}
+                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                    <AlertDialogContent className="sm:max-w-[400px]">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Book</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to delete this book? This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </div>
     );

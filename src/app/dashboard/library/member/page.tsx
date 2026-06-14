@@ -70,7 +70,7 @@ export default function LibraryMembersPage() {
         setLoading(true);
         try {
             const response = await api.get(`/library/members?only_members=1&page=${page}&search=${searchTerm}&limit=${limit}`);
-            setMembers(response.data.data);
+            setMembers(response.data.data ?? response.data ?? []);
             setPagination({
                 current_page: response.data.current_page,
                 last_page: response.data.last_page,
@@ -220,7 +220,13 @@ export default function LibraryMembersPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                             {members.map((member) => (
+                            {members.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-8 text-gray-400 text-xs">
+                                        {loading ? "Loading..." : "No members found"}
+                                    </TableCell>
+                                </TableRow>
+                            ) : members.map((member) => (
                                 <TableRow key={member.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
                                     <TableCell className="py-3 text-gray-500">{member.member_id}</TableCell>
                                     <TableCell className="py-3 text-gray-500">{member.library_card_no || "-"}</TableCell>

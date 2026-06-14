@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/table";
 import {
     Plus,
-    RotateCcw,
     Search,
     Copy,
     FileSpreadsheet,
@@ -34,7 +33,27 @@ import {
     ChevronLeft,
     ChevronRight,
     ArrowUpDown,
+    MoreVertical,
+    Pencil,
+    Trash2,
 } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
     Select,
     SelectContent,
@@ -78,11 +97,15 @@ export default function AddStaffLibraryPage() {
     const [limit, setLimit] = useState("50");
     
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
     const [memberFormData, setMemberFormData] = useState({
         library_card_no: "",
         member_id: ""
     });
+    const [saving, setSaving] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<StaffMember | null>(null);
 
     const fetchStaff = async (page = 1) => {
         setLoading(true);
@@ -115,9 +138,20 @@ export default function AddStaffLibraryPage() {
 
     const handleAddMembership = (staff: StaffMember) => {
         setSelectedStaff(staff);
+        setIsEditing(false);
         setMemberFormData({
             library_card_no: "",
             member_id: staff.staff_id || ""
+        });
+        setIsDialogOpen(true);
+    };
+
+    const handleEditMembership = (staff: StaffMember) => {
+        setSelectedStaff(staff);
+        setIsEditing(true);
+        setMemberFormData({
+            library_card_no: staff.library_member?.library_card_no || "",
+            member_id: staff.library_member?.member_id || ""
         });
         setIsDialogOpen(true);
     };
@@ -128,6 +162,7 @@ export default function AddStaffLibraryPage() {
             return;
         }
 
+        setSaving(true);
         try {
             await api.post('/library/members', {
                 user_id: selectedStaff?.id,
@@ -143,18 +178,49 @@ export default function AddStaffLibraryPage() {
                 description: error.response?.data?.message || "Failed to assign membership",
                 variant: "destructive",
             });
+        } finally {
+            setSaving(false);
         }
     };
 
-    const handleRemoveMembership = async (userId: number) => {
-        if (confirm("Are you sure you want to remove this library membership?")) {
-            try {
-                await api.delete(`/library/members/${userId}`);
-                toast({ title: "Success", description: "Membership removed successfully" });
-                fetchStaff();
-            } catch (error) {
-                toast({ title: "Error", description: "Failed to remove membership", variant: "destructive" });
-            }
+    const updateMembership = async () => {
+        if (!memberFormData.member_id) {
+            toast({ title: "Error", description: "Library Member ID is required", variant: "destructive" });
+            return;
+        }
+
+        setSaving(true);
+        try {
+            await api.put(`/library/members/${selectedStaff?.id}`, memberFormData);
+            toast({ title: "Success", description: "Library membership updated successfully" });
+            setIsDialogOpen(false);
+            fetchStaff();
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.response?.data?.message || "Failed to update membership",
+                variant: "destructive",
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleRevokeClick = (staff: StaffMember) => {
+        setDeleteTarget(staff);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmRevoke = async () => {
+        if (!deleteTarget) return;
+        try {
+            await api.delete(`/library/members/${deleteTarget.id}`);
+            toast({ title: "Success", description: "Membership revoked successfully" });
+            setIsDeleteDialogOpen(false);
+            setDeleteTarget(null);
+            fetchStaff();
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to revoke membership", variant: "destructive" });
         }
     };
 
@@ -283,25 +349,30 @@ export default function AddStaffLibraryPage() {
                                     <TableCell className="py-3 text-gray-500">{staff.dob ? formatDate(staff.dob) : "-"}</TableCell>
                                     <TableCell className="py-3 text-gray-500">{staff.phone || "-"}</TableCell>
                                     <TableCell className="py-3 text-right">
-                                        {staff.library_member ? (
-                                            <Button 
-                                                size="icon" 
-                                                onClick={() => handleRemoveMembership(staff.id)}
-                                                className="h-6 w-6 bg-rose-500 hover:bg-rose-600 text-white rounded shadow-sm"
-                                                title="Remove Membership"
-                                            >
-                                                <RotateCcw className="h-3 w-3" />
-                                            </Button>
-                                        ) : (
-                                            <Button 
-                                                size="icon" 
-                                                onClick={() => handleAddMembership(staff) }
-                                                className="h-7 w-7 btn-gradient text-white rounded-full shadow-md"
-                                                title="Add to Library"
-                                            >
-                                                <Plus className="h-3.5 w-3.5" />
-                                            </Button>
-                                        )}
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="text-xs">
+                                                {staff.library_member ? (
+                                                    <>
+                                                        <DropdownMenuItem onClick={() => handleEditMembership(staff)}>
+                                                            <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => handleRevokeClick(staff)} className="text-red-500">
+                                                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Revoke
+                                                        </DropdownMenuItem>
+                                                    </>
+                                                ) : (
+                                                    <DropdownMenuItem onClick={() => handleAddMembership(staff)}>
+                                                        <Plus className="h-3.5 w-3.5 mr-2" /> Add
+                                                    </DropdownMenuItem>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -350,11 +421,11 @@ export default function AddStaffLibraryPage() {
                     </div>
                 </div>
 
-                {/* Add Membership Dialog */}
+                {/* Add / Edit Membership Dialog */}
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
-                            <DialogTitle className="text-lg font-bold text-gray-800">Add Library Member</DialogTitle>
+                            <DialogTitle className="text-lg font-bold text-gray-800">{isEditing ? "Edit Library Member" : "Add Library Member"}</DialogTitle>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                             <div className="space-y-1.5">
@@ -385,11 +456,29 @@ export default function AddStaffLibraryPage() {
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">Cancel</Button>
-                            <Button onClick={saveMembership} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">Add Member</Button>
+                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full" disabled={saving}>Cancel</Button>
+                            <Button onClick={isEditing ? updateMembership : saveMembership} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full" disabled={saving}>
+                                {saving ? "Saving..." : isEditing ? "Update Member" : "Add Member"}
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Revoke Confirmation Dialog */}
+                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                    <AlertDialogContent className="sm:max-w-[400px]">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Revoke Membership</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to revoke library membership for <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmRevoke} className="bg-red-500 hover:bg-red-600 text-white">Revoke</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </div>
     );

@@ -79,7 +79,7 @@ export default function DashboardPage() {
     const overviews = data?.overviews || mockDashboardData.overviews;
     const summary = data?.summary || mockDashboardData.summary;
 
-    const widgetDefs: { key: string; title: string; current: number; total: number; percentage: number; icon: any; color: string }[] = [
+    const widgetDefs: { key: string; title: string; current: number; total: number; percentage: number; icon: any; color: "blue" | "cyan" | "indigo" | "red" | "orange" | "yellow" | "purple" | "primary" }[] = [
         { key: "fees_awaiting_payment", title: "Fees Awaiting Payment", current: stats.feesAwaitingPayment.current, total: stats.feesAwaitingPayment.total, percentage: stats.feesAwaitingPayment.percentage, icon: Wallet, color: "blue" },
         { key: "staff_approved_leave", title: "Staff Approved Leave", current: stats.staffApprovedLeave.current, total: stats.staffApprovedLeave.total, percentage: stats.staffApprovedLeave.percentage, icon: ClipboardCheck, color: "cyan" },
         { key: "student_approved_leave", title: "Student Approved Leave", current: stats.studentApprovedLeave.current, total: stats.studentApprovedLeave.total, percentage: stats.studentApprovedLeave.percentage, icon: FileCheck, color: "indigo" },

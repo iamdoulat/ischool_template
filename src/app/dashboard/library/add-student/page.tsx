@@ -25,7 +25,6 @@ import {
 import {
     Search,
     Plus,
-    RotateCcw,
     Copy,
     FileSpreadsheet,
     FileText,
@@ -34,7 +33,27 @@ import {
     ChevronLeft,
     ChevronRight,
     ArrowUpDown,
+    MoreVertical,
+    Pencil,
+    Trash2,
 } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
     Select,
     SelectContent,
@@ -52,8 +71,8 @@ interface StudentMember {
     dob: string;
     gender: string;
     phone: string;
-    school_class?: { class: string };
-    section?: { section: string };
+    school_class?: { name: string };
+    section?: { name: string };
     library_member?: {
         id: number;
         member_id: string;
@@ -86,16 +105,20 @@ export default function AddStudentLibraryPage() {
     const [selectedSection, setSelectedSection] = useState("");
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<StudentMember | null>(null);
     const [memberFormData, setMemberFormData] = useState({
         library_card_no: "",
         member_id: ""
     });
+    const [saving, setSaving] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<StudentMember | null>(null);
 
     const fetchClasses = async () => {
         try {
-            const response = await api.get('/classes');
-            setClasses(response.data);
+            const response = await api.get('/academics/classes?no_paginate=true');
+            setClasses(response.data.data ?? []);
         } catch (error) {
             console.error("Error fetching classes:", error);
         }
@@ -104,8 +127,8 @@ export default function AddStudentLibraryPage() {
     const fetchSections = async (classId: string) => {
         if (!classId) return;
         try {
-            const response = await api.get(`/sections?class_id=${classId}`);
-            setSections(response.data);
+            const response = await api.get(`/academics/sections?school_class_id=${classId}&no_paginate=true`);
+            setSections(response.data.data ?? []);
         } catch (error) {
             console.error("Error fetching sections:", error);
         }
@@ -149,9 +172,20 @@ export default function AddStudentLibraryPage() {
 
     const handleAddMembership = (student: StudentMember) => {
         setSelectedStudent(student);
+        setIsEditing(false);
         setMemberFormData({
             library_card_no: "",
             member_id: student.admission_no || ""
+        });
+        setIsDialogOpen(true);
+    };
+
+    const handleEditMembership = (student: StudentMember) => {
+        setSelectedStudent(student);
+        setIsEditing(true);
+        setMemberFormData({
+            library_card_no: student.library_member?.library_card_no || "",
+            member_id: student.library_member?.member_id || ""
         });
         setIsDialogOpen(true);
     };
@@ -162,6 +196,7 @@ export default function AddStudentLibraryPage() {
             return;
         }
 
+        setSaving(true);
         try {
             await api.post('/library/members', {
                 user_id: selectedStudent?.id,
@@ -177,18 +212,49 @@ export default function AddStudentLibraryPage() {
                 description: error.response?.data?.message || "Failed to assign membership",
                 variant: "destructive",
             });
+        } finally {
+            setSaving(false);
         }
     };
 
-    const handleRemoveMembership = async (userId: number) => {
-        if (confirm("Are you sure you want to remove this library membership?")) {
-            try {
-                await api.delete(`/library/members/${userId}`);
-                toast({ title: "Success", description: "Membership removed successfully" });
-                fetchStudents();
-            } catch (error) {
-                toast({ title: "Error", description: "Failed to remove membership", variant: "destructive" });
-            }
+    const updateMembership = async () => {
+        if (!memberFormData.member_id) {
+            toast({ title: "Error", description: "Library Member ID is required", variant: "destructive" });
+            return;
+        }
+
+        setSaving(true);
+        try {
+            await api.put(`/library/members/${selectedStudent?.id}`, memberFormData);
+            toast({ title: "Success", description: "Library membership updated successfully" });
+            setIsDialogOpen(false);
+            fetchStudents();
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.response?.data?.message || "Failed to update membership",
+                variant: "destructive",
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleRevokeClick = (student: StudentMember) => {
+        setDeleteTarget(student);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmRevoke = async () => {
+        if (!deleteTarget) return;
+        try {
+            await api.delete(`/library/members/${deleteTarget.id}`);
+            toast({ title: "Success", description: "Membership revoked successfully" });
+            setIsDeleteDialogOpen(false);
+            setDeleteTarget(null);
+            fetchStudents();
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to revoke membership", variant: "destructive" });
         }
     };
 
@@ -200,7 +266,7 @@ export default function AddStudentLibraryPage() {
 
     const handleExportCSV = () => {
         const headers = ["Name", "Admission No", "Class", "Member ID", "Card No", "Status"];
-        const rows = students.map(s => [s.name, s.admission_no, `${s.school_class?.class}(${s.section?.section})`, s.library_member?.member_id || "-", s.library_member?.library_card_no || "-", s.library_member ? 'Active' : 'Inactive']);
+        const rows = students.map(s => [s.name, s.admission_no, `${s.school_class?.name}(${s.section?.name})`, s.library_member?.member_id || "-", s.library_member?.library_card_no || "-", s.library_member ? 'Active' : 'Inactive']);
         const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -237,7 +303,7 @@ export default function AddStudentLibraryPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 {classes.map((cls) => (
-                                    <SelectItem key={cls.id} value={String(cls.id)}>{cls.class}</SelectItem>
+                                    <SelectItem key={cls.id} value={String(cls.id)}>{cls.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -251,7 +317,7 @@ export default function AddStudentLibraryPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 {sections.map((sec) => (
-                                    <SelectItem key={sec.id} value={String(sec.id)}>{sec.section}</SelectItem>
+                                    <SelectItem key={sec.id} value={String(sec.id)}>{sec.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -356,31 +422,36 @@ export default function AddStudentLibraryPage() {
                                     <TableCell className="py-3 text-gray-500">{student.library_member?.library_card_no || "-"}</TableCell>
                                     <TableCell className="py-3 text-gray-500">{student.admission_no}</TableCell>
                                     <TableCell className="py-3 text-gray-700 font-medium">{student.name}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{student.school_class?.class} ({student.section?.section})</TableCell>
+                                    <TableCell className="py-3 text-gray-500">{student.school_class?.name} ({student.section?.name})</TableCell>
                                     <TableCell className="py-3 text-gray-500">{student.father_name}</TableCell>
                                     <TableCell className="py-3 text-gray-500">{student.dob ? formatDate(student.dob) : "-"}</TableCell>
                                     <TableCell className="py-3 text-gray-500">{student.gender}</TableCell>
                                     <TableCell className="py-3 text-gray-500">{student.phone || "-"}</TableCell>
                                     <TableCell className="py-3 text-right">
-                                        {student.library_member ? (
-                                            <Button 
-                                                size="icon" 
-                                                onClick={() => handleRemoveMembership(student.id)}
-                                                className="h-6 w-6 bg-rose-500 hover:bg-rose-600 text-white rounded shadow-sm"
-                                                title="Remove Membership"
-                                            >
-                                                <RotateCcw className="h-3 w-3" />
-                                            </Button>
-                                        ) : (
-                                            <Button 
-                                                size="icon" 
-                                                onClick={() => handleAddMembership(student)}
-                                                className="h-7 w-7 btn-gradient text-white rounded-full shadow-md"
-                                                title="Add to Library"
-                                            >
-                                                <Plus className="h-3.5 w-3.5" />
-                                            </Button>
-                                        )}
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="text-xs">
+                                                {student.library_member ? (
+                                                    <>
+                                                        <DropdownMenuItem onClick={() => handleEditMembership(student)}>
+                                                            <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => handleRevokeClick(student)} className="text-red-500">
+                                                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Revoke
+                                                        </DropdownMenuItem>
+                                                    </>
+                                                ) : (
+                                                    <DropdownMenuItem onClick={() => handleAddMembership(student)}>
+                                                        <Plus className="h-3.5 w-3.5 mr-2" /> Add
+                                                    </DropdownMenuItem>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -429,11 +500,11 @@ export default function AddStudentLibraryPage() {
                     </div>
                 </div>
 
-                {/* Add Membership Dialog */}
+                {/* Add / Edit Membership Dialog */}
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
-                            <DialogTitle className="text-lg font-bold text-gray-800">Add Library Member</DialogTitle>
+                            <DialogTitle className="text-lg font-bold text-gray-800">{isEditing ? "Edit Library Member" : "Add Library Member"}</DialogTitle>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                             <div className="space-y-1.5">
@@ -464,11 +535,29 @@ export default function AddStudentLibraryPage() {
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">Cancel</Button>
-                            <Button onClick={saveMembership} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">Add Member</Button>
+                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full" disabled={saving}>Cancel</Button>
+                            <Button onClick={isEditing ? updateMembership : saveMembership} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full" disabled={saving}>
+                                {saving ? "Saving..." : isEditing ? "Update Member" : "Add Member"}
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Revoke Confirmation Dialog */}
+                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                    <AlertDialogContent className="sm:max-w-[400px]">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Revoke Membership</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to revoke library membership for <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmRevoke} className="bg-red-500 hover:bg-red-600 text-white">Revoke</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </div>
     );
