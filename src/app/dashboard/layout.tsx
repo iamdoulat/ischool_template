@@ -9,6 +9,7 @@ import { CurrencyProvider } from "@/components/providers/currency-provider";
 
 import { useTheme, ThemeProvider } from "next-themes";
 import { cn } from "@/lib/utils";
+import { PageGuard } from "@/components/auth/page-guard";
 
 function DashboardLayoutContent({
     children,
@@ -81,7 +82,7 @@ function DashboardLayoutContent({
                     "flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8",
                     settings?.box_content === 'compact' ? "max-w-[1400px] mx-auto w-full" : "w-full"
                 )}>
-                    {children}
+                    <PageGuard>{children}</PageGuard>
                 </main>
                 <footer className="h-14 flex-shrink-0 border-t bg-background flex items-center justify-between px-4 md:px-8 z-20">
                     <div className="flex items-center gap-4 hidden md:flex">

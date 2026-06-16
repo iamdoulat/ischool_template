@@ -688,18 +688,34 @@ export function Sidebar({
 
     // Process menu items based on backend config
     const processedMenuItems = React.useMemo(() => {
-        if (fetchingSidebar || sidebarConfig.length === 0) {
-            return menuItems; // Fallback during loading or if empty
+        // Show loading state
+        if (fetchingSidebar) return [];
+
+        // Show only dashboard if config not loaded (avoid exposing all menus)
+        if (sidebarConfig.length === 0) {
+            return menuItems
+                .map(group => ({
+                    ...group,
+                    items: group.items.filter(item => item.name === 'dashboard')
+                }))
+                .filter(group => group.items.length > 0);
         }
-  
+
         // Create a map for quick lookup
         const configMap = new Map(sidebarConfig.map(c => [c.name, c]));
-  
+
         return menuItems.map(group => {
             const filteredItems = group.items
                 .map(item => {
                     const config = configMap.get(item.name);
                     let submenus = item.submenus;
+
+                    // Filter submenus by backend's visible_submenus (permission-based)
+                    if (config?.visible_submenus) {
+                        const visibleSet = new Set(config.visible_submenus);
+                        submenus = submenus.filter(s => visibleSet.has(s.name));
+                    }
+
                     if (config?.submenu_order && config.submenu_order.length > 0) {
                         const orderMap = new Map(submenus.map(s => [s.name, s]));
                         const ordered: typeof submenus = [];
@@ -715,17 +731,20 @@ export function Sidebar({
                         }
                         submenus = ordered;
                     }
+
+                    const hasSubmenusHidden = item.submenus.length > 0 && submenus.length === 0;
+
                     return {
                         ...item,
                         submenus,
                         label: config?.label,
-                        is_visible: config ? config.is_visible : true,
+                        is_visible: config ? (hasSubmenusHidden ? false : config.is_visible) : true,
                         sort_order: config?.sort_order ?? 0
                     };
                 })
                 .filter(item => item.is_visible)
                 .sort((a, b) => a.sort_order - b.sort_order);
-  
+
             return { ...group, items: filteredItems };
         }).filter(group => group.items.length > 0);
     }, [sidebarConfig, fetchingSidebar]);

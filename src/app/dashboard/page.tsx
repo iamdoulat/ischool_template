@@ -53,6 +53,19 @@ export default function DashboardPage() {
                     "converted_leads",
                     "staff_present_today",
                     "student_present_today",
+                    "charts_section",
+                    "overview_section",
+                    "summary_monthly_fees",
+                    "summary_monthly_expenses",
+                    "summary_student",
+                    "summary_student_head_count",
+                    "summary_admin",
+                    "summary_teacher",
+                    "summary_accountant",
+                    "summary_librarian",
+                    "summary_receptionist",
+                    "summary_super_admin",
+                    "summary_driver",
                 ]);
             } finally {
                 setLoading(false);
@@ -88,12 +101,32 @@ export default function DashboardPage() {
         { key: "student_present_today", title: "Student Present Today", current: stats.studentsPresentToday.current, total: stats.studentsPresentToday.total, percentage: stats.studentsPresentToday.percentage, icon: Users, color: "yellow" },
     ];
 
+    const summaryCardDefs: { key: string; title: string; icon: any; color: string; getValue: () => any }[] = [
+        { key: "summary_monthly_fees", title: "Monthly Fees Collection", icon: DollarSign, color: "emerald", getValue: () => summary.monthlyFees },
+        { key: "summary_monthly_expenses", title: "Monthly Expenses", icon: Receipt, color: "red", getValue: () => summary.monthlyExpenses },
+        { key: "summary_student", title: "Student", icon: UsersRound, color: "blue", getValue: () => summary.studentCount },
+        { key: "summary_student_head_count", title: "Student Head Count", icon: UserCircle, color: "orange", getValue: () => summary.studentHeadCount },
+        { key: "summary_admin", title: "Admin", icon: UserCog, color: "purple", getValue: () => summary.admin },
+        { key: "summary_teacher", title: "Teacher", icon: GraduationCap, color: "indigo", getValue: () => summary.teacher },
+        { key: "summary_accountant", title: "Accountant", icon: Calculator, color: "cyan", getValue: () => summary.accountant },
+        { key: "summary_librarian", title: "Librarian", icon: LibraryBig, color: "rose", getValue: () => summary.librarian },
+        { key: "summary_receptionist", title: "Receptionist", icon: UserRoundCheck, color: "yellow", getValue: () => summary.receptionist },
+        { key: "summary_super_admin", title: "Super Admin", icon: ShieldCheck, color: "primary", getValue: () => summary.superAdmin },
+        { key: "summary_driver", title: "Driver", icon: Bus, color: "red", getValue: () => summary.driver || 0 },
+    ];
+
     const isSectionVisible = (key: string) =>
         visibleWidgets.length === 0 || visibleWidgets.includes(key);
 
     const visibleWidgetDefs = visibleWidgets.length > 0
         ? widgetDefs.filter(w => visibleWidgets.includes(w.key))
         : widgetDefs;
+
+    const isSummaryVisible = visibleWidgets.length === 0 || visibleWidgets.includes('summary_section');
+
+    const visibleSummaryCards = visibleWidgets.length > 0
+        ? summaryCardDefs.filter(c => visibleWidgets.includes(c.key) || visibleWidgets.includes('summary_section'))
+        : summaryCardDefs;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -149,19 +182,11 @@ export default function DashboardPage() {
             )}
 
             {/* Bottom Summary Cards Grid */}
-            {isSectionVisible('summary_section') && (
+            {isSummaryVisible && visibleSummaryCards.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <SummaryCard title="Monthly Fees Collection" value={summary.monthlyFees} icon={DollarSign} color="emerald" />
-                <SummaryCard title="Monthly Expenses" value={summary.monthlyExpenses} icon={Receipt} color="red" />
-                <SummaryCard title="Student" value={summary.studentCount} icon={UsersRound} color="blue" />
-                <SummaryCard title="Student Head Count" value={summary.studentHeadCount} icon={UserCircle} color="orange" />
-                <SummaryCard title="Admin" value={summary.admin} icon={UserCog} color="purple" />
-                <SummaryCard title="Teacher" value={summary.teacher} icon={GraduationCap} color="indigo" />
-                <SummaryCard title="Accountant" value={summary.accountant} icon={Calculator} color="cyan" />
-                <SummaryCard title="Librarian" value={summary.librarian} icon={LibraryBig} color="rose" />
-                <SummaryCard title="Receptionist" value={summary.receptionist} icon={UserRoundCheck} color="yellow" />
-                <SummaryCard title="Super Admin" value={summary.superAdmin} icon={ShieldCheck} color="primary" />
-                <SummaryCard title="Driver" value={summary.driver || 0} icon={Bus} color="red" />
+                {visibleSummaryCards.map((c) => (
+                    <SummaryCard key={c.key} title={c.title} value={c.getValue()} icon={c.icon} color={c.color} />
+                ))}
             </div>
             )}
         </div>

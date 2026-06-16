@@ -11,7 +11,8 @@ export const handlers = [
         name: 'Admin User',
         email: 'admin@ischool.com',
         role: 'admin',
-        avatar: null
+        avatar: null,
+        permissions: ['all']
       }
     })
   }),
@@ -273,20 +274,6 @@ export const handlers = [
       data: {
         auto_enabled: true,
         admission_no: 'ADM2026001'
-      }
-    })
-  }),
-
-  // Profile endpoint
-  http.get('/api/v1/profile', () => {
-    return HttpResponse.json({
-      success: true,
-      data: {
-        id: 1,
-        name: 'Admin User',
-        email: 'admin@ischool.com',
-        role: 'admin',
-        avatar: null
       }
     })
   }),

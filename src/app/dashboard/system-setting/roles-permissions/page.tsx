@@ -337,7 +337,7 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
 
 const modulePermissionMap: Record<string, string[]> = {
     front_office: ["Front Office"],
-    student_information: ["Student Information", "Multi Class"],
+        student_information: ["Student Information", "Multi Class", "Online Admission"],
     fees_collection: ["Fees Collection", "Quick Fees"],
     income: ["Income"],
     expenses: ["Expense"],
@@ -347,7 +347,7 @@ const modulePermissionMap: Record<string, string[]> = {
     online_examinations: ["Online Examination"],
     academics: ["Academics"],
     human_resource: ["Human Resource"],
-    communicate: ["Communicate"],
+        communicate: ["Communicate", "Whatsapp Messaging"],
     download_center: ["Download Center"],
     homework: ["Homework"],
     online_course: ["Online Course"],
@@ -367,7 +367,7 @@ const modulePermissionMap: Record<string, string[]> = {
     annual_calendar: ["Annual Calendar"],
     front_cms: ["Front CMS"],
     qr_code_attendance: ["QR Code Attendance"],
-    system_setting: ["System Settings", "Thermal Print", "Whatsapp Messaging"],
+        system_setting: ["System Settings", "Thermal Print"],
 };
 
 const sidebarModuleLabels: Record<string, string> = {
@@ -406,6 +406,109 @@ const sidebarModuleLabels: Record<string, string> = {
     system_setting: "System Setting",
 };
 
+const submenuFeatureOverride: Record<string, Record<string, string[]>> = {
+    student_information: {
+        student_details: ["Student"],
+        disabled_students: ["Disable Student"],
+        student_house: ["Student Houses"],
+    },
+    income: {
+        add_income: ["Income"],
+    },
+    expenses: {
+        add_expense: ["Expense"],
+    },
+    attendance: {
+        student_attendance: ["Student / Period Attendance"],
+    },
+    cbse_examination: {
+        exam: ["CBSE Exam"],
+        exam_schedule: ["CBSE Exam Schedule"],
+        print_marksheet: ["CBSE Exam Print Marksheet"],
+        template: ["CBSE Exam Template"],
+        assign_observation: ["CBSE Exam Assign Observation"],
+        reports: ["CBSE Exam Subject Marks Report"],
+        setting: ["CBSE Exam Setting"],
+    },
+    online_examinations: {
+        online_exam: ["Online Examination"],
+    },
+    academics: {
+        promote_students: ["Promote Student"],
+        subjects: ["Subject"],
+        sections: ["Section"],
+    },
+    human_resource: {
+        staff_directory: ["Staff"],
+        payroll: ["Staff Payroll"],
+        leave_type: ["Leave Types"],
+        disabled_staff: ["Disable Staff"],
+    },
+    communicate: {
+        send_email: ["Email"],
+        send_sms: ["SMS"],
+        send_wa: ["Whatsapp Messaging"],
+        email_sms_log: ["Email / SMS Log"],
+    },
+    download_center: {
+        upload_share_content: ["Upload Content"],
+    },
+    homework: {
+        add_homework: ["Homework"],
+    },
+    online_course: {
+        online_course_report: ["Student Course Purchase Report"],
+    },
+    library: {
+        book_list: ["Books List"],
+    },
+    transport: {
+        vehicles: ["Vehicle"],
+    },
+    hostel: {
+        hostel_room: ["Hostel Rooms"],
+    },
+    certificate: {
+        transfer_certificate: ["Download Transfer Certificate"],
+    },
+    multi_branch: {
+        report: ["Daily Collection Report"],
+    },
+    behaviour_records: {
+        assign_incident: ["Behaviour Records Assign Incident"],
+        incidents: ["Behaviour Records Incident"],
+        reports: ["Student Incident Report"],
+        setting: ["Behaviour Records Setting"],
+    },
+    reports: {
+        student_information: ["Student Report"],
+        finance: ["Fees Statement"],
+        attendance: ["Attendance Report"],
+        examinations: ["Online Exam Wise Report"],
+        online_examinations: ["Online Exam Wise Report"],
+        lesson_plan: ["Syllabus Status Report"],
+        human_resource: ["Staff Report"],
+        homework: ["Homework Evaluation Report"],
+        library: ["Book Issue Report"],
+        inventory: ["Stock Report"],
+        transport: ["Transport Report"],
+        hostel: ["Hostel Report"],
+        alumni: ["Alumni Report"],
+    },
+    qr_code_attendance: {},
+    system_setting: {
+        backup_restore: ["Backup"],
+        users: ["User Status"],
+        roles_permissions: [],
+        addons: [],
+        modules: [],
+        captcha_setting: [],
+        student_profile_setting: ["Student Profile Update"],
+        file_types: [],
+        system_update: [],
+    },
+};
+
 const Tooltip = ({ children, content }: { children: React.ReactNode; content: string }) => {
     return (
         <div className="group relative inline-flex items-center justify-center">
@@ -437,13 +540,27 @@ export default function RolesPermissionsPage() {
 
     const [modules, setModules] = useState<any[]>([]);
     const [permissionsMatrix, setPermissionsMatrix] = useState<any>({});
-    const [checkedModules, setCheckedModules] = useState<Set<string>>(new Set());
+    const [checkedPermNames, setCheckedPermNames] = useState<Set<string>>(new Set());
     const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
     const [savingPermissions, setSavingPermissions] = useState(false);
     const [permissionsLoading, setPermissionsLoading] = useState(false);
     const [checkedWidgets, setCheckedWidgets] = useState<Set<string>>(new Set());
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [deleteId, setDeleteId] = useState<number | null>(null);
+
+    const summaryCardWidgets: { key: string; title: string }[] = [
+        { key: "summary_monthly_fees", title: "Monthly Fees Collection" },
+        { key: "summary_monthly_expenses", title: "Monthly Expenses" },
+        { key: "summary_student", title: "Student" },
+        { key: "summary_student_head_count", title: "Student Head Count" },
+        { key: "summary_admin", title: "Admin" },
+        { key: "summary_teacher", title: "Teacher" },
+        { key: "summary_accountant", title: "Accountant" },
+        { key: "summary_librarian", title: "Librarian" },
+        { key: "summary_receptionist", title: "Receptionist" },
+        { key: "summary_super_admin", title: "Super Admin" },
+        { key: "summary_driver", title: "Driver" },
+    ];
 
     const dashboardWidgets: { key: string; title: string; section?: string }[] = [
         { key: "fees_awaiting_payment", title: "Fees Awaiting Payment" },
@@ -454,7 +571,6 @@ export default function RolesPermissionsPage() {
         { key: "student_present_today", title: "Students Present Today" },
         { key: "charts_section", title: "Charts & Graphs", section: "true" },
         { key: "overview_section", title: "Overview Cards", section: "true" },
-        { key: "summary_section", title: "Summary Cards", section: "true" },
     ];
 
     const fetchRoles = useCallback(async (page = 1) => {
@@ -531,6 +647,32 @@ export default function RolesPermissionsPage() {
         return names;
     }, [permissionsMatrix]);
 
+    const buildSubmenuPermNames = useCallback((modKey: string, subName: string): string[] => {
+        const override = submenuFeatureOverride[modKey]?.[subName];
+        const featureLabels = override ?? (() => {
+            const label = subName
+                .split('_')
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(' ');
+            return [label];
+        })();
+        if (featureLabels.length === 0) return [];
+        const permModuleNames = modulePermissionMap[modKey] || [];
+        const names: string[] = [];
+        for (const permModule of permModuleNames) {
+            const features = permissionsMatrix[permModule];
+            if (!features) continue;
+            for (const [featureKey, perms] of Object.entries(features)) {
+                if (featureLabels.some(fl => featureKey.toLowerCase() === fl.toLowerCase())) {
+                    for (const p of perms as any) {
+                        names.push(p.name);
+                    }
+                }
+            }
+        }
+        return names;
+    }, [permissionsMatrix]);
+
     const loadRolePermissions = useCallback(async (roleId: number) => {
         setPermissionsLoading(true);
         try {
@@ -540,30 +682,22 @@ export default function RolesPermissionsPage() {
                 api.get(`/roles/${roleId}/dashboard-widgets`),
             ]);
             setEditingRole(roleRes.data.data);
-            const rolePermNames = new Set(permsRes.data.data || []);
-            const checked = new Set<string>();
-            for (const modKey of moduleKeys) {
-                const permNames = buildAllPermNames(modKey);
-                if (permNames.length > 0 && permNames.every(n => rolePermNames.has(n))) {
-                    checked.add(modKey);
-                }
-            }
-            setCheckedModules(checked);
+            setCheckedPermNames(new Set(permsRes.data.data || []));
             setCheckedWidgets(new Set(widgetRes.data.data || []));
         } catch (error) {
             console.error("Failed to load role permissions:", error);
-            setCheckedModules(new Set());
+            setCheckedPermNames(new Set());
             setCheckedWidgets(new Set());
         } finally {
             setPermissionsLoading(false);
         }
-    }, [moduleKeys, buildAllPermNames]);
+    }, []);
 
     const handleEdit = (role: any) => {
         if (role.name === 'Super Admin') return;
         setRoleName(role.name);
         setExpandedModules(new Set());
-        setCheckedModules(new Set());
+        setCheckedPermNames(new Set());
         setCheckedWidgets(new Set());
         loadRolePermissions(role.id);
     };
@@ -571,7 +705,7 @@ export default function RolesPermissionsPage() {
     const handleCancel = () => {
         setEditingRole(null);
         setRoleName("");
-        setCheckedModules(new Set());
+        setCheckedPermNames(new Set());
         setExpandedModules(new Set());
         setCheckedWidgets(new Set());
     };
@@ -603,13 +737,7 @@ export default function RolesPermissionsPage() {
         if (!editingRole) return;
         setSavingPermissions(true);
         try {
-            const permNames: string[] = [];
-            for (const modKey of moduleKeys) {
-                if (checkedModules.has(modKey)) {
-                    permNames.push(...buildAllPermNames(modKey));
-                }
-            }
-            const uniqueNames = [...new Set(permNames)];
+            const uniqueNames = [...new Set(checkedPermNames)];
             const [permRes] = await Promise.all([
                 api.put(`/roles/${editingRole.id}/permissions`, {
                     permissions: uniqueNames
@@ -659,13 +787,44 @@ export default function RolesPermissionsPage() {
         });
     };
 
+    const getModuleCheckState = (modKey: string): boolean | "indeterminate" => {
+        const permNames = buildAllPermNames(modKey);
+        if (permNames.length === 0) return false;
+        const checkedCount = permNames.filter(n => checkedPermNames.has(n)).length;
+        if (checkedCount === 0) return false;
+        if (checkedCount === permNames.length) return true;
+        return "indeterminate";
+    };
+
+    const isSubmenuChecked = (modKey: string, subName: string): boolean => {
+        const permNames = buildSubmenuPermNames(modKey, subName);
+        if (permNames.length === 0) return false;
+        return permNames.every(n => checkedPermNames.has(n));
+    };
+
     const toggleModule = (modKey: string) => {
-        setCheckedModules(prev => {
+        const permNames = buildAllPermNames(modKey);
+        setCheckedPermNames(prev => {
             const next = new Set(prev);
-            if (next.has(modKey)) {
-                next.delete(modKey);
+            const allChecked = permNames.every(n => next.has(n));
+            if (allChecked) {
+                for (const n of permNames) next.delete(n);
             } else {
-                next.add(modKey);
+                for (const n of permNames) next.add(n);
+            }
+            return next;
+        });
+    };
+
+    const toggleSubmenu = (modKey: string, subName: string) => {
+        const permNames = buildSubmenuPermNames(modKey, subName);
+        setCheckedPermNames(prev => {
+            const next = new Set(prev);
+            const allChecked = permNames.every(n => next.has(n));
+            if (allChecked) {
+                for (const n of permNames) next.delete(n);
+            } else {
+                for (const n of permNames) next.add(n);
             }
             return next;
         });
@@ -679,8 +838,6 @@ export default function RolesPermissionsPage() {
             return next;
         });
     };
-
-    const isModuleFullyChecked = (modKey: string) => checkedModules.has(modKey);
 
     const toggleColumn = (column: keyof typeof visibleColumns) => {
         setVisibleColumns(prev => ({
@@ -839,6 +996,40 @@ export default function RolesPermissionsPage() {
                                             </div>
                                         ))}
                                     </div>
+                                    <div className="border-t border-gray-100 my-2" />
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2 px-3 py-1.5">
+                                            <Checkbox
+                                                checked={summaryCardWidgets.every(c => checkedWidgets.has(c.key))}
+                                                onCheckedChange={() => {
+                                                    const allChecked = summaryCardWidgets.every(c => checkedWidgets.has(c.key));
+                                                    setCheckedWidgets(prev => {
+                                                        const next = new Set(prev);
+                                                        for (const c of summaryCardWidgets) {
+                                                            if (allChecked) next.delete(c.key);
+                                                            else next.add(c.key);
+                                                        }
+                                                        return next;
+                                                    });
+                                                }}
+                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
+                                            />
+                                            <span className="text-[11px] font-medium text-indigo-600">Summary Cards</span>
+                                        </div>
+                                        <div className="ml-6 space-y-0.5 border-l-2 border-indigo-100 pl-3">
+                                            {summaryCardWidgets.map((c) => (
+                                                <div key={c.key} className="flex items-center gap-2 py-0.5">
+                                                    <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
+                                                    <Checkbox
+                                                        checked={checkedWidgets.has(c.key)}
+                                                        onCheckedChange={() => toggleWidget(c.key)}
+                                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-3.5 w-3.5 rounded"
+                                                    />
+                                                    <span className={`text-[11px] ${checkedWidgets.has(c.key) ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>{c.title}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                             {permissionsLoading ? (
@@ -849,9 +1040,14 @@ export default function RolesPermissionsPage() {
                             ) : moduleKeys.map((modKey) => {
                                 const subs = moduleSubmenus[modKey] || [];
                                 const label = sidebarModuleLabels[modKey] || modKey.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
-                                const checked = isModuleFullyChecked(modKey);
+                                const checkState = getModuleCheckState(modKey);
                                 const hasSubs = subs.length > 0;
                                 const expanded = expandedModules.has(modKey);
+                                const hasPartial = hasSubs && subs.some(s => {
+                                    const pn = buildSubmenuPermNames(modKey, s.name);
+                                    return pn.length > 0 && pn.some(n => checkedPermNames.has(n));
+                                });
+                                const showExpanded = expanded || hasPartial;
 
                                 return (
                                     <div key={modKey} className="border border-gray-100 rounded-md mb-1">
@@ -862,7 +1058,7 @@ export default function RolesPermissionsPage() {
                                                     onClick={() => toggleExpand(modKey)}
                                                     className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
                                                 >
-                                                    {expanded ? (
+                                                    {showExpanded ? (
                                                         <ChevronDown className="h-3.5 w-3.5" />
                                                     ) : (
                                                         <ChevronRightIcon className="h-3.5 w-3.5" />
@@ -871,21 +1067,29 @@ export default function RolesPermissionsPage() {
                                             )}
                                             {!hasSubs && <div className="w-3.5 flex-shrink-0" />}
                                             <Checkbox
-                                                checked={checked}
+                                                checked={checkState}
                                                 onCheckedChange={() => toggleModule(modKey)}
                                                 className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
                                             />
                                             <span className="text-[12px] font-medium text-gray-700">{label}</span>
                                         </div>
 
-                                        {hasSubs && expanded && (
+                                        {hasSubs && showExpanded && (
                                             <div className="ml-8 pb-2 space-y-0.5 border-l-2 border-indigo-100 pl-3">
-                                                {subs.map((sub) => (
-                                                    <div key={sub.name} className="flex items-center gap-2 py-0.5">
-                                                        <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
-                                                        <span className="text-[11px] text-gray-500">{sub.label}</span>
-                                                    </div>
-                                                ))}
+                                                {subs.map((sub) => {
+                                                    const subChecked = isSubmenuChecked(modKey, sub.name);
+                                                    return (
+                                                        <div key={sub.name} className="flex items-center gap-2 py-0.5">
+                                                            <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
+                                                            <Checkbox
+                                                                checked={subChecked}
+                                                                onCheckedChange={() => toggleSubmenu(modKey, sub.name)}
+                                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-3.5 w-3.5 rounded"
+                                                            />
+                                                            <span className={`text-[11px] ${subChecked ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>{sub.label}</span>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
