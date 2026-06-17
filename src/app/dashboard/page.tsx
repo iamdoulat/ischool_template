@@ -101,7 +101,7 @@ export default function DashboardPage() {
         { key: "student_present_today", title: "Student Present Today", current: stats.studentsPresentToday.current, total: stats.studentsPresentToday.total, percentage: stats.studentsPresentToday.percentage, icon: Users, color: "yellow" },
     ];
 
-    const summaryCardDefs: { key: string; title: string; icon: any; color: string; getValue: () => any }[] = [
+    const summaryCardDefs: { key: string; title: string; icon: any; color: "blue" | "red" | "purple" | "primary" | "cyan" | "indigo" | "orange" | "yellow" | "emerald" | "rose"; getValue: () => any }[] = [
         { key: "summary_monthly_fees", title: "Monthly Fees Collection", icon: DollarSign, color: "emerald", getValue: () => summary.monthlyFees },
         { key: "summary_monthly_expenses", title: "Monthly Expenses", icon: Receipt, color: "red", getValue: () => summary.monthlyExpenses },
         { key: "summary_student", title: "Student", icon: UsersRound, color: "blue", getValue: () => summary.studentCount },
