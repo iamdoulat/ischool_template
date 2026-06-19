@@ -222,6 +222,15 @@ export default function GeneralSettingPage() {
         roll_no_digit: 4,
         roll_no_start_from: "",
 
+        auto_username: false,
+        username_prefix: "",
+        username_digit: 4,
+        username_start_from: "",
+        auto_parent_username: false,
+        parent_username_prefix: "",
+        parent_username_digit: 4,
+        parent_username_start_from: "",
+
         // Income Invoice
         income_invoice_enable_auto_generation: false,
         income_invoice_prefix: "",
@@ -1809,6 +1818,56 @@ export default function GeneralSettingPage() {
                             </div>
                         </div>
 
+                        {/* Username Auto Generation */}
+                        <div className="space-y-4 pt-4 border-t border-gray-50">
+                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">Username Auto Generation</h3>
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="flex items-center justify-between max-w-sm">
+                                    <Label className="text-[11px] font-medium text-gray-600">Auto Username</Label>
+                                    <Switch
+                                        checked={formData.auto_username}
+                                        onCheckedChange={(checked) => handleChange('auto_username', checked)}
+                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Username Prefix <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.username_prefix}
+                                            onChange={(e) => handleChange('username_prefix', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-[11px]"
+                                            placeholder="std_"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Username Digit <span className="text-red-500">*</span></Label>
+                                        <Select
+                                            value={String(formData.username_digit)}
+                                            onValueChange={(value) => handleChange('username_digit', parseInt(value))}
+                                        >
+                                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="4">4</SelectItem>
+                                                <SelectItem value="5">5</SelectItem>
+                                                <SelectItem value="6">6</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Username Start From <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.username_start_from}
+                                            onChange={(e) => handleChange('username_start_from', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-[11px]"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Income Invoice */}
                         <div className="space-y-4 pt-4 border-t border-gray-50">
                             <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">Income Invoice Auto Generation</h3>
@@ -1852,6 +1911,56 @@ export default function GeneralSettingPage() {
                                         <Input
                                             value={formData.income_invoice_start_from}
                                             onChange={(e) => handleChange('income_invoice_start_from', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-[11px]"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Parent Username Auto Generation */}
+                        <div className="space-y-4 pt-4 border-t border-gray-50">
+                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">Parent Username Auto Generation</h3>
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="flex items-center justify-between max-w-sm">
+                                    <Label className="text-[11px] font-medium text-gray-600">Auto Parent Username</Label>
+                                    <Switch
+                                        checked={formData.auto_parent_username}
+                                        onCheckedChange={(checked) => handleChange('auto_parent_username', checked)}
+                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Parent Username Prefix <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.parent_username_prefix}
+                                            onChange={(e) => handleChange('parent_username_prefix', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-[11px]"
+                                            placeholder="par_"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Parent Username Digit <span className="text-red-500">*</span></Label>
+                                        <Select
+                                            value={String(formData.parent_username_digit)}
+                                            onValueChange={(value) => handleChange('parent_username_digit', parseInt(value))}
+                                        >
+                                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="4">4</SelectItem>
+                                                <SelectItem value="5">5</SelectItem>
+                                                <SelectItem value="6">6</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-medium text-gray-600">Parent Username Start From <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.parent_username_start_from}
+                                            onChange={(e) => handleChange('parent_username_start_from', e.target.value)}
                                             className="h-8 border-gray-200 shadow-none rounded text-[11px]"
                                         />
                                     </div>

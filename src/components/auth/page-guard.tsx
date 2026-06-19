@@ -17,7 +17,15 @@ export function PageGuard({ children }: { children: React.ReactNode }) {
       try {
         const res = await api.get("/profile");
         const user = res.data.data;
+        const role: string = user?.role || "";
         const permissions: string[] = user?.permissions || [];
+
+        // Allow Student/Parent to access user portal routes
+        if (pathname.startsWith("/user/") && (role === "Student" || role === "Parent")) {
+          setIsAuthorized(true);
+          return;
+        }
+
         setIsAuthorized(checkPageAccess(pathname, permissions));
       } catch {
         setIsAuthorized(false);

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /Users/dev/workspace-0255cede/ 2>/dev/null; echo \"---PWD---\"; pwd)",
+      "Read(//Users/dev/**)",
+      "Bash(cd /k/flyenv_folder/iSchool/backend)",
+      "Bash(grep -A20 '\"scripts\"' composer.json)",
+      "Bash(ls routes/api/v1)",
+      "Bash(npx next *)",
+      "Bash(php -l app/Http/Controllers/Api/v1/UserPortalController.php)",
+      "Bash(npm run *)",
+      "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" -l \"/k/flyenv_folder/iSchool/backend/app/Http/Controllers/Api/v1/UserPortalController.php\")",
+      "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan tinker --execute=\"echo Laravel\\\\Sanctum\\\\PersonalAccessToken::where\\('name','probe'\\)->delete\\(\\);\")"
+    ]
+  }
+}

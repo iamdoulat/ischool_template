@@ -185,6 +185,37 @@ export const handlers = [
     })
   }),
 
+  // Academics Classes endpoint (used by User management modals)
+  http.get('/api/v1/academics/classes', () => {
+    return HttpResponse.json({
+      success: true,
+      data: [
+        { id: 1, name: 'Class 1', sections: [{ id: 1, name: 'A' }, { id: 2, name: 'B' }] },
+        { id: 2, name: 'Class 2', sections: [{ id: 3, name: 'A' }, { id: 4, name: 'B' }] },
+        { id: 3, name: 'Class 3', sections: [{ id: 5, name: 'A' }, { id: 6, name: 'B' }] },
+        { id: 4, name: 'Class 4', sections: [{ id: 7, name: 'A' }, { id: 8, name: 'B' }] },
+        { id: 5, name: 'Class 5', sections: [{ id: 9, name: 'A' }, { id: 10, name: 'B' }] },
+      ]
+    })
+  }),
+
+  // Academics Sections endpoint
+  http.get('/api/v1/academics/sections', ({ request }) => {
+    const url = new URL(request.url);
+    const classId = url.searchParams.get('school_class_id');
+    const allSections: Record<string, { id: number; name: string }[]> = {
+      '1': [{ id: 1, name: 'A' }, { id: 2, name: 'B' }],
+      '2': [{ id: 3, name: 'A' }, { id: 4, name: 'B' }],
+      '3': [{ id: 5, name: 'A' }, { id: 6, name: 'B' }],
+      '4': [{ id: 7, name: 'A' }, { id: 8, name: 'B' }],
+      '5': [{ id: 9, name: 'A' }, { id: 10, name: 'B' }],
+    };
+    return HttpResponse.json({
+      success: true,
+      data: (classId && allSections[classId]) || []
+    })
+  }),
+
   // Student categories
   http.get('/api/v1/student-categories', () => {
     return HttpResponse.json({
@@ -274,6 +305,39 @@ export const handlers = [
       data: {
         auto_enabled: true,
         admission_no: 'ADM2026001'
+      }
+    })
+  }),
+
+  // Generate username
+  http.get('/api/v1/students/generate-username', () => {
+    return HttpResponse.json({
+      success: true,
+      data: {
+        auto_enabled: true,
+        username: 'STU0001'
+      }
+    })
+  }),
+
+  // Matching parent username for a selected student
+  http.get('/api/v1/students/:id/matching-parent-username', ({ params }) => {
+    const studentId = params.id;
+    return HttpResponse.json({
+      success: true,
+      data: {
+        parent_username: `PAR${String(studentId).padStart(4, '0')}`,
+      }
+    })
+  }),
+
+  // Generate parent username
+  http.get('/api/v1/system-setting/users/generate-parent-username', () => {
+    return HttpResponse.json({
+      success: true,
+      data: {
+        auto_enabled: true,
+        username: 'PAR0001'
       }
     })
   }),
@@ -562,6 +626,37 @@ export const handlers = [
         },
       ],
     });
+  }),
+
+  // Students endpoint (used by User management modals)
+  http.get('/api/v1/students', ({ request }) => {
+    const url = new URL(request.url);
+    const classId = url.searchParams.get('school_class_id');
+    const sectionId = url.searchParams.get('section_id');
+
+    const allStudents = [
+      { id: 1, admission_no: 'ADM2026001', name: 'Sneha', last_name: 'Patel', school_class_id: 1, section_id: 1 },
+      { id: 2, admission_no: 'ADM2026002', name: 'Rahul', last_name: 'Sharma', school_class_id: 1, section_id: 1 },
+      { id: 3, admission_no: 'ADM2026003', name: 'Priya', last_name: 'Singh', school_class_id: 1, section_id: 2 },
+      { id: 4, admission_no: 'ADM2026004', name: 'Amit', last_name: 'Kumar', school_class_id: 1, section_id: 1 },
+      { id: 5, admission_no: 'ADM2026005', name: 'Kavya', last_name: 'Reddy', school_class_id: 2, section_id: 4 },
+      { id: 6, admission_no: 'ADM2026006', name: 'Arjun', last_name: 'Mehta', school_class_id: 2, section_id: 4 },
+    ];
+
+    const filtered = allStudents.filter(s =>
+      (!classId   || String(s.school_class_id) === classId) &&
+      (!sectionId || String(s.section_id) === sectionId)
+    );
+
+    return HttpResponse.json({
+      success: true,
+      data: {
+        data: filtered,
+        current_page: 1,
+        last_page: 1,
+        total: filtered.length,
+      }
+    })
   }),
 
   // Students list by class & section

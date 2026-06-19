@@ -36,13 +36,18 @@ export default function LoginPage() {
 
         try {
             const response = await api.post("/login", { email_or_username: emailOrUsername, password });
-            const { access_token } = response.data.data;
+            const { access_token, user } = response.data.data;
 
             // Store token
             localStorage.setItem("auth_token", access_token);
 
-            // Redirect to dashboard
-            router.push("/dashboard");
+            // Redirect based on role
+            const userRole = user?.role || "";
+            if (userRole === "Student" || userRole === "Parent") {
+                router.push("/user/dashboard");
+            } else {
+                router.push("/dashboard");
+            }
         } catch (err: any) {
             console.error("Login attempt failed:", err);
             setError(

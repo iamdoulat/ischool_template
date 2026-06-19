@@ -21,7 +21,8 @@ import {
     Percent,
     Check,
     Plus,
-    X
+    X,
+    RefreshCw
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -69,10 +70,13 @@ export default function StudentEditPage() {
     const [formData, setFormData] = useState<{ [key: string]: any }>({
         admission_no: "",
         roll_no: "",
+        username: "",
+        parent_username: "",
         school_class_id: "",
         section_id: "",
         name: "", 
         last_name: "",
+        full_name: "",
         gender: "",
         dob: "",
         category: "",
@@ -131,6 +135,41 @@ export default function StudentEditPage() {
     }, [feeGroups, formData.school_class_id]);
 
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [autoUsernameEnabled, setAutoUsernameEnabled] = useState(false);
+    const [parentAutoUsernameEnabled, setParentAutoUsernameEnabled] = useState(false);
+    const [generatingParentUsername, setGeneratingParentUsername] = useState(false);
+
+    const handleGenerateUsername = async () => {
+        try {
+            const response = await api.get("/students/generate-username");
+            if (response.data.data?.auto_enabled) {
+                setAutoUsernameEnabled(true);
+                setParentAutoUsernameEnabled(true);
+                setFormData(prev => ({ ...prev, username: response.data.data.username, parent_username: response.data.data.parent_username }));
+            } else {
+                setAutoUsernameEnabled(false);
+            }
+        } catch (error) {
+            console.error("Error generating username:", error);
+        }
+    };
+
+    const fetchParentUsername = async () => {
+        setGeneratingParentUsername(true);
+        try {
+            const response = await api.get("/system-setting/users/generate-parent-username");
+            if (response.data.data?.auto_enabled) {
+                setParentAutoUsernameEnabled(true);
+                setFormData(prev => ({ ...prev, parent_username: response.data.data.username }));
+            } else {
+                setParentAutoUsernameEnabled(false);
+            }
+        } catch (error) {
+            console.error("Error fetching parent username:", error);
+        } finally {
+            setGeneratingParentUsername(false);
+        }
+    };
 
     useEffect(() => {
         const fetchAll = async () => {
@@ -185,10 +224,12 @@ export default function StudentEditPage() {
             setFormData({
                 admission_no: student.admission_no || "",
                 roll_no: student.roll_no || "",
+                username: student.username || "",
                 school_class_id: student.school_class_id?.toString() || "",
                 section_id: student.section_id?.toString() || "",
                 name: student.name || "",
                 last_name: student.last_name || "",
+                full_name: student.full_name || `${student.name || ''} ${student.last_name || ''}`.trim(),
                 gender: student.gender || "",
                 dob: student.dob ? student.dob.split('T')[0] : "",
                 category: student.category || "",
@@ -214,6 +255,7 @@ export default function StudentEditPage() {
                 guardian_relation: student.guardian_relation || "",
                 guardian_phone: student.guardian_phone || "",
                 guardian_email: student.guardian_email || "",
+                parent_username: student.parent_username || "",
                 guardian_occupation: student.guardian_occupation || "",
                 guardian_address: student.guardian_address || "",
                 active: student.active ?? true,
@@ -237,6 +279,19 @@ export default function StudentEditPage() {
                 permanent_address: student.permanent_address || "",
                 rte: student.rte || "No",
             });
+
+            // Auto-generate username if student has none and auto mode is enabled
+            if (!student.username) {
+                try {
+                    const usernameRes = await api.get("/students/generate-username");
+                    if (usernameRes.data.data?.auto_enabled) {
+                        setAutoUsernameEnabled(true);
+                        setFormData(prev => ({ ...prev, username: usernameRes.data.data.username, parent_username: usernameRes.data.data.parent_username }));
+                    }
+                } catch (err) {
+                    console.error("Error fetching auto username:", err);
+                }
+            }
 
             if (student.avatar) {
                 setAvatarPreview(getImageUrl(student.avatar));
@@ -365,6 +420,10 @@ export default function StudentEditPage() {
                 newData.guardian_phone = newData.mother_phone;
             }
 
+            if (field === "name" || field === "last_name") {
+                newData.full_name = `${newData.name} ${newData.last_name}`.trim();
+            }
+
             if (field === "avatar" && value instanceof File) {
                 const reader = new FileReader();
                 reader.onloadend = () => {
@@ -469,6 +528,17 @@ export default function StudentEditPage() {
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
                             <InputField label="Admission No" required value={formData.admission_no} onChange={(val) => handleChange("admission_no", val)} />
                             <InputField label="Roll Number" value={formData.roll_no} onChange={(val) => handleChange("roll_no", val)} />
+                            <div className="relative">
+                                <InputField label="Username" value={formData.username || ""} onChange={(val) => handleChange("username", val)} readOnly={autoUsernameEnabled} helperText={autoUsernameEnabled ? "Auto-generated" : ""} />
+                                <button
+                                    type="button"
+                                    onClick={handleGenerateUsername}
+                                    className="absolute right-1 top-6 h-6 w-6 flex items-center justify-center rounded hover:bg-indigo-50 text-indigo-500 transition-colors"
+                                    title="Generate Username"
+                                >
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
                             <SelectField
                                 label="Class"
                                 required
@@ -485,6 +555,7 @@ export default function StudentEditPage() {
                             />
                             <InputField label="First Name" required value={formData.name} onChange={(val) => handleChange("name", val)} />
                             <InputField label="Last Name" value={formData.last_name} onChange={(val) => handleChange("last_name", val)} />
+                            <InputField label="Student Full Name" value={formData.full_name || ""} onChange={(val) => handleChange("full_name", val)} readOnly />
                         </div>
 
                         <SelectField
@@ -755,17 +826,27 @@ export default function StudentEditPage() {
                             <InputField label="Guardian Relation" required value={formData.guardian_relation} onChange={(val) => handleChange("guardian_relation", val)} />
                         )}
                         <InputField label="Guardian Email" value={formData.guardian_email} onChange={(val) => handleChange("guardian_email", val)} />
+                        <div className="relative">
+                            <InputField label="Parent Username" value={formData.parent_username || ""} onChange={(val) => handleChange("parent_username", val)} readOnly={parentAutoUsernameEnabled} helperText={parentAutoUsernameEnabled ? "Auto-generated" : ""} />
+                            <button
+                                type="button"
+                                onClick={fetchParentUsername}
+                                disabled={generatingParentUsername}
+                                className="absolute right-1 top-6 h-6 w-6 flex items-center justify-center rounded hover:bg-indigo-50 text-indigo-500 transition-colors"
+                                title="Generate parent username"
+                            >
+                                <RefreshCw className={`h-3.5 w-3.5 ${generatingParentUsername ? 'animate-spin' : ''}`} />
+                            </button>
+                        </div>
+
+                        <InputField label="Guardian Phone" required value={formData.guardian_phone} onChange={(val) => handleChange("guardian_phone", val)} />
+                        <InputField label="Guardian Occupation" value={formData.guardian_occupation} onChange={(val) => handleChange("guardian_occupation", val)} />
                         <FileUploadField
                             label="Guardian Photo (100px X 100px)"
                             value={formData.guardian_photo}
                             onChange={(file) => handleChange("guardian_photo", file)}
                         />
-
-                        <InputField label="Guardian Phone" required value={formData.guardian_phone} onChange={(val) => handleChange("guardian_phone", val)} />
-                        <InputField label="Guardian Occupation" value={formData.guardian_occupation} onChange={(val) => handleChange("guardian_occupation", val)} />
-                        <div className="lg:col-span-2">
-                            <TextAreaField label="Guardian Address" rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
-                        </div>
+                        <TextAreaField label="Guardian Address" rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
                     </div>
                     <div className="mt-6 pt-4 border-t border-muted/30">
                         <button 
@@ -976,7 +1057,7 @@ function DateField({ label, required, value = "", onChange }: { label: string, r
     );
 }
 
-function InputField({ label, required, type = "text", value = "", onChange, readOnly = false }: { label: string, required?: boolean, type?: string, value?: string, onChange: (val: string) => void, readOnly?: boolean }) {
+function InputField({ label, required, type = "text", value = "", onChange, placeholder = "", readOnly = false, helperText = "" }: { label: string, required?: boolean, type?: string, value?: string, onChange: (val: string) => void, placeholder?: string, readOnly?: boolean, helperText?: string }) {
     return (
         <div className="space-y-2 group">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
@@ -986,6 +1067,7 @@ function InputField({ label, required, type = "text", value = "", onChange, read
                 type={type}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
                 className={cn(
                     "h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all",
                     readOnly && "bg-muted/60 cursor-not-allowed text-muted-foreground"
@@ -993,6 +1075,7 @@ function InputField({ label, required, type = "text", value = "", onChange, read
                 required={required}
                 readOnly={readOnly}
             />
+            {helperText && <p className="text-[10px] text-indigo-500 font-medium ml-1">{helperText}</p>}
         </div>
     );
 }

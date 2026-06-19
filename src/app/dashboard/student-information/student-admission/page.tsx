@@ -24,7 +24,8 @@ import {
     Loader2,
     Percent,
     Check,
-    X
+    X,
+    RefreshCw
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -66,10 +67,13 @@ export default function StudentAdmissionPage() {
     const [formData, setFormData] = useState<{ [key: string]: any }>({
         admission_no: "",
         roll_no: "",
+        username: "",
+        parent_username: "",
         school_class_id: "",
         section_id: "",
         name: "", // First Name
         last_name: "",
+        full_name: "",
         gender: "",
         dob: "",
         category: "",
@@ -118,10 +122,14 @@ export default function StudentAdmissionPage() {
 
     const [autoAdmissionEnabled, setAutoAdmissionEnabled] = useState(false);
     const [autoRollEnabled, setAutoRollEnabled] = useState(false);
+    const [autoUsernameEnabled, setAutoUsernameEnabled] = useState(false);
+    const [parentAutoUsernameEnabled, setParentAutoUsernameEnabled] = useState(false);
+    const [generatingParentUsername, setGeneratingParentUsername] = useState(false);
 
     useEffect(() => {
         fetchPrerequisites();
         fetchAdmissionNo();
+        fetchUsername();
     }, []);
 
     const fetchAdmissionNo = async () => {
@@ -148,6 +156,38 @@ export default function StudentAdmissionPage() {
             }
         } catch (error) {
             console.error("Error fetching roll no:", error);
+        }
+    };
+
+    const fetchUsername = async () => {
+        try {
+            const response = await api.get("/students/generate-username");
+            if (response.data.data?.auto_enabled) {
+                setAutoUsernameEnabled(true);
+                setParentAutoUsernameEnabled(true);
+                setFormData(prev => ({ ...prev, username: response.data.data.username, parent_username: response.data.data.parent_username }));
+            } else {
+                setAutoUsernameEnabled(false);
+            }
+        } catch (error) {
+            console.error("Error fetching username:", error);
+        }
+    };
+
+    const fetchParentUsername = async () => {
+        setGeneratingParentUsername(true);
+        try {
+            const response = await api.get("/system-setting/users/generate-parent-username");
+            if (response.data.data?.auto_enabled) {
+                setParentAutoUsernameEnabled(true);
+                setFormData(prev => ({ ...prev, parent_username: response.data.data.username }));
+            } else {
+                setParentAutoUsernameEnabled(false);
+            }
+        } catch (error) {
+            console.error("Error fetching parent username:", error);
+        } finally {
+            setGeneratingParentUsername(false);
         }
     };
 
@@ -322,6 +362,10 @@ export default function StudentAdmissionPage() {
                 }
             }
 
+            if (field === "name" || field === "last_name") {
+                newData.full_name = `${newData.name} ${newData.last_name}`.trim();
+            }
+
             return newData;
         });
     };
@@ -400,6 +444,17 @@ export default function StudentAdmissionPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <InputField label="Admission No" required value={formData.admission_no} onChange={(val) => handleChange("admission_no", val)} readOnly={autoAdmissionEnabled} helperText={autoAdmissionEnabled ? "Auto-generated" : ""} />
                         <InputField label="Roll Number" value={formData.roll_no} onChange={(val) => handleChange("roll_no", val)} readOnly={autoRollEnabled} helperText={autoRollEnabled ? "Auto-generated" : ""} />
+                        <div className="relative">
+                            <InputField label="Username" value={formData.username || ""} onChange={(val) => handleChange("username", val)} readOnly={autoUsernameEnabled} helperText={autoUsernameEnabled ? "Auto-generated" : ""} />
+                            <button
+                                type="button"
+                                onClick={fetchUsername}
+                                className="absolute right-1 top-6 h-6 w-6 flex items-center justify-center rounded hover:bg-indigo-50 text-indigo-500 transition-colors"
+                                title="Generate Username"
+                            >
+                                <RefreshCw className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
                         <SelectField
                             label="Class"
                             required
@@ -417,6 +472,7 @@ export default function StudentAdmissionPage() {
 
                         <InputField label="First Name" required value={formData.name} onChange={(val) => handleChange("name", val)} />
                         <InputField label="Last Name" value={formData.last_name} onChange={(val) => handleChange("last_name", val)} />
+                        <InputField label="Student Full Name" value={formData.full_name || ""} onChange={(val) => handleChange("full_name", val)} readOnly />
                         <SelectField
                             label="Gender"
                             required
@@ -677,17 +733,27 @@ export default function StudentAdmissionPage() {
                             <InputField label="Guardian Relation" required value={formData.guardian_relation} onChange={(val) => handleChange("guardian_relation", val)} />
                         )}
                         <InputField label="Guardian Email" value={formData.guardian_email} onChange={(val) => handleChange("guardian_email", val)} />
+                        <div className="relative">
+                            <InputField label="Parent Username" value={formData.parent_username || ""} onChange={(val) => handleChange("parent_username", val)} readOnly={parentAutoUsernameEnabled} helperText={parentAutoUsernameEnabled ? "Auto-generated" : ""} />
+                            <button
+                                type="button"
+                                onClick={fetchParentUsername}
+                                disabled={generatingParentUsername}
+                                className="absolute right-1 top-6 h-6 w-6 flex items-center justify-center rounded hover:bg-indigo-50 text-indigo-500 transition-colors"
+                                title="Generate parent username"
+                            >
+                                <RefreshCw className={`h-3.5 w-3.5 ${generatingParentUsername ? 'animate-spin' : ''}`} />
+                            </button>
+                        </div>
+
+                        <InputField label="Guardian Phone" required value={formData.guardian_phone} onChange={(val) => handleChange("guardian_phone", val)} />
+                        <InputField label="Guardian Occupation" value={formData.guardian_occupation} onChange={(val) => handleChange("guardian_occupation", val)} />
                         <FileUploadField
                             label="Guardian Photo (100px X 100px)"
                             value={formData.guardian_photo}
                             onChange={(file) => handleChange("guardian_photo", file)}
                         />
-
-                        <InputField label="Guardian Phone" required value={formData.guardian_phone} onChange={(val) => handleChange("guardian_phone", val)} />
-                        <InputField label="Guardian Occupation" value={formData.guardian_occupation} onChange={(val) => handleChange("guardian_occupation", val)} />
-                        <div className="lg:col-span-2">
-                            <TextAreaField label="Guardian Address" rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
-                        </div>
+                        <TextAreaField label="Guardian Address" rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
                     </div>
                     <div className="mt-6 pt-4 border-t border-muted/30">
                         <button 
