@@ -75,7 +75,17 @@ const formatLabel = (name: string) => {
         .replace(/\bSetting\b/g, 'Settings');
 };
 
-const menuItems = [
+type MenuItem = {
+    name: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    href: string;
+    color: string;
+    badge?: boolean;
+    submenus: { name: string; href: string; label?: string }[];
+};
+
+const menuItems: { group: string; items: MenuItem[] }[] = [
     {
         group: "main", items: [
             { name: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/user/dashboard", submenus: [], color: "amber" }
@@ -117,7 +127,7 @@ const menuItems = [
                     { name: "exam_result", href: "/user/examinations/exam-result" }
                 ]
             },
-            { name: "notice_board", label: "Notice Board", icon: MessageSquare, href: "/user/notice-board", submenus: [], color: "sky" },
+            { name: "notice_board", label: "Notice Board", icon: MessageSquare, href: "/user/notice-board", submenus: [], color: "sky", badge: true },
             { name: "teachers_reviews", label: "Teachers Reviews", icon: Users, href: "/user/teachers-reviews", submenus: [], color: "blue" },
             {
                 name: "library", label: "Library", icon: Library, href: "#", color: "emerald",
