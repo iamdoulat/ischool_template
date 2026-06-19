@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Table,
     TableBody,
@@ -18,158 +18,380 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-    Search, ChevronLeft, ChevronRight,
-    ArrowUpDown, Copy, FileSpreadsheet,
-    FileBox, Printer, Columns, Plus, Pencil, X
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+    ChevronLeft, ChevronRight, Plus, X, Loader2, Search,
+    Copy, FileSpreadsheet, FileDown, Printer, Eye, CalendarCheck,
+    Calendar, CalendarDays, Clock, MessageSquare, Trash2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
+import api from "@/lib/api";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-const leavesData = [
-    { id: 1, class: "Class 1", section: "A", applyDate: "04/01/2026", fromDate: "04/16/2026", toDate: "04/17/2026", reason: "sick", status: "Pending" },
-    { id: 2, class: "Class 1", section: "A", applyDate: "04/01/2026", fromDate: "04/03/2026", toDate: "04/04/2026", reason: "emergency", status: "Pending" },
-    { id: 3, class: "Class 1", section: "A", applyDate: "04/02/2026", fromDate: "04/03/2026", toDate: "04/04/2026", reason: "SICK", status: "Approved (04/02/2026)" },
-    { id: 4, class: "Class 1", section: "A", applyDate: "05/01/2026", fromDate: "05/05/2026", toDate: "05/09/2026", reason: "sick", status: "Pending" },
-    { id: 5, class: "Class 1", section: "A", applyDate: "05/01/2026", fromDate: "05/15/2026", toDate: "05/19/2026", reason: "", status: "Pending" },
-    { id: 6, class: "Class 1", section: "A", applyDate: "05/01/2026", fromDate: "05/05/2026", toDate: "05/07/2026", reason: "", status: "Approved (05/01/2026)" },
-    { id: 7, class: "Class 1", section: "A", applyDate: "05/06/2026", fromDate: "05/14/2026", toDate: "05/16/2026", reason: "", status: "Approved (05/01/2026)" },
-    { id: 8, class: "Class 1", section: "A", applyDate: "05/04/2026", fromDate: "05/27/2026", toDate: "05/29/2026", reason: "", status: "Pending" },
-    { id: 9, class: "Class 1", section: "A", applyDate: "06/01/2026", fromDate: "06/04/2026", toDate: "06/06/2026", reason: "", status: "Pending" },
-    { id: 10, class: "Class 1", section: "A", applyDate: "06/25/2026", fromDate: "06/26/2026", toDate: "06/30/2026", reason: "", status: "Approved (06/01/2026)" },
-    { id: 11, class: "Class 1", section: "A", applyDate: "06/01/2026", fromDate: "06/03/2026", toDate: "06/06/2026", reason: "", status: "Pending" },
-    { id: 12, class: "Class 1", section: "A", applyDate: "06/01/2026", fromDate: "06/24/2026", toDate: "06/26/2026", reason: "", status: "Pending" },
-    { id: 13, class: "Class 1", section: "A", applyDate: "06/02/2026", fromDate: "06/03/2026", toDate: "06/06/2026", reason: "", status: "Pending" },
-    { id: 14, class: "Class 1", section: "A", applyDate: "06/02/2026", fromDate: "06/24/2026", toDate: "06/27/2026", reason: "", status: "Pending" }
-];
+interface LeaveRecord {
+    id: number;
+    leaveType: string;
+    applyDate: string;
+    fromDate: string;
+    toDate: string;
+    days: number;
+    halfDay: string;
+    reason: string;
+    status: string;
+    adminRemark: string;
+}
+
+interface LeaveType {
+    id: number;
+    name: string;
+}
+
+const PAGE_SIZES = ["10", "25", "50", "100"];
+const fmt = (d: string) => (d ? formatDate(d) : "—");
+
+const statusBadge = (status: string) => (
+    <span className={cn(
+        "inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border",
+        status === "Approved"
+            ? "bg-green-50 text-green-700 border-green-200"
+            : status === "Disapproved"
+                ? "bg-red-50 text-red-700 border-red-200"
+                : "bg-amber-50 text-amber-700 border-amber-200"
+    )}>
+        {status}
+    </span>
+);
 
 export default function UserApplyLeavePage() {
+    const [leaves, setLeaves] = useState<LeaveRecord[]>([]);
+    const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [itemsPerPage, setItemsPerPage] = useState("50");
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalEntries, setTotalEntries] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
 
-    // Filter by search term
-    const filteredData = leavesData.filter(c =>
-        c.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.applyDate.includes(searchTerm)
-    );
+    // Apply dialog
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [formData, setFormData] = useState({
+        leave_type_id: "",
+        leave_from: "",
+        leave_to: "",
+        half_day: "",
+        reason: "",
+    });
+    const [submitting, setSubmitting] = useState(false);
+
+    // Detail dialog
+    const [selected, setSelected] = useState<LeaveRecord | null>(null);
+
+    // Delete dialog
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+
+    const fetchData = useCallback(async (page = 1) => {
+        setLoading(true);
+        try {
+            const perPage = parseInt(itemsPerPage, 10) || 50;
+            const response = await api.get("/user/apply-leave", {
+                params: { page, per_page: perPage, search: searchTerm || undefined },
+            });
+            const res = response.data?.data || response.data || {};
+            const dataArr = Array.isArray(res) ? res : (res.data || []);
+            setLeaves(dataArr);
+            setTotalEntries(res.total || dataArr.length);
+            setTotalPages(res.last_page || Math.ceil((res.total || dataArr.length) / perPage) || 1);
+            setCurrentPage(res.current_page || page);
+        } catch (error) {
+            console.error("Error fetching leaves:", error);
+            toast.error("Failed to load leave requests");
+        } finally {
+            setLoading(false);
+        }
+    }, [itemsPerPage, searchTerm]);
+
+    const fetchLeaveTypes = useCallback(async () => {
+        try {
+            const response = await api.get("/user/leave-types");
+            setLeaveTypes(response.data?.data || []);
+        } catch (error) {
+            console.error("Error fetching leave types:", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchLeaveTypes();
+    }, [fetchLeaveTypes]);
+
+    useEffect(() => {
+        fetchData(1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [itemsPerPage]);
+
+    const handleSearch = () => {
+        setCurrentPage(1);
+        fetchData(1);
+    };
+
+    const openApplyDialog = () => {
+        setFormData({ leave_type_id: "", leave_from: "", leave_to: "", half_day: "", reason: "" });
+        setDialogOpen(true);
+    };
+
+    const handleSubmitLeave = async () => {
+        if (!formData.leave_type_id || !formData.leave_from || !formData.leave_to) {
+            toast.error("Please fill in required fields");
+            return;
+        }
+        setSubmitting(true);
+        try {
+            await api.post("/user/apply-leave", {
+                leave_type_id: parseInt(formData.leave_type_id),
+                leave_from: formData.leave_from,
+                leave_to: formData.leave_to,
+                half_day: formData.half_day || undefined,
+                reason: formData.reason,
+            });
+            toast.success("Leave request submitted successfully");
+            setDialogOpen(false);
+            fetchData(1);
+        } catch (error) {
+            toast.error("Failed to submit leave request");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!deleteId) return;
+        try {
+            await api.delete(`/attendance/approve-leave/${deleteId}`);
+            toast.success("Leave request deleted");
+            setDeleteDialogOpen(false);
+            setDeleteId(null);
+            fetchData(currentPage);
+        } catch (error) {
+            toast.error("Failed to delete leave request");
+        }
+    };
+
+    const exportRows = () =>
+        leaves.map((l) => ({
+            "Leave Type": l.leaveType,
+            "Apply Date": fmt(l.applyDate),
+            "From Date": fmt(l.fromDate),
+            "To Date": fmt(l.toDate),
+            "Days": l.days,
+            "Half Day": l.halfDay || "Full Day",
+            "Reason": l.reason,
+            "Status": l.status,
+            "Admin Remark": l.adminRemark,
+        }));
+
+    const copyToClipboard = () => {
+        const text = exportRows().map((r) => Object.values(r).join("\t")).join("\n");
+        navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard");
+    };
+
+    const exportToExcel = () => {
+        const ws = XLSX.utils.json_to_sheet(exportRows());
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Leaves");
+        XLSX.writeFile(wb, "leave-requests.xlsx");
+    };
+
+    const exportToPDF = () => {
+        const doc = new jsPDF("l");
+        doc.text("Leave Requests", 14, 16);
+        autoTable(doc, {
+            head: [["Leave Type", "Apply", "From", "To", "Days", "Half Day", "Status"]],
+            body: leaves.map((l) => [
+                l.leaveType, fmt(l.applyDate), fmt(l.fromDate), fmt(l.toDate),
+                String(l.days), l.halfDay || "Full Day", l.status,
+            ]),
+            startY: 22,
+            styles: { fontSize: 8 },
+        });
+        doc.save("leave-requests.pdf");
+    };
 
     const sizeNum = parseInt(itemsPerPage, 10) || 50;
-    const totalEntries = filteredData.length;
-    const totalPages = Math.ceil(totalEntries / sizeNum) || 1;
     const safePage = Math.min(currentPage, totalPages);
     const startIndex = (safePage - 1) * sizeNum;
-    
-    const paginatedData = filteredData.slice(startIndex, startIndex + sizeNum);
+
+    const pendingCount = leaves.filter((l) => l.status === "Pending").length;
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <div className="bg-white rounded shadow-sm border border-gray-100 overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-gray-100 p-4">
-                    <h1 className="text-[15px] font-medium text-gray-700 tracking-tight">Leave List</h1>
-                    <Button className="bg-[#7e57c2] hover:bg-[#7048b6] text-white px-3 h-8 text-[12px] font-medium rounded shadow-none transition-all active:scale-95 flex items-center gap-1.5">
-                        <Plus className="h-3.5 w-3.5" />
-                        Add
+        <div className="p-4 lg:p-6 animate-in fade-in duration-500">
+            <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
+                {/* ── Header ── */}
+                <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <CalendarCheck className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Apply Leave</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {loading
+                                    ? "Loading…"
+                                    : `${totalEntries} request${totalEntries === 1 ? "" : "s"}${pendingCount ? ` · ${pendingCount} pending` : ""}`}
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={openApplyDialog}
+                        className="h-9 shrink-0 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95"
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span className="hidden sm:inline">Apply Leave</span>
                     </Button>
                 </div>
 
-                <div className="p-4 space-y-4">
-                    {/* Table Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
+                <CardContent className="p-4">
+                    {/* Toolbar */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 print:hidden">
+                        <div className="relative w-full sm:w-64">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search..."
+                                placeholder="Search type, reason, date..."
                                 value={searchTerm}
-                                onChange={(e) => {
-                                    setSearchTerm(e.target.value);
-                                    setCurrentPage(1);
-                                }}
-                                className="h-8 text-[12px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                                className="pl-8 h-9 text-sm rounded-[10px]"
                             />
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center mr-2">
-                                <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                                    <SelectTrigger className="h-8 w-16 text-[12px] border-gray-200 shadow-none rounded font-medium">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-500">
-                                {[Copy, FileSpreadsheet, FileBox, Printer, Columns].map((Icon, i) => (
-                                    <Button key={i} variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-100 rounded text-gray-500">
-                                        <Icon className="h-4 w-4" />
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Select value={itemsPerPage} onValueChange={setItemsPerPage}>
+                                <SelectTrigger className="h-9 w-[70px] text-[12px] border border-gray-200 bg-white rounded-[10px]">
+                                    <SelectValue placeholder="50" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PAGE_SIZES.map((s) => (
+                                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <div className="flex items-center border border-gray-200 rounded-[10px] overflow-hidden">
+                                {[
+                                    { icon: Copy, label: "Copy", action: copyToClipboard },
+                                    { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
+                                    { icon: FileDown, label: "PDF", action: exportToPDF },
+                                    { icon: Printer, label: "Print", action: () => window.print() },
+                                ].map(({ icon: Icon, label, action }, i, arr) => (
+                                    <Button
+                                        key={label}
+                                        variant="ghost"
+                                        size="icon"
+                                        title={label}
+                                        onClick={action}
+                                        className={cn(
+                                            "h-9 w-9 rounded-none hover:bg-gray-100",
+                                            i < arr.length - 1 && "border-r border-gray-200"
+                                        )}
+                                    >
+                                        <Icon className="h-4 w-4 text-gray-500" />
                                     </Button>
                                 ))}
                             </div>
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
+                    {/* ── Desktop table ── */}
+                    <div className="hidden md:block rounded-md border border-gray-200 overflow-x-auto print:hidden">
                         <Table className="min-w-[1000px]">
-                            <TableHeader className="bg-transparent border-b border-gray-100">
-                                <TableRow className="hover:bg-transparent whitespace-nowrap text-[12px] font-bold text-gray-700">
-                                    <TableHead className="py-3 px-4 h-auto">Class <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Section <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Apply Date <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">From Date <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">To Date <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Reason</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Status <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-right">Action</TableHead>
+                            <TableHeader>
+                                <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200 whitespace-nowrap">
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Leave Type</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Apply Date</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">From Date</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">To Date</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Days</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Reason</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Status</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {paginatedData.length === 0 ? (
+                                {loading ? (
                                     <TableRow className="hover:bg-transparent">
-                                        <TableCell colSpan={8} className="text-center py-8 text-gray-500 text-sm">
-                                            No data available in table
+                                        <TableCell colSpan={8} className="h-32 text-center">
+                                            <div className="flex items-center justify-center gap-2 text-gray-400">
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                <span>Loading leave requests...</span>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : leaves.length === 0 ? (
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableCell colSpan={8} className="h-32 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
+                                                <CalendarDays className="h-8 w-8 opacity-30" />
+                                                <span className="text-sm">No leave requests found.</span>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    paginatedData.map((item, idx) => {
-                                        const isApproved = item.status.startsWith("Approved");
+                                    leaves.map((item, idx) => {
+                                        const canDelete = item.status !== "Approved" && item.status !== "Disapproved";
                                         return (
-                                            <TableRow key={item.id || idx} className="text-[13px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap text-gray-600">
-                                                <TableCell className="py-3 px-4">{item.class}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.section}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.applyDate}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.fromDate}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.toDate}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.reason}</TableCell>
-                                                <TableCell className="py-3 px-4">
-                                                    <span className={cn(
-                                                        "inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-bold text-white shadow-sm",
-                                                        isApproved ? "bg-[#4caf50]" : "bg-[#f89b29]"
-                                                    )}>
-                                                        {item.status}
-                                                    </span>
+                                            <TableRow key={item.id || idx} className="text-[13px] border-b border-gray-100 hover:bg-gray-50/60 transition-colors whitespace-nowrap text-gray-600">
+                                                <TableCell className="py-3 px-4 font-medium text-gray-800">
+                                                    {item.leaveType}
+                                                    {item.halfDay && (
+                                                        <span className="ml-1.5 text-[10px] font-medium text-indigo-600">({item.halfDay})</span>
+                                                    )}
                                                 </TableCell>
-                                                <TableCell className="py-3 px-4 text-right">
-                                                    <div className="flex items-center justify-end gap-1.5">
-                                                        {!isApproved && (
-                                                            <>
-                                                                <Button 
-                                                                    className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-1 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95"
-                                                                    title="Edit"
-                                                                >
-                                                                    <Pencil className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                                <Button 
-                                                                    className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-1 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95"
-                                                                    title="Delete"
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </Button>
-                                                            </>
+                                                <TableCell className="py-3 px-4">{fmt(item.applyDate)}</TableCell>
+                                                <TableCell className="py-3 px-4">{fmt(item.fromDate)}</TableCell>
+                                                <TableCell className="py-3 px-4">{fmt(item.toDate)}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center">{item.days}</TableCell>
+                                                <TableCell className="py-3 px-4 max-w-[200px] truncate" title={item.reason}>{item.reason || "—"}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center">{statusBadge(item.status)}</TableCell>
+                                                <TableCell className="py-3 px-4">
+                                                    <div className="flex items-center justify-center gap-1.5">
+                                                        <Button
+                                                            size="icon"
+                                                            onClick={() => setSelected(item)}
+                                                            title="View"
+                                                            className="h-7 w-7 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity"
+                                                        >
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        {canDelete && (
+                                                            <Button
+                                                                onClick={() => { setDeleteId(item.id); setDeleteDialogOpen(true); }}
+                                                                title="Delete"
+                                                                className="h-7 w-7 rounded-[10px] bg-red-50 text-red-600 hover:bg-red-100 shadow-none transition-colors active:scale-95"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
                                                         )}
                                                     </div>
                                                 </TableCell>
@@ -181,37 +403,332 @@ export default function UserApplyLeavePage() {
                         </Table>
                     </div>
 
-                    {/* Footer Pagination */}
-                    <div className="flex items-center justify-between text-[12px] text-gray-500 pt-2 pb-2">
-                        <div>
-                            Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
-                        </div>
-
-                        {totalEntries > 0 && (
-                            <div className="flex items-center gap-1 border border-gray-200 rounded overflow-hidden">
-                                <button
-                                    disabled={safePage === 1}
-                                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                    className="h-8 px-2 bg-white hover:bg-gray-50 text-gray-400 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50 border-r border-gray-200"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </button>
-                                <button className="h-8 px-3 text-xs flex items-center justify-center bg-[#6366f1] text-white font-medium border-r border-gray-200">
-                                    1
-                                </button>
-                                <button
-                                    disabled={safePage === totalPages}
-                                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                                    className="h-8 px-2 bg-white hover:bg-gray-50 text-gray-400 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </button>
+                    {/* ── Mobile cards ── */}
+                    <div className="md:hidden space-y-3 print:hidden">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span>Loading...</span>
                             </div>
+                        ) : leaves.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
+                                <CalendarDays className="h-8 w-8 opacity-30" />
+                                <span className="text-sm">No leave requests found.</span>
+                            </div>
+                        ) : (
+                            leaves.map((item, idx) => {
+                                const canDelete = item.status !== "Approved" && item.status !== "Disapproved";
+                                return (
+                                    <div
+                                        key={item.id || idx}
+                                        className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm"
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10">
+                                                    <CalendarCheck className="h-4 w-4 text-[#6366F1]" />
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <p className="text-[13px] font-bold text-gray-800 truncate">
+                                                        {item.leaveType}
+                                                        {item.halfDay && (
+                                                            <span className="ml-1 text-[10px] font-medium text-indigo-600">({item.halfDay})</span>
+                                                        )}
+                                                    </p>
+                                                    <p className="text-[11px] text-gray-500">
+                                                        {item.days} day{item.days === 1 ? "" : "s"} · applied {fmt(item.applyDate)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {statusBadge(item.status)}
+                                        </div>
+
+                                        <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-600 bg-gray-50 rounded-lg px-2.5 py-2">
+                                            <Calendar className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                                            <span className="font-medium text-gray-700">{fmt(item.fromDate)}</span>
+                                            <ChevronRight className="h-3 w-3 text-gray-400" />
+                                            <span className="font-medium text-gray-700">{fmt(item.toDate)}</span>
+                                        </div>
+
+                                        {item.reason && (
+                                            <p className="mt-2 text-[12px] text-gray-600 line-clamp-2">{item.reason}</p>
+                                        )}
+
+                                        {item.adminRemark && (
+                                            <div className="mt-2 flex items-start gap-1.5 text-[11px] text-gray-500 bg-indigo-50/50 rounded-lg px-2.5 py-2">
+                                                <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-indigo-400 shrink-0" />
+                                                <span><span className="font-semibold text-gray-600">Admin:</span> {item.adminRemark}</span>
+                                            </div>
+                                        )}
+
+                                        <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-end gap-2">
+                                            <Button
+                                                size="sm"
+                                                onClick={() => setSelected(item)}
+                                                className="h-7 px-3 gap-1 text-[11px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90"
+                                            >
+                                                <Eye className="h-3.5 w-3.5" /> View
+                                            </Button>
+                                            {canDelete && (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => { setDeleteId(item.id); setDeleteDialogOpen(true); }}
+                                                    className="h-7 px-3 gap-1 text-[11px] rounded-[10px] bg-red-50 text-red-600 hover:bg-red-100 shadow-none"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
                         )}
                     </div>
-                </div>
-            </div>
+
+                    {/* Footer Pagination */}
+                    {!loading && (
+                        <div className="flex items-center justify-between mt-4 gap-3 flex-wrap print:hidden">
+                            <span className="text-[12px] text-gray-500">
+                                {totalEntries === 0
+                                    ? "No entries"
+                                    : `Showing ${startIndex + 1} to ${Math.min(startIndex + sizeNum, totalEntries)} of ${totalEntries} entries`}
+                            </span>
+
+                            {totalPages > 1 && (
+                                <div className="flex items-center gap-1.5">
+                                    <Button
+                                        size="icon"
+                                        disabled={safePage === 1}
+                                        onClick={() => fetchData(safePage - 1)}
+                                        className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                        .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                                        .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                                            if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
+                                            acc.push(p);
+                                            return acc;
+                                        }, [])
+                                        .map((p, i) =>
+                                            p === "…" ? (
+                                                <span key={`e-${i}`} className="text-gray-400 text-[12px] px-1">…</span>
+                                            ) : (
+                                                <Button
+                                                    key={p}
+                                                    size="icon"
+                                                    onClick={() => fetchData(p as number)}
+                                                    className={cn(
+                                                        "h-8 w-8 rounded-[10px] text-[12px] font-medium transition-opacity",
+                                                        safePage === p
+                                                            ? "text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90"
+                                                            : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                                    )}
+                                                >
+                                                    {p}
+                                                </Button>
+                                            )
+                                        )}
+                                    <Button
+                                        size="icon"
+                                        disabled={safePage === totalPages}
+                                        onClick={() => fetchData(safePage + 1)}
+                                        className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Detail Dialog */}
+            <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+                <DialogContent className="sm:max-w-[480px]">
+                    {selected && (
+                        <>
+                            <DialogHeader>
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10">
+                                        <CalendarCheck className="h-5 w-5 text-[#6366F1]" />
+                                    </div>
+                                    <div>
+                                        <DialogTitle className="text-[15px] font-bold text-gray-800">{selected.leaveType}</DialogTitle>
+                                        <DialogDescription className="text-[12px] text-gray-500">
+                                            {selected.days} day{selected.days === 1 ? "" : "s"}
+                                            {selected.halfDay ? ` · ${selected.halfDay}` : " · Full Day"}
+                                        </DialogDescription>
+                                    </div>
+                                </div>
+                            </DialogHeader>
+
+                            <div className="grid grid-cols-2 gap-3 text-[12px] text-gray-500 pt-1">
+                                <div className="flex items-center gap-1.5">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    <span>Apply: <span className="font-medium text-gray-700">{fmt(selected.applyDate)}</span></span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Clock className="h-3.5 w-3.5" />
+                                    <span>Status: {statusBadge(selected.status)}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    <span>From: <span className="font-medium text-gray-700">{fmt(selected.fromDate)}</span></span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    <span>To: <span className="font-medium text-gray-700">{fmt(selected.toDate)}</span></span>
+                                </div>
+                            </div>
+
+                            <div className="pt-1">
+                                <p className="text-[12px] font-semibold text-gray-500 mb-1">Reason</p>
+                                {selected.reason ? (
+                                    <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap">{selected.reason}</p>
+                                ) : (
+                                    <p className="text-[13px] text-gray-400 italic">No reason provided.</p>
+                                )}
+                            </div>
+
+                            {selected.adminRemark && (
+                                <div className="rounded-lg bg-indigo-50/60 border border-indigo-100 px-3 py-2.5">
+                                    <p className="text-[12px] font-semibold text-indigo-700 mb-0.5 flex items-center gap-1.5">
+                                        <MessageSquare className="h-3.5 w-3.5" /> Admin Remark
+                                    </p>
+                                    <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap">{selected.adminRemark}</p>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end pt-1">
+                                <Button
+                                    onClick={() => setSelected(null)}
+                                    className="h-9 px-4 text-[13px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity"
+                                >
+                                    Close
+                                </Button>
+                            </div>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Apply Leave Dialog */}
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-gray-800 text-base font-bold">Apply Leave</DialogTitle>
+                        <DialogDescription className="text-gray-500 text-xs">
+                            Fill in the details to submit a leave request
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-medium text-gray-600">Leave Type <span className="text-red-500">*</span></Label>
+                            <Select
+                                value={formData.leave_type_id}
+                                onValueChange={(val) => setFormData(prev => ({ ...prev, leave_type_id: val }))}
+                            >
+                                <SelectTrigger className="h-9 text-xs border-gray-200 rounded-[10px]">
+                                    <SelectValue placeholder="Select leave type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {leaveTypes.map(lt => (
+                                        <SelectItem key={lt.id} value={String(lt.id)}>{lt.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-medium text-gray-600">From Date <span className="text-red-500">*</span></Label>
+                                <Input
+                                    type="date"
+                                    value={formData.leave_from}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, leave_from: e.target.value }))}
+                                    className="h-9 text-xs border-gray-200 rounded-[10px]"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-medium text-gray-600">To Date <span className="text-red-500">*</span></Label>
+                                <Input
+                                    type="date"
+                                    value={formData.leave_to}
+                                    min={formData.leave_from || undefined}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, leave_to: e.target.value }))}
+                                    className="h-9 text-xs border-gray-200 rounded-[10px]"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-medium text-gray-600">Half Day</Label>
+                            <Select
+                                value={formData.half_day || "none"}
+                                onValueChange={(val) => setFormData(prev => ({ ...prev, half_day: val === "none" ? "" : val }))}
+                            >
+                                <SelectTrigger className="h-9 text-xs border-gray-200 rounded-[10px]">
+                                    <SelectValue placeholder="None (Full day)" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">None (Full day)</SelectItem>
+                                    <SelectItem value="First Half">First Half</SelectItem>
+                                    <SelectItem value="Second Half">Second Half</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-medium text-gray-600">Reason</Label>
+                            <Textarea
+                                value={formData.reason}
+                                onChange={(e) => setFormData(prev => ({ ...prev, reason: e.target.value }))}
+                                placeholder="Enter reason for leave..."
+                                className="min-h-[80px] text-xs border-gray-200 rounded-[10px]"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setDialogOpen(false)}
+                                className="h-9 px-4 text-xs border-gray-200 text-gray-600 rounded-[10px]"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleSubmitLeave}
+                                disabled={submitting || !formData.leave_type_id || !formData.leave_from || !formData.leave_to}
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white h-9 px-5 text-xs font-medium rounded-[10px] shadow-sm transition-opacity disabled:opacity-50"
+                            >
+                                {submitting ? (
+                                    <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Submitting...</>
+                                ) : "Submit"}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-gray-800 text-base">Delete Leave Request</AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-500 text-xs">
+                            Are you sure you want to delete this leave request? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="h-9 px-4 text-xs border-gray-200 rounded-[10px]">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="h-9 px-4 text-xs bg-red-600 hover:bg-red-700 text-white rounded-[10px]"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

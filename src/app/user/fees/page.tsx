@@ -1,603 +1,425 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import api from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
+import { useCurrency } from "@/components/providers/currency-provider";
 import {
-  Printer,
-  CreditCard,
-  Building2,
-  Copy,
-  FileSpreadsheet,
-  FileText,
-  Columns,
-  User,
-  ChevronDown,
+    Printer, CreditCard, Copy, FileSpreadsheet, FileDown,
+    User, Loader2, Wallet, ArrowLeft, ChevronRight, Receipt,
 } from "lucide-react";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface Payment {
-  id: string;
-  paymentId: string;
-  mode: string;
-  date: string;
-  discount: number;
-  fine: number;
-  paid: number;
-  balance: number;
-}
-
-interface FeeRow {
-  id: number;
-  name: string;
-  code: string;
-  dueDate: string;
-  status: "Paid" | "Unpaid" | "Partial";
-  amount: number;
-  fine: number;
-  discount: number;
-  fineAmount: number;
-  paidAmount: number;
-  balance: number;
-  payments: Payment[];
-}
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const student = {
-  name: "Edward Thomas",
-  fatherName: "Olivier Thomas",
-  mobile: "98262573272",
-  category: "OBC",
-  classSection: "Class I (A)",
-  admissionNo: "1800011",
-  rollNumber: "001",
-  rte: "No",
-  image: null,
+type Payment = {
+    id: number;
+    payment_id: string;
+    mode: string;
+    date: string;
+    discount: number;
+    fine: number;
+    paid: number;
+    balance: number;
+    note: string;
 };
 
-const session = "2026-27";
-const today = "06/17/2026";
+type FeeRow = {
+    id: number;
+    name: string;
+    code: string;
+    due_date: string;
+    status: "Paid" | "Unpaid" | "Partial";
+    amount: number;
+    fine: number;
+    discount: number;
+    fine_amount: number;
+    paid_amount: number;
+    balance: number;
+    payments: Payment[];
+};
 
-const feesData: FeeRow[] = [
-  {
-    id: 1,
-    name: "April Month Fees",
-    code: "apr-month-fees",
-    dueDate: "04/11/2026",
-    status: "Paid",
-    amount: 24500,
-    fine: 3500,
-    discount: 0,
-    fineAmount: 0,
-    paidAmount: 24500,
-    balance: 0,
-    payments: [
-      { id: "p1", paymentId: "5458/1", mode: "Cash", date: "04/01/2026", discount: 0, fine: 0, paid: 24500, balance: 0 },
-    ],
-  },
-  {
-    id: 2,
-    name: "Admission Fees",
-    code: "admission-fees",
-    dueDate: "04/11/2026",
-    status: "Paid",
-    amount: 175000,
-    fine: 3500,
-    discount: 0,
-    fineAmount: 0,
-    paidAmount: 175000,
-    balance: 0,
-    payments: [
-      { id: "p2", paymentId: "5459/1", mode: "Stripe", date: "04/01/2026", discount: 0, fine: 0, paid: 175000, balance: 0 },
-    ],
-  },
-  {
-    id: 3,
-    name: "May Month Fees",
-    code: "may-month-fees",
-    dueDate: "04/11/2026",
-    status: "Paid",
-    amount: 24500,
-    fine: 3500,
-    discount: 0,
-    fineAmount: 0,
-    paidAmount: 24500,
-    balance: 0,
-    payments: [
-      { id: "p3", paymentId: "5463/1", mode: "Cash", date: "04/02/2026", discount: 0, fine: 0, paid: 24500, balance: 0 },
-    ],
-  },
-  {
-    id: 4,
-    name: "June Month Fees",
-    code: "jun-month-fees",
-    dueDate: "04/11/2026",
-    status: "Paid",
-    amount: 24500,
-    fine: 3500,
-    discount: 0,
-    fineAmount: 0,
-    paidAmount: 24500,
-    balance: 0,
-    payments: [
-      { id: "p4", paymentId: "5464/1", mode: "Cash", date: "04/02/2026", discount: 0, fine: 0, paid: 24500, balance: 0 },
-    ],
-  },
-  {
-    id: 5,
-    name: "July Month Fees",
-    code: "jul-month-fees",
-    dueDate: "04/11/2026",
-    status: "Partial",
-    amount: 24500,
-    fine: 3500,
-    discount: 0,
-    fineAmount: 0,
-    paidAmount: 14000,
-    balance: 10500,
-    payments: [
-      { id: "p5", paymentId: "5468/1", mode: "Cash", date: "04/02/2026", discount: 0, fine: 0, paid: 14000, balance: 0 },
-    ],
-  },
-  {
-    id: 6,
-    name: "August Month Fees",
-    code: "aug-month-fees",
-    dueDate: "04/11/2026",
-    status: "Partial",
-    amount: 24500,
-    fine: 3500,
-    discount: 0,
-    fineAmount: 3500,
-    paidAmount: 21000,
-    balance: 3500,
-    payments: [
-      { id: "p6", paymentId: "5473/1", mode: "Cash", date: "05/01/2026", discount: 0, fine: 3500, paid: 21000, balance: 0 },
-    ],
-  },
-  {
-    id: 7,
-    name: "September Month Fees",
-    code: "sep-month-fees",
-    dueDate: "04/11/2026",
-    status: "Partial",
-    amount: 24500,
-    fine: 3500,
-    discount: 0,
-    fineAmount: 3500,
-    paidAmount: 3500,
-    balance: 21000,
-    payments: [
-      { id: "p7", paymentId: "5474/1", mode: "Cash", date: "05/01/2026", discount: 0, fine: 3500, paid: 3500, balance: 0 },
-    ],
-  },
-  {
-    id: 8,
-    name: "October Month Fees",
-    code: "oct-month-fees",
-    dueDate: "04/11/2026",
-    status: "Paid",
-    amount: 25200,
-    fine: 1750,
-    discount: 0,
-    fineAmount: 1750,
-    paidAmount: 21000,
-    balance: 4200,
-    payments: [
-      { id: "p8", paymentId: "5476/1", mode: "Cash", date: "05/01/2026", discount: 0, fine: 1750, paid: 21000, balance: 0 },
-    ],
-  },
-  {
-    id: 9,
-    name: "November Month Fees",
-    code: "nov-month-fees",
-    dueDate: "04/11/2026",
-    status: "Paid",
-    amount: 24500,
-    fine: 3500,
-    discount: 0,
-    fineAmount: 3500,
-    paidAmount: 24500,
-    balance: 0,
-    payments: [
-      { id: "p9", paymentId: "5502/1", mode: "Cash", date: "06/01/2026", discount: 24500, fine: 3500, paid: 24500, balance: 0 },
-    ],
-  },
-  {
-    id: 10,
-    name: "December Month Fees",
-    code: "dec-month-fees",
-    dueDate: "04/11/2026",
-    status: "Paid",
-    amount: 24500,
-    fine: 3500,
-    discount: 0,
-    fineAmount: 3500,
-    paidAmount: 24500,
-    balance: 0,
-    payments: [
-      { id: "p10", paymentId: "5472/1", mode: "Stripe", date: "04/01/2026", discount: 0, fine: 3500, paid: 24500, balance: 0 },
-    ],
-  },
-  {
-    id: 11,
-    name: "Transport Fees (April)",
-    code: "transport-apr",
-    dueDate: "04/20/2026",
-    status: "Paid",
-    amount: 42000,
-    fine: 3500,
-    discount: 0,
-    fineAmount: 3500,
-    paidAmount: 42000,
-    balance: 0,
-    payments: [
-      { id: "p11", paymentId: "5482/1", mode: "Cash", date: "05/01/2026", discount: 42000, fine: 3500, paid: 42000, balance: 0 },
-    ],
-  },
-  {
-    id: 12,
-    name: "Transport Fees (May)",
-    code: "transport-may",
-    dueDate: "05/20/2026",
-    status: "Partial",
-    amount: 42000,
-    fine: 3500,
-    discount: 0,
-    fineAmount: 0,
-    paidAmount: 28000,
-    balance: 14000,
-    payments: [
-      { id: "p12", paymentId: "5483/1", mode: "Cash", date: "05/01/2026", discount: 0, fine: 0, paid: 28000, balance: 0 },
-    ],
-  },
-  {
-    id: 13,
-    name: "Transport Fees (June)",
-    code: "transport-jun",
-    dueDate: "06/20/2026",
-    status: "Paid",
-    amount: 42000,
-    fine: 0,
-    discount: 0,
-    fineAmount: 0,
-    paidAmount: 1400,
-    balance: 40600,
-    payments: [
-      { id: "p13", paymentId: "5484/1", mode: "Cash", date: "05/01/2026", discount: 1400, fine: 0, paid: 1400, balance: 0 },
-    ],
-  },
-  {
-    id: 14,
-    name: "Transport Fees (July)",
-    code: "transport-jul",
-    dueDate: "07/20/2026",
-    status: "Unpaid",
-    amount: 42000,
-    fine: 0,
-    discount: 0,
-    fineAmount: 0,
-    paidAmount: 0,
-    balance: 42000,
-    payments: [],
-  },
-  {
-    id: 15,
-    name: "Transport Fees (August)",
-    code: "transport-aug",
-    dueDate: "08/20/2026",
-    status: "Unpaid",
-    amount: 42000,
-    fine: 0,
-    discount: 0,
-    fineAmount: 0,
-    paidAmount: 0,
-    balance: 42000,
-    payments: [],
-  },
-  {
-    id: 16,
-    name: "Transport Fees (September)",
-    code: "transport-sep",
-    dueDate: "09/20/2026",
-    status: "Unpaid",
-    amount: 42000,
-    fine: 0,
-    discount: 0,
-    fineAmount: 0,
-    paidAmount: 0,
-    balance: 42000,
-    payments: [],
-  },
-  {
-    id: 17,
-    name: "Transport Fees (October)",
-    code: "transport-oct",
-    dueDate: "10/20/2026",
-    status: "Unpaid",
-    amount: 42000,
-    fine: 0,
-    discount: 0,
-    fineAmount: 0,
-    paidAmount: 0,
-    balance: 42000,
-    payments: [],
-  },
-];
+type Student = {
+    name: string;
+    father_name: string;
+    mobile: string;
+    category: string;
+    class_section: string;
+    admission_no: string;
+    roll_no: string;
+    rte: string;
+    photo: string;
+};
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+type FeesData = { student: Student; session: string; fees: FeeRow[] };
+
 const fmt = (n: number) =>
-  n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const StatusBadge = ({ status }: { status: string }) => {
-  const map: Record<string, string> = {
-    Paid: "bg-[#5cb85c] text-white",
-    Unpaid: "bg-red-500 text-white",
-    Partial: "bg-[#f0ad4e] text-white",
-  };
-  return (
-    <span className={cn("px-2 py-0.5 text-[10px] font-bold rounded uppercase", map[status] ?? "bg-gray-400 text-white")}>
-      {status}
-    </span>
-  );
-};
+function StatusBadge({ status }: { status: string }) {
+    const map: Record<string, string> = {
+        Paid: "bg-green-100 text-green-700 border-green-200",
+        Unpaid: "bg-red-100 text-red-600 border-red-200",
+        Partial: "bg-amber-100 text-amber-700 border-amber-200",
+    };
+    return (
+        <span className={cn("px-2 py-0.5 text-[10px] font-bold rounded-full uppercase border", map[status] ?? "bg-gray-100 text-gray-600 border-gray-200")}>
+            {status}
+        </span>
+    );
+}
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+/* Animated count-up number */
+function CountUp({ value, prefix }: { value: number; prefix: string }) {
+    const [display, setDisplay] = useState(0);
+    useEffect(() => {
+        let raf = 0;
+        const start = performance.now();
+        const dur = 700;
+        const tick = (now: number) => {
+            const p = Math.min(1, (now - start) / dur);
+            setDisplay(value * (1 - Math.pow(1 - p, 3)));
+            if (p < 1) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+    }, [value]);
+    return <>{prefix}{fmt(display)}</>;
+}
+
 export default function StudentFeesPage() {
-  const [selected, setSelected] = useState<number[]>([]);
-  const allIds = feesData.map((f) => f.id);
-  const allChecked = selected.length === allIds.length;
+    const [data, setData] = useState<FeesData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [selected, setSelected] = useState<number[]>([]);
+    const { toast } = useToast();
+    const { selectedCurrency } = useCurrency();
+    const cur = selectedCurrency?.symbol || "$";
 
-  const toggleAll = () => setSelected(allChecked ? [] : allIds);
-  const toggleOne = (id: number) =>
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    useEffect(() => {
+        const fetchFees = async () => {
+            try {
+                const res = await api.get("/user/fees");
+                if (res.data.success) {
+                    setData(res.data.data);
+                } else {
+                    toast({ variant: "destructive", title: "Error", description: res.data.message || "Failed to load fees." });
+                }
+            } catch {
+                toast({ variant: "destructive", title: "Error", description: "Failed to load fees." });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchFees();
+    }, [toast]);
 
-  // Totals
-  const grandAmount = feesData.reduce((s, f) => s + f.amount, 0);
-  const grandFine = feesData.reduce((s, f) => s + f.fine, 0);
-  const grandDiscount = feesData.reduce((s, f) => s + f.discount, 0);
-  const grandFineAmt = feesData.reduce((s, f) => s + f.fineAmount, 0);
-  const grandPaid = feesData.reduce((s, f) => s + f.paidAmount, 0);
-  const grandBalance = feesData.reduce((s, f) => s + f.balance, 0);
+    const fees = data?.fees ?? [];
+    const allIds = fees.map((f) => f.id);
+    const allChecked = allIds.length > 0 && selected.length === allIds.length;
+    const toggleAll = () => setSelected(allChecked ? [] : allIds);
+    const toggleOne = (id: number) =>
+        setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-  return (
-    <div className="flex flex-col gap-5 p-4 lg:p-5 animate-in fade-in duration-300">
+    const totals = fees.reduce(
+        (acc, f) => ({
+            amount: acc.amount + f.amount,
+            fine: acc.fine + f.fine,
+            discount: acc.discount + f.discount,
+            fineAmt: acc.fineAmt + f.fine_amount,
+            paid: acc.paid + f.paid_amount,
+            balance: acc.balance + f.balance,
+        }),
+        { amount: 0, fine: 0, discount: 0, fineAmt: 0, paid: 0, balance: 0 }
+    );
 
-      {/* ── Student Info Card ─────────────────────────────── */}
-      <Card className="shadow-[0_2px_8px_rgba(0,0,0,0.18)] border-0 p-0 gap-0">
-        {/* Header */}
-        <div className="px-[18px] py-2 flex items-center justify-between border-b border-gray-200 bg-white rounded-t-md">
-          <h3 className="text-[15px] text-[#333333] font-bold">Student Fees</h3>
-          <Link
-            href="/user/dashboard"
-            className="flex items-center gap-1 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1 rounded transition-colors"
-          >
-            ← Back
-          </Link>
+    const exportToExcel = useCallback(() => {
+        const ws = XLSX.utils.json_to_sheet(fees.map((f) => ({
+            Fees: `${f.name} (${f.code})`,
+            "Due Date": f.due_date,
+            Status: f.status,
+            "Amount": f.amount,
+            "Discount": f.discount,
+            "Fine": f.fine_amount,
+            "Paid": f.paid_amount,
+            "Balance": f.balance,
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Fees");
+        XLSX.writeFile(wb, "student-fees.xlsx");
+    }, [fees]);
+
+    const exportToPDF = useCallback(() => {
+        const doc = new jsPDF("l");
+        doc.text("Student Fees", 14, 16);
+        autoTable(doc, {
+            head: [["Fees", "Due Date", "Status", "Amount", "Discount", "Fine", "Paid", "Balance"]],
+            body: fees.map((f) => [
+                `${f.name} (${f.code})`, f.due_date, f.status,
+                fmt(f.amount), fmt(f.discount), fmt(f.fine_amount), fmt(f.paid_amount), fmt(f.balance),
+            ]),
+            startY: 22,
+            styles: { fontSize: 8 },
+        });
+        doc.save("student-fees.pdf");
+    }, [fees]);
+
+    const copyToClipboard = useCallback(() => {
+        const text = fees.map((f) =>
+            [`${f.name} (${f.code})`, f.due_date, f.status, fmt(f.amount), fmt(f.paid_amount), fmt(f.balance)].join("\t")
+        ).join("\n");
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copied to clipboard" });
+    }, [fees, toast]);
+
+    if (loading) {
+        return (
+            <div className="flex h-[400px] items-center justify-center gap-2 text-gray-400">
+                <Loader2 className="h-6 w-6 animate-spin" /> <span>Loading fees...</span>
+            </div>
+        );
+    }
+
+    if (!data) {
+        return (
+            <div className="p-6">
+                <Card className="shadow-sm">
+                    <CardContent className="flex flex-col items-center justify-center py-16 text-gray-400">
+                        <Wallet className="h-12 w-12 opacity-30 mb-3" />
+                        <p className="text-base font-medium text-gray-500">No fee records found.</p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    const { student, session } = data;
+
+    return (
+        <div className="flex flex-col gap-5 p-4 lg:p-6 animate-in fade-in duration-300">
+            {/* ── Summary stat cards ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                    { label: "Total Fees", value: totals.amount, color: "from-[#6366F1] to-[#818cf8]", icon: Wallet },
+                    { label: "Total Paid", value: totals.paid, color: "from-[#10b981] to-[#34d399]", icon: CreditCard },
+                    { label: "Balance Due", value: totals.balance, color: "from-[#FF9800] to-[#fb923c]", icon: Receipt },
+                ].map((s) => (
+                    <div key={s.label} className={cn("relative overflow-hidden rounded-xl p-4 text-white shadow-md bg-gradient-to-r", s.color)}>
+                        <s.icon className="absolute -top-3 -right-3 h-20 w-20 text-white/15 rotate-12 pointer-events-none" />
+                        <div className="relative z-10">
+                            <p className="text-[12px] font-medium opacity-90">{s.label}</p>
+                            <p className="text-2xl font-bold mt-1"><CountUp value={s.value} prefix={cur} /></p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* ── Student Info Card ── */}
+            <Card className="shadow-sm border-0 p-0 gap-0 overflow-hidden">
+                <div className="px-4 py-2.5 flex items-center justify-between border-b border-gray-200 bg-white">
+                    <h3 className="text-[15px] font-bold text-gray-800">Student Fees</h3>
+                    <Link
+                        href="/user/dashboard"
+                        className="flex items-center gap-1 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1.5 rounded-[10px] hover:opacity-90 transition-opacity"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5" /> Back
+                    </Link>
+                </div>
+                <CardContent className="p-4">
+                    <div className="flex gap-4 items-start">
+                        <div className="h-20 w-20 shrink-0 bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden">
+                            {student.photo
+                                ? <img src={student.photo} alt={student.name} className="h-full w-full object-cover" />
+                                : <User className="h-8 w-8 opacity-40" />}
+                        </div>
+                        <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+                            {[
+                                ["Name", student.name, "text-[#6366F1] font-semibold", true],
+                                ["Class (Section)", student.class_section, "text-gray-800", true],
+                                ["Father Name", student.father_name || "—", "text-[#6366F1] font-medium", true],
+                                ["Admission No", student.admission_no || "—", "text-gray-800", true],
+                                ["Mobile Number", student.mobile || "—", "text-gray-800", true],
+                                ["Roll Number", student.roll_no || "—", "text-gray-800", true],
+                                ["Category", student.category || "—", "text-gray-800", true],
+                                ["RTE", student.rte, "text-red-500 font-semibold", true],
+                            ].map(([label, value, cls, boldLabel]) => (
+                                <div key={label as string}>
+                                    <span className={boldLabel ? "text-gray-700 font-bold text-sm" : "text-gray-500 text-xs"}>{label}</span>
+                                    <p className={cls as string}>{value}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* ── Fees Table Card ── */}
+            <Card className="shadow-sm border-0 p-0 gap-0 overflow-hidden">
+                <div className="px-4 py-2.5 flex items-center border-b border-gray-200 bg-white">
+                    <h3 className="text-[15px] font-bold text-gray-800">Fees Details</h3>
+                </div>
+
+                <CardContent className="p-0">
+                    {/* Action Row */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => window.print()}
+                                className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1.5 rounded-[10px] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                disabled={selected.length === 0}
+                            >
+                                <Printer className="h-3.5 w-3.5" /> Print Selected
+                            </button>
+                            <button
+                                onClick={() => toast({ title: "Online payment", description: "Payment gateway coming soon." })}
+                                className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1.5 rounded-[10px] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                disabled={selected.length === 0}
+                            >
+                                <CreditCard className="h-3.5 w-3.5" /> Pay Selected
+                            </button>
+                        </div>
+
+                        <span className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold px-4 py-1.5 rounded-[10px] shadow-sm mx-auto">
+                            Session: {session || "—"}
+                        </span>
+
+                        <div className="w-0 sm:w-[1px]" />
+                    </div>
+
+                    {/* Export Icons */}
+                    <div className="flex justify-end gap-1 px-4 py-2 border-b border-gray-100">
+                        {[
+                            { icon: Copy, label: "Copy", action: copyToClipboard },
+                            { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
+                            { icon: FileDown, label: "PDF", action: exportToPDF },
+                            { icon: Printer, label: "Print", action: () => window.print() },
+                        ].map(({ icon: Icon, label, action }) => (
+                            <Button key={label} variant="ghost" size="icon" title={label} onClick={action}
+                                className="h-8 w-8 rounded hover:bg-gray-100 text-gray-500">
+                                <Icon className="h-4 w-4" />
+                            </Button>
+                        ))}
+                    </div>
+
+                    {/* Table */}
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                            <thead>
+                                <tr className="border-b border-gray-200 bg-gray-100">
+                                    <th className="w-8 px-2 py-3 text-center">
+                                        <input type="checkbox" checked={allChecked} onChange={toggleAll} className="rounded cursor-pointer accent-[#6366F1]" />
+                                    </th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 min-w-[180px]">Fees</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 whitespace-nowrap">Due Date</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700">Status</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">Amount ({cur})</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 whitespace-nowrap">Payment ID</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700">Mode</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700">Date</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">Discount ({cur})</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">Fine ({cur})</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">Paid ({cur})</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">Balance ({cur})</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {fees.length === 0 ? (
+                                    <tr><td colSpan={12} className="text-center py-10 text-gray-400">No fees assigned.</td></tr>
+                                ) : (
+                                    fees.map((fee, idx) => {
+                                        const checked = selected.includes(fee.id);
+                                        return (
+                                            <FeeRowGroup
+                                                key={fee.id}
+                                                fee={fee}
+                                                checked={checked}
+                                                onToggle={() => toggleOne(fee.id)}
+                                                delay={idx * 40}
+                                            />
+                                        );
+                                    })
+                                )}
+
+                                {/* Grand total */}
+                                {fees.length > 0 && (
+                                    <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                                        <td></td>
+                                        <td className="px-2 py-3 text-sm text-gray-700" colSpan={3}>Grand Total</td>
+                                        <td className="px-2 py-3 text-right text-gray-800 whitespace-nowrap">
+                                            {cur}{fmt(totals.amount)}
+                                            {totals.fine > 0 && <span className="text-orange-500 ml-1">+ {fmt(totals.fine)}</span>}
+                                        </td>
+                                        <td colSpan={3}></td>
+                                        <td className="px-2 py-3 text-right text-gray-700">{cur}{fmt(totals.discount)}</td>
+                                        <td className="px-2 py-3 text-right text-gray-700">{cur}{fmt(totals.fineAmt)}</td>
+                                        <td className="px-2 py-3 text-right text-green-600">{cur}{fmt(totals.paid)}</td>
+                                        <td className="px-2 py-3 text-right text-red-600">{cur}{fmt(totals.balance)}</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
+    );
+}
 
-        <CardContent className="p-4">
-          <div className="flex gap-4 items-start">
-            {/* Photo */}
-            <div className="h-20 w-20 shrink-0 bg-gray-100 border border-gray-300 rounded flex flex-col items-center justify-center text-gray-400">
-              <User className="h-8 w-8 opacity-40 mb-1" />
-              <span className="text-[8px] font-bold text-center uppercase leading-none">
-                No Image<br />Available
-              </span>
-            </div>
+/* Fee row + its payment sub-rows, with entrance animation */
+function FeeRowGroup({ fee, checked, onToggle, delay }: { fee: FeeRow; checked: boolean; onToggle: () => void; delay: number }) {
+    const [visible, setVisible] = useState(false);
+    useEffect(() => {
+        const t = setTimeout(() => setVisible(true), delay);
+        return () => clearTimeout(t);
+    }, [delay]);
 
-            {/* Details Grid */}
-            <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1 text-sm">
-              <div>
-                <span className="text-gray-500 text-xs">Name</span>
-                <p className="text-[#337ab7] font-medium">{student.name}</p>
-              </div>
-              <div>
-                <span className="text-gray-500 text-xs">Class (Section)</span>
-                <p className="text-gray-800">{student.classSection}</p>
-              </div>
-              <div>
-                <span className="text-gray-500 text-xs">Father Name</span>
-                <p className="text-[#337ab7] font-medium">{student.fatherName}</p>
-              </div>
-              <div>
-                <span className="text-gray-500 text-xs">Admission No</span>
-                <p className="text-gray-800">{student.admissionNo}</p>
-              </div>
-              <div>
-                <span className="text-gray-500 text-xs">Mobile Number</span>
-                <p className="text-gray-800">{student.mobile}</p>
-              </div>
-              <div>
-                <span className="text-gray-500 text-xs">Roll Number</span>
-                <p className="text-gray-800">{student.rollNumber}</p>
-              </div>
-              <div>
-                <span className="text-gray-500 text-xs">Category</span>
-                <p className="text-gray-800">{student.category}</p>
-              </div>
-              <div>
-                <span className="text-gray-500 text-xs">RTE</span>
-                <p className="text-red-500 font-semibold">{student.rte}</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+    return (
+        <>
+            <tr
+                className={cn(
+                    "border-b border-gray-100 hover:bg-gray-50/70 transition-all",
+                    checked && "bg-indigo-50/50",
+                    visible ? "opacity-100" : "opacity-0"
+                )}
+                style={{ transition: `opacity 0.3s ease ${delay}ms, background-color 0.15s` }}
+            >
+                <td className="px-2 py-2.5 text-center">
+                    <input type="checkbox" checked={checked} onChange={onToggle} className="rounded cursor-pointer accent-[#6366F1]" />
+                </td>
+                <td className="px-2 py-2.5">
+                    <span className="text-[#6366F1] font-medium">{fee.name} ({fee.code})</span>
+                </td>
+                <td className="px-2 py-2.5 text-gray-600 whitespace-nowrap">{fee.due_date}</td>
+                <td className="px-2 py-2.5"><StatusBadge status={fee.status} /></td>
+                <td className="px-2 py-2.5 text-right whitespace-nowrap">
+                    <span className="text-gray-700">{fmt(fee.amount)}</span>
+                    {fee.fine > 0 && <span className="text-orange-500 ml-1">+ {fmt(fee.fine)}</span>}
+                </td>
+                <td colSpan={3}></td>
+                <td className="px-2 py-2.5 text-right text-gray-600">{fmt(fee.discount)}</td>
+                <td className="px-2 py-2.5 text-right text-gray-600">{fmt(fee.fine_amount)}</td>
+                <td className="px-2 py-2.5 text-right text-gray-600">{fmt(fee.paid_amount)}</td>
+                <td className="px-2 py-2.5 text-right font-medium text-gray-700">{fee.balance > 0 ? fmt(fee.balance) : "—"}</td>
+            </tr>
 
-      {/* ── Fees Table Card ───────────────────────────────── */}
-      <Card className="shadow-[0_2px_8px_rgba(0,0,0,0.18)] border-0 p-0 gap-0">
-        {/* Card Header */}
-        <div className="px-[18px] py-2 flex items-center border-b border-gray-200 bg-white rounded-t-md">
-          <h3 className="text-[15px] text-[#333333] font-bold">Fees Details</h3>
-        </div>
-
-        <CardContent className="p-0">
-          {/* Action Row */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
-            <div className="flex flex-wrap gap-2">
-              <button className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1.5 rounded transition-colors">
-                <Printer className="h-3.5 w-3.5" /> Print Selected
-              </button>
-              <button className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1.5 rounded transition-colors">
-                <CreditCard className="h-3.5 w-3.5" /> Pay Selected
-              </button>
-              <button className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1.5 rounded transition-colors">
-                <Building2 className="h-3.5 w-3.5" /> Offline Bank Payments
-              </button>
-            </div>
-            <span className="text-sm text-gray-600 font-medium">Date: {today}</span>
-          </div>
-
-          {/* Session */}
-          <div className="text-center py-2 text-sm font-semibold text-gray-700 border-b border-gray-100">
-            Session : {session}
-          </div>
-
-          {/* Export Icons */}
-          <div className="flex justify-end gap-2 px-4 py-2 border-b border-gray-100">
-            {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, i) => (
-              <button key={i} className="text-gray-500 hover:text-gray-700 transition-colors">
-                <Icon className="h-4 w-4" />
-              </button>
+            {fee.payments.map((p) => (
+                <tr key={p.id} className="border-b border-gray-50 text-gray-500 bg-gray-50/30">
+                    <td></td>
+                    <td className="px-2 py-1.5 pl-6"><ChevronRight className="h-3 w-3 inline text-gray-300" /></td>
+                    <td colSpan={2}></td>
+                    <td></td>
+                    <td className="px-2 py-1.5 text-[#6366F1]">{p.payment_id}</td>
+                    <td className="px-2 py-1.5">{p.mode}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">{p.date}</td>
+                    <td className="px-2 py-1.5 text-right">{p.discount > 0 ? fmt(p.discount) : "0.00"}</td>
+                    <td className="px-2 py-1.5 text-right">{p.fine > 0 ? fmt(p.fine) : "0.00"}</td>
+                    <td className="px-2 py-1.5 text-right">{fmt(p.paid)}</td>
+                    <td className="px-2 py-1.5 text-right">{fmt(p.balance)}</td>
+                </tr>
             ))}
-            <button className="text-gray-500 hover:text-gray-700 transition-colors">
-              <ChevronDown className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              {/* Head */}
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="w-8 px-2 py-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={allChecked}
-                      onChange={toggleAll}
-                      className="rounded cursor-pointer"
-                    />
-                  </th>
-                  <th className="px-2 py-2 text-left font-bold text-gray-600 min-w-[180px]">Fees</th>
-                  <th className="px-2 py-2 text-left font-bold text-gray-600 whitespace-nowrap">Due Date</th>
-                  <th className="px-2 py-2 text-left font-bold text-gray-600">Status</th>
-                  <th className="px-2 py-2 text-right font-bold text-gray-600 whitespace-nowrap">Amount (₹)</th>
-                  <th className="px-2 py-2 text-left font-bold text-gray-600 whitespace-nowrap">Payment ID</th>
-                  <th className="px-2 py-2 text-left font-bold text-gray-600">Mode</th>
-                  <th className="px-2 py-2 text-left font-bold text-gray-600">Date</th>
-                  <th className="px-2 py-2 text-right font-bold text-gray-600 whitespace-nowrap">Discount (₹)</th>
-                  <th className="px-2 py-2 text-right font-bold text-gray-600 whitespace-nowrap">Fine (₹)</th>
-                  <th className="px-2 py-2 text-right font-bold text-gray-600 whitespace-nowrap">Paid (₹)</th>
-                  <th className="px-2 py-2 text-right font-bold text-gray-600 whitespace-nowrap">Balance (₹)</th>
-                  <th className="px-2 py-2 text-center font-bold text-gray-600">Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {feesData.map((fee) => {
-                  const isUnpaidOrPartial = fee.status === "Unpaid" || fee.status === "Partial";
-                  const rowBg = "bg-white";
-
-                  return (
-                    <>
-                      {/* Main fee row */}
-                      <tr key={fee.id} className={cn("border-b border-gray-100 hover:brightness-95 transition-all", rowBg)}>
-                        <td className="px-2 py-2 text-center">
-                          <input
-                            type="checkbox"
-                            checked={selected.includes(fee.id)}
-                            onChange={() => toggleOne(fee.id)}
-                            className="rounded cursor-pointer"
-                          />
-                        </td>
-                        <td className="px-2 py-2">
-                          <span className="text-[#337ab7] hover:underline cursor-pointer">
-                            {fee.name} ({fee.code})
-                          </span>
-                        </td>
-                        <td className="px-2 py-2 text-[#337ab7] whitespace-nowrap">{fee.dueDate}</td>
-                        <td className="px-2 py-2">
-                          <StatusBadge status={fee.status} />
-                        </td>
-                        <td className="px-2 py-2 text-right whitespace-nowrap">
-                          <span className="text-gray-700">{fmt(fee.amount)}</span>
-                          {fee.fine > 0 && (
-                            <span className="text-orange-500 ml-1">+ {fmt(fee.fine)}</span>
-                          )}
-                        </td>
-                        <td className="px-2 py-2"></td>
-                        <td className="px-2 py-2"></td>
-                        <td className="px-2 py-2"></td>
-                        <td className="px-2 py-2 text-right text-gray-600">{fee.discount > 0 ? fmt(fee.discount) : "0.00"}</td>
-                        <td className="px-2 py-2 text-right text-gray-600">{fee.fineAmount > 0 ? fmt(fee.fineAmount) : "0.00"}</td>
-                        <td className="px-2 py-2 text-right text-gray-600">{fee.paidAmount > 0 ? fmt(fee.paidAmount) : "0.00"}</td>
-                        <td className="px-2 py-2 text-right text-gray-600">{fee.balance > 0 ? fmt(fee.balance) : ""}</td>
-                        <td className="px-2 py-2 text-center">
-                          {isUnpaidOrPartial && (
-                            <button className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-2 py-1 rounded transition-colors whitespace-nowrap">
-                              <CreditCard className="h-3 w-3" /> Pay ▾
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-
-                      {/* Payment sub-rows */}
-                      {fee.payments.map((p) => (
-                        <tr key={p.id} className={cn("border-b border-gray-100 text-gray-500", rowBg)}>
-                          <td></td>
-                          <td className="px-2 py-1.5 pl-6">
-                            <span className="text-gray-400 mr-1">↳</span>
-                          </td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td className="px-2 py-1.5 text-[#337ab7]">{p.paymentId}</td>
-                          <td className="px-2 py-1.5">{p.mode}</td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">{p.date}</td>
-                          <td className="px-2 py-1.5 text-right">
-                            {p.discount > 0 ? (
-                              <span className="text-[#337ab7]">{fmt(p.discount)}</span>
-                            ) : "0.00"}
-                          </td>
-                          <td className="px-2 py-1.5 text-right">{p.fine > 0 ? fmt(p.fine) : "0.00"}</td>
-                          <td className="px-2 py-1.5 text-right">{fmt(p.paid)}</td>
-                          <td className="px-2 py-1.5 text-right">{fmt(p.balance)}</td>
-                          <td className="px-2 py-1.5 text-center">
-                            <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                              <Printer className="h-3.5 w-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </>
-                  );
-                })}
-
-                {/* Grand Total Row */}
-                <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
-                  <td></td>
-                  <td className="px-2 py-2 text-sm font-bold text-gray-700" colSpan={3}>Grand Total</td>
-                  <td className="px-2 py-2 text-right text-gray-800 whitespace-nowrap">
-                    ₹{fmt(grandAmount)}
-                    {grandFine > 0 && (
-                      <span className="text-orange-500 ml-1">+ {fmt(grandFine)}</span>
-                    )}
-                  </td>
-                  <td colSpan={3}></td>
-                  <td className="px-2 py-2 text-right text-gray-700">₹{fmt(grandDiscount)}</td>
-                  <td className="px-2 py-2 text-right text-gray-700">₹{fmt(grandFineAmt)}</td>
-                  <td className="px-2 py-2 text-right text-gray-700">₹{fmt(grandPaid)}</td>
-                  <td className="px-2 py-2 text-right text-gray-700">₹{fmt(grandBalance)}</td>
-                  <td></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+        </>
+    );
 }

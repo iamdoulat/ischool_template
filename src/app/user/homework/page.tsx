@@ -1,186 +1,314 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import api from "@/lib/api";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    Table, TableBody, TableCell, TableHead,
+    TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+    Select, SelectContent, SelectItem,
+    SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
-    Search, ChevronLeft, ChevronRight,
-    ArrowUpDown, Copy, FileSpreadsheet,
-    FileBox, Printer, Columns, Menu
+    Search, ChevronLeft, ChevronRight, Copy, FileSpreadsheet,
+    FileDown, Printer, Eye, Loader2, BookOpen, X, Calendar, User,
+    Paperclip, ClipboardList, Layers,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
+import { cn, formatDate } from "@/lib/utils";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-const upcomingHomework = [
-    { id: 1, class: "Class 1", section: "A", subject: "Social Studies (212)", hwDate: "06/23/2026", subDate: "06/30/2026", evalDate: "", maxMarks: "25.00", marksObtained: "", note: "", status: "Pending" },
-    { id: 2, class: "Class 1", section: "A", subject: "Science (111)", hwDate: "06/17/2026", subDate: "06/23/2026", evalDate: "", maxMarks: "25.00", marksObtained: "", note: "", status: "Pending" }
-];
+type Homework = {
+    id: number;
+    class: string;
+    section: string;
+    subject: string;
+    homework_date: string;
+    submission_date: string;
+    evaluation_date: string;
+    description: string;
+    attachment: string;
+    created_by: string;
+    status: string;
+};
 
-const closedHomework: any[] = [];
+const PAGE_SIZES = [10, 25, 50, 100];
+const fmt = (d: string) => (d ? formatDate(d) : "—");
 
 export default function UserHomeworkPage() {
     const [activeTab, setActiveTab] = useState<"upcoming" | "closed">("upcoming");
+    const [items, setItems] = useState<Homework[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [itemsPerPage, setItemsPerPage] = useState("50");
-    const [currentPage, setCurrentPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+    const [page, setPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [from, setFrom] = useState(0);
+    const [to, setTo] = useState(0);
+    const [selected, setSelected] = useState<Homework | null>(null);
+    const { toast } = useToast();
 
-    const dataToDisplay = activeTab === "upcoming" ? upcomingHomework : closedHomework;
+    useEffect(() => {
+        const fetchHomework = async () => {
+            setLoading(true);
+            try {
+                const res = await api.get("/user/homework", {
+                    params: { type: activeTab, page, limit },
+                });
+                if (res.data.success) {
+                    const d = res.data.data;
+                    setItems(d?.data ?? []);
+                    setLastPage(d?.last_page ?? 1);
+                    setTotal(d?.total ?? 0);
+                    setFrom(d?.from ?? 0);
+                    setTo(d?.to ?? 0);
+                } else {
+                    toast({ variant: "destructive", title: "Error", description: res.data.message || "Failed to load homework." });
+                }
+            } catch {
+                toast({ variant: "destructive", title: "Error", description: "Failed to load homework." });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchHomework();
+    }, [activeTab, page, limit, toast]);
 
-    // Filter by search term
-    const filteredData = dataToDisplay.filter(c =>
-        c.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.class.toLowerCase().includes(searchTerm.toLowerCase())
+    const switchTab = (tab: "upcoming" | "closed") => {
+        setActiveTab(tab);
+        setPage(1);
+        setSearchTerm("");
+    };
+
+    // client-side search within the loaded page
+    const filtered = items.filter((h) => {
+        const s = searchTerm.toLowerCase();
+        return (
+            h.subject.toLowerCase().includes(s) ||
+            h.class.toLowerCase().includes(s) ||
+            h.section.toLowerCase().includes(s) ||
+            h.created_by.toLowerCase().includes(s)
+        );
+    });
+
+    const exportRows = () =>
+        filtered.map((h) => ({
+            "Class": h.class,
+            "Section": h.section,
+            "Subject": h.subject,
+            "Homework Date": fmt(h.homework_date),
+            "Submission Date": fmt(h.submission_date),
+            "Evaluation Date": fmt(h.evaluation_date),
+            "Created By": h.created_by,
+            "Status": h.status,
+        }));
+
+    const copyToClipboard = useCallback(() => {
+        const text = exportRows().map((r) => Object.values(r).join("\t")).join("\n");
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copied to clipboard" });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filtered, toast]);
+
+    const exportToExcel = useCallback(() => {
+        const ws = XLSX.utils.json_to_sheet(exportRows());
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Homework");
+        XLSX.writeFile(wb, "homework.xlsx");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filtered]);
+
+    const exportToPDF = useCallback(() => {
+        const doc = new jsPDF("l");
+        doc.text("Homework", 14, 16);
+        autoTable(doc, {
+            head: [["Class", "Section", "Subject", "HW Date", "Submission", "Evaluation", "Created By", "Status"]],
+            body: filtered.map((h) => [
+                h.class, h.section, h.subject, fmt(h.homework_date),
+                fmt(h.submission_date), fmt(h.evaluation_date), h.created_by, h.status,
+            ]),
+            startY: 22,
+            styles: { fontSize: 8 },
+        });
+        doc.save("homework.pdf");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filtered]);
+
+    const pageNumbers = Array.from({ length: lastPage }, (_, i) => i + 1)
+        .filter((p) => p === 1 || p === lastPage || Math.abs(p - page) <= 1)
+        .reduce<(number | "…")[]>((acc, p, i, arr) => {
+            if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
+            acc.push(p);
+            return acc;
+        }, []);
+
+    const statusBadge = (status: string) => (
+        <Badge className={cn(
+            "border font-medium",
+            status === "Pending"
+                ? "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100"
+                : "bg-green-100 text-green-700 border-green-200 hover:bg-green-100"
+        )}>
+            {status}
+        </Badge>
     );
 
-    const sizeNum = parseInt(itemsPerPage, 10) || 50;
-    const totalEntries = filteredData.length;
-    const totalPages = Math.ceil(totalEntries / sizeNum) || 1;
-    const safePage = Math.min(currentPage, totalPages);
-    const startIndex = (safePage - 1) * sizeNum;
-    
-    const paginatedData = filteredData.slice(startIndex, startIndex + sizeNum);
-
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <div className="bg-white rounded shadow-sm border border-gray-100 overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-gray-100 p-4">
-                    <h1 className="text-[15px] font-medium text-gray-700 tracking-tight">Homework</h1>
-                    <Button className="bg-[#7e57c2] hover:bg-[#7048b6] text-white px-4 h-8 text-[12px] font-medium rounded shadow-none transition-all active:scale-95">
-                        Daily Assignment
-                    </Button>
+        <div className="p-4 lg:p-6 animate-in fade-in duration-500">
+            <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
+                {/* ── Header ── */}
+                <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <ClipboardList className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Homework</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {loading ? "Loading…" : `${total} ${activeTab} assignment${total === 1 ? "" : "s"}`}
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex border-b border-gray-200">
-                    <button
-                        onClick={() => { setActiveTab("upcoming"); setCurrentPage(1); }}
-                        className={cn(
-                            "px-6 py-3 text-[13px] font-medium transition-colors border-b-2",
-                            activeTab === "upcoming" 
-                                ? "border-[#7e57c2] text-[#7e57c2]" 
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                        )}
-                    >
-                        Upcoming Homework
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab("closed"); setCurrentPage(1); }}
-                        className={cn(
-                            "px-6 py-3 text-[13px] font-medium transition-colors border-b-2",
-                            activeTab === "closed" 
-                                ? "border-[#7e57c2] text-[#7e57c2]" 
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                        )}
-                    >
-                        Closed Homework
-                    </button>
+                {/* ── Tabs ── */}
+                <div className="flex border-b border-gray-200 px-3 sm:px-4 print:hidden">
+                    {(["upcoming", "closed"] as const).map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => switchTab(tab)}
+                            className={cn(
+                                "px-4 sm:px-5 py-3 text-[13px] font-semibold transition-colors border-b-2 -mb-px capitalize flex items-center gap-2",
+                                activeTab === tab
+                                    ? "border-[#6366F1] text-[#6366F1]"
+                                    : "border-transparent text-gray-500 hover:text-gray-700"
+                            )}
+                        >
+                            {tab} Homework
+                            {activeTab === tab && total > 0 && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
+                                    {total}
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </div>
 
-                <div className="p-4 space-y-4">
-                    {/* Table Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
+                <CardContent className="p-4">
+                    {/* Toolbar */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 print:hidden">
+                        <div className="relative w-full sm:w-64">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search..."
+                                placeholder="Search subject, class, teacher..."
                                 value={searchTerm}
-                                onChange={(e) => {
-                                    setSearchTerm(e.target.value);
-                                    setCurrentPage(1);
-                                }}
-                                className="h-8 text-[12px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-8 h-9 text-sm rounded-[10px]"
                             />
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center mr-2">
-                                <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                                    <SelectTrigger className="h-8 w-16 text-[12px] border-gray-200 shadow-none rounded font-medium">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-500">
-                                {[Copy, FileSpreadsheet, FileBox, Printer, Columns].map((Icon, i) => (
-                                    <Button key={i} variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-100 rounded text-gray-500">
-                                        <Icon className="h-4 w-4" />
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}>
+                                <SelectTrigger className="h-9 w-[70px] text-[12px] border border-gray-200 bg-white rounded-[10px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PAGE_SIZES.map((s) => (
+                                        <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <div className="flex items-center border border-gray-200 rounded-[10px] overflow-hidden">
+                                {[
+                                    { icon: Copy, label: "Copy", action: copyToClipboard },
+                                    { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
+                                    { icon: FileDown, label: "PDF", action: exportToPDF },
+                                    { icon: Printer, label: "Print", action: () => window.print() },
+                                ].map(({ icon: Icon, label, action }, i, arr) => (
+                                    <Button
+                                        key={label}
+                                        variant="ghost"
+                                        size="icon"
+                                        title={label}
+                                        onClick={action}
+                                        className={cn(
+                                            "h-9 w-9 rounded-none hover:bg-gray-100",
+                                            i < arr.length - 1 && "border-r border-gray-200"
+                                        )}
+                                    >
+                                        <Icon className="h-4 w-4 text-gray-500" />
                                     </Button>
                                 ))}
                             </div>
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
-                        <Table className="min-w-[1200px]">
-                            <TableHeader className="bg-transparent border-b border-gray-100">
-                                <TableRow className="hover:bg-transparent whitespace-nowrap text-[12px] font-bold text-gray-700">
-                                    <TableHead className="py-3 px-4 h-auto">Class <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Section <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Subject <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Homework Date <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Submission Date <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Evaluation Date <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-center">Max Marks <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-center">Marks Obtained <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Note <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-center">Status <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-right">Action</TableHead>
+                    {/* ── Desktop table ── */}
+                    <div className="hidden md:block rounded-md border border-gray-200 overflow-x-auto print:hidden">
+                        <Table className="min-w-[900px]">
+                            <TableHeader>
+                                <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200">
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Class</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Section</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Subject</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Homework Date</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Submission Date</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Evaluation Date</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Created By</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Status</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {paginatedData.length === 0 ? (
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableCell colSpan={11} className="text-center py-8 text-gray-500 text-sm">
-                                            No data available in table
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="h-32 text-center">
+                                            <div className="flex items-center justify-center gap-2 text-gray-400">
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                <span>Loading...</span>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filtered.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="h-32 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
+                                                <BookOpen className="h-8 w-8 opacity-30" />
+                                                <span className="text-sm">No homework found.</span>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    paginatedData.map((item, idx) => (
-                                        <TableRow key={item.id || idx} className="text-[13px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap text-gray-600">
-                                            <TableCell className="py-3 px-4">{item.class}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.section}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.subject}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.hwDate}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.subDate}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.evalDate}</TableCell>
-                                            <TableCell className="py-3 px-4 text-center">{item.maxMarks}</TableCell>
-                                            <TableCell className="py-3 px-4 text-center">{item.marksObtained}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.note}</TableCell>
+                                    filtered.map((h) => (
+                                        <TableRow
+                                            key={h.id}
+                                            className="text-[13px] border-b border-gray-100 hover:bg-gray-50/60 transition-colors whitespace-nowrap text-gray-600"
+                                        >
+                                            <TableCell className="py-3 px-4 font-medium text-gray-800">{h.class}</TableCell>
+                                            <TableCell className="py-3 px-4">{h.section || "—"}</TableCell>
+                                            <TableCell className="py-3 px-4">{h.subject}</TableCell>
+                                            <TableCell className="py-3 px-4">{fmt(h.homework_date)}</TableCell>
+                                            <TableCell className="py-3 px-4">{fmt(h.submission_date)}</TableCell>
+                                            <TableCell className="py-3 px-4">{fmt(h.evaluation_date)}</TableCell>
+                                            <TableCell className="py-3 px-4">{h.created_by || "—"}</TableCell>
+                                            <TableCell className="py-3 px-4 text-center">{statusBadge(h.status)}</TableCell>
                                             <TableCell className="py-3 px-4 text-center">
-                                                <span className={cn(
-                                                    "inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-bold text-white shadow-sm",
-                                                    item.status === "Pending" ? "bg-red-500" : "bg-green-500"
-                                                )}>
-                                                    {item.status}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="py-3 px-4 text-right">
-                                                <Button 
-                                                    className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-1.5 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95 ml-auto"
-                                                    title="Action"
+                                                <Button
+                                                    size="icon"
+                                                    onClick={() => setSelected(h)}
+                                                    title="View"
+                                                    className="h-7 w-7 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity"
                                                 >
-                                                    <Menu className="h-3.5 w-3.5" />
+                                                    <Eye className="h-3.5 w-3.5" />
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -190,37 +318,198 @@ export default function UserHomeworkPage() {
                         </Table>
                     </div>
 
-                    {/* Footer Pagination */}
-                    <div className="flex items-center justify-between text-[12px] text-gray-500 pt-2 pb-2">
-                        <div>
-                            Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
-                        </div>
-
-                        {totalEntries > 0 && (
-                            <div className="flex items-center gap-1 border border-gray-200 rounded overflow-hidden">
-                                <button
-                                    disabled={safePage === 1}
-                                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                    className="h-8 px-2 bg-white hover:bg-gray-50 text-gray-400 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50 border-r border-gray-200"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </button>
-                                <button className="h-8 px-3 text-xs flex items-center justify-center bg-[#6366f1] text-white font-medium border-r border-gray-200">
-                                    1
-                                </button>
-                                <button
-                                    disabled={safePage === totalPages}
-                                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                                    className="h-8 px-2 bg-white hover:bg-gray-50 text-gray-400 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </button>
+                    {/* ── Mobile cards ── */}
+                    <div className="md:hidden space-y-3 print:hidden">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span>Loading...</span>
                             </div>
+                        ) : filtered.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
+                                <BookOpen className="h-8 w-8 opacity-30" />
+                                <span className="text-sm">No homework found.</span>
+                            </div>
+                        ) : (
+                            filtered.map((h) => (
+                                <button
+                                    key={h.id}
+                                    onClick={() => setSelected(h)}
+                                    className="w-full text-left rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10">
+                                                <BookOpen className="h-4 w-4 text-[#6366F1]" />
+                                            </span>
+                                            <div className="min-w-0">
+                                                <p className="text-[13px] font-bold text-gray-800 truncate">{h.subject}</p>
+                                                <p className="text-[11px] text-gray-500 flex items-center gap-1">
+                                                    <Layers className="h-3 w-3" />
+                                                    {h.class}{h.section ? ` · ${h.section}` : ""}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {statusBadge(h.status)}
+                                    </div>
+
+                                    <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-500">
+                                        <span className="flex items-center gap-1.5">
+                                            <Calendar className="h-3 w-3 text-gray-400" />
+                                            HW: <span className="font-medium text-gray-700">{fmt(h.homework_date)}</span>
+                                        </span>
+                                        <span className="flex items-center gap-1.5">
+                                            <Calendar className="h-3 w-3 text-gray-400" />
+                                            Due: <span className="font-medium text-gray-700">{fmt(h.submission_date)}</span>
+                                        </span>
+                                        <span className="flex items-center gap-1.5 col-span-2">
+                                            <User className="h-3 w-3 text-gray-400" />
+                                            By: <span className="font-medium text-gray-700">{h.created_by || "—"}</span>
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between">
+                                        <span className="text-[11px] text-gray-400">
+                                            {h.attachment ? "Has attachment" : "Tap to view details"}
+                                        </span>
+                                        <span className="flex items-center gap-1 text-[11px] font-semibold text-[#6366F1]">
+                                            <Eye className="h-3.5 w-3.5" /> View
+                                        </span>
+                                    </div>
+                                </button>
+                            ))
                         )}
                     </div>
+
+                    {/* Pagination */}
+                    {!loading && (
+                        <div className="flex items-center justify-between mt-4 gap-3 flex-wrap print:hidden">
+                            <span className="text-[12px] text-gray-500">
+                                {total === 0 ? "No entries" : `Showing ${from} to ${to} of ${total} entries`}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <Button
+                                    size="icon"
+                                    disabled={page <= 1}
+                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+
+                                {pageNumbers.map((p, i) =>
+                                    p === "…" ? (
+                                        <span key={`e-${i}`} className="text-gray-400 text-[12px] px-1">…</span>
+                                    ) : (
+                                        <Button
+                                            key={p}
+                                            size="icon"
+                                            onClick={() => setPage(p as number)}
+                                            className={cn(
+                                                "h-8 w-8 rounded-[10px] text-[12px] font-medium transition-opacity",
+                                                page === p
+                                                    ? "text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90"
+                                                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                            )}
+                                        >
+                                            {p}
+                                        </Button>
+                                    )
+                                )}
+
+                                <Button
+                                    size="icon"
+                                    disabled={page >= lastPage}
+                                    onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Detail Modal */}
+            {selected && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                    onClick={() => setSelected(null)}
+                >
+                    <div
+                        className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-start justify-between gap-3 p-5 border-b border-gray-100">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="p-2 rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10 shrink-0">
+                                    <BookOpen className="h-5 w-5 text-[#6366F1]" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 className="text-[15px] font-bold text-gray-800 leading-snug truncate">{selected.subject}</h2>
+                                    <p className="text-[11px] text-gray-500">
+                                        {selected.class}{selected.section ? ` · ${selected.section}` : ""}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelected(null)}
+                                className="shrink-0 p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 px-5 pt-4 text-[12px] text-gray-500">
+                            <div className="flex items-center gap-1.5">
+                                <Calendar className="h-3.5 w-3.5" />
+                                <span>HW: <span className="font-medium text-gray-700">{fmt(selected.homework_date)}</span></span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <Calendar className="h-3.5 w-3.5" />
+                                <span>Submit: <span className="font-medium text-gray-700">{fmt(selected.submission_date)}</span></span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <Calendar className="h-3.5 w-3.5" />
+                                <span>Eval: <span className="font-medium text-gray-700">{fmt(selected.evaluation_date)}</span></span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <User className="h-3.5 w-3.5" />
+                                <span>By: <span className="font-medium text-gray-700">{selected.created_by || "—"}</span></span>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto px-5 py-4">
+                            <p className="text-[12px] font-semibold text-gray-500 mb-1">Description</p>
+                            {selected.description ? (
+                                <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap">{selected.description}</p>
+                            ) : (
+                                <p className="text-[13px] text-gray-400 italic">No description provided.</p>
+                            )}
+                            {selected.attachment && (
+                                <a
+                                    href={selected.attachment}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 mt-4 text-[13px] text-[#6366F1] hover:underline"
+                                >
+                                    <Paperclip className="h-3.5 w-3.5" /> View Attachment
+                                </a>
+                            )}
+                        </div>
+
+                        <div className="px-5 py-3 border-t border-gray-100 flex justify-end">
+                            <Button
+                                onClick={() => setSelected(null)}
+                                className="px-4 py-1.5 h-auto text-[13px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity"
+                            >
+                                Close
+                            </Button>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

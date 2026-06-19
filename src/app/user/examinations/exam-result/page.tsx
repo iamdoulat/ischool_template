@@ -1,181 +1,240 @@
 "use client";
 
-import { Printer } from "lucide-react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { Printer, Loader2, FileText, Award, Percent, Trophy, Layers, Sigma } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    Table, TableBody, TableCell, TableHead,
+    TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import { useSettings } from "@/components/providers/settings-provider";
 import { cn } from "@/lib/utils";
 
-const examResultData = [
-    {
-        examName: "CBSE Monthly Test - May",
-        columns: ["Max Marks", "Min Marks", "Marks Obtained", "Result"],
-        subjects: [
-            { name: "English (210)", max: "100.00", min: "33.00", obtained: "43.00", result: "Pass", note: "" },
-            { name: "Hindi (230)", max: "100.00", min: "33.00", obtained: "89.00", result: "Pass", note: "" },
-            { name: "Mathematics (110)", max: "100.00", min: "33.00", obtained: "76.00", result: "Pass", note: "" },
-            { name: "Science (111)", max: "100.00", min: "33.00", obtained: "56.00", result: "Pass", note: "" }
-        ],
-        summary: {
-            percentage: "66.00",
-            rank: "2",
-            result: "Pass",
-            division: "First",
-            grandTotal: "400",
-            totalObtain: "264"
-        }
-    },
-    {
-        examName: "CBSE Periodic Test 1(May)",
-        columns: ["Max Marks", "Min Marks", "Marks Obtained", "Grade"],
-        subjects: [
-            { name: "Mathematics (110)", max: "100.00", min: "33.00", obtained: "34.00", grade: "B-", note: "" },
-            { name: "Science (111)", max: "100.00", min: "33.00", obtained: "45.00", grade: "B", note: "" },
-            { name: "English (210)", max: "100.00", min: "33.00", obtained: "54.00", grade: "B+", note: "" }
-        ],
-        summary: {
-            percentage: "44.33",
-            rank: "4",
-            result: "Pass",
-            division: "Second",
-            grandTotal: "300",
-            totalObtain: "133"
-        }
-    },
-    {
-        examName: "College Grade Test (May-2026)",
-        columns: ["Max Marks", "Min Marks", "Marks Obtained", "Grade"],
-        subjects: [
-            { name: "English (210)", max: "100.00", min: "40.00", obtained: "56.00", grade: "B+", note: "" },
-            { name: "Mathematics (110)", max: "100.00", min: "40.00", obtained: "23.00", grade: "B-", note: "" },
-            { name: "Science (111)", max: "100.00", min: "40.00", obtained: "56.00", grade: "B+", note: "" }
-        ],
-        summary: {
-            percentage: "45.00",
-            rank: "5",
-            result: "Fail",
-            division: "Second",
-            grandTotal: "300",
-            totalObtain: "135"
-        }
-    },
-    {
-        examName: "Average Passing Test",
-        columns: ["Max Marks", "Marks Obtained"],
-        subjects: [
-            { name: "English (210)", max: "100.00", obtained: "65.00", note: "" },
-            { name: "Mathematics (110)", max: "100.00", obtained: "44.00", note: "" },
-            { name: "Science (111)", max: "100.00", obtained: "44.00", note: "" },
-            { name: "Social Studies (212)", max: "100.00", obtained: "45.00", note: "" }
-        ],
-        summary: {
-            percentage: "49.50",
-            rank: "2",
-            result: "Fail",
-            division: "Second",
-            grandTotal: "400",
-            totalObtain: "198"
-        }
-    }
-];
+type Subject = {
+    id: number;
+    name: string;
+    max: string;
+    min: string;
+    obtained: string;
+    result: "Pass" | "Fail";
+    grade: string;
+    note: string;
+};
+
+type ExamResult = {
+    exam_id: number;
+    exam_name: string;
+    exam_type: string;
+    is_grading: boolean;
+    subjects: Subject[];
+    summary: {
+        percentage: string;
+        result: "Pass" | "Fail";
+        division: string;
+        grade: string;
+        grand_total: string;
+        total_obtained: string;
+    };
+};
 
 export default function UserExaminationsResultPage() {
+    const [results, setResults] = useState<ExamResult[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+    const { settings } = useSettings();
+
+    useEffect(() => {
+        const fetchResults = async () => {
+            try {
+                const res = await api.get("/user/exam-results");
+                if (res.data.success) {
+                    setResults(res.data.data ?? []);
+                } else {
+                    toast({ variant: "destructive", title: "Error", description: res.data.message || "Failed to load results." });
+                }
+            } catch {
+                toast({ variant: "destructive", title: "Error", description: "Failed to load exam results." });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchResults();
+    }, [toast]);
+
+    const ResultPill = ({ result }: { result: "Pass" | "Fail" }) => (
+        <span className={cn(
+            "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-bold text-white",
+            result === "Pass" ? "bg-[#5cb85c]" : "bg-[#d9534f]"
+        )}>
+            {result}
+        </span>
+    );
+
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            <div className="bg-white rounded shadow-sm border border-gray-100 overflow-hidden">
-                {/* Header */}
-                <div className="border-b border-gray-100 p-4 flex justify-between items-center">
-                    <h1 className="text-[16px] font-medium text-gray-700 tracking-tight">Exam Result</h1>
-                    <Button className="bg-[#7e57c2] hover:bg-[#7048b6] text-white h-8 w-8 p-0 rounded shadow-none transition-all active:scale-95">
+        <div className="p-4 lg:p-6 animate-in fade-in duration-500">
+            {/* Print-only header with logo on right */}
+            <div className="hidden print:flex items-start justify-between mb-4 pb-4 border-b border-gray-300">
+                <div>
+                    <h2 className="text-lg font-bold text-gray-900">{settings.school_name}</h2>
+                    {settings.address && <p className="text-xs text-gray-600 mt-0.5">{settings.address}</p>}
+                    {settings.phone && <p className="text-xs text-gray-600">{settings.phone}</p>}
+                    {settings.email && <p className="text-xs text-gray-600">{settings.email}</p>}
+                </div>
+                {settings.print_logo && (
+                    <img src={settings.print_logo} alt="School Logo" className="h-16 w-auto object-contain ml-4" />
+                )}
+            </div>
+
+            <Card className="shadow-sm print:shadow-none border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
+                {/* ── Header ── */}
+                <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Award className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Exam Result</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {loading ? "Loading results…" : `${results.length} published result${results.length === 1 ? "" : "s"}`}
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={() => window.print()}
+                        title="Print"
+                        className="h-9 shrink-0 ml-auto px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
+                    >
                         <Printer className="h-4 w-4" />
+                        <span className="hidden sm:inline">Print</span>
                     </Button>
                 </div>
 
-                <div className="p-4 space-y-6">
-                    {examResultData.map((exam, index) => (
-                        <div key={index} className="border border-gray-200 rounded-sm overflow-hidden">
-                            {/* Exam Title Bar */}
-                            <div className="bg-gray-100/80 p-3 border-b border-gray-200 text-[14px] text-gray-700 font-medium">
-                                {exam.examName}
-                            </div>
-                            
-                            {/* Data Table */}
-                            <div className="overflow-x-auto">
-                                <Table className="min-w-[800px]">
-                                    <TableHeader>
-                                        <TableRow className="hover:bg-transparent border-b border-gray-200">
-                                            <TableHead className="w-[200px] text-[12px] font-bold text-gray-700 h-auto py-3">Subject</TableHead>
-                                            {exam.columns.map((col, cIdx) => (
-                                                <TableHead key={cIdx} className="text-center text-[12px] font-bold text-gray-700 h-auto py-3">
-                                                    {col}
-                                                </TableHead>
-                                            ))}
-                                            <TableHead className="text-right text-[12px] font-bold text-gray-700 h-auto py-3 pr-6">Note</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {exam.subjects.map((subject: any, sIdx) => (
-                                            <TableRow key={sIdx} className="hover:bg-gray-50/50 border-b border-gray-100">
-                                                <TableCell className="text-[13px] text-gray-600 py-3 font-medium">{subject.name}</TableCell>
-                                                
-                                                {exam.columns.includes("Max Marks") && (
-                                                    <TableCell className="text-center text-[13px] text-gray-600 py-3">{subject.max}</TableCell>
-                                                )}
-                                                
-                                                {exam.columns.includes("Min Marks") && (
-                                                    <TableCell className="text-center text-[13px] text-gray-600 py-3">{subject.min}</TableCell>
-                                                )}
-                                                
-                                                {exam.columns.includes("Marks Obtained") && (
-                                                    <TableCell className="text-center text-[13px] text-gray-600 py-3">{subject.obtained}</TableCell>
-                                                )}
-                                                
-                                                {exam.columns.includes("Result") && (
-                                                    <TableCell className="text-center text-[13px] py-3">
-                                                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-bold text-white bg-[#5cb85c]">
-                                                            {subject.result}
-                                                        </span>
-                                                    </TableCell>
-                                                )}
-                                                
-                                                {exam.columns.includes("Grade") && (
-                                                    <TableCell className="text-center text-[13px] text-gray-600 py-3">{subject.grade}</TableCell>
-                                                )}
-
-                                                <TableCell className="text-right text-[13px] text-gray-600 py-3 pr-6">{subject.note}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-
-                            {/* Summary Footer */}
-                            <div className="grid grid-cols-2 md:grid-cols-5 p-3 border-t border-gray-200 bg-gray-100/60 text-[13px] font-bold text-gray-700 gap-4 items-center">
-                                <div>Percentage : {exam.summary.percentage}</div>
-                                <div className="text-center">Rank : {exam.summary.rank}</div>
-                                <div className="text-center flex items-center justify-center gap-1">
-                                    Result : 
-                                    <span className={cn(
-                                        "inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[11px] font-bold text-white ml-1 mr-1",
-                                        exam.summary.result === "Pass" ? "bg-[#5cb85c]" : "bg-[#d9534f]"
-                                    )}>
-                                        {exam.summary.result}
-                                    </span> 
-                                    Division : {exam.summary.division}
-                                </div>
-                                <div className="text-center">Grand Total : {exam.summary.grandTotal}</div>
-                                <div className="text-right">Total Obtain Marks : {exam.summary.totalObtain}</div>
-                            </div>
+                <CardContent className="p-4 lg:p-5 space-y-6">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-20 text-gray-400 gap-2">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                            <span>Loading results...</span>
                         </div>
-                    ))}
-                </div>
-            </div>
+                    ) : results.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                            <FileText className="h-12 w-12 opacity-30 mb-3" />
+                            <p className="text-base font-semibold text-gray-500">No published exam results yet.</p>
+                            <p className="text-sm mt-1 text-gray-400">Results appear here once the school publishes them.</p>
+                        </div>
+                    ) : (
+                        results.map((exam) => {
+                            const valueCol = exam.is_grading ? "Grade" : "Result";
+                            const summaryTiles = [
+                                { icon: Percent, label: "Percentage", value: `${exam.summary.percentage}%`, color: "text-emerald-600" },
+                                { icon: Layers, label: "Division", value: exam.summary.division || "—", color: "text-sky-600" },
+                                ...(exam.summary.grade ? [{ icon: Award, label: "Grade", value: exam.summary.grade, color: "text-orange-600" }] : []),
+                                { icon: Sigma, label: "Grand Total", value: exam.summary.grand_total, color: "text-indigo-600" },
+                                { icon: Trophy, label: "Obtained", value: exam.summary.total_obtained, color: "text-violet-600" },
+                            ];
+                            return (
+                                <div key={exam.exam_id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm break-inside-avoid">
+                                    {/* Exam Title Bar */}
+                                    <div className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] px-4 py-3 text-[14px] text-white font-bold flex items-center gap-2">
+                                        <Award className="h-4 w-4" /> {exam.exam_name}
+                                    </div>
+
+                                    {/* Desktop table (lg+) */}
+                                    <div className="hidden lg:block overflow-x-auto">
+                                        <Table className="min-w-[760px]">
+                                            <TableHeader>
+                                                <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 border-b border-gray-200">
+                                                    <TableHead className="w-[220px] text-[10px] uppercase font-bold text-gray-600 py-3">Subject</TableHead>
+                                                    <TableHead className="text-center text-[10px] uppercase font-bold text-gray-600 py-3">Max Marks</TableHead>
+                                                    <TableHead className="text-center text-[10px] uppercase font-bold text-gray-600 py-3">Min Marks</TableHead>
+                                                    <TableHead className="text-center text-[10px] uppercase font-bold text-gray-600 py-3">Marks Obtained</TableHead>
+                                                    <TableHead className="text-center text-[10px] uppercase font-bold text-gray-600 py-3">{valueCol}</TableHead>
+                                                    <TableHead className="text-right text-[10px] uppercase font-bold text-gray-600 py-3 pr-6">Note</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {exam.subjects.map((s) => (
+                                                    <TableRow key={s.id} className="hover:bg-indigo-50/30 transition-colors border-b border-gray-100">
+                                                        <TableCell className="text-[13px] text-gray-800 py-3 font-semibold">{s.name}</TableCell>
+                                                        <TableCell className="text-center text-[13px] text-gray-600 py-3">{s.max}</TableCell>
+                                                        <TableCell className="text-center text-[13px] text-gray-600 py-3">{s.min}</TableCell>
+                                                        <TableCell className={cn(
+                                                            "text-center text-[13px] py-3 font-bold",
+                                                            s.obtained === "Absent" ? "text-red-500 italic font-medium" : "text-gray-900"
+                                                        )}>
+                                                            {s.obtained}
+                                                        </TableCell>
+                                                        <TableCell className="text-center text-[13px] py-3">
+                                                            {exam.is_grading ? (
+                                                                <span className="font-semibold text-gray-700">{s.grade || "—"}</span>
+                                                            ) : (
+                                                                <ResultPill result={s.result} />
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-right text-[13px] text-gray-500 py-3 pr-6">{s.note || "—"}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+
+                                    {/* Mobile cards (<lg) */}
+                                    <div className="lg:hidden divide-y divide-gray-100">
+                                        {exam.subjects.map((s) => (
+                                            <div key={s.id} className="p-3.5">
+                                                <div className="flex items-center justify-between gap-2 mb-2">
+                                                    <span className="text-[13px] font-bold text-gray-800">{s.name}</span>
+                                                    {exam.is_grading
+                                                        ? <span className="text-[12px] font-bold text-gray-700 bg-gray-100 rounded-full px-2.5 py-0.5">{s.grade || "—"}</span>
+                                                        : <ResultPill result={s.result} />}
+                                                </div>
+                                                <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-1.5">
+                                                    <div className="flex items-center justify-between py-1 text-[12px]">
+                                                        <span className="text-gray-500">Max</span><span className="font-semibold text-gray-700">{s.max}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between py-1 text-[12px]">
+                                                        <span className="text-gray-500">Min</span><span className="font-semibold text-gray-700">{s.min}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between py-1 text-[12px]">
+                                                        <span className="text-gray-500">Obtained</span>
+                                                        <span className={cn("font-bold", s.obtained === "Absent" ? "text-red-500 italic" : "text-gray-900")}>{s.obtained}</span>
+                                                    </div>
+                                                </div>
+                                                {s.note && <p className="text-[11px] text-gray-500 mt-1.5">Note: {s.note}</p>}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Summary tiles */}
+                                    <div className="border-t border-gray-200 bg-gray-50/50 p-3">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                                            {summaryTiles.map((t, i) => (
+                                                <div key={i} className="flex items-center gap-2.5 rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm">
+                                                    <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10", t.color)}>
+                                                        <t.icon className="h-4 w-4" />
+                                                    </span>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none">{t.label}</p>
+                                                        <p className={cn("text-[14px] font-bold mt-0.5", t.color)}>{t.value}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div className="flex items-center gap-2.5 rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm">
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none mb-1">Result</p>
+                                                    <ResultPill result={exam.summary.result} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }

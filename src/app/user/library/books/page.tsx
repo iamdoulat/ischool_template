@@ -1,149 +1,293 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import api from "@/lib/api";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    Table, TableBody, TableCell, TableHead,
+    TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+    Select, SelectContent, SelectItem,
+    SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
-    ArrowUpDown, Copy, FileSpreadsheet,
-    FileBox, Printer, Columns, ChevronLeft, ChevronRight
+    Copy, FileSpreadsheet, FileDown, Printer,
+    ChevronLeft, ChevronRight, Search, Loader2, BookOpen,
+    Library, User, Building2, Hash, MapPin,
 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { cn } from "@/lib/utils";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-const booksData = [
-    { id: 1, title: "संसार पुस्तक है।", publisher: "", author: "", subject: "Hindi", rack: "987", qty: 20, price: "$100.00", postDate: "04/30/2026" },
-    { id: 2, title: "Maths Activity Book Class 1", publisher: "Yogesh", author: "Hunny", subject: "Maths", rack: "23", qty: 0, price: "$299.00", postDate: "04/08/2026" },
-    { id: 3, title: "English Grammar for Beginners", publisher: "s r. k", author: "jhon", subject: "", rack: "2", qty: 100, price: "$100.00", postDate: "04/03/2026" },
-    { id: 4, title: "Respiration in Organisms", publisher: "S.K Publisher", author: "John Wilson", subject: "", rack: "", qty: 50, price: "$100.00", postDate: "04/01/2026" },
-    { id: 5, title: "Environmental Studies (EVS)", publisher: "Orient BlackSwan", author: "Anita Gupta", subject: "", rack: "435", qty: 0, price: "$100.00", postDate: "03/03/2026" },
-    { id: 6, title: "Maths Activity Book Class 1", publisher: "NCERT", author: "S. Verma", subject: "Mathematics", rack: "234", qty: 50, price: "$100.00", postDate: "03/14/2026" },
-    { id: 7, title: "English Grammar for Beginners", publisher: "Oxford Publications", author: "R.K. Sharma", subject: "English", rack: "565", qty: 40, price: "$100.00", postDate: "03/20/2026" },
-    { id: 8, title: "संसार पुस्तक है।", publisher: "S.K.Publisher", author: "Robert", subject: "", rack: "6567", qty: 50, price: "$45.00", postDate: "03/03/2026" },
-    { id: 9, title: "The Valley of Flowers", publisher: "D.S Publisher", author: "Laura", subject: "", rack: "786", qty: 35, price: "$50.00", postDate: "03/25/2026" },
-    { id: 10, title: "Respiration in Organisms", publisher: "S.K Publisher", author: "John Wilson", subject: "", rack: "5345", qty: 50, price: "$100.00", postDate: "03/13/2026" },
-    { id: 11, title: "Wonderful Adventures of Nils", publisher: "S.K. Publisher", author: "Martin Wilson", subject: "English", rack: "567574", qty: 90, price: "$100.00", postDate: "03/05/2026" },
-    { id: 12, title: "Electricity & Circuits", publisher: "S.K. Publisher", author: "John Wright", subject: "Science", rack: "89675", qty: 80, price: "$50.00", postDate: "03/03/2026" },
-    { id: 13, title: "चंद्र गहना से लौटती बेर\"", publisher: "D.S Publisher", author: "Suresh Kumar", subject: "hindi", rack: "7845", qty: 80, price: "$150.00", postDate: "02/23/2026" },
-    { id: 14, title: "Hindi Vyakaran", publisher: "D.S. Publisher", author: "", subject: "Hindi", rack: "1234", qty: 90, price: "$200.00", postDate: "02/17/2026" },
-    { id: 15, title: "Mathematics", publisher: "D.K. Publisher", author: "", subject: "Mathematics", rack: "6534", qty: 80, price: "$300.00", postDate: "02/21/2026" },
-    { id: 16, title: "Environmental Studies (EVS)", publisher: "D.S Publisher", author: "", subject: "Environmental", rack: "756", qty: 90, price: "$300.00", postDate: "02/11/2026" },
-    { id: 17, title: "English Reader", publisher: "S.K Publisher", author: "", subject: "English", rack: "4545", qty: 50, price: "$250.00", postDate: "02/02/2026" },
-    { id: 18, title: "Social & Political Life", publisher: "Sk. Publisher", author: "Harish Vardhan", subject: "Social Science", rack: "57574", qty: 100, price: "$120.00", postDate: "01/20/2026" }
-];
+type Book = {
+    id: number;
+    title: string;
+    book_number: string | null;
+    isbn_number: string | null;
+    publisher: string | null;
+    author: string | null;
+    subject: string | null;
+    rack_number: string | null;
+    qty: number;
+    available: number;
+    price: string | number;
+    post_date: string | null;
+    created_at: string | null;
+};
+
+const PAGE_SIZES = [10, 25, 50, 100];
 
 export default function UserLibraryBooksPage() {
+    const [books, setBooks] = useState<Book[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [itemsPerPage, setItemsPerPage] = useState("50");
-    const [currentPage, setCurrentPage] = useState(1);
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [limit, setLimit] = useState(50);
+    const [page, setPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [from, setFrom] = useState(0);
+    const [to, setTo] = useState(0);
+    const { toast } = useToast();
 
-    const filteredData = booksData.filter(c =>
-        c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.publisher.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.subject.toLowerCase().includes(searchTerm.toLowerCase())
+    // debounce search
+    useEffect(() => {
+        const t = setTimeout(() => { setDebouncedSearch(searchTerm); setPage(1); }, 400);
+        return () => clearTimeout(t);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        const fetchBooks = async () => {
+            setLoading(true);
+            try {
+                const res = await api.get(`/library/books`, {
+                    params: { page, limit, search: debouncedSearch },
+                });
+                const raw = res.data;
+                setBooks(raw?.data ?? []);
+                setLastPage(raw?.last_page ?? 1);
+                setTotal(raw?.total ?? 0);
+                setFrom(raw?.from ?? 0);
+                setTo(raw?.to ?? 0);
+            } catch {
+                toast({ variant: "destructive", title: "Error", description: "Failed to load books." });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchBooks();
+    }, [page, limit, debouncedSearch, toast]);
+
+    const formatPrice = (p: string | number) => {
+        const n = typeof p === "string" ? parseFloat(p) : p;
+        return isNaN(n) ? "$0.00" : `$${n.toFixed(2)}`;
+    };
+
+    const formatDate = (d: string | null) =>
+        d ? new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" }) : "";
+
+    const exportRows = () =>
+        books.map((b) => ({
+            "Book Title": b.title,
+            "Book Number": b.book_number || "",
+            "ISBN": b.isbn_number || "",
+            "Publisher": b.publisher || "",
+            "Author": b.author || "",
+            "Subject": b.subject || "",
+            "Rack Number": b.rack_number || "",
+            "Qty": b.qty,
+            "Available": b.available,
+            "Book Price": formatPrice(b.price),
+            "Post Date": formatDate(b.post_date || b.created_at),
+        }));
+
+    const copyToClipboard = useCallback(() => {
+        const rows = exportRows();
+        const text = rows.map((r) => Object.values(r).join("\t")).join("\n");
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copied to clipboard" });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [books, toast]);
+
+    const exportToExcel = useCallback(() => {
+        const ws = XLSX.utils.json_to_sheet(exportRows());
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Books");
+        XLSX.writeFile(wb, "library-books.xlsx");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [books]);
+
+    const exportToPDF = useCallback(() => {
+        const doc = new jsPDF("l");
+        doc.text("Library Books", 14, 16);
+        autoTable(doc, {
+            head: [["Book Title", "Book No.", "Publisher", "Author", "Subject", "Rack", "Avail/Qty", "Price"]],
+            body: books.map((b) => [
+                b.title, b.book_number || "", b.publisher || "", b.author || "", b.subject || "",
+                b.rack_number || "", `${b.available}/${b.qty}`, formatPrice(b.price),
+            ]),
+            startY: 22,
+            styles: { fontSize: 8 },
+        });
+        doc.save("library-books.pdf");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [books]);
+
+    const pageNumbers = Array.from({ length: lastPage }, (_, i) => i + 1)
+        .filter((p) => p === 1 || p === lastPage || Math.abs(p - page) <= 1)
+        .reduce<(number | "…")[]>((acc, p, i, arr) => {
+            if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
+            acc.push(p);
+            return acc;
+        }, []);
+
+    const availBadge = (b: Book) => (
+        <Badge
+            className={cn(
+                "border font-medium",
+                b.available > 0
+                    ? "bg-green-100 text-green-700 border-green-200 hover:bg-green-100"
+                    : "bg-red-100 text-red-600 border-red-200 hover:bg-red-100"
+            )}
+        >
+            {b.available > 0 ? `${b.available}/${b.qty} available` : "Out of stock"}
+        </Badge>
     );
 
-    const sizeNum = parseInt(itemsPerPage, 10) || 50;
-    const totalEntries = filteredData.length;
-    const totalPages = Math.ceil(totalEntries / sizeNum) || 1;
-    const safePage = Math.min(currentPage, totalPages);
-    const startIndex = (safePage - 1) * sizeNum;
-    
-    const paginatedData = filteredData.slice(startIndex, startIndex + sizeNum);
-
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <div className="bg-white rounded shadow-sm border border-gray-100 overflow-hidden">
-                {/* Header */}
-                <div className="border-b border-gray-100 p-4 flex justify-between items-center">
-                    <h1 className="text-[15px] font-medium text-gray-700 tracking-tight">Book</h1>
+        <div className="p-4 lg:p-6 animate-in fade-in duration-500">
+            <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
+                {/* ── Header ── */}
+                <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Library className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Library Books</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {loading ? "Loading…" : `${total} book${total === 1 ? "" : "s"} in catalogue`}
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="p-4 space-y-4">
-                    {/* Table Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
+                <CardContent className="p-4">
+                    {/* Toolbar */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 print:hidden">
+                        <div className="relative w-full sm:w-72">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search..."
+                                placeholder="Search title, author, publisher, subject..."
                                 value={searchTerm}
-                                onChange={(e) => {
-                                    setSearchTerm(e.target.value);
-                                    setCurrentPage(1);
-                                }}
-                                className="h-8 text-[12px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-8 h-9 text-sm rounded-[10px]"
                             />
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center mr-2">
-                                <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                                    <SelectTrigger className="h-8 w-16 text-[12px] border-gray-200 shadow-none rounded font-medium">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-500">
-                                {[Copy, FileSpreadsheet, FileBox, Printer, Columns].map((Icon, i) => (
-                                    <Button key={i} variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-100 rounded text-gray-500">
-                                        <Icon className="h-4 w-4" />
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}>
+                                <SelectTrigger className="h-9 w-[70px] text-[12px] border border-gray-200 bg-white rounded-[10px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PAGE_SIZES.map((s) => (
+                                        <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <div className="flex items-center border border-gray-200 rounded-[10px] overflow-hidden">
+                                {[
+                                    { icon: Copy, label: "Copy", action: copyToClipboard },
+                                    { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
+                                    { icon: FileDown, label: "PDF", action: exportToPDF },
+                                    { icon: Printer, label: "Print", action: () => window.print() },
+                                ].map(({ icon: Icon, label, action }, i, arr) => (
+                                    <Button
+                                        key={label}
+                                        variant="ghost"
+                                        size="icon"
+                                        title={label}
+                                        onClick={action}
+                                        className={cn(
+                                            "h-9 w-9 rounded-none hover:bg-gray-100",
+                                            i < arr.length - 1 && "border-r border-gray-200"
+                                        )}
+                                    >
+                                        <Icon className="h-4 w-4 text-gray-500" />
                                     </Button>
                                 ))}
                             </div>
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
+                    {/* ── Desktop table ── */}
+                    <div className="hidden md:block rounded-md border border-gray-200 overflow-x-auto print:hidden">
                         <Table className="min-w-[1000px]">
-                            <TableHeader className="bg-transparent border-b border-gray-100">
-                                <TableRow className="hover:bg-transparent whitespace-nowrap text-[12px] font-bold text-gray-700">
-                                    <TableHead className="py-3 px-4 h-auto">Book Title <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Publisher <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Author <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Subject <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Rack Number <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-center">Qty <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-right">Book Price <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-right">Post Date</TableHead>
+                            <TableHeader>
+                                <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200 text-[12px] font-bold text-gray-700">
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Book Title</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Book No.</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Author</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Publisher</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Subject</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Rack</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Availability</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-right">Price</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {paginatedData.length === 0 ? (
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableCell colSpan={8} className="text-center py-8 text-gray-500 text-sm">
-                                            No data available in table
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="h-32 text-center">
+                                            <div className="flex items-center justify-center gap-2 text-gray-400">
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                <span>Loading...</span>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : books.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="h-32 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
+                                                <BookOpen className="h-8 w-8 opacity-30" />
+                                                <span className="text-sm">No books available.</span>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    paginatedData.map((item, idx) => (
-                                        <TableRow key={item.id} className="text-[13px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap text-gray-600">
-                                            <TableCell className="py-3 px-4 font-medium text-gray-700">{item.title}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.publisher}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.author}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.subject}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.rack}</TableCell>
-                                            <TableCell className="py-3 px-4 text-center">{item.qty}</TableCell>
-                                            <TableCell className="py-3 px-4 text-right">{item.price}</TableCell>
-                                            <TableCell className="py-3 px-4 text-right">{item.postDate}</TableCell>
+                                    books.map((b) => (
+                                        <TableRow
+                                            key={b.id}
+                                            className="text-[13px] border-b border-gray-100 hover:bg-gray-50/60 transition-colors whitespace-nowrap text-gray-600"
+                                        >
+                                            <TableCell className="py-3 px-4 font-medium text-gray-800">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-[#6366F1]">
+                                                        <BookOpen className="h-3.5 w-3.5" />
+                                                    </span>
+                                                    <div className="min-w-0">
+                                                        <div className="truncate max-w-[220px]">{b.title}</div>
+                                                        {b.isbn_number && (
+                                                            <div className="text-[10px] text-gray-400 font-normal">ISBN: {b.isbn_number}</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-3 px-4">{b.book_number || "—"}</TableCell>
+                                            <TableCell className="py-3 px-4">{b.author || "—"}</TableCell>
+                                            <TableCell className="py-3 px-4">{b.publisher || "—"}</TableCell>
+                                            <TableCell className="py-3 px-4">{b.subject || "—"}</TableCell>
+                                            <TableCell className="py-3 px-4">{b.rack_number || "—"}</TableCell>
+                                            <TableCell className="py-3 px-4 text-center">{availBadge(b)}</TableCell>
+                                            <TableCell className="py-3 px-4 text-right font-medium">{formatPrice(b.price)}</TableCell>
                                         </TableRow>
                                     ))
                                 )}
@@ -151,37 +295,122 @@ export default function UserLibraryBooksPage() {
                         </Table>
                     </div>
 
-                    {/* Footer Pagination */}
-                    <div className="flex items-center justify-between text-[12px] text-gray-500 pt-2 pb-2">
-                        <div>
-                            Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
-                        </div>
-
-                        {totalEntries > 0 && (
-                            <div className="flex items-center gap-1 border border-gray-200 rounded overflow-hidden">
-                                <button
-                                    disabled={safePage === 1}
-                                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                    className="h-8 px-2 bg-white hover:bg-gray-50 text-gray-400 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50 border-r border-gray-200"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </button>
-                                <button className="h-8 px-3 text-xs flex items-center justify-center bg-[#6366f1] text-white font-medium border-r border-gray-200">
-                                    1
-                                </button>
-                                <button
-                                    disabled={safePage === totalPages}
-                                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                                    className="h-8 px-2 bg-white hover:bg-gray-50 text-gray-400 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </button>
+                    {/* ── Mobile cards ── */}
+                    <div className="md:hidden space-y-3 print:hidden">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span>Loading...</span>
                             </div>
+                        ) : books.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
+                                <BookOpen className="h-8 w-8 opacity-30" />
+                                <span className="text-sm">No books available.</span>
+                            </div>
+                        ) : (
+                            books.map((b) => (
+                                <div key={b.id} className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10">
+                                                <BookOpen className="h-4.5 w-4.5 text-[#6366F1]" />
+                                            </span>
+                                            <div className="min-w-0">
+                                                <p className="text-[13px] font-bold text-gray-800 leading-snug line-clamp-2">{b.title}</p>
+                                                {b.book_number && (
+                                                    <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                                                        <Hash className="h-3 w-3" /> {b.book_number}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <span className="shrink-0 text-[12px] font-semibold text-gray-700">{formatPrice(b.price)}</span>
+                                    </div>
+
+                                    <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-500">
+                                        {b.author && (
+                                            <span className="flex items-center gap-1.5 min-w-0">
+                                                <User className="h-3 w-3 text-gray-400 shrink-0" />
+                                                <span className="truncate">{b.author}</span>
+                                            </span>
+                                        )}
+                                        {b.publisher && (
+                                            <span className="flex items-center gap-1.5 min-w-0">
+                                                <Building2 className="h-3 w-3 text-gray-400 shrink-0" />
+                                                <span className="truncate">{b.publisher}</span>
+                                            </span>
+                                        )}
+                                        {b.subject && (
+                                            <span className="flex items-center gap-1.5 min-w-0">
+                                                <BookOpen className="h-3 w-3 text-gray-400 shrink-0" />
+                                                <span className="truncate">{b.subject}</span>
+                                            </span>
+                                        )}
+                                        {b.rack_number && (
+                                            <span className="flex items-center gap-1.5 min-w-0">
+                                                <MapPin className="h-3 w-3 text-gray-400 shrink-0" />
+                                                <span className="truncate">Rack {b.rack_number}</span>
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-3 pt-2.5 border-t border-gray-100">
+                                        {availBadge(b)}
+                                    </div>
+                                </div>
+                            ))
                         )}
                     </div>
-                </div>
-            </div>
+
+                    {/* Pagination */}
+                    {!loading && (
+                        <div className="flex items-center justify-between mt-4 gap-3 flex-wrap print:hidden">
+                            <span className="text-[12px] text-gray-500">
+                                {total === 0 ? "No entries" : `Showing ${from} to ${to} of ${total} entries`}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <Button
+                                    size="icon"
+                                    disabled={page <= 1}
+                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+
+                                {pageNumbers.map((p, i) =>
+                                    p === "…" ? (
+                                        <span key={`e-${i}`} className="text-gray-400 text-[12px] px-1">…</span>
+                                    ) : (
+                                        <Button
+                                            key={p}
+                                            size="icon"
+                                            onClick={() => setPage(p as number)}
+                                            className={cn(
+                                                "h-8 w-8 rounded-[10px] text-[12px] font-medium transition-opacity",
+                                                page === p
+                                                    ? "text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90"
+                                                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                            )}
+                                        >
+                                            {p}
+                                        </Button>
+                                    )
+                                )}
+
+                                <Button
+                                    size="icon"
+                                    disabled={page >= lastPage}
+                                    onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }

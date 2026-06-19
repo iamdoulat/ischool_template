@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Table,
     TableBody,
@@ -21,166 +21,238 @@ import { Input } from "@/components/ui/input";
 import {
     Search, ChevronLeft, ChevronRight,
     ArrowUpDown, Copy, FileSpreadsheet,
-    FileBox, Printer, Eye, CheckSquare, AlertCircle
+    FileBox, Printer, Eye, CheckSquare, AlertCircle, Loader2,
+    ClipboardList, CalendarClock, Clock, FileText, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import api from "@/lib/api";
+import { toast } from "sonner";
 
-const upcomingExams = [
-    { id: 1, exam: "Monthly Assessment", isQuiz: true, dateFrom: "06/21/2026 01:47 pm", dateTo: "06/30/2026 01:47 pm", duration: "01:00:00", totalAttempt: 5, attempted: 0, status: "Available" },
-    { id: 2, exam: "Quiz - June 2026", isQuiz: true, dateFrom: "06/11/2026 01:43 pm", dateTo: "06/20/2026 01:43 pm", duration: "01:00:00", totalAttempt: 5, attempted: 0, status: "Available" }
-];
-
-const closedExams = [
-    { id: 3, exam: "Monthly Online Test (June)", isQuiz: true, dateFrom: "06/02/2026 01:36 pm", dateTo: "06/10/2026 01:36 pm", duration: "01:00:00", totalAttempt: 5, attempted: 0, status: "Available" },
-    { id: 4, exam: "Monthly Assessment", isQuiz: false, dateFrom: "05/18/2026 04:36 pm", dateTo: "05/30/2026 04:36 pm", duration: "01:00:00", totalAttempt: 4, attempted: 0, status: "Available" },
-    { id: 5, exam: "Quiz - May 2026", isQuiz: true, dateFrom: "05/11/2026 04:55 pm", dateTo: "05/20/2026 04:55 pm", duration: "01:00:00", totalAttempt: 4, attempted: 0, status: "Available" },
-    { id: 6, exam: "Online Test - May 2026", isQuiz: true, dateFrom: "05/04/2026 04:55 pm", dateTo: "05/11/2026 04:55 pm", duration: "01:00:00", totalAttempt: 3, attempted: 0, status: "Available" },
-    { id: 7, exam: "Monthly Online Test - May", isQuiz: false, dateFrom: "05/04/2026 04:32 pm", dateTo: "05/20/2026 04:32 pm", duration: "01:00:00", totalAttempt: 5, attempted: 0, status: "Available" },
-    { id: 8, exam: "Quiz - April 2026", isQuiz: true, dateFrom: "04/19/2026 09:00 am", dateTo: "04/23/2026 04:00 pm", duration: "00:30:00", totalAttempt: 5, attempted: 0, status: "Available" },
-    { id: 9, exam: "Assingment 1", isQuiz: true, dateFrom: "04/08/2026 05:23 pm", dateTo: "04/09/2026 05:23 pm", duration: "01:00:00", totalAttempt: 5, attempted: 0, status: "Available" },
-    { id: 10, exam: "Online Test - April 2026", isQuiz: false, dateFrom: "04/01/2026 10:00 am", dateTo: "04/22/2026 02:00 pm", duration: "01:30:00", totalAttempt: 10, attempted: 1, status: "Available" }
-];
+interface OnlineExam {
+    id: number;
+    exam: string;
+    isQuiz: boolean;
+    dateFrom: string;
+    dateTo: string;
+    duration: string;
+    totalAttempt: number;
+    attempted: number;
+    status: string;
+    description: string;
+    passingPercentage: number;
+    isResultPublished: boolean;
+}
 
 export default function UserOnlineExamPage() {
+    const [exams, setExams] = useState<OnlineExam[]>([]);
+    const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"upcoming" | "closed">("upcoming");
     const [searchTerm, setSearchTerm] = useState("");
     const [itemsPerPage, setItemsPerPage] = useState("50");
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalEntries, setTotalEntries] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
 
-    const dataToDisplay = activeTab === "upcoming" ? upcomingExams : closedExams;
+    const fetchData = useCallback(async (page = 1) => {
+        setLoading(true);
+        try {
+            const perPage = parseInt(itemsPerPage, 10) || 50;
+            const response = await api.get("/user/online-exams", {
+                params: {
+                    page,
+                    per_page: perPage,
+                    status: activeTab,
+                    search: searchTerm || undefined,
+                },
+            });
+            const res = response.data?.data || response.data || {};
+            const dataArr = Array.isArray(res) ? res : (res.data || []);
+            setExams(dataArr);
+            setTotalEntries(res.total || dataArr.length);
+            setTotalPages(res.last_page || Math.ceil((res.total || dataArr.length) / perPage) || 1);
+            setCurrentPage(res.current_page || page);
+        } catch (error) {
+            console.error("Error fetching online exams:", error);
+            toast.error("Failed to load online exams");
+        } finally {
+            setLoading(false);
+        }
+    }, [itemsPerPage, activeTab, searchTerm]);
 
-    // Filter by search term
-    const filteredData = dataToDisplay.filter(c =>
-        c.exam.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    useEffect(() => {
+        fetchData(1);
+    }, [itemsPerPage, activeTab]);
+
+    const handleSearch = () => {
+        setCurrentPage(1);
+        fetchData(1);
+    };
 
     const sizeNum = parseInt(itemsPerPage, 10) || 50;
-    const totalEntries = filteredData.length;
-    const totalPages = Math.ceil(totalEntries / sizeNum) || 1;
     const safePage = Math.min(currentPage, totalPages);
     const startIndex = (safePage - 1) * sizeNum;
-    
-    const paginatedData = filteredData.slice(startIndex, startIndex + sizeNum);
+
+    // ── Status pill ──────────────────────────────────────────────────────────────
+    const getStatusStyle = (status: string) => {
+        switch (status) {
+            case "Available":  return "bg-[#4caf50] text-white";
+            case "Exhausted":  return "bg-[#f89b29] text-white";
+            case "Closed":     return "bg-[#9ca3af] text-white";
+            default:           return "bg-[#6366f1] text-white";
+        }
+    };
+
+    const StatusBadge = ({ status }: { status: string }) => (
+        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold shadow-sm", getStatusStyle(status))}>
+            {status}
+        </span>
+    );
+
+    const QuizBadge = ({ isQuiz }: { isQuiz: boolean }) => (
+        isQuiz ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <CheckSquare className="h-3 w-3" /> Quiz
+            </span>
+        ) : (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
+                <AlertCircle className="h-3 w-3" /> Exam
+            </span>
+        )
+    );
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <div className="bg-white rounded shadow-sm border border-gray-100 overflow-hidden">
-                {/* Header */}
-                <div className="border-b border-gray-100 p-4">
-                    <h1 className="text-[15px] font-medium text-gray-700 tracking-tight">Online Exam</h1>
+        <div className="p-4 lg:p-6 space-y-5 min-h-screen font-sans text-xs animate-in fade-in duration-500">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+
+                {/* ── Header ── */}
+                <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <ClipboardList className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Online Exam</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {totalEntries} {activeTab === "upcoming" ? "upcoming" : "closed"} exam{totalEntries === 1 ? "" : "s"}
+                        </p>
+                    </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex border-b border-gray-200">
-                    <button
-                        onClick={() => { setActiveTab("upcoming"); setCurrentPage(1); }}
-                        className={cn(
-                            "px-6 py-3 text-[13px] font-medium transition-colors border-b-2",
-                            activeTab === "upcoming" 
-                                ? "border-[#7e57c2] text-[#7e57c2]" 
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                        )}
-                    >
-                        Upcoming Exams
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab("closed"); setCurrentPage(1); }}
-                        className={cn(
-                            "px-6 py-3 text-[13px] font-medium transition-colors border-b-2",
-                            activeTab === "closed" 
-                                ? "border-[#7e57c2] text-[#7e57c2]" 
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                        )}
-                    >
-                        Closed Exam
-                    </button>
+                {/* ── Tabs ── */}
+                <div className="flex border-b border-gray-200 px-2">
+                    {[
+                        { key: "upcoming", label: "Upcoming Exams" },
+                        { key: "closed", label: "Closed Exam" },
+                    ].map((t) => (
+                        <button
+                            key={t.key}
+                            onClick={() => { setActiveTab(t.key as "upcoming" | "closed"); setCurrentPage(1); }}
+                            className={cn(
+                                "relative px-4 sm:px-6 py-3 text-[13px] font-semibold transition-colors",
+                                activeTab === t.key ? "text-[#6366f1]" : "text-gray-500 hover:text-gray-700"
+                            )}
+                        >
+                            {t.label}
+                            {activeTab === t.key && (
+                                <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1]" />
+                            )}
+                        </button>
+                    ))}
                 </div>
 
-                <div className="p-4 space-y-4">
-                    {/* Table Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
+                <div className="p-4 lg:p-5 space-y-5">
+
+                    {/* ── Toolbar ── */}
+                    <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 border-b border-gray-100 pb-4">
+                        <div className="relative w-full md:w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Search..."
+                                placeholder="Search exams..."
                                 value={searchTerm}
-                                onChange={(e) => {
-                                    setSearchTerm(e.target.value);
-                                    setCurrentPage(1);
-                                }}
-                                className="h-8 text-[12px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                                className="pl-9 h-9 text-[12px] border-gray-200 focus-visible:ring-indigo-300 rounded-lg shadow-none"
                             />
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center mr-2">
-                                <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                                    <SelectTrigger className="h-8 w-16 text-[12px] border-gray-200 shadow-none rounded font-medium">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-500">
+                        <div className="flex items-center justify-between md:justify-end gap-2">
+                            <Select value={itemsPerPage} onValueChange={(val) => setItemsPerPage(val)}>
+                                <SelectTrigger className="h-8 w-16 text-[11px] border-gray-200 shadow-none rounded-lg font-semibold text-gray-700 bg-white">
+                                    <SelectValue placeholder="50" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="25">25</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="flex items-center gap-1 text-gray-400">
                                 {[Copy, FileSpreadsheet, FileBox, Printer].map((Icon, i) => (
-                                    <Button key={i} variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-100 rounded text-gray-500">
-                                        <Icon className="h-4 w-4" />
+                                    <Button
+                                        key={i}
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all"
+                                    >
+                                        <Icon className="h-3.5 w-3.5" />
                                     </Button>
                                 ))}
                             </div>
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
+                    {/* ── Desktop Table (lg+) ── */}
+                    <div className="hidden lg:block rounded-lg border border-gray-100 overflow-x-auto custom-scrollbar">
                         <Table className="min-w-[1000px]">
-                            <TableHeader className="bg-transparent border-b border-gray-100">
-                                <TableRow className="hover:bg-transparent whitespace-nowrap text-[12px] font-bold text-gray-700">
-                                    <TableHead className="py-3 px-4 h-auto">Exam <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Quiz <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Date From <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Date To <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Duration <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-center">Total Attempt <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-center">Attempted <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Status <ArrowUpDown className="h-3 w-3 inline ml-1 text-gray-400" /></TableHead>
+                            <TableHeader className="bg-gray-50/80 border-b border-gray-100">
+                                <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
+                                    <TableHead className="py-3 px-4 h-auto">Exam <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">Type</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">Date From <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">Date To <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">Duration <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-center">Total Attempt</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-center">Attempted</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-center">Status</TableHead>
                                     <TableHead className="py-3 px-4 h-auto text-right">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {paginatedData.length === 0 ? (
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="text-center py-12">
+                                            <div className="flex items-center justify-center gap-2 text-gray-400">
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                Loading online exams...
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : exams.length === 0 ? (
                                     <TableRow className="hover:bg-transparent">
-                                        <TableCell colSpan={9} className="text-center py-8 text-gray-500 text-sm">
-                                            No data available in table
+                                        <TableCell colSpan={9} className="py-14 text-center">
+                                            <div className="flex flex-col items-center text-gray-400">
+                                                <ClipboardList className="h-10 w-10 opacity-30 mb-2" />
+                                                <p className="text-[11px] font-bold uppercase tracking-widest">No exams available</p>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    paginatedData.map((item, idx) => (
-                                        <TableRow key={item.id || idx} className="text-[13px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap text-gray-600">
-                                            <TableCell className="py-3 px-4">{item.exam}</TableCell>
-                                            <TableCell className="py-3 px-4">
-                                                {item.isQuiz ? (
-                                                    <CheckSquare className="h-4 w-4 text-gray-600" />
-                                                ) : (
-                                                    <AlertCircle className="h-4 w-4 fill-gray-800 text-white" />
-                                                )}
-                                            </TableCell>
+                                    exams.map((item, idx) => (
+                                        <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/30 transition-colors whitespace-nowrap text-gray-600">
+                                            <TableCell className="py-3 px-4 font-semibold text-gray-800">{item.exam}</TableCell>
+                                            <TableCell className="py-3 px-4"><QuizBadge isQuiz={item.isQuiz} /></TableCell>
                                             <TableCell className="py-3 px-4">{item.dateFrom}</TableCell>
                                             <TableCell className="py-3 px-4">{item.dateTo}</TableCell>
                                             <TableCell className="py-3 px-4">{item.duration}</TableCell>
                                             <TableCell className="py-3 px-4 text-center">{item.totalAttempt}</TableCell>
                                             <TableCell className="py-3 px-4 text-center">{item.attempted}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.status}</TableCell>
+                                            <TableCell className="py-3 px-4 text-center"><StatusBadge status={item.status} /></TableCell>
                                             <TableCell className="py-3 px-4 text-right">
-                                                <Button 
-                                                    className="bg-[#7e57c2] hover:bg-[#7048b6] text-white px-2.5 h-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95 ml-auto"
+                                                <Button
+                                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-7 px-2.5 rounded-lg text-[11px] font-bold shadow-sm transition-all active:scale-95 border-0"
                                                     title="View Exam"
                                                 >
-                                                    <Eye className="h-3.5 w-3.5" />
+                                                    <Eye className="h-3.5 w-3.5 mr-1" /> View
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -190,29 +262,86 @@ export default function UserOnlineExamPage() {
                         </Table>
                     </div>
 
-                    {/* Footer Pagination */}
-                    <div className="flex items-center justify-between text-[12px] text-gray-500 pt-2 pb-2">
+                    {/* ── Mobile / tablet cards (<lg) ── */}
+                    <div className="lg:hidden">
+                        {loading ? (
+                            <div className="flex items-center justify-center gap-2 text-gray-400 py-12">
+                                <Loader2 className="h-4 w-4 animate-spin" /> Loading online exams...
+                            </div>
+                        ) : exams.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                                <ClipboardList className="h-12 w-12 opacity-30 mb-3" />
+                                <p className="font-bold uppercase text-[11px] tracking-widest">No exams available</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {exams.map((item, idx) => (
+                                    <div key={item.id || idx} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 flex flex-col gap-2.5">
+                                        {/* Title + status */}
+                                        <div className="flex items-start justify-between gap-2">
+                                            <h3 className="text-[13px] font-bold text-gray-800 leading-snug">{item.exam}</h3>
+                                            <StatusBadge status={item.status} />
+                                        </div>
+
+                                        <QuizBadge isQuiz={item.isQuiz} />
+
+                                        {/* Meta grid */}
+                                        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-gray-600 border-t border-gray-100 pt-2.5">
+                                            <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />From: {item.dateFrom}</span>
+                                            <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />To: {item.dateTo}</span>
+                                            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.duration}</span>
+                                            <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-indigo-400 shrink-0" />Attempts: {item.totalAttempt}</span>
+                                            <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-indigo-400 shrink-0" />Attempted: {item.attempted}</span>
+                                        </div>
+
+                                        <Button
+                                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-8 text-[11px] font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 border-0 w-full mt-1"
+                                            title="View Exam"
+                                        >
+                                            <Eye className="h-3.5 w-3.5" /> View Exam
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ── Pagination ── */}
+                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
                             Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
                             {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
                         </div>
 
-                        {totalEntries > 0 && (
-                            <div className="flex items-center gap-1 border border-gray-200 rounded overflow-hidden">
+                        {totalPages > 1 && (
+                            <div className="flex items-center gap-1.5">
                                 <button
                                     disabled={safePage === 1}
-                                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                    className="h-8 px-2 bg-white hover:bg-gray-50 text-gray-400 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50 border-r border-gray-200"
+                                    onClick={() => fetchData(safePage - 1)}
+                                    className="h-8 w-8 bg-white text-gray-400 rounded-[10px] border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none hover:shadow-sm transition-all active:scale-95"
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </button>
-                                <button className="h-8 px-3 text-xs flex items-center justify-center bg-[#6366f1] text-white font-medium border-r border-gray-200">
-                                    1
-                                </button>
+
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                    <button
+                                        key={page}
+                                        onClick={() => fetchData(page)}
+                                        className={cn(
+                                            "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer font-bold rounded-[10px]",
+                                            safePage === page
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-indigo-500/20"
+                                                : "bg-white text-gray-500 border border-gray-200 hover:shadow-sm active:scale-95"
+                                        )}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+
                                 <button
                                     disabled={safePage === totalPages}
-                                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                                    className="h-8 px-2 bg-white hover:bg-gray-50 text-gray-400 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50"
+                                    onClick={() => fetchData(safePage + 1)}
+                                    className="h-8 w-8 bg-white text-gray-400 rounded-[10px] border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none hover:shadow-sm transition-all active:scale-95"
                                 >
                                     <ChevronRight className="h-4 w-4" />
                                 </button>

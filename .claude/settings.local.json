@@ -10,7 +10,10 @@
       "Bash(php -l app/Http/Controllers/Api/v1/UserPortalController.php)",
       "Bash(npm run *)",
       "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" -l \"/k/flyenv_folder/iSchool/backend/app/Http/Controllers/Api/v1/UserPortalController.php\")",
-      "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan tinker --execute=\"echo Laravel\\\\Sanctum\\\\PersonalAccessToken::where\\('name','probe'\\)->delete\\(\\);\")"
+      "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan tinker --execute=\"echo Laravel\\\\Sanctum\\\\PersonalAccessToken::where\\('name','probe'\\)->delete\\(\\);\")",
+      "Bash(ls -la src/app/user/library/books-issued/)",
+      "Bash(grep -n \"api\\\\.\\\\|mock\" src/app/user/library/books-issued/page.tsx)",
+      "Bash(ls backend/routes/api/v1/library/)"
     ]
   }
 }

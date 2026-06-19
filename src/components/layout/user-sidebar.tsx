@@ -127,7 +127,7 @@ const menuItems: { group: string; items: MenuItem[] }[] = [
                     { name: "exam_result", href: "/user/examinations/exam-result" }
                 ]
             },
-            { name: "notice_board", label: "Notice Board", icon: MessageSquare, href: "/user/notice-board", submenus: [], color: "sky", badge: true },
+            { name: "notice_board", label: "Notice Board", icon: MessageSquare, href: "/user/notice-board", submenus: [], color: "sky" },
             { name: "teachers_reviews", label: "Teachers Reviews", icon: Users, href: "/user/teachers-reviews", submenus: [], color: "blue" },
             {
                 name: "library", label: "Library", icon: Library, href: "#", color: "emerald",

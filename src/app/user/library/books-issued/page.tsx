@@ -1,192 +1,447 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import api from "@/lib/api";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    Table, TableBody, TableCell, TableHead,
+    TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+    Select, SelectContent, SelectItem,
+    SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
-    Search, ChevronLeft, ChevronRight,
-    ArrowUpDown, Video, Copy, FileSpreadsheet,
-    FileBox, Printer, Columns
+    Search, ChevronLeft, ChevronRight, ArrowUpDown,
+    Copy, FileSpreadsheet, FileDown, Printer, Loader2, BookOpen,
+    BookMarked, Calendar, CalendarCheck, User, Hash, AlertTriangle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
+import { cn, formatDate } from "@/lib/utils";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-const mockBooksIssued = [
-    { id: 1, title: 'चंद्र गहना से लौटती बेर"', bookNumber: "5463", author: "Suresh Kumar", issueDate: "04/01/2026", dueReturnDate: "04/01/2026", returnDate: "" },
-    { id: 2, title: "Human-environment interactions", bookNumber: "56328", author: "Lokesh Mishra", issueDate: "04/01/2026", dueReturnDate: "04/01/2026", returnDate: "" },
-    { id: 3, title: "संसार पुस्तक है।", bookNumber: "657", author: "Robert", issueDate: "05/04/2026", dueReturnDate: "05/04/2026", returnDate: "" },
-    { id: 4, title: "The Little Fir Tree", bookNumber: "64342", author: "John", issueDate: "05/04/2026", dueReturnDate: "05/22/2026", returnDate: "" },
-    { id: 5, title: "Physical and Chemical Changes", bookNumber: "42355", author: "Arun Gyal", issueDate: "06/02/2026", dueReturnDate: "06/02/2026", returnDate: "" },
-    { id: 6, title: "Building With Bricks", bookNumber: "DA23111", author: "David Wood", issueDate: "06/02/2026", dueReturnDate: "06/11/2026", returnDate: "" },
-    { id: 7, title: "Respiration in Organisms", bookNumber: "7856", author: "John Wilson", issueDate: "06/02/2026", dueReturnDate: "06/25/2026", returnDate: "" },
-    { id: 8, title: "Physical and Chemical Changes", bookNumber: "42355", author: "Arun Gyal", issueDate: "04/01/2026", dueReturnDate: "04/23/2026", returnDate: "04/01/2026" },
-    { id: 9, title: "Respiration in Organisms", bookNumber: "123", author: "John Wilson", issueDate: "05/04/2026", dueReturnDate: "05/07/2026", returnDate: "05/08/2026" },
-];
+type BookIssued = {
+    id: number;
+    title: string;
+    bookNumber: string;
+    author: string;
+    issueDate: string;
+    dueReturnDate: string;
+    returnDate: string;
+};
+
+const PAGE_SIZES = [10, 25, 50, 100];
+const fmt = (d: string) => (d ? formatDate(d) : "—");
+
+type SortKey = keyof Omit<BookIssued, "id">;
 
 export default function UserBooksIssuedPage() {
+    const [books, setBooks] = useState<BookIssued[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [pageSize, setPageSize] = useState(10);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [sortKey, setSortKey] = useState<SortKey>("issueDate");
+    const [sortAsc, setSortAsc] = useState(false);
+    const { toast } = useToast();
 
-    const filteredData = mockBooksIssued.filter((item) => {
-        const searchStr = searchTerm.toLowerCase();
-        return (
-            item.title.toLowerCase().includes(searchStr) ||
-            item.bookNumber.toLowerCase().includes(searchStr) ||
-            item.author.toLowerCase().includes(searchStr)
+    useEffect(() => {
+        const fetchBooks = async () => {
+            try {
+                const res = await api.get("/user/library/books-issued");
+                if (res.data.success) {
+                    setBooks(res.data.data ?? []);
+                } else {
+                    toast({ variant: "destructive", title: "Error", description: res.data.message || "Failed to load books." });
+                }
+            } catch {
+                toast({ variant: "destructive", title: "Error", description: "Failed to load issued books." });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchBooks();
+    }, [toast]);
+
+    const handleSort = (key: SortKey) => {
+        if (sortKey === key) setSortAsc((a) => !a);
+        else { setSortKey(key); setSortAsc(true); }
+        setCurrentPage(1);
+    };
+
+    const filtered = useMemo(() => {
+        const s = searchTerm.toLowerCase();
+        return books.filter((b) =>
+            b.title.toLowerCase().includes(s) ||
+            b.bookNumber.toLowerCase().includes(s) ||
+            b.author.toLowerCase().includes(s)
         );
-    });
+    }, [books, searchTerm]);
+
+    // ISO date strings sort correctly with localeCompare (lexicographic = chronological)
+    const sorted = useMemo(() => {
+        return [...filtered].sort((a, b) => {
+            const av = a[sortKey] ?? "";
+            const bv = b[sortKey] ?? "";
+            return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+        });
+    }, [filtered, sortKey, sortAsc]);
+
+    const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+    const paginated = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    const start = sorted.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const end = Math.min(currentPage * pageSize, sorted.length);
+
+    const isOverdue = (b: BookIssued) =>
+        !b.returnDate && !!b.dueReturnDate &&
+        new Date(b.dueReturnDate + "T23:59:59") < new Date();
+
+    const overdueCount = useMemo(() => books.filter(isOverdue).length, [books]);
+    const outstandingCount = useMemo(() => books.filter((b) => !b.returnDate).length, [books]);
+
+    const getStatusBadge = (b: BookIssued) => {
+        if (b.returnDate)
+            return <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">Returned</Badge>;
+        if (isOverdue(b))
+            return <Badge className="bg-red-100 text-red-600 border-red-200 hover:bg-red-100 gap-1"><AlertTriangle className="h-3 w-3" />Overdue</Badge>;
+        return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">Issued</Badge>;
+    };
+
+    const copyToClipboard = useCallback(() => {
+        const text = filtered.map(b =>
+            [b.title, b.bookNumber, b.author, fmt(b.issueDate), fmt(b.dueReturnDate), b.returnDate ? fmt(b.returnDate) : "—"].join("\t")
+        ).join("\n");
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copied to clipboard" });
+    }, [filtered, toast]);
+
+    const exportToExcel = useCallback(() => {
+        const ws = XLSX.utils.json_to_sheet(filtered.map(b => ({
+            "Book Title": b.title,
+            "Book Number": b.bookNumber,
+            "Author": b.author,
+            "Issue Date": fmt(b.issueDate),
+            "Due Return Date": fmt(b.dueReturnDate),
+            "Return Date": b.returnDate ? fmt(b.returnDate) : "",
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Books Issued");
+        XLSX.writeFile(wb, "books-issued.xlsx");
+    }, [filtered]);
+
+    const exportToPDF = useCallback(() => {
+        const doc = new jsPDF();
+        doc.text("Books Issued", 14, 16);
+        autoTable(doc, {
+            head: [["Book Title", "Book No.", "Author", "Issue Date", "Due Date", "Return Date"]],
+            body: filtered.map(b => [b.title, b.bookNumber, b.author, fmt(b.issueDate), fmt(b.dueReturnDate), b.returnDate ? fmt(b.returnDate) : "—"]),
+            startY: 22,
+        });
+        doc.save("books-issued.pdf");
+    }, [filtered]);
+
+    const SortHead = ({ label, field, className }: { label: string; field: SortKey; className?: string }) => (
+        <TableHead
+            className={cn("font-bold text-gray-700 cursor-pointer select-none py-3 px-4", className)}
+            onClick={() => handleSort(field)}
+        >
+            <div className="flex items-center gap-1">
+                {label}
+                <ArrowUpDown className={cn("h-3 w-3 opacity-40", sortKey === field && "opacity-100 text-[#6366F1]")} />
+            </div>
+        </TableHead>
+    );
 
     return (
-        <div className="p-4 md:p-6 space-y-6">
-            <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800">
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-t-lg">
-                    <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Book Issued</h2>
+        <div className="p-4 lg:p-6 animate-in fade-in duration-500">
+            <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
+                {/* ── Header (Print button on the right) ── */}
+                <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <BookMarked className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Books Issued</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {loading
+                                    ? "Loading…"
+                                    : `${books.length} record${books.length === 1 ? "" : "s"} · ${outstandingCount} outstanding${overdueCount ? ` · ${overdueCount} overdue` : ""}`}
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={() => window.print()}
+                        title="Print"
+                        className="h-9 shrink-0 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
+                    >
+                        <Printer className="h-4 w-4" />
+                        <span className="hidden sm:inline">Print</span>
+                    </Button>
                 </div>
 
-                <div className="p-4">
+                <CardContent className="p-4">
+                    {/* Overdue alert */}
+                    {!loading && overdueCount > 0 && (
+                        <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/70 px-4 py-2.5 text-[12px] text-red-700 print:hidden">
+                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                            <span>
+                                You have <span className="font-bold">{overdueCount}</span> overdue book{overdueCount === 1 ? "" : "s"}. Please return {overdueCount === 1 ? "it" : "them"} to the library.
+                            </span>
+                        </div>
+                    )}
+
                     {/* Toolbar */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                        <div className="relative">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 print:hidden">
+                        <div className="relative w-full sm:w-64">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search"
+                                placeholder="Search title, book no, author..."
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 pr-10 w-[200px] h-9"
+                                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                                className="pl-8 h-9 text-sm rounded-[10px]"
                             />
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Select defaultValue="50">
-                                <SelectTrigger className="w-[70px] h-9">
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
+                                <SelectTrigger className="h-9 w-[70px] text-[12px] border border-gray-200 bg-white rounded-[10px]">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    {PAGE_SIZES.map((s) => (
+                                        <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
-                            
-                            <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 overflow-hidden">
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none border-r border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Copy">
-                                    <Copy className="h-4 w-4 text-slate-500" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none border-r border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Excel">
-                                    <FileSpreadsheet className="h-4 w-4 text-slate-500" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none border-r border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="CSV">
-                                    <FileSpreadsheet className="h-4 w-4 text-slate-500" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none border-r border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="PDF">
-                                    <FileBox className="h-4 w-4 text-slate-500" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none border-r border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Print">
-                                    <Printer className="h-4 w-4 text-slate-500" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none hover:bg-slate-100 dark:hover:bg-slate-800" title="Columns">
-                                    <Columns className="h-4 w-4 text-slate-500" />
-                                </Button>
+
+                            <div className="flex items-center border border-gray-200 rounded-[10px] overflow-hidden">
+                                {[
+                                    { icon: Copy, label: "Copy", action: copyToClipboard },
+                                    { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
+                                    { icon: FileDown, label: "PDF", action: exportToPDF },
+                                    { icon: Printer, label: "Print", action: () => window.print() },
+                                ].map(({ icon: Icon, label, action }, i, arr) => (
+                                    <Button
+                                        key={label}
+                                        variant="ghost"
+                                        size="icon"
+                                        title={label}
+                                        onClick={action}
+                                        className={cn(
+                                            "h-9 w-9 rounded-none hover:bg-gray-100",
+                                            i < arr.length - 1 && "border-r border-gray-200"
+                                        )}
+                                    >
+                                        <Icon className="h-4 w-4 text-gray-500" />
+                                    </Button>
+                                ))}
                             </div>
                         </div>
                     </div>
 
-                    <div className="rounded-md border border-slate-200 dark:border-slate-800 overflow-hidden">
-                        <Table>
-                            <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
-                                <TableRow className="hover:bg-transparent">
-                                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300 w-[25%]">
-                                        <div className="flex items-center justify-between cursor-pointer">
-                                            Book Title <ArrowUpDown className="h-3 w-3 opacity-50" />
-                                        </div>
-                                    </TableHead>
-                                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300 w-[15%]">
-                                        <div className="flex items-center justify-between cursor-pointer">
-                                            Book Number <ArrowUpDown className="h-3 w-3 opacity-50" />
-                                        </div>
-                                    </TableHead>
-                                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300 w-[20%]">
-                                        <div className="flex items-center justify-between cursor-pointer">
-                                            Author <ArrowUpDown className="h-3 w-3 opacity-50" />
-                                        </div>
-                                    </TableHead>
-                                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                                        <div className="flex items-center justify-between cursor-pointer">
-                                            Issue Date <ArrowUpDown className="h-3 w-3 opacity-50" />
-                                        </div>
-                                    </TableHead>
-                                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                                        <div className="flex items-center justify-between cursor-pointer">
-                                            Due Return Date <ArrowUpDown className="h-3 w-3 opacity-50" />
-                                        </div>
-                                    </TableHead>
-                                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right">
-                                        <div className="flex items-center justify-end cursor-pointer gap-2">
-                                            Return Date
-                                        </div>
-                                    </TableHead>
+                    {/* ── Desktop table ── */}
+                    <div className="hidden md:block rounded-md border border-gray-200 overflow-x-auto print:hidden">
+                        <Table className="min-w-[860px]">
+                            <TableHeader>
+                                <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200">
+                                    <SortHead label="Book Title" field="title" className="w-[28%]" />
+                                    <SortHead label="Book Number" field="bookNumber" className="w-[14%]" />
+                                    <SortHead label="Author" field="author" className="w-[18%]" />
+                                    <SortHead label="Issue Date" field="issueDate" className="w-[13%]" />
+                                    <SortHead label="Due Return Date" field="dueReturnDate" className="w-[13%]" />
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 w-[8%]">Return Date</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center w-[9%]">Status</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredData.length > 0 ? (
-                                    filteredData.map((item) => (
-                                        <TableRow 
-                                            key={item.id} 
-                                            className={cn(
-                                                item.returnDate 
-                                                    ? "bg-[#dcfce7] hover:bg-[#dcfce7]/90 dark:bg-green-900/20 dark:hover:bg-green-900/30" 
-                                                    : "bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/50"
-                                            )}
-                                        >
-                                            <TableCell className="font-medium text-slate-700 dark:text-slate-300">{item.title}</TableCell>
-                                            <TableCell>{item.bookNumber}</TableCell>
-                                            <TableCell>{item.author}</TableCell>
-                                            <TableCell>{item.issueDate}</TableCell>
-                                            <TableCell>{item.dueReturnDate}</TableCell>
-                                            <TableCell className="text-right">{item.returnDate}</TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
+                                {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">
-                                            No data available in table
+                                        <TableCell colSpan={7} className="h-32 text-center">
+                                            <div className="flex items-center justify-center gap-2 text-gray-400">
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                <span>Loading...</span>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
+                                ) : paginated.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="h-32 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
+                                                <BookOpen className="h-8 w-8 opacity-30" />
+                                                <span className="text-sm">No books issued.</span>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    paginated.map((b) => (
+                                        <TableRow
+                                            key={b.id}
+                                            className={cn(
+                                                "text-[13px] border-b border-gray-100 transition-colors",
+                                                b.returnDate
+                                                    ? "bg-green-50/60 hover:bg-green-50"
+                                                    : isOverdue(b)
+                                                        ? "bg-red-50/60 hover:bg-red-50"
+                                                        : "hover:bg-gray-50/60"
+                                            )}
+                                        >
+                                            <TableCell className="py-3 px-4 font-medium text-gray-800">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-[#6366F1]">
+                                                        <BookOpen className="h-3.5 w-3.5" />
+                                                    </span>
+                                                    <span className="truncate max-w-[240px]">{b.title}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-600">{b.bookNumber || "—"}</TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-600">{b.author || "—"}</TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-600">{fmt(b.issueDate)}</TableCell>
+                                            <TableCell className={cn(
+                                                "py-3 px-4 font-medium",
+                                                isOverdue(b) ? "text-red-600" : "text-gray-600"
+                                            )}>
+                                                {fmt(b.dueReturnDate)}
+                                            </TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-600">{b.returnDate ? fmt(b.returnDate) : "—"}</TableCell>
+                                            <TableCell className="py-3 px-4 text-center">{getStatusBadge(b)}</TableCell>
+                                        </TableRow>
+                                    ))
                                 )}
                             </TableBody>
                         </Table>
                     </div>
 
-                    <div className="flex items-center justify-between mt-4">
-                        <div className="text-sm text-slate-500 dark:text-slate-400">
-                            Showing 1 to {filteredData.length} of {filteredData.length} entries
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <Button variant="outline" size="icon" className="h-8 w-8 disabled:opacity-50" disabled>
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-8 w-8 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800">
-                                1
-                            </Button>
-                            <Button variant="outline" size="icon" className="h-8 w-8 disabled:opacity-50" disabled>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
+                    {/* ── Mobile cards ── */}
+                    <div className="md:hidden space-y-3 print:hidden">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span>Loading...</span>
+                            </div>
+                        ) : paginated.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
+                                <BookOpen className="h-8 w-8 opacity-30" />
+                                <span className="text-sm">No books issued.</span>
+                            </div>
+                        ) : (
+                            paginated.map((b) => (
+                                <div
+                                    key={b.id}
+                                    className={cn(
+                                        "rounded-xl border p-3.5 shadow-sm",
+                                        b.returnDate
+                                            ? "border-green-200 bg-green-50/50"
+                                            : isOverdue(b)
+                                                ? "border-red-200 bg-red-50/50"
+                                                : "border-gray-200 bg-white"
+                                    )}
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10">
+                                                <BookOpen className="h-4.5 w-4.5 text-[#6366F1]" />
+                                            </span>
+                                            <div className="min-w-0">
+                                                <p className="text-[13px] font-bold text-gray-800 leading-snug line-clamp-2">{b.title}</p>
+                                                {b.bookNumber && (
+                                                    <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                                                        <Hash className="h-3 w-3" /> {b.bookNumber}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {getStatusBadge(b)}
+                                    </div>
+
+                                    <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-500">
+                                        {b.author && (
+                                            <span className="flex items-center gap-1.5 col-span-2 min-w-0">
+                                                <User className="h-3 w-3 text-gray-400 shrink-0" />
+                                                <span className="truncate">{b.author}</span>
+                                            </span>
+                                        )}
+                                        <span className="flex items-center gap-1.5">
+                                            <Calendar className="h-3 w-3 text-gray-400" />
+                                            Issued: <span className="font-medium text-gray-700">{fmt(b.issueDate)}</span>
+                                        </span>
+                                        <span className="flex items-center gap-1.5">
+                                            <Calendar className={cn("h-3 w-3", isOverdue(b) ? "text-red-400" : "text-gray-400")} />
+                                            Due: <span className={cn("font-medium", isOverdue(b) ? "text-red-600" : "text-gray-700")}>{fmt(b.dueReturnDate)}</span>
+                                        </span>
+                                        <span className="flex items-center gap-1.5 col-span-2">
+                                            <CalendarCheck className="h-3 w-3 text-gray-400" />
+                                            Returned: <span className="font-medium text-gray-700">{b.returnDate ? fmt(b.returnDate) : "—"}</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
-                </div>
-            </div>
+
+                    {/* Pagination */}
+                    {!loading && (
+                        <div className="flex items-center justify-between mt-4 gap-3 flex-wrap print:hidden">
+                            <span className="text-[12px] text-gray-500">
+                                {sorted.length === 0
+                                    ? "No entries"
+                                    : `Showing ${start} to ${end} of ${sorted.length} entries`}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <Button
+                                    size="icon"
+                                    disabled={currentPage <= 1}
+                                    onClick={() => setCurrentPage((p) => p - 1)}
+                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+
+                                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                                    .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                                        if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
+                                        acc.push(p);
+                                        return acc;
+                                    }, [])
+                                    .map((p, i) =>
+                                        p === "…" ? (
+                                            <span key={`ellipsis-${i}`} className="text-gray-400 text-[12px] px-1">…</span>
+                                        ) : (
+                                            <Button
+                                                key={p}
+                                                size="icon"
+                                                onClick={() => setCurrentPage(p as number)}
+                                                className={cn(
+                                                    "h-8 w-8 rounded-[10px] text-[12px] font-medium transition-opacity",
+                                                    currentPage === p
+                                                        ? "text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90"
+                                                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                                )}
+                                            >
+                                                {p}
+                                            </Button>
+                                        )
+                                    )}
+
+                                <Button
+                                    size="icon"
+                                    disabled={currentPage >= totalPages}
+                                    onClick={() => setCurrentPage((p) => p + 1)}
+                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }
