@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,9 +23,9 @@ import {
     FileText,
     Printer,
     Columns,
-    ChevronLeft,
-    ChevronRight,
     ArrowUpDown,
+    CreditCard,
+    Loader2,
 } from "lucide-react";
 import {
     Select,
@@ -31,215 +34,284 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { type IdCardTemplate, type IdCardPerson, renderIdCardHtml, printIdCards } from "@/lib/certificate";
 
-interface Student {
-    admissionNo: string;
-    name: string;
-    class: string;
-    fatherName: string;
-    dob: string;
-    gender: string;
-    category: string;
-    mobile: string;
+interface ClassOption { id: number; name: string; }
+interface SectionOption { id: number; name: string; }
+interface ApiStudent {
+    id: number;
+    admission_no?: string;
+    name?: string;
+    first_name?: string;
+    last_name?: string;
+    father_name?: string;
+    mother_name?: string;
+    dob?: string;
+    gender?: string;
+    category?: string;
+    phone?: string;
+    roll_no?: string;
+    blood_group?: string;
+    house?: string;
+    current_address?: string;
+    avatar?: string;
+    schoolClass?: { name?: string };
+    section?: { name?: string };
 }
 
-const mockStudents: Student[] = [
-    { admissionNo: "10024", name: "Steven Taylor", class: "Class 1(A)", fatherName: "Jason Taylor", dob: "08/17/2017", gender: "Male", category: "General", mobile: "890567345" },
-    { admissionNo: "120020", name: "Ashwani Kumar", class: "Class 1(A)", fatherName: "Arjun Kumar", dob: "09/25/2009", gender: "Male", category: "General", mobile: "980678463" },
-    { admissionNo: "125005", name: "Nehal Wadhera", class: "Class 1(A)", fatherName: "Karan wadhera", dob: "11/22/2006", gender: "Male", category: "General", mobile: "890786784" },
-    { admissionNo: "18001", name: "Edward Thomas", class: "Class 1(A)", fatherName: "Olivier Thomas", dob: "10/24/2013", gender: "Male", category: "General", mobile: "8905785675" },
-    { admissionNo: "19001", name: "Edward Thomas", class: "Class 1(A)", fatherName: "Olivier Thomas", dob: "11/03/2014", gender: "Male", category: "", mobile: "8233366613" },
-    { admissionNo: "25001", name: "Georgia Wareham", class: "Class 1(A)", fatherName: "Zakary Foulkes", dob: "05/10/2021", gender: "Female", category: "General", mobile: "8808908777" },
-    { admissionNo: "520039", name: "xavier bartlett", class: "Class 1(A)", fatherName: "David bartlett", dob: "05/12/2009", gender: "Male", category: "", mobile: "08907898557" },
-    { admissionNo: "650990", name: "James Bennett", class: "Class 1(A)", fatherName: "David Wilson", dob: "05/05/2009", gender: "Male", category: "General", mobile: "8978786866" },
-    { admissionNo: "7856", name: "RAM", class: "Class 1(A)", fatherName: "jay", dob: "01/07/2020", gender: "Male", category: "General", mobile: "" },
-    { admissionNo: "9001", name: "Niharika", class: "Class 1(A)", fatherName: "ajay", dob: "01/07/2020", gender: "Female", category: "General", mobile: "" },
-    { admissionNo: "90034", name: "Nidhi Verma", class: "Class 1(A)", fatherName: "Babu", dob: "09/02/2021", gender: "Female", category: "", mobile: "76785683788" },
-    { admissionNo: "9004", name: "AVYAAN", class: "Class 1(A)", fatherName: "s.r", dob: "10/14/2020", gender: "Male", category: "", mobile: "78846738787" },
-    { admissionNo: "98001", name: "Matthew Bacon", class: "Class 1(A)", fatherName: "Jason", dob: "12/31/2018", gender: "Male", category: "", mobile: "08906789" },
-];
+const TABLE_COLS = 9;
+
+function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <TableRow key={i} className="border-b border-gray-50">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <div className="h-3 rounded bg-gray-200/70 animate-pulse" style={{ width: `${55 + ((i * 3 + j * 7) % 40)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
+
+function studentName(s: ApiStudent): string {
+    return `${s.name || s.first_name || ""} ${s.last_name || ""}`.trim();
+}
+
+function toPerson(s: ApiStudent): IdCardPerson {
+    return {
+        name: studentName(s),
+        admission_no: s.admission_no || "",
+        roll_no: s.roll_no || "",
+        class: s.schoolClass?.name || "",
+        section: s.section?.name || "",
+        father_name: s.father_name || "",
+        mother_name: s.mother_name || "",
+        dob: s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "",
+        blood_group: s.blood_group || "",
+        house: s.house || "",
+        phone: s.phone || "",
+        address: s.current_address || "",
+        photo: s.avatar ? `/storage/${s.avatar}` : null,
+    };
+}
 
 export default function GenerateIDCardPage() {
-    const [searchTerm, setSearchTerm] = useState("");
+    const { toast } = useToast();
+    const [classes, setClasses] = useState<ClassOption[]>([]);
+    const [sections, setSections] = useState<SectionOption[]>([]);
+    const [templates, setTemplates] = useState<IdCardTemplate[]>([]);
 
-    const filteredStudents = mockStudents.filter((s) =>
-        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.admissionNo.includes(searchTerm)
+    const [classId, setClassId] = useState("");
+    const [sectionId, setSectionId] = useState("");
+    const [templateId, setTemplateId] = useState("");
+
+    const [students, setStudents] = useState<ApiStudent[]>([]);
+    const [selected, setSelected] = useState<number[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [searched, setSearched] = useState(false);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const [classesRes, tplRes] = await Promise.all([
+                    api.get("/academics/classes?no_paginate=true"),
+                    api.get("/certificate/student-id-cards", { params: { per_page: 100 } }),
+                ]);
+                setClasses(classesRes.data.data || classesRes.data || []);
+                const tplData = tplRes.data?.data ?? tplRes.data ?? [];
+                setTemplates(Array.isArray(tplData) ? tplData : []);
+            } catch {
+                toast({ title: "Error", description: "Failed to load criteria data", variant: "destructive" });
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        if (!classId) { setSections([]); setSectionId(""); return; }
+        (async () => {
+            try {
+                const res = await api.get(`/academics/sections?school_class_id=${classId}&no_paginate=true`);
+                setSections(res.data.data || res.data || []);
+            } catch { setSections([]); }
+        })();
+    }, [classId]);
+
+    const handleSearch = async () => {
+        if (!classId || !templateId) {
+            toast({ title: "Validation Error", description: "Please select Class and ID Card Template", variant: "destructive" });
+            return;
+        }
+        setLoading(true);
+        setSearched(true);
+        try {
+            const res = await api.get("/students", { params: { school_class_id: classId, section_id: sectionId || undefined, limit: 500 } });
+            const data = res.data?.data?.data || res.data?.data || res.data || [];
+            setStudents(Array.isArray(data) ? data : []);
+            setSelected([]);
+        } catch {
+            toast({ title: "Error", description: "Failed to fetch students", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filtered = students.filter((s) =>
+        studentName(s).toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.admission_no || "").includes(searchTerm)
     );
+    const allChecked = filtered.length > 0 && selected.length === filtered.length;
+    const toggleAll = () => setSelected(allChecked ? [] : filtered.map((s) => s.id));
+    const toggleOne = (id: number) => setSelected((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+
+    const handleGenerate = () => {
+        const template = templates.find((t) => String(t.id) === templateId);
+        if (!template) {
+            toast({ title: "Error", description: "Select an ID card template", variant: "destructive" });
+            return;
+        }
+        const chosen = students.filter((s) => selected.includes(s.id));
+        if (chosen.length === 0) {
+            toast({ title: "No students selected", description: "Select at least one student", variant: "destructive" });
+            return;
+        }
+        printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s), "student")).join(""));
+    };
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(filtered.map((s) => `${s.admission_no}\t${studentName(s)}`).join("\n"));
+        toast({ title: "Copied", description: "Data copied to clipboard" });
+    };
+    const handleExportCSV = () => {
+        const rows = [["Admission No", "Name", "Class", "Father Name", "DOB", "Gender", "Category", "Mobile"],
+            ...filtered.map((s) => [s.admission_no || "", studentName(s), s.schoolClass?.name || "", s.father_name || "", s.dob || "", s.gender || "", s.category || "", s.phone || ""])];
+        const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "students_id_card.csv";
+        link.click();
+    };
+
+    const toolbarActions = [
+        { Icon: Copy, onClick: handleCopy, title: "Copy" },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
+        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
+        { Icon: Printer, onClick: () => window.print(), title: "Print" },
+        { Icon: Columns, onClick: () => {}, title: "Columns" },
+    ];
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                <h2 className="text-sm font-medium text-gray-800 tracking-tight">Select Criteria</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                            Class <span className="text-red-500 font-bold">*</span>
-                        </Label>
-                        <Select>
-                            <SelectTrigger className="h-8 border-gray-200 text-[11px] focus:ring-indigo-500 rounded shadow-none">
-                                <SelectValue placeholder="Class 1" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="c1">Class 1</SelectItem>
-                                <SelectItem value="c2">Class 2</SelectItem>
-                            </SelectContent>
-                        </Select>
+        <div className="space-y-6">
+            {/* Criteria */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <CreditCard className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Generate Student ID Card</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Select criteria, then generate ID cards for chosen students</p>
                     </div>
-
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
-                        <Select>
-                            <SelectTrigger className="h-8 border-gray-200 text-[11px] focus:ring-indigo-500 rounded shadow-none">
-                                <SelectValue placeholder="A" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="a">A</SelectItem>
-                                <SelectItem value="b">B</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                            ID Card Template <span className="text-red-500 font-bold">*</span>
-                        </Label>
-                        <Select>
-                            <SelectTrigger className="h-8 border-gray-200 text-[11px] focus:ring-indigo-500 rounded shadow-none">
-                                <SelectValue placeholder="Sample Student Identity Card" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="tc">Sample Student Identity Card</SelectItem>
-                                <SelectItem value="mc">Staff ID Card</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <div className="flex justify-end pt-2">
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5">
-                        <Search className="h-3.5 w-3.5" />
-                        Search
-                    </Button>
-                </div>
-            </div>
-
-            {/* Student List Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-sm font-medium text-gray-800 tracking-tight">Student List</h2>
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5">
-                        Generate
-                    </Button>
-                </div>
-
-                {/* Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
-                    <div className="relative w-full md:w-64">
-                        <Input
-                            placeholder="Search"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">50</span>
-                            <Select defaultValue="50">
-                                <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none rounded">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                </SelectContent>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                            <Select value={classId} onValueChange={setClassId}>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Class" /></SelectTrigger>
+                                <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
                             </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                         </div>
-                        <div className="flex items-center gap-1 text-gray-400">
-                            {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, i) => (
-                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                    <Icon className="h-3.5 w-3.5" />
-                                </Button>
-                            ))}
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
+                            <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="All Sections" /></SelectTrigger>
+                                <SelectContent>{sections.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">ID Card Template <span className="text-red-500">*</span></Label>
+                            <Select value={templateId} onValueChange={setTemplateId}>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Template" /></SelectTrigger>
+                                <SelectContent>{templates.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.title}</SelectItem>)}</SelectContent>
+                            </Select>
                         </div>
                     </div>
-                </div>
-
-                {/* Table */}
-                <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
-                    <Table className="min-w-[1200px]">
-                        <TableHeader className="bg-gray-50/50">
-                            <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                <TableHead className="py-3 px-4 w-10">
-                                    <Checkbox className="h-3.5 w-3.5 border-gray-300 accent-indigo-500 shadow-none" />
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Admission No <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Student Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Class <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Father Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Date Of Birth <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Gender <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Category <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Mobile Number <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredStudents.map((student) => (
-                                <TableRow key={student.admissionNo} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
-                                    <TableCell className="py-3 px-4">
-                                        <Checkbox className="h-3.5 w-3.5 border-gray-300 accent-indigo-500 shadow-none" />
-                                    </TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-700 font-medium">{student.admissionNo}</TableCell>
-                                    <TableCell className="py-3 px-4">
-                                        <span className="text-[#6366f1] font-medium hover:underline cursor-pointer">{student.name}</span>
-                                    </TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.class}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.fatherName}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.dob}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.gender}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.category}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{student.mobile}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2 border-t border-gray-50">
-                    <div>
-                        Showing 1 to {filteredStudents.length} of {mockStudents.length} entries
-                    </div>
-                    <div className="flex gap-1 items-center">
-                        <span className="text-gray-400 mr-2 cursor-pointer hover:text-gray-600 text-[10px]">‹</span>
-                        <Button variant="default" size="sm" className="h-6 w-6 p-0 bg-indigo-500 hover:bg-indigo-600 text-white border-0 text-[10px] rounded shadow-sm">
-                            1
+                    <div className="flex justify-end">
+                        <Button onClick={handleSearch} disabled={loading} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
                         </Button>
-                        <span className="text-gray-400 ml-2 cursor-pointer hover:text-gray-600 text-[10px]">›</span>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
+
+            {/* Student list */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <FileText className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{selected.length} of {filtered.length} selected</p>
+                        </div>
+                    </div>
+                    <Button onClick={handleGenerate} disabled={selected.length === 0} className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all disabled:opacity-40">
+                        <CreditCard className="h-4 w-4" /> Generate
+                    </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                        <Input placeholder="Search students..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 h-9 text-xs w-full md:w-64" />
+                        <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500 self-end md:self-auto">
+                            {toolbarActions.map((a, i) => (
+                                <Button key={i} variant="ghost" size="icon" onClick={a.onClick} title={a.title} className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"><a.Icon className="h-4 w-4" /></Button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                        <Table className="min-w-[1100px]">
+                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                                <TableRow className="hover:bg-transparent whitespace-nowrap">
+                                    <TableHead className="w-10"><Checkbox checked={allChecked} onCheckedChange={toggleAll} className="h-3.5 w-3.5" /></TableHead>
+                                    {["Admission No", "Student Name", "Class", "Father Name", "Date Of Birth", "Gender", "Category", "Mobile Number"].map((h) => (
+                                        <TableHead key={h} className="font-semibold text-gray-600"><div className="flex items-center gap-1">{h} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    ))}
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <SkeletonRows />
+                                ) : !searched ? (
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">Select criteria and search to list students</TableCell></TableRow>
+                                ) : filtered.length === 0 ? (
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No students found</TableCell></TableRow>
+                                ) : filtered.map((s) => (
+                                    <TableRow key={s.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                        <TableCell className="py-3"><Checkbox checked={selected.includes(s.id)} onCheckedChange={() => toggleOne(s.id)} className="h-3.5 w-3.5" /></TableCell>
+                                        <TableCell className="py-3 text-gray-700 font-medium">{s.admission_no || "-"}</TableCell>
+                                        <TableCell className="py-3 text-[#6366f1] font-medium">{studentName(s)}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.schoolClass?.name || "-"}{s.section?.name ? ` (${s.section.name})` : ""}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.father_name || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.gender || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.category || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.phone || "-"}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    <div className="text-xs text-gray-500 font-medium pt-2">Showing {filtered.length} {filtered.length === 1 ? "student" : "students"}</div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

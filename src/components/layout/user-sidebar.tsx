@@ -113,6 +113,7 @@ const menuItems: { group: string; items: MenuItem[] }[] = [
                 ]
             },
             { name: "attendance", label: "Attendance", icon: Calendar, href: "/user/attendance", submenus: [], color: "orange" },
+            { name: "behaviour", label: "Behaviour Records", icon: ShieldCheck, href: "/user/behaviour", submenus: [], color: "rose" },
             {
                 name: "cbse_examination", label: "CBSE Examination", icon: FileText, href: "#", color: "violet",
                 submenus: [
@@ -138,6 +139,10 @@ const menuItems: { group: string; items: MenuItem[] }[] = [
             },
             { name: "transport_routes", label: "Transport Routes", icon: Bus, href: "/user/transport-routes", submenus: [], color: "amber" },
             { name: "hostel_rooms", label: "Hostel Rooms", icon: Hotel, href: "/user/hostel-rooms", submenus: [], color: "indigo" },
+            { name: "certificates", label: "Certificates", icon: Award, href: "/user/certificates", submenus: [], color: "violet" },
+            { name: "id_card", label: "ID Card", icon: CreditCard, href: "/user/id-card", submenus: [], color: "blue" },
+            { name: "my_qr_pass", label: "My QR Pass", icon: QrCode, href: "/user/my-qr-pass", submenus: [], color: "orange" },
+            { name: "branches", label: "Our Branches", icon: Globe, href: "/user/branches", submenus: [], color: "emerald" },
         ]
     }
 ];

@@ -45,6 +45,7 @@ interface SectionOption {
 interface SubjectGroupOption {
     id: number | string;
     name: string;
+    school_class_id?: number | string;
 }
 
 const DEFAULT_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -272,7 +273,7 @@ export default function ClassTimetablePage() {
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {subjectGroups.filter(sg => !selectedClassId || sg.school_class_id.toString() === selectedClassId).map(sg => (
+                                    {subjectGroups.filter(sg => !selectedClassId || String(sg.school_class_id) === selectedClassId).map(sg => (
                                         <SelectItem key={sg.id} value={sg.id.toString()}>{sg.name}</SelectItem>
                                     ))}
                                 </SelectContent>

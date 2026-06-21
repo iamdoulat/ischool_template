@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,9 +23,9 @@ import {
     FileText,
     Printer,
     Columns,
-    ChevronLeft,
-    ChevronRight,
     ArrowUpDown,
+    UserSquare2,
+    Loader2,
 } from "lucide-react";
 import {
     Select,
@@ -31,203 +34,260 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { type IdCardTemplate, type IdCardPerson, renderIdCardHtml, printIdCards } from "@/lib/certificate";
 
-interface Staff {
-    staffId: string;
-    name: string;
-    role: string;
-    designation: string;
-    department: string;
-    fatherName: string;
-    motherName: string;
-    joiningDate: string;
-    phone: string;
-    dob: string;
+interface ApiStaff {
+    id: number;
+    staff_id?: string;
+    name?: string;
+    role?: string;
+    designation?: string;
+    department?: string;
+    father_name?: string;
+    mother_name?: string;
+    date_of_joining?: string;
+    joining_date?: string;
+    phone?: string;
+    dob?: string;
+    current_address?: string;
+    avatar?: string;
 }
 
-const mockStaff: Staff[] = [
-    { staffId: "9002", name: "Shivam Verma", role: "Teacher", designation: "Faculty", department: "Academic", fatherName: "Pulkit Verma", motherName: "Manisha Verma", joiningDate: "03/10/2010", phone: "9552654564", dob: "06/18/1982" },
-    { staffId: "90005", name: "Jason Shariton", role: "Teacher", designation: "Faculty", department: "Academic", fatherName: "Max Shariton", motherName: "Arya Shariton", joiningDate: "08/24/2018", phone: "48548854564", dob: "06/16/1980" },
-    { staffId: "1002", name: "Nishant Khare", role: "Teacher", designation: "", department: "", fatherName: "", motherName: "", joiningDate: "12/10/2020", phone: "9885757857", dob: "12/11/2000" },
-    { staffId: "654", name: "aman", role: "Teacher", designation: "Faculty", department: "Academic", fatherName: "", motherName: "", joiningDate: "", phone: "", dob: "01/14/2026" },
-];
+interface Role { name: string; }
+
+const TABLE_COLS = 11;
+
+function SkeletonRows({ rows = 5, cols = TABLE_COLS }: { rows?: number; cols?: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <TableRow key={i} className="border-b border-gray-50">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <div className="h-3 rounded bg-gray-200/70 animate-pulse" style={{ width: `${55 + ((i * 3 + j * 7) % 40)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
+
+function toPerson(s: ApiStaff): IdCardPerson {
+    return {
+        name: s.name || "",
+        staff_id: s.staff_id || "",
+        designation: s.designation || "",
+        department: s.department || "",
+        father_name: s.father_name || "",
+        mother_name: s.mother_name || "",
+        joining_date: s.date_of_joining || s.joining_date
+            ? new Date(s.date_of_joining || s.joining_date || "").toLocaleDateString("en-US")
+            : "",
+        dob: s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "",
+        phone: s.phone || "",
+        address: s.current_address || "",
+        photo: s.avatar ? `/storage/${s.avatar}` : null,
+    };
+}
 
 export default function GenerateStaffIDCardPage() {
-    const [searchTerm, setSearchTerm] = useState("");
+    const { toast } = useToast();
+    const [roles, setRoles] = useState<Role[]>([]);
+    const [templates, setTemplates] = useState<IdCardTemplate[]>([]);
 
-    const filteredStaff = mockStaff.filter((s) =>
-        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.staffId.includes(searchTerm)
+    const [selectedRole, setSelectedRole] = useState("");
+    const [templateId, setTemplateId] = useState("");
+
+    const [staff, setStaff] = useState<ApiStaff[]>([]);
+    const [selected, setSelected] = useState<number[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [searched, setSearched] = useState(false);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const [rolesRes, tplRes] = await Promise.all([
+                    api.get("/hr/staff-roles"),
+                    api.get("/certificate/staff-id-cards", { params: { per_page: 100 } }),
+                ]);
+                setRoles(rolesRes.data?.data || rolesRes.data || []);
+                const tplData = tplRes.data?.data ?? tplRes.data ?? [];
+                setTemplates(Array.isArray(tplData) ? tplData : []);
+            } catch {
+                toast({ title: "Error", description: "Failed to load criteria data", variant: "destructive" });
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleSearch = async () => {
+        if (!selectedRole || !templateId) {
+            toast({ title: "Validation Error", description: "Please select Role and ID Card Template", variant: "destructive" });
+            return;
+        }
+        setLoading(true);
+        setSearched(true);
+        try {
+            const res = await api.get("/hr/staff-directory", { params: { role: selectedRole, no_paginate: true } });
+            const data = res.data?.data || res.data || [];
+            setStaff(Array.isArray(data) ? data : []);
+            setSelected([]);
+        } catch {
+            toast({ title: "Error", description: "Failed to fetch staff", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filtered = staff.filter((s) =>
+        (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.staff_id || "").includes(searchTerm)
     );
+    const allChecked = filtered.length > 0 && selected.length === filtered.length;
+    const toggleAll = () => setSelected(allChecked ? [] : filtered.map((s) => s.id));
+    const toggleOne = (id: number) => setSelected((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+
+    const handleGenerate = () => {
+        const template = templates.find((t) => String(t.id) === templateId);
+        if (!template) return;
+        const chosen = staff.filter((s) => selected.includes(s.id));
+        if (chosen.length === 0) {
+            toast({ title: "No staff selected", description: "Select at least one staff member", variant: "destructive" });
+            return;
+        }
+        printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s), "staff")).join(""));
+    };
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(filtered.map((s) => `${s.staff_id}\t${s.name}`).join("\n"));
+        toast({ title: "Copied", description: "Data copied to clipboard" });
+    };
+    const handleExportCSV = () => {
+        const rows = [["Staff ID", "Name", "Role", "Designation", "Department", "Father Name", "Mother Name", "Joining Date", "Phone", "DOB"],
+            ...filtered.map((s) => [s.staff_id || "", s.name || "", s.role || "", s.designation || "", s.department || "", s.father_name || "", s.mother_name || "", s.date_of_joining || "", s.phone || "", s.dob || ""])];
+        const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "staff_id_card.csv";
+        link.click();
+    };
+
+    const toolbarActions = [
+        { Icon: Copy, onClick: handleCopy, title: "Copy" },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
+        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
+        { Icon: Printer, onClick: () => window.print(), title: "Print" },
+        { Icon: Columns, onClick: () => {}, title: "Columns" },
+    ];
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                <h2 className="text-sm font-medium text-gray-800 tracking-tight">Select Criteria</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                            Role <span className="text-red-500 font-bold">*</span>
-                        </Label>
-                        <Select>
-                            <SelectTrigger className="h-8 border-gray-200 text-[11px] focus:ring-indigo-500 rounded shadow-none">
-                                <SelectValue placeholder="Teacher" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="teacher">Teacher</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                        </Select>
+        <div className="space-y-6">
+            {/* Criteria */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <UserSquare2 className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Generate Staff ID Card</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Select criteria, then generate ID cards for chosen staff</p>
                     </div>
-
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                            ID Card Template <span className="text-red-500 font-bold">*</span>
-                        </Label>
-                        <Select>
-                            <SelectTrigger className="h-8 border-gray-200 text-[11px] focus:ring-indigo-500 rounded shadow-none">
-                                <SelectValue placeholder="Sample Staff ID Card" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="s1">Sample Staff ID Card</SelectItem>
-                                <SelectItem value="s2">Sample Staff ID Card Vertical</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <div className="flex justify-end pt-2">
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5 font-bold tracking-tight">
-                        <Search className="h-3.5 w-3.5" />
-                        Search
-                    </Button>
-                </div>
-            </div>
-
-            {/* Staff List Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-sm font-medium text-gray-800 tracking-tight">Staff List</h2>
-                    <Button className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5 font-bold tracking-tight">
-                        Generate
-                    </Button>
-                </div>
-
-                {/* Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
-                    <div className="relative w-full md:w-64">
-                        <Input
-                            placeholder="Search"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">50</span>
-                            <Select defaultValue="50">
-                                <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none rounded">
-                                    <SelectValue />
-                                </SelectTrigger>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Role <span className="text-red-500">*</span></Label>
+                            <Select value={selectedRole} onValueChange={setSelectedRole}>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Role" /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
+                                    {roles.map((r) => <SelectItem key={r.name} value={r.name}>{r.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                         </div>
-                        <div className="flex items-center gap-1 text-gray-400">
-                            {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, i) => (
-                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                    <Icon className="h-3.5 w-3.5" />
-                                </Button>
-                            ))}
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">ID Card Template <span className="text-red-500">*</span></Label>
+                            <Select value={templateId} onValueChange={setTemplateId}>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Template" /></SelectTrigger>
+                                <SelectContent>
+                                    {templates.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.title}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
-                </div>
-
-                {/* Table */}
-                <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
-                    <Table className="min-w-[1500px]">
-                        <TableHeader className="bg-gray-50/50">
-                            <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                <TableHead className="py-3 px-4 w-10">
-                                    <Checkbox className="h-3.5 w-3.5 border-gray-300 accent-indigo-500 shadow-none focus:ring-0" />
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Staff ID <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Staff Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Role <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Designation <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Department <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Father Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Mother Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Date Of Joining <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Phone <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="py-3 px-4">
-                                    <div className="flex items-center gap-1 cursor-pointer">Date Of Birth <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredStaff.map((person) => (
-                                <TableRow key={person.staffId} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
-                                    <TableCell className="py-3 px-4">
-                                        <Checkbox className="h-3.5 w-3.5 border-gray-300 accent-indigo-500 shadow-none focus:ring-0" />
-                                    </TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-700 font-medium">{person.staffId}</TableCell>
-                                    <TableCell className="py-3 px-4">
-                                        <span className="text-[#6366f1] font-medium hover:underline cursor-pointer">{person.name}</span>
-                                    </TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{person.role}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{person.designation}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{person.department}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{person.fatherName}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{person.motherName}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{person.joiningDate}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{person.phone}</TableCell>
-                                    <TableCell className="py-3 px-4 text-gray-500">{person.dob}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2 border-t border-gray-50">
-                    <div>
-                        Showing 1 to {filteredStaff.length} of {mockStaff.length} entries
-                    </div>
-                    <div className="flex gap-1 items-center">
-                        <span className="text-gray-400 mr-2 cursor-pointer hover:text-gray-600 text-[10px]">‹</span>
-                        <Button variant="default" size="sm" className="h-6 w-6 p-0 bg-indigo-500 hover:bg-indigo-600 text-white border-0 text-[10px] rounded shadow-sm">
-                            1
+                    <div className="flex justify-end">
+                        <Button onClick={handleSearch} disabled={loading} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
                         </Button>
-                        <span className="text-gray-400 ml-2 cursor-pointer hover:text-gray-600 text-[10px]">›</span>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
+
+            {/* Staff list */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <FileText className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Staff List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{selected.length} of {filtered.length} selected</p>
+                        </div>
+                    </div>
+                    <Button onClick={handleGenerate} disabled={selected.length === 0} className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all disabled:opacity-40">
+                        <UserSquare2 className="h-4 w-4" /> Generate
+                    </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                        <Input placeholder="Search staff..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 h-9 text-xs w-full md:w-64" />
+                        <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500 self-end md:self-auto">
+                            {toolbarActions.map((a, i) => (
+                                <Button key={i} variant="ghost" size="icon" onClick={a.onClick} title={a.title} className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"><a.Icon className="h-4 w-4" /></Button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                        <Table className="min-w-[1400px]">
+                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                                <TableRow className="hover:bg-transparent whitespace-nowrap">
+                                    <TableHead className="w-10"><Checkbox checked={allChecked} onCheckedChange={toggleAll} className="h-3.5 w-3.5" /></TableHead>
+                                    {["Staff ID", "Staff Name", "Role", "Designation", "Department", "Father Name", "Mother Name", "Date Of Joining", "Phone", "Date Of Birth"].map((h) => (
+                                        <TableHead key={h} className="font-semibold text-gray-600"><div className="flex items-center gap-1">{h} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    ))}
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <SkeletonRows />
+                                ) : !searched ? (
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">Select role and template, then search to list staff</TableCell></TableRow>
+                                ) : filtered.length === 0 ? (
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No staff found</TableCell></TableRow>
+                                ) : filtered.map((s) => (
+                                    <TableRow key={s.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                        <TableCell className="py-3"><Checkbox checked={selected.includes(s.id)} onCheckedChange={() => toggleOne(s.id)} className="h-3.5 w-3.5" /></TableCell>
+                                        <TableCell className="py-3 text-gray-700 font-medium">{s.staff_id || "-"}</TableCell>
+                                        <TableCell className="py-3 text-[#6366f1] font-medium">{s.name || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.role || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.designation || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.department || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.father_name || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.mother_name || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.date_of_joining ? new Date(s.date_of_joining).toLocaleDateString("en-US") : "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.phone || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "-"}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    <div className="text-xs text-gray-500 font-medium pt-2">Showing {filtered.length} {filtered.length === 1 ? "staff member" : "staff members"}</div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

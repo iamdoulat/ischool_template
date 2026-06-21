@@ -274,15 +274,26 @@ export default function LiveClassesPage() {
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <div className="flex justify-between items-center mb-2">
-                <h1 className="text-sm font-medium text-gray-800 tracking-tight">Live Classes</h1>
-                <Button 
-                    onClick={() => { resetForm(); setOpen(true); }}
-                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
-                >
-                    <Plus className="h-3.5 w-3.5" />
-                    Add
-                </Button>
+            {/* Gradient card header */}
+            <div className="rounded-xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Video className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Live Classes</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">Schedule &amp; manage Google Meet live classes</p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={() => { resetForm(); setOpen(true); }}
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-full shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add
+                    </Button>
+                </div>
             </div>
 
             <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[500px]">
@@ -345,14 +356,15 @@ export default function LiveClassesPage() {
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={9} className="text-center py-12">
-                                        <div className="flex items-center justify-center gap-2 text-gray-400">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-                                            Loading live classes...
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
+                                [...Array(6)].map((_, i) => (
+                                    <TableRow key={i} className="border-b border-gray-50">
+                                        {[...Array(9)].map((_, j) => (
+                                            <TableCell key={j} className="py-3 px-4">
+                                                <div className="h-3 w-full max-w-[120px] rounded bg-gray-100 animate-pulse" />
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
                             ) : classes.length === 0 ? (
                                 <TableRow className="hover:bg-transparent h-64">
                                     <TableCell colSpan={9} className="text-center py-12 text-gray-400 font-bold uppercase text-[10px] tracking-widest">
@@ -367,9 +379,9 @@ export default function LiveClassesPage() {
                                         <TableCell className="py-3 px-4">{formatDateTime(item.date_time)}</TableCell>
                                         <TableCell className="py-3 px-4 text-center text-gray-700 font-medium">{item.duration}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-600">
-                                            {item.creator 
-                                                ? `${item.creator.name} ${item.creator.last_name} (${item.creator.role} : ${item.creator.id})`
-                                                : "Doulat User (Super Admin : 1)"}
+                                            {item.creator
+                                                ? `${item.creator.name} ${item.creator.last_name ?? ''} (${item.creator.role} : ${item.creator.id})`
+                                                : <span className="text-gray-400 italic">—</span>}
                                         </TableCell>
                                         <TableCell className="py-3 px-4 text-gray-600">
                                             {item.staff

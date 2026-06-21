@@ -69,15 +69,32 @@ export default function ZoomSettingPage() {
     };
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            
-            {/* Header Title block */}
-            <div className="bg-white border border-gray-100 rounded shadow-sm p-4 flex items-center justify-between">
-                <h1 className="text-sm font-semibold tracking-tight text-gray-800">Setting</h1>
+        <div className="p-4 space-y-4 min-h-screen font-sans text-xs max-w-5xl">
+
+            {/* Gradient card header */}
+            <div className="rounded-xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+                <div className="flex items-center justify-between gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Key className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Zoom Settings</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">Configure API credentials &amp; access tokens</p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
+                    >
+                        {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+                    </Button>
+                </div>
             </div>
 
             {/* Inner Main Card Area */}
-            <div className="bg-white rounded shadow-sm border border-gray-100 p-6 space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
 
                 {/* Alert Notification */}
                 <div className="bg-[#e3f2fd] border border-[#bbdefb] text-[#0d47a1] px-4 py-3 rounded text-[11px] font-medium leading-relaxed">
@@ -275,18 +292,7 @@ export default function ZoomSettingPage() {
 
                 </div>
 
-                {/* Centered Save Action Button Footer */}
-                <div className="flex items-center justify-center pt-8 border-t border-gray-50">
-                    <Button 
-                        onClick={handleSave} 
-                        disabled={saving}
-                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-8 h-9 text-xs font-bold rounded-lg shadow-[0_4px_12px_rgba(99,102,241,0.2)] flex items-center justify-center gap-1.5 transition-all active:scale-95 border-0 cursor-pointer"
-                    >
-                        {saving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : null}
-                        Save
-                    </Button>
-                </div>
-
+                
             </div>
 
         </div>

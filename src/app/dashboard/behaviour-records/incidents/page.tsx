@@ -50,6 +50,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Incident {
     id: string;
@@ -163,110 +164,99 @@ export default function IncidentsPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 font-sans">
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 shadow-inner">
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 gap-0 text-slate-800">
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <ShieldAlert className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Incident Protocol Registry</CardTitle>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Institutional behavioural incident classification matrix</p>
+                        </span>
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Incidents</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">Manage behaviour incident types and their points</p>
                         </div>
                     </div>
                     <Button
                         onClick={() => { resetForm(); setOpen(true); }}
-                        className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[10px] font-bold uppercase gap-2 shadow-lg active:scale-95 transition-all"
+                        className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all shrink-0"
                     >
                         <Plus className="h-4 w-4" />
-                        Index Incident
+                        Add Incident
                     </Button>
                 </CardHeader>
-                <CardContent className="p-0">
-                    <div className="p-6 flex items-center gap-6 border-b border-muted/20">
-                        <div className="relative w-80">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <CardContent className="p-5 space-y-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="relative w-full sm:w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Filter incident protocols..."
+                                placeholder="Search incidents..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11 rounded-lg bg-white border-muted/50 focus-visible:ring-indigo-500/20 text-[10px] font-bold uppercase tracking-[0.2em] shadow-none"
+                                className="pl-9 h-9 text-xs"
                             />
                         </div>
-                        <div className="flex items-center gap-4 ml-auto">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-2">Page Density:</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 font-medium">Show</span>
                             <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
-                                <SelectTrigger className="h-10 w-24 text-[10px] font-bold bg-white border-muted/50 rounded-lg uppercase tracking-widest">
+                                <SelectTrigger className="h-9 w-[70px] text-xs">
                                     <SelectValue placeholder="50" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100">
-                                    <SelectItem value="10">10 Rows</SelectItem>
-                                    <SelectItem value="25">25 Rows</SelectItem>
-                                    <SelectItem value="50">50 Rows</SelectItem>
-                                    <SelectItem value="100">100 Rows</SelectItem>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="25">25</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-gray-50/50">
-                                <TableRow className="hover:bg-transparent border-b border-muted/20">
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 pl-8">Protocol Title</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 text-center w-[120px]">Point Value</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 w-[50%]">Protocol Description</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 pr-8 text-right">Utility</TableHead>
+                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                        <Table className="min-w-[640px]">
+                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                                <TableRow className="hover:bg-transparent whitespace-nowrap">
+                                    <TableHead className="font-semibold text-gray-600">Incident</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center w-[110px]">Points</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Description</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right w-[100px]">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="h-48 text-center">
-                                            <div className="flex flex-col items-center justify-center space-y-3">
-                                                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-rose-500" />
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Syncing Incident Registry...</p>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
+                                    Array.from({ length: 6 }).map((_, i) => (
+                                        <TableRow key={i} className="text-xs">
+                                            <TableCell className="py-3"><div className="flex items-center gap-2.5"><Skeleton className="h-7 w-7 rounded-md" /><Skeleton className="h-3.5 w-36 rounded" /></div></TableCell>
+                                            <TableCell className="text-center"><Skeleton className="h-6 w-12 rounded-full mx-auto" /></TableCell>
+                                            <TableCell><Skeleton className="h-3.5 w-full max-w-xs rounded" /></TableCell>
+                                            <TableCell className="text-right"><div className="flex justify-end gap-1"><Skeleton className="h-7 w-7 rounded" /><Skeleton className="h-7 w-7 rounded" /></div></TableCell>
+                                        </TableRow>
+                                    ))
                                 ) : incidents.length === 0 ? (
-                                    <TableRow className="hover:bg-transparent border-none">
-                                        <TableCell colSpan={4} className="h-[300px] text-center">
-                                            <div className="flex flex-col items-center justify-center gap-6 text-muted-foreground/50">
-                                                <div className="p-8 rounded-[2.5rem] bg-rose-50/50 text-rose-400 transform rotate-6 shadow-inner">
-                                                    <FolderOpen className="h-16 w-16 opacity-30" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500/60 bg-rose-50 px-6 py-2 rounded-full border border-rose-100">
-                                                        No incident protocols indexed
-                                                    </span>
-                                                    <p className="text-[9px] uppercase font-black text-gray-400 tracking-tighter italic">
-                                                        Use the "Index Incident" action to classify a new behavioural protocol.
-                                                    </p>
-                                                </div>
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="px-4 py-14 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
+                                                <FolderOpen className="h-10 w-10 opacity-30" />
+                                                <p className="text-xs font-semibold text-gray-500">No incidents found</p>
+                                                <p className="text-[11px] text-gray-400">Click &ldquo;Add Incident&rdquo; to create your first incident type.</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    incidents.map((incident, index) => (
-                                        <TableRow key={incident.id} className={cn(
-                                            "hover:bg-rose-50/10 border-b border-muted/10 transition-colors group",
-                                            index % 2 === 0 ? 'bg-white' : 'bg-muted/5'
-                                        )}>
-                                            <TableCell className="py-5 pl-8">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={cn(
-                                                        "h-8 w-8 rounded-lg flex items-center justify-center shadow-inner",
+                                    incidents.map((incident) => (
+                                        <TableRow key={incident.id} className="text-xs hover:bg-gray-50/60 transition-colors group">
+                                            <TableCell className="py-3">
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className={cn(
+                                                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
                                                         incident.point >= 0 ? "bg-emerald-50 text-emerald-500" : "bg-rose-50 text-rose-500"
                                                     )}>
                                                         {incident.point >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                                                    </div>
-                                                    <span className="text-slate-700 text-[11px] font-black uppercase tracking-tight">{incident.title}</span>
+                                                    </span>
+                                                    <span className="text-gray-800 font-semibold">{incident.title}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="py-5 text-center">
+                                            <TableCell className="py-3 text-center">
                                                 <span className={cn(
-                                                    "px-4 py-1.5 rounded-full font-black text-[10px] border shadow-sm tabular-nums uppercase tracking-widest",
+                                                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border tabular-nums",
                                                     incident.point >= 0
                                                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                                         : "bg-rose-50 text-rose-700 border-rose-200"
@@ -274,13 +264,15 @@ export default function IncidentsPage() {
                                                     {incident.point >= 0 ? '+' : ''}{incident.point}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="text-slate-500 text-[10px] leading-relaxed py-5 font-bold">{incident.description}</TableCell>
-                                            <TableCell className="pr-8 py-5 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 duration-300">
-                                                    <Button onClick={() => handleEdit(incident)} size="icon" className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-100 transition-all active:scale-90">
+                                            <TableCell className="py-3 text-gray-500 max-w-md">
+                                                <span className="line-clamp-2">{incident.description}</span>
+                                            </TableCell>
+                                            <TableCell className="py-3 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Button onClick={() => handleEdit(incident)} size="sm" className="h-7 w-7 p-0 rounded bg-amber-500 hover:bg-amber-600 text-white shadow-sm active:scale-95 transition-all">
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
-                                                    <Button onClick={() => setDeleteId(incident.id)} size="icon" className="h-8 w-8 rounded-lg bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-100 transition-all active:scale-90">
+                                                    <Button onClick={() => setDeleteId(incident.id)} size="sm" className="h-7 w-7 p-0 rounded bg-red-500 hover:bg-red-600 text-white shadow-sm active:scale-95 transition-all">
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -292,22 +284,24 @@ export default function IncidentsPage() {
                         </Table>
                     </div>
 
-                    <div className="p-4 border-t border-muted/20 flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                        <span>Registry: {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} protocols</span>
-                        <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium">
+                        <div>
+                            Showing {totalEntries === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries
+                        </div>
+                        <div className="flex gap-1 items-center">
                             <Button
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                variant="outline" size="icon" className="h-9 w-9 rounded-lg border-muted/50 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
                                 disabled={currentPage === 1}
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" className="h-9 w-9 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md font-bold">
+                            <Button size="sm" className="h-8 w-8 p-0 rounded-[10px] text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md">
                                 {currentPage}
                             </Button>
                             <Button
                                 onClick={() => setCurrentPage(p => p + 1)}
-                                variant="outline" size="icon" className="h-9 w-9 rounded-lg border-muted/50 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
                                 disabled={incidents.length < itemsPerPage}
                             >
                                 <ChevronRight className="h-4 w-4" />

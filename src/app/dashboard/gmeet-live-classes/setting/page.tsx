@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Settings, Loader2, Save } from "lucide-react";
 
 export default function SettingPage() {
     const [loading, setLoading] = useState(true);
@@ -55,23 +56,55 @@ export default function SettingPage() {
 
     if (loading) {
         return (
-            <div className="h-[60vh] flex flex-col items-center justify-center space-y-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Loading settings...</p>
+            <div className="p-4 space-y-4 min-h-screen font-sans text-xs max-w-3xl">
+                <div className="rounded-xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 overflow-hidden">
+                    <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <div className="h-9 w-9 rounded-lg bg-gray-200 animate-pulse" />
+                        <div className="space-y-1.5">
+                            <div className="h-4 w-44 rounded bg-gray-200 animate-pulse" />
+                            <div className="h-2 w-32 rounded bg-gray-100 animate-pulse" />
+                        </div>
+                    </div>
+                </div>
+                <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-6 space-y-5">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="flex flex-col md:flex-row gap-3 items-center">
+                            <div className="h-3 w-1/4 rounded bg-gray-200 animate-pulse" />
+                            <div className="h-9 flex-1 max-w-lg rounded bg-gray-100 animate-pulse" />
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            
-            {/* Header */}
-            <div className="bg-white border border-gray-100 rounded shadow-sm p-4 flex items-center">
-                <h1 className="text-sm font-semibold tracking-tight text-gray-800">Setting</h1>
+        <div className="p-4 space-y-4 min-h-screen font-sans text-xs max-w-3xl">
+
+            {/* Gradient card header */}
+            <div className="rounded-xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+                <div className="flex items-center justify-between gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Settings className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Google Meet Settings</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">Configure API credentials &amp; live class behaviour</p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={handleSave}
+                        disabled={submitting}
+                        className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
+                    >
+                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+                    </Button>
+                </div>
             </div>
 
             {/* Main White Panel */}
-            <div className="bg-white rounded shadow-sm border border-gray-100 p-0 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-0 overflow-hidden">
                 
                 {/* Form Fields Container */}
                 <div className="p-6 space-y-5">

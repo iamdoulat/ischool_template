@@ -41,6 +41,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Student {
     id: string;
@@ -184,149 +185,150 @@ export default function AssignIncidentPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 font-sans">
             {/* Select Criteria Section */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 gap-0 text-slate-800">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <GraduationCap className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Assign Incident</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Pick a class and section to find students</p>
                     </div>
-                    <CardTitle className="text-xl font-black tracking-tight text-slate-700 uppercase">Behavioural Target Selection</CardTitle>
                 </CardHeader>
-                <CardContent className="p-10 space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Academic Class <span className="text-red-500">*</span></label>
+                <CardContent className="p-5 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600">Class <span className="text-red-500">*</span></Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                <SelectTrigger className="h-14 rounded-lg bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
-                                    <SelectValue placeholder="Select Institutional Class" />
+                                <SelectTrigger className="h-9 text-xs">
+                                    <SelectValue placeholder="Select class" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
+                                <SelectContent>
                                     {criteria.classes.map(cls => <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Class Section <span className="text-red-500">*</span></label>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600">Section <span className="text-red-500">*</span></Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                <SelectTrigger className="h-14 rounded-lg bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
-                                    <SelectValue placeholder="Select Academic Section" />
+                                <SelectTrigger className="h-9 text-xs">
+                                    <SelectValue placeholder="Select section" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
+                                <SelectContent>
                                     {sections.map(sec => <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
-                    <div className="flex justify-end pt-4 border-t border-gray-50">
-                        <Button 
+                    <div className="flex justify-end pt-1">
+                        <Button
                             onClick={handleSearch}
                             disabled={loading}
-                            className="btn-gradient text-white px-12 h-14 text-[11px] font-black uppercase tracking-[0.2em] gap-3 shadow-2xl shadow-orange-200/50 active:scale-95 transition-all rounded-full group"
+                            className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                         >
-                            {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />}
-                            Locate Students
+                            {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            Find Students
                         </Button>
                     </div>
                 </CardContent>
             </Card>
 
             {/* Assign Incident List Section */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 gap-0 text-slate-800">
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Users className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Students</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">Select students to assign an incident</p>
                         </div>
-                        <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Student Engagement Registry</CardTitle>
                     </div>
                     {selectedStudents.length > 0 && (
-                        <Button 
+                        <Button
                             onClick={() => setOpen(true)}
-                            className="btn-gradient text-white px-8 h-10 text-[10px] font-black uppercase tracking-widest gap-2 shadow-lg rounded-full animate-in zoom-in"
+                            className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all animate-in zoom-in shrink-0"
                         >
                             <UserPlus className="h-4 w-4" />
-                            Assign Incident ({selectedStudents.length})
+                            Assign ({selectedStudents.length})
                         </Button>
                     )}
                 </CardHeader>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto min-h-[400px]">
-                        <Table>
-                            <TableHeader className="bg-gray-50/50">
-                                <TableRow className="hover:bg-transparent border-b border-muted/20">
-                                    <TableHead className="py-5 pl-8 w-[60px]">
-                                        <Checkbox 
-                                            checked={students.length > 0 && selectedStudents.length === students.length} 
+                <CardContent className="p-5 space-y-4">
+                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                        <Table className="min-w-[700px]">
+                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                                <TableRow className="hover:bg-transparent whitespace-nowrap">
+                                    <TableHead className="font-semibold text-gray-600 w-[50px]">
+                                        <Checkbox
+                                            checked={students.length > 0 && selectedStudents.length === students.length}
                                             onCheckedChange={toggleAll}
-                                            className="rounded-md border-gray-300"
                                         />
                                     </TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5">Nodal Identity</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5">Admission Ref</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5">Gender</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5">Comm Port</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 text-center">Cumulative Points</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 pr-8 text-right">Utility</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Student</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Adm. No.</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Gender</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center">Points</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right w-[100px]">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {students.length === 0 ? (
-                                    <TableRow className="hover:bg-transparent border-none">
-                                        <TableCell colSpan={7} className="h-[350px] text-center">
-                                            <div className="flex flex-col items-center justify-center gap-6 text-muted-foreground/50">
-                                                <div className="p-8 rounded-[2.5rem] bg-indigo-50/50 text-indigo-400 transform rotate-6 shadow-inner">
-                                                    <FolderOpen className="h-16 w-16 opacity-30" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500/60 bg-rose-50 px-6 py-2 rounded-full border border-rose-100">
-                                                        No data available in table
-                                                    </span>
-                                                    <p className="text-[9px] uppercase font-black text-gray-400 tracking-tighter italic">
-                                                        Select criteria and execute search to populate the engagement registry.
-                                                    </p>
-                                                </div>
+                                {loading ? (
+                                    Array.from({ length: 6 }).map((_, i) => (
+                                        <TableRow key={i} className="text-xs">
+                                            <TableCell><Skeleton className="h-4 w-4 rounded" /></TableCell>
+                                            <TableCell className="py-3"><div className="flex items-center gap-2.5"><Skeleton className="h-7 w-7 rounded-md" /><Skeleton className="h-3.5 w-32 rounded" /></div></TableCell>
+                                            <TableCell className="py-3"><Skeleton className="h-3.5 w-20 rounded" /></TableCell>
+                                            <TableCell className="py-3"><Skeleton className="h-3.5 w-14 rounded" /></TableCell>
+                                            <TableCell className="py-3 text-center"><Skeleton className="h-6 w-14 rounded-full mx-auto" /></TableCell>
+                                            <TableCell className="py-3 text-right"><Skeleton className="h-7 w-16 rounded ml-auto" /></TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : students.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="px-4 py-14 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
+                                                <FolderOpen className="h-10 w-10 opacity-30" />
+                                                <p className="text-xs font-semibold text-gray-500">No students found</p>
+                                                <p className="text-[11px] text-gray-400">Select a class and section, then click &ldquo;Find Students&rdquo;.</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    students.map((student, index) => (
-                                        <TableRow key={student.id} className={cn(
-                                            "hover:bg-indigo-50/20 border-b border-muted/10 transition-colors group",
-                                            index % 2 === 0 ? 'bg-white' : 'bg-muted/5'
-                                        )}>
-                                            <TableCell className="py-5 pl-8">
-                                                <Checkbox 
-                                                    checked={selectedStudents.includes(student.id)} 
+                                    students.map((student) => (
+                                        <TableRow key={student.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                            <TableCell className="py-3">
+                                                <Checkbox
+                                                    checked={selectedStudents.includes(student.id)}
                                                     onCheckedChange={() => toggleStudent(student.id)}
-                                                    className="rounded-md border-gray-300"
                                                 />
                                             </TableCell>
-                                            <TableCell className="py-5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 font-bold text-[10px] shadow-inner">
+                                            <TableCell className="py-3">
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-500 font-bold text-[11px]">
                                                         {student.name?.[0]}
-                                                    </div>
-                                                    <span className="text-slate-700 text-[11px] font-black uppercase tracking-tight">{student.name}</span>
+                                                    </span>
+                                                    <span className="text-gray-800 font-semibold">{student.name}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="py-5">
-                                                <span className="text-slate-500 text-[11px] font-black uppercase tracking-widest tabular-nums">{student.admission_no}</span>
-                                            </TableCell>
-                                            <TableCell className="text-slate-500 text-[10px] py-5 font-black uppercase tracking-widest">{student.gender}</TableCell>
-                                            <TableCell className="text-slate-600 text-[10px] font-bold py-5 tabular-nums tracking-widest">{student.phone}</TableCell>
-                                            <TableCell className="py-5 text-center">
-                                                <div className={cn(
-                                                    "inline-flex items-center gap-2 px-3 py-1 rounded-full font-black text-[10px] border uppercase tracking-widest shadow-sm",
-                                                    (student.total_points || 0) >= 0 
-                                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
-                                                        : "bg-rose-50 text-rose-600 border-rose-100"
+                                            <TableCell className="py-3 text-gray-500 tabular-nums">{student.admission_no}</TableCell>
+                                            <TableCell className="py-3 text-gray-500">{student.gender}</TableCell>
+                                            <TableCell className="py-3 text-center">
+                                                <span className={cn(
+                                                    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold border tabular-nums",
+                                                    (student.total_points || 0) >= 0
+                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                        : "bg-rose-50 text-rose-700 border-rose-200"
                                                 )}>
-                                                    <Zap className="h-3 w-3" /> {student.total_points || 0}
-                                                </div>
+                                                    <Zap className="h-3 w-3" />
+                                                    {student.total_points || 0}
+                                                </span>
                                             </TableCell>
-                                            <TableCell className="pr-8 py-5 text-right">
-                                                <Button 
+                                            <TableCell className="py-3 text-right">
+                                                <Button
                                                     onClick={() => { setSelectedStudents([student.id]); setOpen(true); }}
-                                                    className="h-8 px-4 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100 transition-all active:scale-95"
+                                                    size="sm" className="h-7 px-3 rounded bg-indigo-500 hover:bg-indigo-600 text-white text-[11px] font-bold shadow-sm active:scale-95 transition-all"
                                                 >
                                                     Assign
                                                 </Button>
@@ -337,17 +339,17 @@ export default function AssignIncidentPage() {
                             </TableBody>
                         </Table>
                     </div>
-                    
-                    <div className="p-8 border-t border-muted/20 flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                        <span>Registry Summary: {students.length} nodes identified</span>
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm" disabled>
+
+                    <div className="flex items-center justify-between text-xs text-gray-500 font-medium">
+                        <div>{students.length} student{students.length === 1 ? "" : "s"} found</div>
+                        <div className="flex gap-1 items-center">
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40" disabled>
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" className="h-10 w-10 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg font-black text-xs">
+                            <Button size="sm" className="h-8 w-8 p-0 rounded-[10px] text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md">
                                 1
                             </Button>
-                            <Button variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm" disabled>
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40" disabled>
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>

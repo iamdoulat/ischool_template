@@ -39,6 +39,7 @@ export default function QrCodeAttendancePage() {
     const [lastUser, setLastUser] = useState<ScannedUser | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [settings, setSettings] = useState<any>(null);
+    const [loadingSettings, setLoadingSettings] = useState(true);
     
     const inputRef = useRef<HTMLInputElement>(null);
     const cameraImgRef = useRef<HTMLImageElement>(null);
@@ -150,6 +151,8 @@ export default function QrCodeAttendancePage() {
             }
         } catch (error) {
             console.error("Failed to fetch settings", error);
+        } finally {
+            setLoadingSettings(false);
         }
     };
 
@@ -266,24 +269,43 @@ export default function QrCodeAttendancePage() {
         };
     }, [mode, lensMode, cameraUrl, cameraError, scanCooldown, modelsLoaded, faceUsers]);
 
+    if (loadingSettings) {
+        return (
+            <div className="space-y-4 font-sans p-4 min-h-screen">
+                <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+                    <div className="flex flex-row items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <div className="h-9 w-9 rounded-lg bg-gray-200 animate-pulse" />
+                        <div className="space-y-1.5">
+                            <div className="h-4 w-44 rounded bg-gray-200 animate-pulse" />
+                            <div className="h-2 w-32 rounded bg-gray-100 animate-pulse" />
+                        </div>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="h-[400px] rounded-xl border border-gray-100 bg-white shadow-sm animate-pulse" />
+                    <div className="h-[400px] rounded-xl border border-gray-100 bg-white shadow-sm animate-pulse" />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4 font-sans p-4 bg-gray-50/10 min-h-screen text-xs">
-            {/* Header */}
-            <div className="bg-white p-4 rounded border border-gray-100 shadow-sm flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded bg-indigo-50 flex items-center justify-center">
-                        <Scan className="h-5 w-5 text-indigo-500" />
-                    </div>
-                    <div>
-                        <h1 className="text-base font-bold text-gray-800 uppercase tracking-wide flex items-center gap-2">
-                            Attendance Terminal
-                        </h1>
-                        <p className="text-[10px] text-gray-400 mt-1">Real-time scanning & verification</p>
+            {/* Gradient card header */}
+            <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Scan className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                        <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Attendance Terminal</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Real-time scanning &amp; verification</p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <div className="flex border border-gray-100 rounded overflow-hidden bg-gray-50/50 p-1">
+                    <div className="flex border border-gray-100 rounded overflow-hidden bg-white/70 p-1">
                         {settings?.use_camera_device && (
                             <button
                                 onClick={() => setMode("camera")}
@@ -311,6 +333,7 @@ export default function QrCodeAttendancePage() {
                         <X className="h-4 w-4" />
                     </Button>
                 </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

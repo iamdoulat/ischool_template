@@ -22,10 +22,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-    Search, ChevronLeft, ChevronRight, 
+import {
+    Search, ChevronLeft, ChevronRight,
     ArrowUpDown, List, Plus, X, Copy, FileSpreadsheet,
-    FileBox, Printer, Columns, ExternalLink
+    FileBox, Printer, Columns, ExternalLink, Video
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -133,24 +133,14 @@ export default function LiveMeetingPage() {
         }
     };
 
-    // Staff List selector
+    // Staff List selector — real DB criteria only
     const getResolvedStaffList = () => {
-        if (criteria.staff && criteria.staff.length > 0) {
-            return criteria.staff.map(s => ({
-                id: s.id,
-                name: `${s.name} ${s.last_name}`,
-                role: s.role || "Teacher",
-                code: s.id + 9000
-            }));
-        }
-        // Visual screenshot fallback
-        return [
-            { id: 1, name: "Shivam Verma", role: "Teacher", code: 9002 },
-            { id: 2, name: "Brandon Heart", role: "Librarian", code: 9006 },
-            { id: 3, name: "William Abbot", role: "Admin", code: 9003 },
-            { id: 4, name: "Jason Sharlton", role: "Teacher", code: 9006 },
-            { id: 5, name: "James Deckar", role: "Accountant", code: 9005 }
-        ];
+        return (criteria.staff || []).map(s => ({
+            id: s.id,
+            name: `${s.name} ${s.last_name ?? ''}`.trim(),
+            role: s.role || "Teacher",
+            code: s.employee_id || s.id
+        }));
     };
 
     const handleToggleStaff = (id: number) => {
@@ -251,32 +241,14 @@ export default function LiveMeetingPage() {
     };
 
     const handleOpenJoinList = (item: GmeetMeeting) => {
-        const list = [];
+        // Real data only — host/creator joined record from DB
+        const list: any[] = [];
         if (item.creator) {
             list.push({
-                name: `${item.creator.name} ${item.creator.last_name}`,
-                role: "Super Admin",
-                id: item.creator.employee_id || 9003,
-                last_join: "12/01/2025 07:40:52"
-            });
-            list.push({
-                name: "Jason Sharlton",
-                role: "Teacher",
-                id: 9006,
-                last_join: "12/01/2025 07:41:17"
-            });
-        } else {
-            list.push({
-                name: "William Abbot",
-                role: "Admin",
-                id: 9003,
-                last_join: "12/01/2025 07:40:52"
-            });
-            list.push({
-                name: "Jason Sharlton",
-                role: "Teacher",
-                id: 9006,
-                last_join: "12/01/2025 07:41:17"
+                name: `${item.creator.name} ${item.creator.last_name ?? ''}`.trim(),
+                role: "Host",
+                id: item.creator.employee_id || item.created_by,
+                last_join: formatDateTime(item.date_time),
             });
         }
         setActiveJoinList(list);
@@ -318,16 +290,26 @@ export default function LiveMeetingPage() {
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
             
-            {/* Header */}
-            <div className="bg-white border border-gray-100 rounded shadow-sm p-4 flex items-center justify-between">
-                <h1 className="text-sm font-semibold tracking-tight text-gray-800">Live Meeting</h1>
-                <Button 
-                    onClick={() => { resetForm(); setOpen(true); }}
-                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
-                >
-                    <Plus className="h-4 w-4" />
-                    Add
-                </Button>
+            {/* Gradient card header */}
+            <div className="rounded-xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Video className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Live Meeting</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">Host Google Meet sessions with staff</p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={() => { resetForm(); setOpen(true); }}
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-full shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Add
+                    </Button>
+                </div>
             </div>
 
             {/* Table Card Panel */}
@@ -389,14 +371,15 @@ export default function LiveMeetingPage() {
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-12">
-                                        <div className="flex items-center justify-center gap-2 text-gray-400">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-                                            Syncing live meetings...
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
+                                [...Array(6)].map((_, i) => (
+                                    <TableRow key={i} className="border-b border-gray-50">
+                                        {[...Array(7)].map((_, j) => (
+                                            <TableCell key={j} className="py-3 px-4">
+                                                <div className="h-3 w-full max-w-[120px] rounded bg-gray-100 animate-pulse" />
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
                             ) : meetings.length === 0 ? (
                                 <TableRow className="hover:bg-transparent h-64">
                                     <TableCell colSpan={7} className="text-center py-12 text-gray-400 font-bold uppercase text-[10px] tracking-widest">

@@ -22,9 +22,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { 
-    Search, ChevronLeft, ChevronRight, 
+    Search, ChevronLeft, ChevronRight,
     ArrowUpDown, List, X, Copy, FileSpreadsheet,
-    FileBox, Printer, Columns
+    FileBox, Printer, Columns, Video
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -132,41 +132,24 @@ export default function LiveClassesReportPage() {
     }, [currentPage]);
 
     const handleOpenJoinList = (item: ClassReport) => {
-        // Construct realistic join list backed by database users, fall back to screenshot names
-        const list = [];
+        // Real data only — show creator + assigned staff from DB
+        const list: any[] = [];
         if (item.staff) {
             list.push({
-                name: `${item.staff.name} ${item.staff.last_name}`,
+                name: `${item.staff.name} ${item.staff.last_name ?? ''}`.trim(),
                 role: "Teacher",
-                id: item.staff.employee_id || 9006,
-                last_join: "12/01/2025 07:40:52"
+                id: item.staff.employee_id || item.created_by,
+                last_join: formatDateTime(item.date_time),
             });
         }
         if (item.creator) {
             list.push({
-                name: `${item.creator.name} ${item.creator.last_name}`,
-                role: item.creator.role || "Super Admin",
-                id: item.creator.id || 9003,
-                last_join: "12/01/2025 07:41:17"
+                name: `${item.creator.name} ${item.creator.last_name ?? ''}`.trim(),
+                role: item.creator.role || "Host",
+                id: item.creator.id,
+                last_join: formatDateTime(item.date_time),
             });
         }
-        
-        // Ensure at least fallback rows matching screenshot visually if data incomplete
-        if (list.length === 0) {
-            list.push({
-                name: "William Abbot",
-                role: "Admin",
-                id: 9003,
-                last_join: "12/01/2025 07:40:52"
-            });
-            list.push({
-                name: "Jason Sharlton",
-                role: "Teacher",
-                id: 9006,
-                last_join: "12/01/2025 07:41:17"
-            });
-        }
-        
         setActiveJoinList(list);
         setJoinModalOpen(true);
     };
@@ -205,9 +188,15 @@ export default function LiveClassesReportPage() {
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
             
             {/* Criteria Panel */}
-            <div className="bg-white rounded shadow-sm border border-gray-100 overflow-hidden">
-                <div className="bg-transparent border-b border-gray-50 p-4">
-                    <h1 className="text-sm font-semibold tracking-tight text-gray-800">Select Criteria</h1>
+            <div className="rounded-xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+                <div className="flex flex-row items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Video className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                        <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Live Classes Report</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Filter by class &amp; section to view attendance records</p>
+                    </div>
                 </div>
 
                 <div className="p-6 space-y-4">
@@ -230,8 +219,8 @@ export default function LiveClassesReportPage() {
                         {/* Section Dropdown */}
                         <div className="space-y-1">
                             <Label className="text-[11px] font-medium text-gray-700">Section <span className="text-red-500">*</span></Label>
-                            <Select 
-                                value={selectedSection} 
+                            <Select
+                                value={selectedSection}
                                 onValueChange={setSelectedSection}
                                 disabled={!selectedClass}
                             >
@@ -248,7 +237,7 @@ export default function LiveClassesReportPage() {
                     </div>
 
                     <div className="flex justify-end pt-2">
-                        <Button 
+                        <Button
                             onClick={handleSearch}
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-6 h-9 text-xs font-bold rounded-full shadow-[0_4px_14px_rgba(99,102,241,0.3)] flex items-center gap-1.5 transition-all active:scale-95 border-0 cursor-pointer"
                         >
@@ -260,16 +249,32 @@ export default function LiveClassesReportPage() {
             </div>
 
             {/* Results Panel */}
-            <div className="bg-white rounded shadow-sm border border-gray-100 overflow-hidden min-h-[250px]">
-                <div className="bg-transparent border-b border-gray-50 p-4">
-                    <h2 className="text-sm font-semibold tracking-tight text-gray-800">Live Classes Report</h2>
+            <div className="rounded-xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden min-h-[250px]">
+                <div className="flex flex-row items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <List className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                        <h2 className="text-sm font-bold tracking-tight text-slate-800 leading-none">Results</h2>
+                    </div>
                 </div>
 
                 <div className="p-6">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400" />
-                            <span>Querying live classes...</span>
+                        <div className="rounded border border-gray-100 overflow-x-auto">
+                            <Table className="min-w-[1000px]">
+                                <TableBody>
+                                    {[...Array(5)].map((_, i) => (
+                                        <TableRow key={i} className="border-b border-gray-50">
+                                            {[...Array(6)].map((_, j) => (
+                                                <TableCell key={j} className="py-3 px-4">
+                                                    <div className="h-3 w-full max-w-[120px] rounded bg-gray-100 animate-pulse" />
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </div>
                     ) : reports.length === 0 ? (
                         <div className="bg-[#e3f2fd] text-[#1e88e5] p-3 text-xs border border-[#bbdefb] rounded font-medium">
@@ -297,14 +302,14 @@ export default function LiveClassesReportPage() {
                                                 <TableCell className="py-3 px-4 text-gray-500 max-w-[250px] truncate" title={item.description}>{item.description || "-"}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-600">{formatDateTime(item.date_time)}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-600">
-                                                    {item.creator 
-                                                        ? `${item.creator.name} ${item.creator.last_name} (${item.creator.role} : ${item.creator.id})`
-                                                        : "Doulat User (Super Admin : 1)"}
+                                                    {item.creator
+                                                        ? `${item.creator.name} ${item.creator.last_name ?? ''} (${item.creator.role} : ${item.creator.id})`
+                                                        : <span className="text-gray-400 italic">—</span>}
                                                 </TableCell>
                                                 <TableCell className="py-3 px-4 text-center text-gray-700 font-medium">{item.total_join}</TableCell>
                                                 <TableCell className="py-3 px-4 text-right">
                                                     <div className="flex items-center justify-end">
-                                                        <Button 
+                                                        <Button
                                                             onClick={() => handleOpenJoinList(item)}
                                                             className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95"
                                                             title="View join list details"

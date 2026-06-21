@@ -297,24 +297,41 @@ export default function FaceRegistrationPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-gray-100 shadow-sm gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800 flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-indigo-600 animate-pulse" />
-            AI Biometric Face Registration
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Register faces to enable automated attendance via AI recognition. Use webcam or upload a photo.
-          </p>
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+      {/* Gradient card header */}
+      <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+        <div className="flex flex-row items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+            <Sparkles className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">AI Biometric Face Registration</h1>
+            <p className="text-[11px] text-gray-500 mt-1">Register faces to enable automated attendance via AI recognition. Use webcam or upload a photo.</p>
+          </div>
         </div>
       </div>
 
       {loadingModels ? (
-        <div className="bg-white border border-slate-100 shadow-sm p-12 rounded-2xl flex flex-col items-center justify-center text-center">
-          <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
-          <h3 className="mt-4 text-lg font-medium text-slate-800">Initializing AI Framework</h3>
-          <p className="text-sm text-slate-500 max-w-md mt-2">Loading neural models...</p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Search skeleton */}
+          <div className="lg:col-span-5 rounded-2xl border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-white p-6 space-y-4">
+            <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
+            <div className="h-11 w-full rounded-lg bg-gray-100 animate-pulse" />
+            <div className="flex gap-2">
+              {[...Array(3)].map((_, i) => <div key={i} className="h-9 flex-1 rounded bg-gray-100 animate-pulse" />)}
+            </div>
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => <div key={i} className="h-14 w-full rounded-lg bg-gray-100/70 animate-pulse" />)}
+            </div>
+          </div>
+          {/* Capture skeleton */}
+          <div className="lg:col-span-7 rounded-2xl border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-white p-6 space-y-4">
+            <div className="h-4 w-40 rounded bg-gray-200 animate-pulse" />
+            <div className="aspect-video w-full rounded-2xl bg-gray-100 animate-pulse flex flex-col items-center justify-center gap-3">
+              <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+              <p className="text-xs text-gray-400">Initializing AI Framework — loading neural models...</p>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

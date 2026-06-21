@@ -17,6 +17,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
     Table,
     TableBody,
@@ -26,18 +27,18 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { 
-    Search, FolderOpen, FileText, ChevronLeft, ChevronRight, 
-    BarChart3, UserCheck, ShieldAlert, GraduationCap, 
-    Layers, Home, RefreshCw, Eye, Download, Printer, Info, Zap,
-    Trash2, Calendar, User, UserPlus
+    Search, FolderOpen, ChevronLeft, ChevronRight,
+    BarChart3, UserCheck, ShieldAlert, GraduationCap,
+    Layers, Home, RefreshCw, Eye, Download, Printer, Zap,
+    Trash2, Calendar, User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface BehaviourReport {
     id: string;
@@ -168,186 +169,169 @@ export default function ReportsPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 font-sans text-slate-800">
             {/* Reports Strategy Hub */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <CardHeader className="px-8 py-6 border-b border-muted/50 pb-8">
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 gap-0">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] space-y-0">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <BarChart3 className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Behaviour Reports</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">Generate behaviour and ranking reports</p>
                         </div>
-                        <CardTitle className="text-xl font-black tracking-tight text-slate-700 uppercase">Analytical Reports Registry</CardTitle>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {reportTypes.map((report) => (
-                            <ReportLink 
-                                key={report.id} 
-                                label={report.label} 
-                                active={activeReport === report.id} 
-                                onClick={() => setActiveReport(report.id)}
-                                icon={<report.icon className="h-3.5 w-3.5" />}
-                            />
-                        ))}
                     </div>
                 </CardHeader>
 
-                {/* Select Criteria Section */}
-                <div className="p-10 space-y-8 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-12 opacity-[0.02] transform rotate-12">
-                        <Zap className="h-48 w-48 text-indigo-500" />
-                    </div>
-                    
-                    <div className="flex items-center gap-3 relative z-10">
-                        <Info className="h-4 w-4 text-indigo-400" />
-                        <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Execute Audit Parameters</h3>
+                <CardContent className="p-5 space-y-5">
+                    {/* Report type selector */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                        {reportTypes.map((report) => (
+                            <ReportLink
+                                key={report.id}
+                                label={report.label}
+                                active={activeReport === report.id}
+                                onClick={() => setActiveReport(report.id)}
+                                icon={<report.icon className="h-4 w-4" />}
+                            />
+                        ))}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Target Class <span className="text-red-500">*</span></label>
+                    {/* Select Criteria */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600">Class <span className="text-red-500">*</span></Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                <SelectTrigger className="h-14 rounded-lg bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
-                                    <SelectValue placeholder="Select Institutional Class" />
+                                <SelectTrigger className="h-9 text-xs">
+                                    <SelectValue placeholder="Select class" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
+                                <SelectContent>
                                     {criteria.classes.map(cls => <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Class Section <span className="text-red-500">*</span></label>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600">Section <span className="text-red-500">*</span></Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                <SelectTrigger className="h-14 rounded-lg bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
-                                    <SelectValue placeholder="Select Academic Section" />
+                                <SelectTrigger className="h-9 text-xs">
+                                    <SelectValue placeholder="Select section" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
+                                <SelectContent>
                                     {sections.map(sec => <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Temporal Session</label>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600">Session</Label>
                             <Select value={selectedSession} onValueChange={setSelectedSession}>
-                                <SelectTrigger className="h-14 rounded-lg bg-white border-gray-100 focus:ring-indigo-500/20 shadow-none text-sm font-bold tracking-tight px-6">
-                                    <SelectValue placeholder="Current Session Points" />
+                                <SelectTrigger className="h-9 text-xs">
+                                    <SelectValue placeholder="Current session" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
-                                    <SelectItem value="current">Current Session Points</SelectItem>
-                                    <SelectItem value="all">Global Analytical Cumulative</SelectItem>
+                                <SelectContent>
+                                    <SelectItem value="current">Current Session</SelectItem>
+                                    <SelectItem value="all">All Sessions</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
-                    <div className="flex justify-end pt-4 border-t border-gray-50 relative z-10">
-                        <Button 
+                    <div className="flex justify-end">
+                        <Button
                             onClick={fetchReports}
-                            className="btn-gradient text-white px-12 h-14 text-[11px] font-black uppercase tracking-[0.2em] gap-3 shadow-2xl shadow-orange-200/50 active:scale-95 transition-all rounded-full group"
+                            className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                         >
-                            <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                            Initiate Audit
+                            <Search className="h-4 w-4" />
+                            Generate Report
                         </Button>
                     </div>
-                </div>
+                </CardContent>
             </Card>
 
             {/* Student Incident List Section */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 gap-0 text-slate-800">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Layers className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Report Results</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">Results for the selected criteria</p>
                         </div>
-                        <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Audit Results Matrix</CardTitle>
                     </div>
-                    <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-all"><Download className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-all"><Printer className="h-4 w-4" /></Button>
+                    <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:bg-white hover:text-indigo-600 rounded-md transition-all"><Download className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:bg-white hover:text-indigo-600 rounded-md transition-all"><Printer className="h-4 w-4" /></Button>
                     </div>
                 </CardHeader>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto min-h-[400px]">
-                        <Table>
-                            <TableHeader className="bg-gray-50/50">
-                                <TableRow className="hover:bg-transparent border-b border-muted/20">
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 pl-8">Admission Ref</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5">Nodal Identity</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 text-center">Protocol Node</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5">Gender</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 text-center">Incidents</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 text-center">Nodal Points</TableHead>
-                                    <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 pr-8 text-right">Utility</TableHead>
+                <CardContent className="p-5 space-y-4">
+                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                        <Table className="min-w-[760px]">
+                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                                <TableRow className="hover:bg-transparent whitespace-nowrap">
+                                    <TableHead className="font-semibold text-gray-600">Adm. No.</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Student</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center">Class</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Gender</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center">Incidents</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center">Points</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right w-[80px]">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="h-64 text-center">
-                                            <div className="flex flex-col items-center justify-center space-y-3">
-                                                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500" />
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Executing Behavioural Audit Protocol...</p>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
+                                    Array.from({ length: 6 }).map((_, i) => (
+                                        <TableRow key={i} className="text-xs">
+                                            <TableCell className="py-3"><Skeleton className="h-3.5 w-16 rounded" /></TableCell>
+                                            <TableCell className="py-3"><div className="flex items-center gap-2.5"><Skeleton className="h-7 w-7 rounded-md" /><Skeleton className="h-3.5 w-28 rounded" /></div></TableCell>
+                                            <TableCell className="py-3 text-center"><div className="flex items-center justify-center gap-1.5"><Skeleton className="h-5 w-12 rounded-full" /><Skeleton className="h-5 w-8 rounded-full" /></div></TableCell>
+                                            <TableCell className="py-3"><Skeleton className="h-3.5 w-14 rounded" /></TableCell>
+                                            <TableCell className="py-3 text-center"><Skeleton className="h-5 w-10 rounded-full mx-auto" /></TableCell>
+                                            <TableCell className="py-3 text-center"><Skeleton className="h-5 w-10 rounded-full mx-auto" /></TableCell>
+                                            <TableCell className="py-3 text-right"><Skeleton className="h-7 w-7 rounded ml-auto" /></TableCell>
+                                        </TableRow>
+                                    ))
                                 ) : reports.length === 0 ? (
-                                    <TableRow className="hover:bg-transparent border-none">
-                                        <TableCell colSpan={7} className="h-[350px] text-center">
-                                            <div className="flex flex-col items-center justify-center gap-6 text-muted-foreground/50">
-                                                <div className="p-8 rounded-[2.5rem] bg-indigo-50/50 text-indigo-400 transform rotate-6 shadow-inner">
-                                                    <FolderOpen className="h-16 w-16 opacity-30" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500/60 bg-rose-50 px-6 py-2 rounded-full border border-rose-100">
-                                                        No analytical nodes indexed in registry
-                                                    </span>
-                                                    <p className="text-[9px] uppercase font-black text-gray-400 tracking-tighter italic">
-                                                        Initiate an audit protocol or calibrate criteria parameters.
-                                                    </p>
-                                                </div>
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="px-4 py-14 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
+                                                <FolderOpen className="h-10 w-10 opacity-30" />
+                                                <p className="text-xs font-semibold text-gray-500">No results yet</p>
+                                                <p className="text-[11px] text-gray-400">Choose criteria above and click &ldquo;Generate Report&rdquo;.</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    reports.map((item, index) => (
-                                        <TableRow key={item.id} className={cn(
-                                            "hover:bg-indigo-50/20 border-b border-muted/10 transition-colors group",
-                                            index % 2 === 0 ? 'bg-white' : 'bg-muted/5'
-                                        )}>
-                                            <TableCell className="py-5 pl-8">
-                                                <span className="text-slate-500 text-[11px] font-black uppercase tracking-widest tabular-nums">{item.admission_no}</span>
-                                            </TableCell>
-                                            <TableCell className="py-5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 font-bold text-[10px] shadow-inner">
+                                    reports.map((item) => (
+                                        <TableRow key={item.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                            <TableCell className="py-3 text-gray-500 tabular-nums">{item.admission_no}</TableCell>
+                                            <TableCell className="py-3">
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-500 font-bold text-[11px]">
                                                         {item.name?.[0]}
-                                                    </div>
-                                                    <span className="text-slate-700 text-[11px] font-black uppercase tracking-tight">{item.name}</span>
+                                                    </span>
+                                                    <span className="text-gray-800 font-semibold">{item.name}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="py-5 text-center">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-black text-[9px] border border-indigo-100 uppercase tracking-tighter">
-                                                        {item.class}
-                                                    </span>
-                                                    <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-black text-[9px] border border-gray-200 uppercase tracking-tighter">
-                                                        {item.section}
-                                                    </span>
+                                            <TableCell className="py-3 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-semibold text-[10px] border border-indigo-100">{item.class}</span>
+                                                    <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-semibold text-[10px] border border-gray-200">{item.section}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-slate-500 text-[10px] py-5 font-black uppercase tracking-widest">{item.gender}</TableCell>
-                                            <TableCell className="py-5 text-center">
-                                                <div className="inline-flex items-center gap-2 bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-black text-[10px] border border-rose-100 uppercase tracking-widest shadow-sm">
+                                            <TableCell className="py-3 text-gray-500">{item.gender}</TableCell>
+                                            <TableCell className="py-3 text-center">
+                                                <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-700 px-2.5 py-0.5 rounded-full font-bold text-xs border border-rose-200">
                                                     <ShieldAlert className="h-3 w-3" /> {item.total_incidents}
-                                                </div>
+                                                </span>
                                             </TableCell>
-                                            <TableCell className="py-5 text-center">
-                                                <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full font-black text-[10px] border border-emerald-100 uppercase tracking-widest shadow-sm">
+                                            <TableCell className="py-3 text-center">
+                                                <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full font-bold text-xs border border-emerald-200 tabular-nums">
                                                     <Zap className="h-3 w-3" /> {item.total_points}
-                                                </div>
+                                                </span>
                                             </TableCell>
-                                            <TableCell className="pr-8 py-5 text-right">
-                                                <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 duration-300">
-                                                    <Button onClick={() => handleAudit(item)} size="icon" className="h-8 w-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white shadow-xl shadow-indigo-200">
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
+                                            <TableCell className="py-3 text-right">
+                                                <Button onClick={() => handleAudit(item)} size="sm" className="h-7 w-7 p-0 rounded bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm active:scale-95 transition-all">
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -355,21 +339,21 @@ export default function ReportsPage() {
                             </TableBody>
                         </Table>
                     </div>
-                    
-                    <div className="p-8 border-t border-muted/20 flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                        <span>Node Summary: {reports.length} analytical units identified</span>
-                        <div className="flex items-center gap-2">
-                            <Button 
-                                variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
+
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium">
+                        <div>{reports.length} student{reports.length === 1 ? "" : "s"}</div>
+                        <div className="flex gap-1 items-center">
+                            <Button
+                                variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
                                 disabled={loading || reports.length === 0}
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" className="h-10 w-10 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg font-black text-xs">
+                            <Button size="sm" className="h-8 w-8 p-0 rounded-[10px] text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md">
                                 1
                             </Button>
-                            <Button 
-                                variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
+                            <Button
+                                variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
                                 disabled={loading || reports.length === 0}
                             >
                                 <ChevronRight className="h-4 w-4" />
@@ -473,24 +457,24 @@ export default function ReportsPage() {
 
 function ReportLink({ label, active, onClick, icon }: { label: string, active?: boolean, onClick?: () => void, icon?: React.ReactNode }) {
     return (
-        <div 
+        <div
             onClick={onClick}
             className={cn(
-                "flex items-center gap-4 p-4 rounded-lg cursor-pointer transition-all duration-300 group border-2",
-                active 
-                    ? "bg-indigo-50/50 border-indigo-500 text-slate-800 shadow-xl shadow-indigo-50 scale-[1.02]" 
-                    : "text-muted-foreground hover:text-slate-700 hover:bg-white border-transparent hover:border-gray-100 hover:shadow-lg"
+                "flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 group border",
+                active
+                    ? "bg-indigo-500 text-white border-indigo-500 shadow-sm"
+                    : "text-gray-600 hover:text-slate-800 hover:bg-gray-50 border-gray-100"
             )}
         >
             <div className={cn(
-                "p-2 rounded-lg transition-all duration-500 group-hover:scale-110 shadow-inner", 
-                active ? "bg-indigo-500 text-white" : "bg-muted/50"
+                "p-1 rounded transition-all duration-200",
+                active ? "bg-white/20" : "bg-gray-100 group-hover:bg-indigo-50 group-hover:text-indigo-500"
             )}>
                 {icon}
             </div>
             <span className={cn(
-                "text-[10px] font-black uppercase tracking-widest",
-                active ? "text-indigo-700" : "group-hover:text-slate-700"
+                "text-[11px] font-semibold leading-tight",
+                active ? "text-white" : "text-gray-600 group-hover:text-slate-800"
             )}>{label}</span>
         </div>
     )

@@ -12,7 +12,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
+  Card, CardContent, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
@@ -41,9 +41,59 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+function PageHeaderSkeleton() {
+  return (
+    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+      <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+        <div className="flex items-center gap-2.5">
+          <div className="h-9 w-9 rounded-lg bg-gray-200 animate-pulse" />
+          <div className="space-y-1.5">
+            <div className="h-3.5 w-40 rounded bg-gray-200 animate-pulse" />
+            <div className="h-2 w-64 rounded bg-gray-100 animate-pulse" />
+          </div>
+        </div>
+        <div className="h-9 w-32 rounded-full bg-gray-200 animate-pulse" />
+      </CardHeader>
+    </Card>
+  );
+}
+
+function SearchSkeleton() {
+  return (
+    <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+      <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+        <div className="h-8 w-8 rounded-lg bg-gray-200 animate-pulse" />
+        <div className="space-y-1.5">
+          <div className="h-3 w-20 rounded bg-gray-200 animate-pulse" />
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-gray-50/50">
+              {[...Array(6)].map((_, i) => (
+                <TableHead key={i}><div className="h-3 w-16 rounded bg-gray-200 animate-pulse" /></TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {[...Array(5)].map((_, i) => (
+              <TableRow key={i}>
+                {[...Array(6)].map((_, j) => (
+                  <TableCell key={j}><div className="h-3 w-20 rounded bg-gray-100 animate-pulse" /></TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function NfcAssignmentPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [assigningId, setAssigningId] = useState<number | null>(null);
@@ -122,35 +172,48 @@ export default function NfcAssignmentPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Smartphone className="h-6 w-6 text-purple-600" /> NFC Tag Assignment
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Assign NFC tags to students, teachers, and staff for tap-and-go attendance.
-          </p>
-        </div>
-      </div>
+      {/* Page header */}
+      {loading ? (
+        <PageHeaderSkeleton />
+      ) : (
+        <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 max-w-4xl">
+          <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                <Nfc className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">NFC Tag Assignment</CardTitle>
+                <p className="text-[11px] text-gray-500 mt-1">Assign NFC tags to students, teachers, and staff for tap-and-go attendance</p>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Users</CardTitle>
-          <CardDescription>
-            Search users and assign their NFC tag UIDs.
-          </CardDescription>
-          <div className="flex flex-col sm:flex-row gap-3 mt-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Users table */}
+      {loading ? (
+        <SearchSkeleton />
+      ) : (
+        <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 max-w-4xl">
+          <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+              <Smartphone className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm font-bold text-slate-800 leading-none">Users</CardTitle>
+            </div>
+            <div className="relative w-full sm:w-56">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search by name, ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 h-8 text-[11px]"
               />
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="h-8 w-32 text-[11px]">
                 <SelectValue placeholder="All Roles" />
               </SelectTrigger>
               <SelectContent>
@@ -160,96 +223,88 @@ export default function NfcAssignmentPage() {
                 <SelectItem value="Staff">Staff</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>ID / Admission No</TableHead>
-                <TableHead>NFC UID</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-                  </TableCell>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50/50">
+                  <TableHead className="text-[11px]">Name</TableHead>
+                  <TableHead className="text-[11px]">Role</TableHead>
+                  <TableHead className="text-[11px]">ID / Admission No</TableHead>
+                  <TableHead className="text-[11px]">NFC UID</TableHead>
+                  <TableHead className="text-[11px]">Status</TableHead>
+                  <TableHead className="text-[11px] text-right">Actions</TableHead>
                 </TableRow>
-              ) : users.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    {searchQuery ? "No matching users found." : "Type a search to find users."}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>
-                      <span className="px-2 py-0.5 bg-slate-100 rounded text-xs font-medium">
-                        {user.role}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {user.role === "Student" ? user.admission_no || "-" : user.staff_id || "-"}
-                    </TableCell>
-                    <TableCell>
-                      {user.nfc_uid ? (
-                        <code className="px-2 py-0.5 bg-slate-100 rounded text-xs font-mono">
-                          {user.nfc_uid}
-                        </code>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {user.has_nfc ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-xs font-medium">
-                          <CheckCircle className="h-3 w-3" /> Assigned
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-xs font-medium">
-                          <AlertCircle className="h-3 w-3" /> Not Assigned
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {user.has_nfc ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemove(user.id)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" /> Remove
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => openAssignDialog(user)}
-                          >
-                            <Plus className="h-4 w-4" /> Assign Tag
-                          </Button>
-                        )}
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                      <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      {searchQuery ? "No matching users found." : "Type a search to find users."}
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                ) : (
+                  users.map((user) => (
+                    <TableRow key={user.id} className="hover:bg-gray-50/60 transition-colors">
+                      <TableCell className="text-sm font-medium">{user.name}</TableCell>
+                      <TableCell>
+                        <span className="px-2 py-0.5 bg-slate-100 rounded text-xs font-medium">{user.role}</span>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {user.role === "Student" ? user.admission_no || "-" : user.staff_id || "-"}
+                      </TableCell>
+                      <TableCell>
+                        {user.nfc_uid ? (
+                          <code className="px-2 py-0.5 bg-slate-100 rounded text-xs font-mono">{user.nfc_uid}</code>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {user.has_nfc ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-xs font-medium">
+                            <CheckCircle className="h-3 w-3" /> Assigned
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-xs font-medium">
+                            <AlertCircle className="h-3 w-3" /> Not Assigned
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {user.has_nfc ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemove(user.id)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 px-2 text-[11px]"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> Remove
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => openAssignDialog(user)}
+                              className="h-7 px-3 text-[11px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white"
+                            >
+                              <Plus className="h-3.5 w-3.5" /> Assign
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
+      {/* Assign Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -286,13 +341,11 @@ export default function NfcAssignmentPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button
               onClick={handleAssign}
               disabled={assigningId !== null || !nfcUid.trim()}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white"
             >
               {assigningId !== null ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Assigning...</>

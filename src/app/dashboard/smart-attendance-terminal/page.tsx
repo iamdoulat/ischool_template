@@ -424,18 +424,42 @@ export default function SmartAttendanceTerminalPage() {
   }, [activeMode]);
 
   if (!settings) {
-    return <div className="flex h-[80vh] items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+    return (
+      <div className="space-y-6 max-w-6xl mx-auto px-4 py-6">
+        <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+          <div className="flex flex-row items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+            <div className="h-9 w-9 rounded-lg bg-gray-200 animate-pulse" />
+            <div className="space-y-1.5">
+              <div className="h-4 w-52 rounded bg-gray-200 animate-pulse" />
+              <div className="h-2 w-36 rounded bg-gray-100 animate-pulse" />
+            </div>
+          </div>
+        </div>
+        <div className="flex h-[60vh] items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading terminal...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-[80vh] space-y-6 max-w-6xl mx-auto px-4 py-6">
-      <div className="text-center space-y-2">
-        <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          Smart Attendance Terminal
-        </h1>
-        <p className="text-muted-foreground text-lg">
-          {cameraSource === 'ip' ? 'IP Camera Connected' : 'Select your check-in method'}
-        </p>
+      {/* Gradient card header */}
+      <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+        <div className="flex flex-row items-center justify-between gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+              <QrCode className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Smart Attendance Terminal</h1>
+              <p className="text-[11px] text-gray-500 mt-1">{cameraSource === 'ip' ? 'IP Camera Connected' : 'Select your check-in method'}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

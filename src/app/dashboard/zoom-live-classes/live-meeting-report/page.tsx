@@ -7,9 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-    Copy, FileSpreadsheet, FileBox, Printer, Columns, 
-    ChevronLeft, ChevronRight, Search, ArrowUpDown, List, X
+import {
+    Copy, FileSpreadsheet, FileBox, Printer, Columns,
+    ChevronLeft, ChevronRight, Search, ArrowUpDown, List, X, Video
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -75,34 +75,16 @@ export default function LiveMeetingReportPage() {
     };
 
     const handleOpenJoinList = (item: MeetingReport) => {
-        // Construct realistic join list backed by database users, fall back to screenshot names
-        const list = [];
+        // Real data only — show creator from DB
+        const list: any[] = [];
         if (item.creator) {
             list.push({
-                name: `${item.creator.name} ${item.creator.last_name}`,
-                role: "Super Admin",
-                id: item.creator.employee_id || 9003,
-                last_join: "12/01/2025 07:40:52"
-            });
-        } else {
-            list.push({
-                name: "William Abbot",
-                role: "Admin",
-                id: 9003,
-                last_join: "12/01/2025 07:40:52"
+                name: `${item.creator.name} ${item.creator.last_name ?? ''}`.trim(),
+                role: item.creator.employee_id ? "Host" : "Admin",
+                id: item.creator.employee_id || item.created_by,
+                last_join: formatDateTime(item.date_time),
             });
         }
-        
-        // Add additional join records if total join > 1
-        if (item.total_join > 1) {
-            list.push({
-                name: "Jason Sharlton",
-                role: "Teacher",
-                id: 9006,
-                last_join: "12/01/2025 07:41:17"
-            });
-        }
-
         setActiveJoinList(list);
         setJoinModalOpen(true);
     };
@@ -140,13 +122,21 @@ export default function LiveMeetingReportPage() {
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
             
-            {/* Title Header Block */}
-            <div className="bg-white border border-gray-100 rounded shadow-sm p-4">
-                <h1 className="text-sm font-semibold tracking-tight text-gray-800">Live Meeting Report</h1>
+            {/* Gradient card header */}
+            <div className="rounded-xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+                <div className="flex flex-row items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Video className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                        <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Live Meeting Report</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">View all hosted Zoom meetings &amp; attendance</p>
+                    </div>
+                </div>
             </div>
 
             {/* Inner Content Card Area */}
-            <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[450px]">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[450px]">
                 
                 {/* Table Toolbar */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-3">
@@ -203,14 +193,15 @@ export default function LiveMeetingReportPage() {
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-12">
-                                        <div className="flex items-center justify-center gap-2 text-gray-400">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-                                            Auditing Zoom sessions...
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
+                                [...Array(6)].map((_, i) => (
+                                    <TableRow key={i} className="border-b border-gray-50">
+                                        {[...Array(7)].map((_, j) => (
+                                            <TableCell key={j} className="py-3 px-4">
+                                                <div className="h-3 w-full max-w-[120px] rounded bg-gray-100 animate-pulse" />
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
                             ) : reports.length === 0 ? (
                                 <TableRow className="hover:bg-transparent h-64">
                                     <TableCell colSpan={7} className="text-center py-12 text-gray-400 font-bold uppercase text-[10px] tracking-widest">
@@ -224,7 +215,11 @@ export default function LiveMeetingReportPage() {
                                         <TableCell className="py-3 px-4 text-gray-500 max-w-[250px] truncate" title={item.description}>{item.description || "-"}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-600">{formatDateTime(item.date_time)}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-600 font-medium">{item.api_used || "Global"}</TableCell>
-                                        <TableCell className="py-3 px-4 text-gray-600">Self</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-600">
+                                            {item.creator
+                                                ? `${item.creator.name} ${item.creator.last_name ?? ''}`.trim()
+                                                : <span className="text-gray-400 italic">—</span>}
+                                        </TableCell>
                                         <TableCell className="py-3 px-4 text-center text-gray-700 font-semibold">{item.total_join}</TableCell>
                                         <TableCell className="py-3 px-4 text-right">
                                             <Button 

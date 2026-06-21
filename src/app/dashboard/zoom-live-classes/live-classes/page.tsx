@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-    Copy, FileSpreadsheet, FileBox, Printer, Columns, 
-    ChevronLeft, ChevronRight, Search, ArrowUpDown, List, X, Plus, Pencil, Trash2, Calendar
+import {
+    Copy, FileSpreadsheet, FileBox, Printer, Columns,
+    ChevronLeft, ChevronRight, Search, ArrowUpDown, List, X, Plus, Pencil, Trash2, Calendar, Video
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -184,41 +184,24 @@ export default function LiveClassesPage() {
     };
 
     const handleOpenJoinList = (item: LiveClass) => {
-        // Construct realistic join list backed by database users, fall back to screenshot names
-        const list = [];
+        // Real data only — show staff + creator from DB
+        const list: any[] = [];
         if (item.staff) {
             list.push({
-                name: `${item.staff.name} ${item.staff.last_name}`,
+                name: `${item.staff.name} ${item.staff.last_name ?? ''}`.trim(),
                 role: "Teacher",
-                id: item.staff.employee_id || 9006,
-                last_join: "12/01/2025 07:40:52"
+                id: item.staff.employee_id || item.staff_id,
+                last_join: formatDateTime(item.date_time),
             });
         }
         if (item.creator) {
             list.push({
-                name: `${item.creator.name} ${item.creator.last_name}`,
-                role: "Super Admin",
-                id: item.creator.employee_id || 9003,
-                last_join: "12/01/2025 07:41:17"
+                name: `${item.creator.name} ${item.creator.last_name ?? ''}`.trim(),
+                role: item.creator.employee_id ? "Host" : "Admin",
+                id: item.creator.employee_id || item.created_by,
+                last_join: formatDateTime(item.date_time),
             });
         }
-        
-        // Ensure fallback rows match visually
-        if (list.length === 0) {
-            list.push({
-                name: "William Abbot",
-                role: "Admin",
-                id: 9003,
-                last_join: "12/01/2025 07:40:52"
-            });
-            list.push({
-                name: "Jason Sharlton",
-                role: "Teacher",
-                id: 9006,
-                last_join: "12/01/2025 07:41:17"
-            });
-        }
-
         setActiveJoinList(list);
         setJoinModalOpen(true);
     };
@@ -256,16 +239,26 @@ export default function LiveClassesPage() {
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
             
-            {/* Header */}
-            <div className="bg-white border border-gray-100 rounded shadow-sm p-4 flex items-center justify-between">
-                <h1 className="text-sm font-semibold tracking-tight text-gray-800">Live Classes</h1>
-                <Button 
-                    onClick={() => { resetForm(); setOpen(true); }}
-                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
-                >
-                    <Plus className="h-3.5 w-3.5" />
-                    Add
-                </Button>
+            {/* Gradient card header */}
+            <div className="rounded-xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Video className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Live Classes</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">Schedule &amp; manage Zoom live classes</p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={() => { resetForm(); setOpen(true); }}
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-full shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add
+                    </Button>
+                </div>
             </div>
 
             {/* Table Card Panel */}
@@ -326,14 +319,15 @@ export default function LiveClassesPage() {
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-12">
-                                        <div className="flex items-center justify-center gap-2 text-gray-400">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-                                            Auditing Zoom classes...
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
+                                [...Array(6)].map((_, i) => (
+                                    <TableRow key={i} className="border-b border-gray-50">
+                                        {[...Array(7)].map((_, j) => (
+                                            <TableCell key={j} className="py-3 px-4">
+                                                <div className="h-3 w-full max-w-[120px] rounded bg-gray-100 animate-pulse" />
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
                             ) : classes.length === 0 ? (
                                 <TableRow className="hover:bg-transparent h-64">
                                     <TableCell colSpan={7} className="text-center py-12 text-gray-400 font-bold uppercase text-[10px] tracking-widest">
@@ -347,7 +341,11 @@ export default function LiveClassesPage() {
                                         <TableCell className="py-3 px-4 text-gray-600">{item.section?.name?.replace('SECTION - ', '') || "A"}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-600">{formatDateTime(item.date_time)}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-600 font-medium">{item.api_used || "Global"}</TableCell>
-                                        <TableCell className="py-3 px-4 text-gray-600">Self</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-600">
+                                            {item.creator
+                                                ? `${item.creator.name} ${item.creator.last_name ?? ''}`.trim()
+                                                : <span className="text-gray-400 italic">—</span>}
+                                        </TableCell>
                                         <TableCell className="py-3 px-4 text-center text-gray-700 font-semibold">{item.total_join}</TableCell>
                                         <TableCell className="py-3 px-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 ml-auto">

@@ -1,149 +1,128 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import api from "@/lib/api";
-import { Loader2, Settings, Smartphone, ScanFace, ScanLine } from "lucide-react";
+import { Loader2, Settings, Smartphone, ScanFace, ScanLine, Save } from "lucide-react";
 
 interface SmartSettings {
-  is_face_enabled: boolean;
-  is_qr_enabled: boolean;
-  is_nfc_enabled: boolean;
+    is_face_enabled: boolean;
+    is_qr_enabled: boolean;
+    is_nfc_enabled: boolean;
+}
+
+const METHODS = [
+    { key: "is_face_enabled" as const, label: "Face Recognition", desc: "Allow students/staff to mark attendance using AI face scan.", Icon: ScanFace, color: "text-blue-600 bg-blue-50" },
+    { key: "is_qr_enabled" as const, label: "QR Code Scan", desc: "Allow users to scan their personal QR code ID cards.", Icon: ScanLine, color: "text-emerald-600 bg-emerald-50" },
+    { key: "is_nfc_enabled" as const, label: "NFC System", desc: "Allow tapping NFC tags or NFC-enabled smartphones.", Icon: Smartphone, color: "text-purple-600 bg-purple-50" },
+];
+
+function MethodSkeleton() {
+    return (
+        <div className="flex items-center justify-between border rounded-lg p-4">
+            <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-gray-200/70 animate-pulse" />
+                <div className="space-y-2">
+                    <div className="h-3.5 w-40 rounded bg-gray-200/70 animate-pulse" />
+                    <div className="h-2.5 w-64 rounded bg-gray-200/60 animate-pulse" />
+                </div>
+            </div>
+            <div className="h-6 w-11 rounded-full bg-gray-200/70 animate-pulse" />
+        </div>
+    );
 }
 
 export default function SmartAttendanceSettingsPage() {
-  const [settings, setSettings] = useState<SmartSettings>({
-    is_face_enabled: true,
-    is_qr_enabled: true,
-    is_nfc_enabled: true,
-  });
-  
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+    const [settings, setSettings] = useState<SmartSettings>({ is_face_enabled: true, is_qr_enabled: true, is_nfc_enabled: true });
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const response = await api.get('/smart-attendance/settings');
-        const data = response.data?.data?.data || response.data?.data;
-        if (data) {
-          setSettings({
-            is_face_enabled: data.is_face_enabled,
-            is_qr_enabled: data.is_qr_enabled,
-            is_nfc_enabled: data.is_nfc_enabled,
-          });
+    useEffect(() => {
+        (async () => {
+            try {
+                const response = await api.get("/smart-attendance/settings");
+                const data = response.data?.data?.data || response.data?.data;
+                if (data) {
+                    setSettings({
+                        is_face_enabled: !!data.is_face_enabled,
+                        is_qr_enabled: !!data.is_qr_enabled,
+                        is_nfc_enabled: !!data.is_nfc_enabled,
+                    });
+                }
+            } catch {
+                toast.error("Failed to load attendance settings");
+            } finally {
+                setIsLoading(false);
+            }
+        })();
+    }, []);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            await api.post("/smart-attendance/settings", settings);
+            toast.success("Settings saved successfully!");
+        } catch {
+            toast.error("Failed to save settings");
+        } finally {
+            setIsSaving(false);
         }
-      } catch (error) {
-        console.error("Failed to load settings", error);
-        toast.error("Failed to load attendance settings");
-      } finally {
-        setIsLoading(false);
-      }
     };
-    
-    fetchSettings();
-  }, []);
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await api.post('/smart-attendance/settings', settings);
-      toast.success("Settings saved successfully!");
-    } catch (error) {
-      console.error("Failed to save settings", error);
-      toast.error("Failed to save settings");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+        <div className="space-y-6">
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 max-w-4xl">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Settings className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Smart Attendance Settings</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">Toggle the methods available on the attendance terminal</p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={handleSave}
+                        disabled={isSaving || isLoading}
+                        className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
+                    >
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+                    </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {isLoading ? (
+                        <>
+                            <MethodSkeleton />
+                            <MethodSkeleton />
+                            <MethodSkeleton />
+                        </>
+                    ) : (
+                        METHODS.map(({ key, label, desc, Icon, color }) => (
+                            <div key={key} className="flex items-center justify-between border rounded-lg p-4 hover:bg-gray-50/60 transition-colors">
+                                <div className="flex items-center gap-4 min-w-0">
+                                    <div className={`p-3 rounded-full shrink-0 ${color}`}>
+                                        <Icon className="h-6 w-6" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <Label className="text-sm font-semibold text-gray-800">{label}</Label>
+                                        <p className="text-xs text-muted-foreground">{desc}</p>
+                                    </div>
+                                </div>
+                                <Switch
+                                    checked={settings[key]}
+                                    onCheckedChange={(c) => setSettings({ ...settings, [key]: c })}
+                                    className="data-[state=checked]:bg-indigo-500 shrink-0"
+                                />
+                            </div>
+                        ))
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     );
-  }
-
-  return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Smart Attendance Settings</h2>
-        <p className="text-muted-foreground">
-          Configure which smart attendance methods are available on the terminal.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" /> Allowed Attendance Methods
-          </CardTitle>
-          <CardDescription>
-            Toggle the systems you want to enable on the Smart Attendance Terminal.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          
-          <div className="flex items-center justify-between border rounded-lg p-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 text-blue-600 rounded-full">
-                <ScanFace className="h-6 w-6" />
-              </div>
-              <div>
-                <Label className="text-base font-semibold">Face Recognition</Label>
-                <p className="text-sm text-muted-foreground">Allow students/staff to mark attendance using AI face scan.</p>
-              </div>
-            </div>
-            <Switch 
-              checked={settings.is_face_enabled}
-              onCheckedChange={(c) => setSettings({ ...settings, is_face_enabled: c })}
-            />
-          </div>
-
-          <div className="flex items-center justify-between border rounded-lg p-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 text-green-600 rounded-full">
-                <ScanLine className="h-6 w-6" />
-              </div>
-              <div>
-                <Label className="text-base font-semibold">QR Code Scan</Label>
-                <p className="text-sm text-muted-foreground">Allow users to scan their personal QR code ID cards.</p>
-              </div>
-            </div>
-            <Switch 
-              checked={settings.is_qr_enabled}
-              onCheckedChange={(c) => setSettings({ ...settings, is_qr_enabled: c })}
-            />
-          </div>
-
-          <div className="flex items-center justify-between border rounded-lg p-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-100 text-purple-600 rounded-full">
-                <Smartphone className="h-6 w-6" />
-              </div>
-              <div>
-                <Label className="text-base font-semibold">NFC System</Label>
-                <p className="text-sm text-muted-foreground">Allow tapping NFC tags or NFC-enabled smartphones.</p>
-              </div>
-            </div>
-            <Switch 
-              checked={settings.is_nfc_enabled}
-              onCheckedChange={(c) => setSettings({ ...settings, is_nfc_enabled: c })}
-            />
-          </div>
-
-        </CardContent>
-        <CardFooter className="flex justify-end">
-          <Button onClick={handleSave} disabled={isSaving} className="bg-gradient-to-r from-blue-600 to-indigo-600">
-            {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : "Save Settings"}
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
-  );
 }
