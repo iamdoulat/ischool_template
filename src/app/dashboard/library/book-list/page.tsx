@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
@@ -37,6 +38,7 @@ import {
     Pencil,
     Trash2,
     ArrowUpDown,
+    Library,
 } from "lucide-react";
 import {
     Select,
@@ -82,7 +84,26 @@ interface PaginationData {
     to: number;
 }
 
+const TABLE_COLS = 13;
 
+function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <TableRow key={i} className="border-b border-gray-50">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <div
+                                className="h-3 rounded bg-gray-200/70 animate-pulse"
+                                style={{ width: `${55 + ((i * 3 + j * 7) % 40)}%` }}
+                            />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
 
 export default function BookListPage() {
     const { toast } = useToast();
@@ -91,13 +112,14 @@ export default function BookListPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [books, setBooks] = useState<Book[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [limit, setLimit] = useState("50");
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [deleteBookId, setDeleteBookId] = useState<number | null>(null);
     const [editingBook, setEditingBook] = useState<Book | null>(null);
+    const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
         title: "",
         description: "",
@@ -134,6 +156,7 @@ export default function BookListPage() {
 
     useEffect(() => {
         fetchBooks();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [limit]);
 
     const handleSearch = (e: React.FormEvent) => {
@@ -178,6 +201,11 @@ export default function BookListPage() {
     };
 
     const handleSave = async () => {
+        if (!formData.title || !formData.book_number) {
+            toast({ title: "Error", description: "Title and Book Number are required", variant: "destructive" });
+            return;
+        }
+        setSaving(true);
         try {
             if (editingBook) {
                 await api.put(`/library/books/${editingBook.id}`, formData);
@@ -188,12 +216,11 @@ export default function BookListPage() {
             }
             setIsDialogOpen(false);
             fetchBooks();
-        } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.response?.data?.message || "Failed to save book",
-                variant: "destructive",
-            });
+        } catch (error) {
+            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to save book";
+            toast({ title: "Error", description: message, variant: "destructive" });
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -210,7 +237,7 @@ export default function BookListPage() {
             setIsDeleteDialogOpen(false);
             setDeleteBookId(null);
             fetchBooks();
-        } catch (error) {
+        } catch {
             toast({ title: "Error", description: "Failed to delete book", variant: "destructive" });
         }
     };
@@ -245,38 +272,44 @@ export default function BookListPage() {
     ];
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-             <div className="flex justify-between items-center mb-2">
-                <h1 className="text-sm font-medium text-gray-800">Book List</h1>
-                <Button onClick={handleAddClick} className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
-                    <Plus className="h-3.5 w-3.5" /> Add Book
-                </Button>
-            </div>
+        <div className="space-y-6">
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Library className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Book List</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? books.length} book{(pagination?.total ?? books.length) === 1 ? "" : "s"} in the library</p>
+                    </div>
+                    <Button
+                        onClick={handleAddClick}
+                        className="ml-auto h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
+                    >
+                        <Plus className="h-4 w-4" /> Add Book
+                    </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {/* Toolbar */}
+                    <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                        <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
+                            <div className="relative w-full md:w-64">
+                                <Input
+                                    placeholder="Search by title, author, number..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-3 h-9 text-xs"
+                                />
+                            </div>
+                            <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
+                                <Search className="h-4 w-4" /> Search
+                            </Button>
+                        </form>
 
-            <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
-                 {/* Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
-                    <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-fit">
-                        <div className="relative w-full md:w-64">
-                            <Input
-                                placeholder="Search"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-9 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50"
-                            />
-                        </div>
-                        <Button type="submit" className="btn-gradient h-9 px-6 text-[11px] font-bold flex items-center gap-2">
-                            <Search className="h-4 w-4" />
-                            Search
-                        </Button>
-                    </form>
-
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
+                        <div className="flex items-center gap-2">
                             <Select value={limit} onValueChange={setLimit}>
-                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 bg-transparent shadow-none rounded-md px-2 flex gap-1 items-center justify-between">
-                                    <SelectValue />
-                                    <ChevronLeft className="h-2 w-2 text-gray-400 rotate-90" />
+                                <SelectTrigger className="w-[70px] h-9 text-xs">
+                                    <SelectValue placeholder="50" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="10">10</SelectItem>
@@ -285,269 +318,259 @@ export default function BookListPage() {
                                     <SelectItem value="100">100</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
+                            <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
+                                {toolbarActions.map((action, i) => (
+                                    <Button
+                                        key={i}
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={action.onClick}
+                                        title={action.title}
+                                        className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                    >
+                                        <action.Icon className="h-4 w-4" />
+                                    </Button>
+                                ))}
+                            </div>
                         </div>
-                        <div className="flex items-center gap-1 text-gray-400">
-                            {toolbarActions.map((action, i) => (
-                                <Button 
-                                    key={i} 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={action.onClick}
-                                    title={action.title}
-                                    className="h-7 w-7 hover:bg-gray-100 rounded"
+                    </div>
+
+                    {/* Table */}
+                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                        <Table className="min-w-[1200px]">
+                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                                <TableRow className="hover:bg-transparent whitespace-nowrap">
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Book Title <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Description</TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Book Number <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600">ISBN Number</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Publisher</TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Author <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Subject</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Rack Number</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Qty</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Available</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Book Price</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Post Date</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right sticky right-0 bg-gray-50 shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">Action</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <SkeletonRows rows={6} cols={TABLE_COLS} />
+                                ) : books.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                            No books found
+                                        </TableCell>
+                                    </TableRow>
+                                ) : books.map((book) => (
+                                    <TableRow key={book.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap group">
+                                        <TableCell className="py-3 text-gray-700 font-medium">{book.title}</TableCell>
+                                        <TableCell className="py-3 text-gray-400 max-w-[200px] truncate" title={book.description}>{book.description || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{book.book_number}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{book.isbn_number || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{book.publisher || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{book.author || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{book.subject || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{book.rack_number || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{book.qty}</TableCell>
+                                        <TableCell className="py-3 font-bold text-indigo-600">{book.available}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{book.price ? `${currencySymbol}${book.price}` : "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{book.post_date ? formatDate(book.post_date) : "-"}</TableCell>
+                                        <TableCell className="py-3 text-right sticky right-0 bg-white group-hover:bg-gray-50/60 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleEditClick(book)}
+                                                    className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                    title="Edit"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleDeleteClick(book.id)}
+                                                    className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Pagination */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
+                        <div>
+                            Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
+                        </div>
+                        <div className="flex gap-1 items-center">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!pagination || pagination.current_page === 1}
+                                onClick={() => fetchBooks(pagination!.current_page - 1)}
+                                className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            {[...Array(pagination?.last_page || 0)].map((_, i) => (
+                                <Button
+                                    key={i + 1}
+                                    size="sm"
+                                    onClick={() => fetchBooks(i + 1)}
+                                    className={cn(
+                                        "h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all",
+                                        pagination?.current_page === i + 1
+                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md"
+                                            : "bg-white text-gray-600 border border-gray-200"
+                                    )}
                                 >
-                                    <action.Icon className="h-3.5 w-3.5" />
+                                    {i + 1}
                                 </Button>
                             ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Table Container with horizontal scroll */}
-                <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
-                    <Table className="min-w-[1200px]">
-                        <TableHeader className="bg-gray-50/50">
-                            <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Book Title <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Description <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Book Number <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">ISBN Number <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Publisher <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Author <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Subject <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Rack Number <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Qty <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Available <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Book Price</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Post Date</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right sticky right-0 bg-gray-50/50 shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                             {books.map((book) => (
-                                <TableRow key={book.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap group">
-                                    <TableCell className="py-3 text-gray-700 font-medium">{book.title}</TableCell>
-                                    <TableCell className="py-3 text-gray-400 max-w-[200px] truncate" title={book.description}>{book.description || "-"}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{book.book_number}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{book.isbn_number || "-"}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{book.publisher || "-"}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{book.author || "-"}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{book.subject || "-"}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{book.rack_number || "-"}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{book.qty}</TableCell>
-                                    <TableCell className="py-3 text-gray-500 font-bold text-indigo-600">{book.available}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{book.price ? `${currencySymbol}${book.price}` : "-"}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{book.post_date ? formatDate(book.post_date) : "-"}</TableCell>
-                                    <TableCell className="py-3 text-right sticky right-0 bg-white group-hover:bg-gray-50/30 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button 
-                                                size="icon" 
-                                                onClick={() => handleEditClick(book)}
-                                                className="h-7 w-7 btn-gradient text-white rounded-full shadow-md"
-                                                title="Edit"
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button 
-                                                size="icon" 
-                                                onClick={() => handleDeleteClick(book.id)}
-                                                className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-full shadow-md"
-                                                title="Delete"
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-
-                 {/* Footer / Pagination */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50">
-                    <div>
-                        Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
-                    </div>
-                    <div className="flex gap-2 items-center">
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            disabled={pagination?.current_page === 1}
-                            onClick={() => fetchBooks(pagination!.current_page - 1)}
-                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
-                        >
-                            <ChevronLeft className="h-3.5 w-3.5" />
-                        </Button>
-                        {[...Array(pagination?.last_page || 0)].map((_, i) => (
-                            <Button 
-                                key={i + 1}
-                                onClick={() => fetchBooks(i + 1)}
-                                className={cn(
-                                    "h-7 w-7 p-0 text-[11px] font-bold rounded-lg shadow-sm transition-all duration-300",
-                                    pagination?.current_page === i + 1 
-                                        ? "btn-gradient" 
-                                        : "bg-white text-gray-400 hover:bg-gray-50 border border-gray-100"
-                                )}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!pagination || pagination.current_page === pagination.last_page}
+                                onClick={() => fetchBooks(pagination!.current_page + 1)}
+                                className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
                             >
-                                {i + 1}
+                                <ChevronRight className="h-4 w-4" />
                             </Button>
-                        ))}
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            disabled={pagination?.current_page === pagination?.last_page}
-                            onClick={() => fetchBooks(pagination!.current_page + 1)}
-                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
-                        >
-                            <ChevronRight className="h-3.5 w-3.5" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Add/Edit Book Dialog */}
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent className="sm:max-w-[600px]">
-                        <DialogHeader>
-                            <DialogTitle className="text-lg font-bold text-gray-800">{editingBook ? 'Edit Book' : 'Add New Book'}</DialogTitle>
-                        </DialogHeader>
-                        <div className="grid grid-cols-2 gap-4 py-4">
-                            <div className="space-y-1.5 col-span-2">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Book Title <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="h-9 border-gray-200 text-xs shadow-none"
-                                    placeholder="Enter book title"
-                                />
-                            </div>
-                            <div className="space-y-1.5 col-span-2">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Description</Label>
-                                <Textarea 
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="border-gray-200 text-xs shadow-none min-h-[60px]"
-                                    placeholder="Enter description"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Book Number <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    value={formData.book_number}
-                                    onChange={(e) => setFormData({ ...formData, book_number: e.target.value })}
-                                    className="h-9 border-gray-200 text-xs shadow-none"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">ISBN Number</Label>
-                                <Input 
-                                    value={formData.isbn_number}
-                                    onChange={(e) => setFormData({ ...formData, isbn_number: e.target.value })}
-                                    className="h-9 border-gray-200 text-xs shadow-none"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Publisher</Label>
-                                <Input 
-                                    value={formData.publisher}
-                                    onChange={(e) => setFormData({ ...formData, publisher: e.target.value })}
-                                    className="h-9 border-gray-200 text-xs shadow-none"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Author</Label>
-                                <Input 
-                                    value={formData.author}
-                                    onChange={(e) => setFormData({ ...formData, author: e.target.value })}
-                                    className="h-9 border-gray-200 text-xs shadow-none"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Subject</Label>
-                                <Input 
-                                    value={formData.subject}
-                                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                                    className="h-9 border-gray-200 text-xs shadow-none"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Rack Number</Label>
-                                <Input 
-                                    value={formData.rack_number}
-                                    onChange={(e) => setFormData({ ...formData, rack_number: e.target.value })}
-                                    className="h-9 border-gray-200 text-xs shadow-none"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Quantity <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    type="number"
-                                    value={formData.qty}
-                                    onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
-                                    className="h-9 border-gray-200 text-xs shadow-none"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Price</Label>
-                                <Input 
-                                    type="number"
-                                    value={formData.price}
-                                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                                    className="h-9 border-gray-200 text-xs shadow-none"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Post Date</Label>
-                                <DatePicker 
-                                    value={formData.post_date}
-                                    onChange={(date) => setFormData({ ...formData, post_date: date })}
-                                />
-                            </div>
                         </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">Cancel</Button>
-                            <Button onClick={handleSave} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">Save Book</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                    </div>
+                </CardContent>
+            </Card>
 
-                {/* Delete Confirmation Dialog */}
-                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                    <AlertDialogContent className="sm:max-w-[400px]">
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Book</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Are you sure you want to delete this book? This action cannot be undone.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </div>
+            {/* Add/Edit Book Dialog */}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-bold text-gray-800">{editingBook ? 'Edit Book' : 'Add New Book'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+                        <div className="space-y-1.5 sm:col-span-2">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Book Title <span className="text-red-500">*</span></Label>
+                            <Input
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                className="h-9 border-gray-200 text-xs shadow-none"
+                                placeholder="Enter book title"
+                            />
+                        </div>
+                        <div className="space-y-1.5 sm:col-span-2">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Description</Label>
+                            <Textarea
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                className="border-gray-200 text-xs shadow-none min-h-[60px]"
+                                placeholder="Enter description"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Book Number <span className="text-red-500">*</span></Label>
+                            <Input
+                                value={formData.book_number}
+                                onChange={(e) => setFormData({ ...formData, book_number: e.target.value })}
+                                className="h-9 border-gray-200 text-xs shadow-none"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">ISBN Number</Label>
+                            <Input
+                                value={formData.isbn_number}
+                                onChange={(e) => setFormData({ ...formData, isbn_number: e.target.value })}
+                                className="h-9 border-gray-200 text-xs shadow-none"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Publisher</Label>
+                            <Input
+                                value={formData.publisher}
+                                onChange={(e) => setFormData({ ...formData, publisher: e.target.value })}
+                                className="h-9 border-gray-200 text-xs shadow-none"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Author</Label>
+                            <Input
+                                value={formData.author}
+                                onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                                className="h-9 border-gray-200 text-xs shadow-none"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Subject</Label>
+                            <Input
+                                value={formData.subject}
+                                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                                className="h-9 border-gray-200 text-xs shadow-none"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Rack Number</Label>
+                            <Input
+                                value={formData.rack_number}
+                                onChange={(e) => setFormData({ ...formData, rack_number: e.target.value })}
+                                className="h-9 border-gray-200 text-xs shadow-none"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Quantity <span className="text-red-500">*</span></Label>
+                            <Input
+                                type="number"
+                                value={formData.qty}
+                                onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
+                                className="h-9 border-gray-200 text-xs shadow-none"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Price</Label>
+                            <Input
+                                type="number"
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                className="h-9 border-gray-200 text-xs shadow-none"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Post Date</Label>
+                            <DatePicker
+                                value={formData.post_date}
+                                onChange={(date) => setFormData({ ...formData, post_date: date })}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full" disabled={saving}>Cancel</Button>
+                        <Button onClick={handleSave} disabled={saving} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] uppercase font-bold shadow-lg active:scale-95 transition-all">
+                            {saving ? "Saving..." : "Save Book"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent className="sm:max-w-[400px]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Book</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete this book? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600 text-white">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

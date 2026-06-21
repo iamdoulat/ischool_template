@@ -6,15 +6,14 @@ import {
     Printer,
     FileText,
     Table as TableIcon,
-    FileDown,
     Download,
     Columns,
     ChevronDown,
     Pencil,
     X,
     Loader2,
-    AlertCircle,
-    Trash2
+    Trash2,
+    Home
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,6 +36,23 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface StudentHouse {
     id: number;
@@ -89,8 +105,8 @@ export default function StudentHousePage() {
             setFormData({ name: "", description: "" });
             setEditingHouse(null);
             fetchHouses();
-        } catch (error: any) {
-            const message = error.response?.data?.message || "Failed to save house.";
+        } catch (error) {
+            const message = (error as any).response?.data?.message || "Failed to save house.";
             toast("error", message);
         } finally {
             setLoading(false);
@@ -186,13 +202,21 @@ export default function StudentHousePage() {
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
 
-                {/* Left Column: Add School House Form */}
+                {/* Left Column: Add Student House Form */}
                 <div className="md:col-span-4">
-                    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm">
-                        <CardHeader className="border-b border-muted/50 pb-4">
-                            <CardTitle className="text-xl font-bold tracking-tight text-slate-800">
-                                {editingHouse ? "Edit School House" : "Add School House"}
-                            </CardTitle>
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Home className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                    {editingHouse ? "Edit Student House" : "Add Student House"}
+                                </CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">
+                                    {editingHouse ? "Update house details" : "Create a new student house"}
+                                </p>
+                            </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
                             <div className="space-y-2 group">
@@ -236,9 +260,15 @@ export default function StudentHousePage() {
 
                 {/* Right Column: Student House List Table */}
                 <div className="md:col-span-8">
-                    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm">
-                        <CardHeader className="border-b border-muted/50 pb-4">
-                            <CardTitle className="text-xl font-bold tracking-tight text-slate-800">Student House List</CardTitle>
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Home className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student House List</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{houses.length} {houses.length === 1 ? "house" : "houses"} total</p>
+                            </div>
                         </CardHeader>
                         <CardContent className="p-6">
                             {/* Toolbar */}
@@ -312,7 +342,13 @@ export default function StudentHousePage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-muted/30">
-                                        {filteredHouses.length > 0 ? (
+                                        {loading ? (
+                                            <TableSkeleton rows={5} cols={5} />
+                                        ) : filteredHouses.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                            </tr>
+                                        ) : (
                                             filteredHouses.map((house) => (
                                                 <tr key={house.id} className="hover:bg-muted/10 transition-colors group">
                                                     <Td>
@@ -329,7 +365,7 @@ export default function StudentHousePage() {
                                                     <Td className="text-right">
                                                         <div className="flex justify-end gap-1 px-2">
                                                             <button
-                                                                className="p-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded transition-all shadow-sm active:scale-90"
+                                                                className="p-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded transition-all shadow-sm active:scale-90"
                                                                 onClick={() => handleEdit(house)}
                                                             >
                                                                 <Pencil className="h-3.5 w-3.5" />
@@ -357,18 +393,6 @@ export default function StudentHousePage() {
                                                     </Td>
                                                 </tr>
                                             ))
-                                        ) : (
-                                            <tr>
-                                                <Td colSpan={5} className="text-center py-8">
-                                                    {loading ? (
-                                                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-                                                    ) : (
-                                                        <div className="flex items-center justify-center gap-2 text-muted-foreground font-medium">
-                                                            <AlertCircle className="h-4 w-4" /> No recordings found
-                                                        </div>
-                                                    )}
-                                                </Td>
-                                            </tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -380,11 +404,11 @@ export default function StudentHousePage() {
                                         Showing 1 to {filteredHouses.length} of {filteredHouses.length} entries
                                     </p>
                                     <div className="flex items-center gap-2">
-                                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
+                                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all">
                                             <ChevronDown className="h-4 w-4 rotate-90" />
                                         </Button>
-                                        <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]">1</Button>
-                                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
+                                        <Button className="h-8 w-8 rounded-[10px] border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">1</Button>
+                                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all">
                                             <ChevronDown className="h-4 w-4 -rotate-90" />
                                         </Button>
                                     </div>
@@ -407,7 +431,7 @@ function Td({ children, className, colSpan }: { children: React.ReactNode, class
     return <td colSpan={colSpan} className={cn("px-4 py-4 text-sm", className)}>{children}</td>;
 }
 
-function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () => void, title?: string }) {
+function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, onClick?: () => void, title?: string }) {
     return (
         <button
             onClick={onClick}

@@ -6,8 +6,6 @@ import {
     Plus,
     Printer,
     FileText,
-    Table as TableIcon,
-    FileDown,
     Download,
     Columns,
     ChevronDown,
@@ -15,22 +13,12 @@ import {
     Pencil,
     Trash2,
     X,
-    LayoutGrid,
-    CheckCircle2,
-    AlertCircle,
     Copy,
     FileSpreadsheet,
-    Calendar,
-    User,
-    Phone,
-    Briefcase,
-    Clock,
     Users,
-    StickyNote,
     Paperclip,
     ChevronLeft,
-    ChevronRight,
-    LucideIcon
+    ChevronRight
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -56,7 +44,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/toast";
 import api from "@/lib/api";
-import { Badge } from "@/components/ui/badge";
 import {
     Select,
     SelectContent,
@@ -84,8 +71,8 @@ interface Visitor {
 export default function VisitorBookPage() {
     const { toast } = useToast();
     const [visitors, setVisitors] = useState<Visitor[]>([]);
-    const [purposes, setPurposes] = useState<any[]>([]);
-    const [sources, setSources] = useState<any[]>([]);
+    const [purposes, setPurposes] = useState<{ id: number; name: string }[]>([]);
+    const [sources, setSources] = useState<{ id: number; name: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -299,9 +286,17 @@ export default function VisitorBookPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm">
-                <CardHeader className="flex flex-row items-center justify-between border-b border-muted/50 pb-4">
-                    <CardTitle className="text-xl font-bold tracking-tight text-slate-800">Visitor List</CardTitle>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Users className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Visitor Book</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{total} total visitor{total === 1 ? "" : "s"}</p>
+                        </div>
+                    </div>
                     <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
                         <DialogTrigger asChild>
                             <Button variant="gradient" size="sm" className="h-9 px-6">
@@ -474,8 +469,8 @@ export default function VisitorBookPage() {
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search"
-                                className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus:ring-2 focus:ring-[#008489]/20"
+                                placeholder="Search visitors..."
+                                className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus:ring-2 focus:ring-indigo-500/20"
                                 value={searchQuery}
                                 onChange={(e) => {
                                     setSearchQuery(e.target.value);
@@ -585,9 +580,9 @@ export default function VisitorBookPage() {
                                             <Td className="text-slate-600 font-medium whitespace-nowrap">{visitor.source || "-"}</Td>
                                             <Td className="text-right">
                                                 <div className="flex justify-end gap-1 px-1">
-                                                    <ActionBtn icon={Eye} className="bg-[#4F39F6]" onClick={() => { setSelectedVisitor(visitor); setIsViewDialogOpen(true); }} />
-                                                    {visitor.attachment && <ActionBtn icon={Download} className="bg-[#4F39F6]" />}
-                                                    <ActionBtn icon={Pencil} className="bg-[#4F39F6]" onClick={() => openEditModal(visitor)} />
+                                                    <ActionBtn icon={Eye} className="bg-indigo-500" onClick={() => { setSelectedVisitor(visitor); setIsViewDialogOpen(true); }} />
+                                                    {visitor.attachment && <ActionBtn icon={Download} className="bg-indigo-500" />}
+                                                    <ActionBtn icon={Pencil} className="bg-amber-500" onClick={() => openEditModal(visitor)} />
                                                     <ActionBtn icon={Trash2} className="bg-red-500" onClick={() => { setDeleteId(visitor.id); setIsDeleteDialogOpen(true); }} />
                                                 </div>
                                             </Td>
@@ -618,8 +613,8 @@ export default function VisitorBookPage() {
                                     className={cn(
                                         "h-8 w-8 rounded-lg border-none p-0 font-bold active:scale-95 transition-all shadow-md",
                                         p === page
-                                            ? "text-white shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]"
-                                            : "bg-muted/50 hover:bg-muted text-muted-foreground"
+                                            ? "text-white shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]"
+                                            : "bg-white border border-gray-200 hover:bg-muted text-gray-600"
                                     )}
                                     onClick={() => setPage(p)}
                                 >
@@ -722,7 +717,7 @@ function Td({ children, className }: { children: React.ReactNode, className?: st
     return <td className={cn("px-4 py-4 text-sm", className)}>{children}</td>;
 }
 
-function IconButton({ icon: Icon, onClick }: { icon: any, onClick?: () => void }) {
+function IconButton({ icon: Icon, onClick }: { icon: React.ElementType, onClick?: () => void }) {
     return (
         <button
             onClick={onClick}
@@ -733,7 +728,7 @@ function IconButton({ icon: Icon, onClick }: { icon: any, onClick?: () => void }
     );
 }
 
-function ActionBtn({ icon: Icon, className, onClick }: { icon: any, className?: string, onClick?: () => void }) {
+function ActionBtn({ icon: Icon, className, onClick }: { icon: React.ElementType, className?: string, onClick?: () => void }) {
     return (
         <button
             type="button"

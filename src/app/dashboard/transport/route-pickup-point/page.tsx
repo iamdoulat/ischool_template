@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -22,10 +24,7 @@ import {
     ChevronRight,
     Pencil,
     Trash2,
-    Eye,
-    ArrowUpDown,
-    Save,
-    X,
+    MapPinned,
 } from "lucide-react";
 import {
     Select,
@@ -51,10 +50,10 @@ import autoTable from 'jspdf-autotable';
 import { useSettings } from "@/components/providers/settings-provider";
 
 interface Stop {
-    id: number; // This might be the pickup_point_id if it's the model
+    id: number;
     name: string;
     pivot: {
-        id: number; // Mapping ID
+        id: number;
         route_id: number;
         pickup_point_id: number;
         monthly_fees: string;
@@ -69,6 +68,26 @@ interface RouteMapping {
     pickup_points: Stop[];
 }
 
+const TABLE_COLS = 6;
+
+function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <TableRow key={i} className="border-b border-gray-50">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <div className="h-3 rounded bg-gray-200/70 animate-pulse" style={{ width: `${55 + ((i * 3 + j * 7) % 40)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
+
+const EMPTY_FORM = { route_id: "", pickup_point_id: "", monthly_fees: "", distance: "", pickup_time: "" };
+
 export default function RoutePickupPointPage() {
     const { toast } = useToast();
     const { settings } = useSettings();
@@ -81,15 +100,8 @@ export default function RoutePickupPointPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingMapping, setEditingMapping] = useState<any>(null);
-    const [formState, setFormState] = useState({
-        route_id: "",
-        pickup_point_id: "",
-        monthly_fees: "",
-        distance: "",
-        pickup_time: "",
-    });
+    const [formState, setFormState] = useState({ ...EMPTY_FORM });
 
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -105,13 +117,10 @@ export default function RoutePickupPointPage() {
             setMappings(mappingsRes.data.data);
             setRoutes(routesRes.data.data);
             setPickupPoints(pointsRes.data.data);
-
-            // Find active currency symbol
             const activeCurrency = currenciesRes.data.data?.find((c: any) => c.is_active);
             if (activeCurrency) {
                 setCurrencySymbol(activeCurrency.symbol);
             } else if (settings?.currency_format) {
-                // Fallback to settings if no active currency found in list
                 setCurrencySymbol(settings.currency_format);
             }
         } catch (error) {
@@ -131,7 +140,6 @@ export default function RoutePickupPointPage() {
             toast("error", "Please fill in required fields");
             return;
         }
-
         try {
             if (isEditModalOpen && editingMapping) {
                 await api.put(`/transport/route-pickup-points/${editingMapping.id}`, formState);
@@ -142,13 +150,7 @@ export default function RoutePickupPointPage() {
             }
             setIsAddModalOpen(false);
             setIsEditModalOpen(false);
-            setFormState({
-                route_id: "",
-                pickup_point_id: "",
-                monthly_fees: "",
-                distance: "",
-                pickup_time: "",
-            });
+            setFormState({ ...EMPTY_FORM });
             fetchData();
         } catch (error: any) {
             toast("error", error.response?.data?.message || "Failed to save mapping");
@@ -178,25 +180,16 @@ export default function RoutePickupPointPage() {
         }
     };
 
-    const allFilteredData = mappings.filter((item) =>
-        item.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
+    const allFilteredData = mappings.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
     const totalPages = Math.ceil(allFilteredData.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedData = allFilteredData.slice(startIndex, startIndex + itemsPerPage);
 
-    // Export Functions
     const exportToExcel = () => {
-        const dataToExport = mappings.flatMap(route =>
-            route.pickup_points.map((stop) => ({
-                'Route': route.title,
-                'Pickup Point': stop.name,
-                'Monthly Fees': stop.pivot.monthly_fees,
-                'Distance (km)': stop.pivot.distance,
-                'Pickup Time': stop.pivot.pickup_time
-            }))
-        );
+        const dataToExport = mappings.flatMap(route => route.pickup_points.map((stop) => ({
+            'Route': route.title, 'Pickup Point': stop.name, 'Monthly Fees': stop.pivot.monthly_fees,
+            'Distance (km)': stop.pivot.distance, 'Pickup Time': stop.pivot.pickup_time
+        })));
         const ws = XLSX.utils.json_to_sheet(dataToExport);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Route Mappings");
@@ -206,315 +199,160 @@ export default function RoutePickupPointPage() {
     const exportToPDF = () => {
         const doc = new jsPDF();
         doc.text("Route Pickup Point Mappings", 14, 15);
-        const tableData = mappings.flatMap(route =>
-            route.pickup_points.map((stop) => [
-                route.title,
-                stop.name,
-                stop.pivot.monthly_fees,
-                stop.pivot.distance,
-                stop.pivot.pickup_time
-            ])
-        );
-        autoTable(doc, {
-            head: [['Route', 'Pickup Point', 'Monthly Fees', 'Distance (km)', 'Pickup Time']],
-            body: tableData,
-            startY: 20,
-        });
+        const tableData = mappings.flatMap(route => route.pickup_points.map((stop) => [route.title, stop.name, stop.pivot.monthly_fees, stop.pivot.distance, stop.pivot.pickup_time]));
+        autoTable(doc, { head: [['Route', 'Pickup Point', 'Monthly Fees', 'Distance (km)', 'Pickup Time']], body: tableData, startY: 20 });
         doc.save("route_pickup_points.pdf");
     };
 
     const copyToClipboard = () => {
-        const text = mappings.flatMap(route =>
-            route.pickup_points.map((stop) =>
-                `${route.title}\t${stop.name}\t${stop.pivot.monthly_fees}\t${stop.pivot.distance}\t${stop.pivot.pickup_time}`
-            )
-        ).join('\n');
+        const text = mappings.flatMap(route => route.pickup_points.map((stop) => `${route.title}\t${stop.name}\t${stop.pivot.monthly_fees}\t${stop.pivot.distance}\t${stop.pivot.pickup_time}`)).join('\n');
         navigator.clipboard.writeText(text);
         toast("success", "Data copied to clipboard");
     };
 
+    const toolbarActions = [
+        { Icon: Copy, onClick: copyToClipboard, title: "Copy" },
+        { Icon: FileSpreadsheet, onClick: exportToExcel, title: "Excel" },
+        { Icon: FileText, onClick: exportToPDF, title: "PDF" },
+        { Icon: Printer, onClick: () => window.print(), title: "Print" },
+        { Icon: Columns, onClick: () => {}, title: "Columns" },
+    ];
+
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                {/* Header */}
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h2 className="text-sm font-medium text-gray-800 tracking-tight">Route Pickup Point</h2>
-                    <Button
-                        onClick={() => {
-                            setFormState({ route_id: "", pickup_point_id: "", monthly_fees: "", distance: "", pickup_time: "" });
-                            setIsAddModalOpen(true);
-                        }}
-                        variant="gradient"
-                        className="px-6 h-9 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg flex items-center gap-1.5"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Add
+        <div className="space-y-6">
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <MapPinned className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Route Pickup Point</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{allFilteredData.length} route{allFilteredData.length === 1 ? "" : "s"} mapped</p>
+                    </div>
+                    <Button onClick={() => { setFormState({ ...EMPTY_FORM }); setIsAddModalOpen(true); }} className="ml-auto h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
+                        <Plus className="h-4 w-4" /> Add
                     </Button>
-                </div>
-
-                <div className="p-4 space-y-4">
-                    {/* Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
-                            <Input
-                                placeholder="Search"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
-                            />
-                        </div>
-
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                        <Input placeholder="Search..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="h-9 text-xs w-full md:w-64" />
                         <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 mr-2">
-                                <Select
-                                    value={itemsPerPage.toString()}
-                                    onValueChange={(val) => {
-                                        setItemsPerPage(parseInt(val));
-                                        setCurrentPage(1);
-                                    }}
-                                >
-                                    <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={copyToClipboard}>
-                                    <Copy className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={exportToExcel}>
-                                    <FileSpreadsheet className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={exportToPDF}>
-                                    <FileText className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded" onClick={() => window.print()}>
-                                    <Printer className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                    <Columns className="h-3.5 w-3.5" />
-                                </Button>
+                            <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
+                                <SelectTrigger className="w-[70px] h-9 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="25">25</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
+                                {toolbarActions.map((action, i) => (
+                                    <Button key={i} variant="ghost" size="icon" onClick={action.onClick} title={action.title} className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200">
+                                        <action.Icon className="h-4 w-4" />
+                                    </Button>
+                                ))}
                             </div>
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
-                        <Table className="min-w-[1200px]">
-                            <TableHeader className="bg-gray-50/50">
-                                <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Route</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Pickup Point</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Monthly Fees ({currencySymbol})</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Distance (km)</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Pickup Time</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                        <Table className="min-w-[1100px]">
+                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                                <TableRow className="hover:bg-transparent whitespace-nowrap">
+                                    <TableHead className="font-semibold text-gray-600">Route</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Pickup Point</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Monthly Fees ({currencySymbol})</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Distance (km)</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Pickup Time</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-10 text-gray-400">Loading mappings...</TableCell>
-                                    </TableRow>
+                                    <SkeletonRows rows={6} cols={TABLE_COLS} />
                                 ) : allFilteredData.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-10 text-gray-400">No mappings found</TableCell>
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No mappings found</TableCell></TableRow>
+                                ) : paginatedData.map((item) => (
+                                    <TableRow key={item.id} className="text-xs hover:bg-gray-50/60 transition-colors align-top">
+                                        <TableCell className="py-4 text-gray-700 font-medium">{item.title}</TableCell>
+                                        <TableCell className="py-4">
+                                            <div className="space-y-1">{item.pickup_points.map((stop, i) => (<div key={i} className="text-gray-600 font-medium">{stop.name}</div>))}</div>
+                                        </TableCell>
+                                        <TableCell className="py-4">
+                                            <div className="space-y-1">{item.pickup_points.map((stop, i) => (<div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.monthly_fees}</div>))}</div>
+                                        </TableCell>
+                                        <TableCell className="py-4">
+                                            <div className="space-y-1">{item.pickup_points.map((stop, i) => (<div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.distance || '-'}</div>))}</div>
+                                        </TableCell>
+                                        <TableCell className="py-4">
+                                            <div className="space-y-1">{item.pickup_points.map((stop, i) => (<div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.pickup_time || '-'}</div>))}</div>
+                                        </TableCell>
+                                        <TableCell className="py-4 text-right">
+                                            <div className="space-y-1">{item.pickup_points.map((stop, i) => (
+                                                <div key={i} className="flex items-center justify-end gap-1">
+                                                    <Button onClick={() => handleEdit(item, stop)} size="sm" className="h-6 w-6 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-3 w-3" /></Button>
+                                                    <Button onClick={() => handleDelete(stop.pivot.id)} size="sm" className="h-6 w-6 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-3 w-3" /></Button>
+                                                </div>
+                                            ))}</div>
+                                        </TableCell>
                                     </TableRow>
-                                ) : (
-                                    paginatedData.map((item) => (
-                                        <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors align-top">
-                                            <TableCell className="py-4 text-gray-700 font-medium">{item.title}</TableCell>
-                                            <TableCell className="py-4">
-                                                <div className="space-y-1">
-                                                    {item.pickup_points.map((stop, i) => (
-                                                        <div key={i} className="flex items-center gap-2">
-                                                            <span className="text-gray-600 font-medium">{stop.name}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-4">
-                                                <div className="space-y-1">
-                                                    {item.pickup_points.map((stop, i) => (
-                                                        <div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.monthly_fees}</div>
-                                                    ))}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-4">
-                                                <div className="space-y-1">
-                                                    {item.pickup_points.map((stop, i) => (
-                                                        <div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.distance || '-'}</div>
-                                                    ))}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-4">
-                                                <div className="space-y-1">
-                                                    {item.pickup_points.map((stop, i) => (
-                                                        <div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.pickup_time || '-'}</div>
-                                                    ))}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-4 text-right">
-                                                <div className="space-y-1">
-                                                    {item.pickup_points.map((stop, i) => (
-                                                        <div key={i} className="flex items-center justify-end gap-1">
-                                                            <Button onClick={() => handleEdit(item, stop)} size="icon" variant="ghost" className="h-5 w-5 bg-indigo-500 hover:bg-indigo-600 text-white rounded">
-                                                                <Pencil className="h-2.5 w-2.5" />
-                                                            </Button>
-                                                            <Button onClick={() => handleDelete(stop.pivot.id)} size="icon" variant="ghost" className="h-5 w-5 bg-red-500 hover:bg-red-600 text-white rounded">
-                                                                <Trash2 className="h-2.5 w-2.5" />
-                                                            </Button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
+                                ))}
                             </TableBody>
                         </Table>
                     </div>
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-4 border-t border-gray-100">
-                            <div>
-                                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, allFilteredData.length)} of {allFilteredData.length} entries
-                            </div>
-                            <div className="flex gap-1.5 items-center">
-                                <Button
-                                    disabled={currentPage === 1}
-                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-9 w-9 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
-                                >
-                                    <ChevronLeft className="h-5 w-5 text-gray-600" />
-                                </Button>
-
-                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                                    <Button
-                                        key={page}
-                                        variant={currentPage === page ? "gradient" : "ghost"}
-                                        onClick={() => setCurrentPage(page)}
-                                        className={cn(
-                                            "h-9 w-9 rounded-lg text-[12px] font-bold p-0 transition-all shadow-sm",
-                                            currentPage === page ? "scale-105 border-0" : "border border-gray-50 text-gray-400 hover:text-indigo-600"
-                                        )}
-                                    >
-                                        {page}
-                                    </Button>
-                                ))}
-
-                                <Button
-                                    disabled={currentPage === totalPages}
-                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-9 w-9 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
-                                >
-                                    <ChevronRight className="h-5 w-5 text-gray-600" />
-                                </Button>
-                            </div>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
+                        <div>Showing {allFilteredData.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, allFilteredData.length)} of {allFilteredData.length} entries</div>
+                        <div className="flex gap-1 items-center">
+                            <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <Button key={page} size="sm" onClick={() => setCurrentPage(page)} className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all", currentPage === page ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}>{page}</Button>
+                            ))}
+                            <Button variant="outline" size="sm" disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronRight className="h-4 w-4" /></Button>
                         </div>
-                    )}
-                </div>
-            </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Add/Edit Modal */}
             <Dialog open={isAddModalOpen || isEditModalOpen} onOpenChange={(open) => { if (!open) { setIsAddModalOpen(false); setIsEditModalOpen(false); } }}>
                 <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-none shadow-2xl bg-white">
                     <DialogHeader className="p-6 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-left">
-                        <DialogTitle className="text-white text-xl font-bold tracking-tight">
-                            {isEditModalOpen ? "Edit Mapping" : "Add Route Mapping"}
-                        </DialogTitle>
+                        <DialogTitle className="text-white text-xl font-bold tracking-tight">{isEditModalOpen ? "Edit Mapping" : "Add Route Mapping"}</DialogTitle>
                         <p className="text-indigo-100 text-xs font-medium opacity-90">Assign pickup points to routes and set fees.</p>
                     </DialogHeader>
-                    <div className="p-6">
+                    <div className="p-6 space-y-4">
                         <div className="grid gap-2">
                             <Label htmlFor="route">Route <span className="text-red-500">*</span></Label>
-                            <Select
-                                value={formState.route_id}
-                                onValueChange={(val) => setFormState({ ...formState, route_id: val })}
-                            >
-                                <SelectTrigger className="h-8 text-[11px]">
-                                    <SelectValue placeholder="Select Route" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {routes.map((r) => (
-                                        <SelectItem key={r.id} value={r.id.toString()}>{r.title}</SelectItem>
-                                    ))}
-                                </SelectContent>
+                            <Select value={formState.route_id} onValueChange={(val) => setFormState({ ...formState, route_id: val })}>
+                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="Select Route" /></SelectTrigger>
+                                <SelectContent>{routes.map((r) => <SelectItem key={r.id} value={r.id.toString()}>{r.title}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="point">Pickup Point <span className="text-red-500">*</span></Label>
-                            <Select
-                                value={formState.pickup_point_id}
-                                onValueChange={(val) => setFormState({ ...formState, pickup_point_id: val })}
-                            >
-                                <SelectTrigger className="h-8 text-[11px]">
-                                    <SelectValue placeholder="Select Point" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {pickupPoints.map((p) => (
-                                        <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
+                            <Select value={formState.pickup_point_id} onValueChange={(val) => setFormState({ ...formState, pickup_point_id: val })}>
+                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="Select Point" /></SelectTrigger>
+                                <SelectContent>{pickupPoints.map((p) => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="fees">Monthly Fees <span className="text-red-500">*</span></Label>
-                            <Input
-                                id="fees"
-                                type="number"
-                                value={formState.monthly_fees}
-                                onChange={(e) => setFormState({ ...formState, monthly_fees: e.target.value })}
-                                className="h-8 text-[11px]"
-                            />
+                            <Input id="fees" type="number" value={formState.monthly_fees} onChange={(e) => setFormState({ ...formState, monthly_fees: e.target.value })} className="h-8 text-[11px]" />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="distance">Distance (km)</Label>
-                            <Input
-                                id="distance"
-                                type="number"
-                                value={formState.distance}
-                                onChange={(e) => setFormState({ ...formState, distance: e.target.value })}
-                                className="h-8 text-[11px]"
-                            />
+                            <Input id="distance" type="number" value={formState.distance} onChange={(e) => setFormState({ ...formState, distance: e.target.value })} className="h-8 text-[11px]" />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="time">Pickup Time</Label>
-                            <Input
-                                id="time"
-                                value={formState.pickup_time}
-                                onChange={(e) => setFormState({ ...formState, pickup_time: e.target.value })}
-                                className="h-8 text-[11px]"
-                                placeholder="e.g. 9:00 AM"
-                            />
+                            <Input id="time" value={formState.pickup_time} onChange={(e) => setFormState({ ...formState, pickup_time: e.target.value })} className="h-8 text-[11px]" placeholder="e.g. 9:00 AM" />
                         </div>
                     </div>
-                    <DialogFooter className="gap-3 pt-2">
-                        <Button
-                            variant="gradient"
-                            onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }}
-                            className="h-10 px-8 text-[11px] font-bold uppercase rounded-full shadow-lg opacity-80 hover:opacity-100"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="gradient"
-                            onClick={handleSubmit}
-                            className="h-10 px-8 text-[11px] font-bold uppercase rounded-full shadow-lg"
-                        >
-                            Save Changes
-                        </Button>
+                    <DialogFooter className="p-6 bg-gray-50/50 block sm:flex sm:justify-end gap-3 border-t border-gray-100">
+                        <Button variant="outline" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} className="w-full sm:w-auto h-10 px-6 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-gray-100 transition-all shadow-sm">Cancel</Button>
+                        <Button onClick={handleSubmit} className="w-full sm:w-auto h-10 px-8 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all">Save Changes</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

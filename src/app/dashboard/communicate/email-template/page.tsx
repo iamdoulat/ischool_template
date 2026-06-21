@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
@@ -27,16 +28,18 @@ import {
     Pencil,
     X,
     Plus,
-    Copy,
+    Copy as CopyIcon,
     FileSpreadsheet,
     FileText,
     Printer,
-    Columns,
     ChevronLeft,
     ChevronRight,
     Paperclip,
     CloudUpload,
     Download,
+    FileCode,
+    Search,
+    Mail,
 } from "lucide-react";
 import {
     Select,
@@ -47,6 +50,39 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import VariablePicker from "@/components/ui/variable-picker";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <TableRow key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
+
+function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType; onClick?: () => void; title?: string }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            title={title}
+            className="p-2 hover:bg-muted rounded-lg transition-colors border border-muted/50 text-muted-foreground hover:text-foreground shadow-sm active:scale-95"
+        >
+            <Icon className="h-4 w-4" />
+        </button>
+    );
+}
 
 const CKEditorWrapper = dynamic(() => import("@/components/ui/ckeditor"), { ssr: false });
 
@@ -91,11 +127,7 @@ export default function EmailTemplatePage() {
         message: "",
     });
 
-    useEffect(() => {
-        fetchTemplates();
-    }, [searchTerm, limit]);
-
-    const fetchTemplates = async (page = 1) => {
+    const fetchTemplates = useCallback(async (page = 1) => {
         setLoading(true);
         try {
             const response = await api.get(`/communicate/email-templates?page=${page}&limit=${limit}&search=${searchTerm}`);
@@ -108,12 +140,15 @@ export default function EmailTemplatePage() {
                 to: response.data.to
             });
         } catch (error) {
-            console.error("Error fetching templates:", error);
             toast({ title: "Error", description: "Failed to fetch email templates", variant: "destructive" });
         } finally {
             setLoading(false);
         }
-    };
+    }, [searchTerm, limit, toast]);
+
+    useEffect(() => {
+        fetchTemplates();
+    }, [fetchTemplates]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -240,6 +275,18 @@ export default function EmailTemplatePage() {
         toast({ title: "Copied", description: "Data copied to clipboard" });
     };
 
+    const handleExportExcel = () => {
+        const worksheet = XLSX.utils.json_to_sheet(templates.map(t => ({
+            Title: t.title,
+            'Template ID': t.template_id || '',
+            Message: t.message.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ')
+        })));
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Email Templates");
+        XLSX.writeFile(workbook, "email_templates.xlsx");
+        toast({ title: "Success", description: "Exported to Excel successfully" });
+    };
+
     const handleExportCSV = () => {
         const headers = ["Title", "Message"];
         const rows = templates.map(t => [t.title, t.message]);
@@ -255,183 +302,220 @@ export default function EmailTemplatePage() {
         document.body.removeChild(link);
     };
 
-    const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
-    ];
+    const handleExportPDF = () => {
+        const doc = new jsPDF();
+        doc.text("Email Templates Report", 14, 15);
+        const tableColumn = ["Title", "Template ID", "Message"];
+        const tableRows = templates.map(t => [
+            t.title,
+            t.template_id || '--',
+            t.message.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ')
+        ]);
+        autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
+        doc.save("email_templates.pdf");
+        toast({ title: "Success", description: "Exported to PDF successfully" });
+    };
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-             {/* Header Section */}
-            <div className="flex justify-between items-center mb-2">
-                <h1 className="text-sm font-medium text-gray-800">Email Template List</h1>
-                <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
+        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-50 rounded-lg">
+                        <Mail className="h-5 w-5 text-indigo-500" />
+                    </div>
+                    <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">Email Template List</h1>
+                </div>
+                <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="btn-gradient gap-2 h-9 px-6 text-[10px] font-bold uppercase transition-all rounded-full shadow-lg shadow-indigo-100">
                     <Plus className="h-4 w-4" /> Add Template
                 </Button>
             </div>
 
-            {/* Main Content Area */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                {/* Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
-                    <div className="relative w-full md:w-64">
-                        <Input
-                            placeholder="Search templates..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-3 h-9 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50"
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
-                            <Select value={limit} onValueChange={setLimit}>
-                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 bg-transparent shadow-none rounded-md px-2">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
-                        </div>
-                        <div className="flex items-center gap-1 text-gray-400">
-                            {toolbarActions.map((action, i) => (
-                                <Button 
-                                    key={i} 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={action.onClick}
-                                    title={action.title}
-                                    className="h-7 w-7 hover:bg-gray-100 rounded"
-                                >
-                                    <action.Icon className="h-3.5 w-3.5" />
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Template Table */}
-                <div className="rounded border border-gray-50 overflow-hidden">
-                    <Table>
-                        <TableHeader className="bg-gray-50/50">
-                            <TableRow className="hover:bg-transparent border-b border-gray-100">
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 w-[200px]">Title</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 w-[150px]">Template ID</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Message</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 w-[80px]">Attach</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right w-[120px]">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                         <TableBody>
-                            {templates.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="h-32 text-center text-gray-400 text-xs italic">
-                                        No email templates found.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                templates.map((template) => (
-                                    <TableRow key={template.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
-                                        <TableCell className="py-4 text-gray-700 font-bold uppercase tracking-tight align-top w-[200px]">{template.title}</TableCell>
-                                        <TableCell className="py-4 text-gray-500 font-medium align-top w-[150px]">{template.template_id || '--'}</TableCell>
-                                        <TableCell className="py-4 text-gray-500 leading-relaxed font-normal align-top truncate max-w-[300px]">
-                                            {template.message}
-                                        </TableCell>
-                                        <TableCell className="py-4 align-top w-[80px]">
-                                            {template.attachment ? (
-                                                <button
-                                                    onClick={() => handleDownloadAttachment(template.id)}
-                                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded-md transition-colors"
-                                                    title={template.original_filename || 'Download attachment'}
-                                                >
-                                                    <Paperclip className="h-3 w-3" />
-                                                    File
-                                                </button>
-                                            ) : (
-                                                <span className="text-gray-300 text-[10px]">--</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="py-4 text-right align-top w-[120px]">
-                                            <div className="flex items-center justify-end gap-1.5">
-                                                <Button size="icon" variant="ghost" onClick={() => handleView(template)} className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md transition-all shadow-sm">
-                                                    <Eye className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" onClick={() => handleEdit(template)} className="h-7 w-7 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-all shadow-sm">
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" onClick={() => handleDelete(template.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-all shadow-sm">
-                                                    <X className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-
-                 {/* Footer / Pagination */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50">
+            {/* Main Content Card */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Mail className="h-5 w-5" />
+                    </span>
                     <div>
-                        Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Email Templates</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{pagination?.total || 0} template(s)</p>
                     </div>
-                    <div className="flex gap-2 items-center">
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            disabled={pagination?.current_page === 1}
-                            onClick={() => fetchTemplates(pagination!.current_page - 1)}
-                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
-                        >
-                            <ChevronLeft className="h-3.5 w-3.5" />
-                        </Button>
-                        {[...Array(pagination?.last_page || 0)].map((_, i) => (
-                            <Button 
-                                key={i + 1}
-                                onClick={() => fetchTemplates(i + 1)}
-                                className={cn(
-                                    "h-7 w-7 p-0 text-[11px] font-bold rounded-lg shadow-sm transition-all duration-300",
-                                    pagination?.current_page === i + 1 
-                                        ? "btn-gradient" 
-                                        : "bg-white text-gray-400 hover:bg-gray-50 border border-gray-100"
-                                )}
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                    {/* Toolbar */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="relative w-full max-w-sm group">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                            <Input
+                                placeholder="Search templates..."
+                                className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={limit}
+                                onChange={(e) => setLimit(e.target.value)}
+                                className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium text-muted-foreground"
                             >
-                                {i + 1}
-                            </Button>
-                        ))}
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            disabled={pagination?.current_page === pagination?.last_page}
-                            onClick={() => fetchTemplates(pagination!.current_page + 1)}
-                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
-                        >
-                            <ChevronRight className="h-3.5 w-3.5" />
-                        </Button>
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                            <div className="h-8 w-px bg-muted/50 mx-2" />
+                            <div className="flex gap-1">
+                                <IconButton icon={CopyIcon} onClick={handleCopy} title="Copy" />
+                                <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} title="Excel" />
+                                <IconButton icon={FileText} onClick={handleExportCSV} title="CSV" />
+                                <IconButton icon={FileCode} onClick={handleExportPDF} title="PDF" />
+                                <IconButton icon={Printer} onClick={() => window.print()} title="Print" />
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Add/Edit/View Template Dialog */}
+                    {/* Template Table */}
+                    <div className="rounded-lg border border-muted/50 overflow-hidden bg-muted/10 shadow-inner">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-muted/30">
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50">Title</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50">Template ID</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50">Message</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50">Attach</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-muted/50">
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={5} />
+                                    ) : templates.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                        </tr>
+                                    ) : (
+                                        templates.map((template) => (
+                                            <tr key={template.id} className="hover:bg-muted/20 transition-colors group/row">
+                                                <td className="px-6 py-4 text-sm font-bold text-foreground">{template.title}</td>
+                                                <td className="px-6 py-4 text-xs font-medium text-muted-foreground">{template.template_id || '--'}</td>
+                                                <td className="px-6 py-4 text-xs text-muted-foreground truncate max-w-[300px]">
+                                                    {template.message.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ')}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {template.attachment ? (
+                                                        <button
+                                                            onClick={() => handleDownloadAttachment(template.id)}
+                                                            className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded-md transition-colors"
+                                                        >
+                                                            <Paperclip className="h-3 w-3" />
+                                                            File
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-gray-300 text-[10px]">--</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center justify-end gap-1.5 pr-2">
+                                                        <Button
+                                                            size="icon"
+                                                            onClick={() => handleView(template)}
+                                                            className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all"
+                                                            title="View"
+                                                        >
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            size="icon"
+                                                            onClick={() => handleEdit(template)}
+                                                            className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-90 transition-all"
+                                                            title="Edit"
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            size="icon"
+                                                            onClick={() => handleDelete(template.id)}
+                                                            className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 active:scale-90 transition-all"
+                                                            title="Delete"
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Pagination */}
+                    {pagination && pagination.total > 0 && (
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                                Showing {pagination.from} to {pagination.to} of {pagination.total} entries
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    size="icon"
+                                    disabled={pagination.current_page === 1}
+                                    onClick={() => fetchTemplates(pagination.current_page - 1)}
+                                    className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                {Array.from({ length: pagination.last_page }, (_, i) => (
+                                    <Button
+                                        key={i + 1}
+                                        size="icon"
+                                        onClick={() => fetchTemplates(i + 1)}
+                                        className={cn(
+                                            "h-8 w-8 rounded-[10px] border-none p-0 font-bold active:scale-95 transition-all",
+                                            pagination.current_page === i + 1
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-orange-500/10"
+                                                : "bg-white border border-gray-200 text-gray-600 hover:bg-card"
+                                        )}
+                                    >
+                                        {i + 1}
+                                    </Button>
+                                ))}
+                                <Button
+                                    size="icon"
+                                    disabled={pagination.current_page === pagination.last_page}
+                                    onClick={() => fetchTemplates(pagination.current_page + 1)}
+                                    className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Add/Edit/View Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[900px]">
-                    <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-gray-800">
-                            {viewMode ? "View Email Template" : editMode ? "Edit Email Template" : "Add Email Template"}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                <DialogContent className="sm:max-w-[900px] p-0 rounded-lg border-none shadow-2xl">
+                    <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] p-6">
+                        <DialogHeader className="p-0">
+                            <DialogTitle className="text-base font-bold tracking-tight text-slate-800 flex items-center gap-2">
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                    <Mail className="h-4 w-4" />
+                                </span>
+                                {viewMode ? "View Email Template" : editMode ? "Edit Email Template" : "Add Email Template"}
+                            </DialogTitle>
+                            <p className="text-[11px] text-gray-500 mt-1 pl-10">
+                                {viewMode ? "Review template details" : editMode ? "Update an existing email template" : "Create a new email template"}
+                            </p>
+                        </DialogHeader>
+                    </div>
+                    <div className="p-6 space-y-4 bg-white overflow-y-auto max-h-[70vh]">
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Title <span className="text-red-500">*</span></Label>
-                            <Input 
+                            <Input
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                 readOnly={viewMode}
@@ -441,7 +525,7 @@ export default function EmailTemplatePage() {
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Template ID <span className="text-gray-300 font-normal normal-case tracking-normal">(optional)</span></Label>
-                            <Input 
+                            <Input
                                 value={formData.template_id}
                                 onChange={(e) => setFormData({ ...formData, template_id: e.target.value })}
                                 readOnly={viewMode}
@@ -452,7 +536,7 @@ export default function EmailTemplatePage() {
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Message <span className="text-red-500">*</span></Label>
                             {viewMode ? (
-                                <div className="border border-gray-100 rounded-lg p-4 min-h-[200px] prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-headings:font-bold prose-a:text-indigo-600 prose-img:max-w-full prose-img:h-auto prose-table:w-full prose-pre:overflow-x-auto"
+                                <div className="border border-gray-100 rounded-lg p-4 min-h-[200px] prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-headings:font-bold prose-a:text-indigo-600 prose-img:max-w-full"
                                     dangerouslySetInnerHTML={{ __html: formData.message }}
                                 />
                             ) : (
@@ -527,12 +611,8 @@ export default function EmailTemplatePage() {
                                         className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all"
                                     >
                                         <CloudUpload className="h-5 w-5 text-gray-300 mx-auto mb-1" />
-                                        <p className="text-[11px] text-gray-400 font-medium">
-                                            Click to upload or drag and drop
-                                        </p>
-                                        <p className="text-[9px] text-gray-300 mt-0.5">
-                                            PDF, JPG, PNG, DOC, DOCX, PPTX, XLSX, TXT (max 5MB)
-                                        </p>
+                                        <p className="text-[11px] text-gray-400 font-medium">Click to upload or drag and drop</p>
+                                        <p className="text-[9px] text-gray-300 mt-0.5">PDF, JPG, PNG, DOC, DOCX, PPTX, XLSX, TXT (max 5MB)</p>
                                         <input
                                             ref={fileInputRef}
                                             type="file"
@@ -545,16 +625,18 @@ export default function EmailTemplatePage() {
                             )}
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full px-6">
-                            {viewMode ? "Close" : "Cancel"}
-                        </Button>
-                        {!viewMode && (
-                            <Button onClick={handleSave} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full shadow-lg">
-                                {editMode ? "Update Template" : "Save Template"}
+                    <div className="p-6 bg-gray-50/50 border-t border-gray-100">
+                        <DialogFooter className="gap-3">
+                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-10 text-[10px] uppercase font-bold rounded-full px-8 bg-white border-gray-200">
+                                {viewMode ? "Close" : "Cancel"}
                             </Button>
-                        )}
-                    </DialogFooter>
+                            {!viewMode && (
+                                <Button onClick={handleSave} className="btn-gradient h-10 px-10 text-[10px] uppercase font-bold rounded-full shadow-xl shadow-indigo-100">
+                                    {editMode ? "Update Template" : "Save Template"}
+                                </Button>
+                            )}
+                        </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

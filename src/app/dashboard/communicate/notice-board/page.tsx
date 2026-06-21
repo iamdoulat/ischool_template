@@ -1,10 +1,33 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
+import {
+    Plus,
+    Search,
+    FileSpreadsheet,
+    FileText,
+    FileCode,
+    Printer,
+    Pencil,
+    Trash2,
+    Megaphone,
+    Calendar,
+    Eye,
+    X,
+    Copy as CopyIcon,
+    ChevronDown,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/toast";
 import {
     Dialog,
     DialogContent,
@@ -22,14 +45,29 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { Mail, Plus, Trash2, Pencil, X, Calendar, Megaphone, Code, Eye } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div
+                                className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }}
+                            />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface Notice {
     id: number;
@@ -45,17 +83,25 @@ interface Notice {
 export default function NoticeBoardPage() {
     const { toast } = useToast();
     const [notices, setNotices] = useState<Notice[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [total, setTotal] = useState(0);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [viewNotice, setViewNotice] = useState<Notice | null>(null);
-    const [editMode, setEditMode] = useState(false);
-    const [selectedId, setSelectedId] = useState<number | null>(null);
+    const [pageSize, setPageSize] = useState(20);
+
+    // Selection state
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    // Dialog states
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     const [deleteId, setDeleteId] = useState<number | null>(null);
-    const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
-    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [viewNotice, setViewNotice] = useState<Notice | null>(null);
+
+    // Form and Editing state
+    const [isEdit, setIsEdit] = useState(false);
+    const [editId, setEditId] = useState<number | null>(null);
     const [formData, setFormData] = useState({
         title: "",
         message: "",
@@ -64,62 +110,67 @@ export default function NoticeBoardPage() {
         message_to: [] as string[],
         notify_to: [] as string[]
     });
-
     const [showHtml, setShowHtml] = useState(false);
 
     const ReactQuill = useMemo(() => dynamic(() => import("react-quill-new"), { ssr: false }), []);
 
     const quillModules = {
         toolbar: [
-            [{ 'header': [1, 2, 3, false] }],
+            [{ header: [1, 2, 3, false] }],
             ['bold', 'italic', 'underline', 'strike'],
-            [{ 'align': [] }],
-            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            [{ align: [] }],
+            [{ list: 'ordered' }, { list: 'bullet' }],
             ['blockquote', 'code-block'],
             ['link', 'image'],
             ['clean'],
         ],
     };
 
-    useEffect(() => {
-        fetchNotices(1);
-    }, []);
-
-    const fetchNotices = async (page: number = currentPage) => {
+    const fetchNotices = useCallback(async (page: number = 1) => {
         setLoading(true);
         try {
-            const response = await api.get(`/communicate/notices?page=${page}`);
+            const response = await api.get('/communicate/notices', {
+                params: { page, search: searchQuery, per_page: pageSize }
+            });
             const result = response.data?.data || response.data || [];
             setNotices(Array.isArray(result) ? result : []);
             setCurrentPage(response.data?.current_page || page);
             setLastPage(response.data?.last_page || 1);
             setTotal(response.data?.total || 0);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch notices", variant: "destructive" });
+            toast("error", "Failed to fetch notices");
         } finally {
             setLoading(false);
         }
-    };
+    }, [searchQuery, pageSize, toast]);
 
-    const handleSave = async () => {
+    useEffect(() => {
+        fetchNotices(1);
+    }, [fetchNotices]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, pageSize]);
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
         try {
             const payload = {
                 ...formData,
                 message_to: formData.message_to.join(','),
                 notify_to: formData.notify_to.join(',')
             };
-            if (editMode && selectedId) {
-                await api.put(`/communicate/notices/${selectedId}`, payload);
-                toast({ title: "Success", description: "Notice updated successfully" });
+            if (isEdit && editId) {
+                await api.put(`/communicate/notices/${editId}`, payload);
+                toast("success", "Notice updated successfully");
             } else {
                 await api.post('/communicate/notices', payload);
-                toast({ title: "Success", description: "Notice posted successfully" });
+                toast("success", "Notice posted successfully");
             }
-            setIsDialogOpen(false);
             resetForm();
             fetchNotices(1);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to save notice", variant: "destructive" });
+            toast("error", "Failed to save notice");
         }
     };
 
@@ -132,11 +183,11 @@ export default function NoticeBoardPage() {
             message_to: [],
             notify_to: []
         });
-        setEditMode(false);
-        setSelectedId(null);
+        setIsEdit(false);
+        setEditId(null);
     };
 
-    const handleEdit = (notice: Notice) => {
+    const startEdit = (notice: Notice) => {
         setFormData({
             title: notice.title,
             message: notice.message,
@@ -145,39 +196,48 @@ export default function NoticeBoardPage() {
             message_to: notice.message_to ? notice.message_to.split(',') : [],
             notify_to: notice.notify_to ? notice.notify_to.split(',') : []
         });
-        setSelectedId(notice.id);
-        setEditMode(true);
-        setIsDialogOpen(true);
+        setEditId(notice.id);
+        setIsEdit(true);
     };
 
-    const executeDelete = async () => {
+    const handleDelete = async () => {
         if (!deleteId) return;
         try {
             await api.delete(`/communicate/notices/${deleteId}`);
-            toast({ title: "Success", description: "Notice deleted successfully" });
+            toast("success", "Notice deleted successfully");
+            setIsDeleteDialogOpen(false);
+            setDeleteId(null);
             fetchNotices(1);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to delete notice", variant: "destructive" });
-        } finally {
-            setDeleteId(null);
+            toast("error", "Failed to delete notice");
         }
     };
 
-    const executeDeleteAll = async () => {
+    const handleBulkDelete = async () => {
         try {
-            if (selectedIds.size > 0) {
-                await api.delete('/communicate/notices/destroy-all', { data: { ids: Array.from(selectedIds) } });
-                toast({ title: "Success", description: `${selectedIds.size} notice(s) deleted` });
-                setSelectedIds(new Set());
-            } else {
-                await api.delete('/communicate/notices/destroy-all');
-                toast({ title: "Success", description: "Notice board cleared" });
-            }
+            await api.delete('/communicate/notices/destroy-all', { data: { ids: selectedIds } });
+            toast("success", `${selectedIds.length} notice(s) deleted successfully`);
+            setIsBulkDeleteDialogOpen(false);
+            setSelectedIds([]);
             fetchNotices(1);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to delete notices", variant: "destructive" });
-        } finally {
-            setDeleteAllConfirm(false);
+            toast("error", "Failed to delete notices");
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === notices.length && notices.length > 0) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(notices.map(n => n.id));
+        }
+    };
+
+    const toggleSelect = (id: number) => {
+        if (selectedIds.includes(id)) {
+            setSelectedIds(selectedIds.filter(i => i !== id));
+        } else {
+            setSelectedIds([...selectedIds, id]);
         }
     };
 
@@ -199,310 +259,454 @@ export default function NoticeBoardPage() {
         }));
     };
 
-    const toggleSelect = (id: number) => {
-        setSelectedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id); else next.add(id);
-            return next;
-        });
+    // Export functions
+    const handleCopy = () => {
+        const text = notices.map(n =>
+            `${n.title}\t${n.notice_date}\t${n.publish_date}\t${n.is_published ? 'Published' : 'Pending'}\t${n.message_to || ''}`
+        ).join("\n");
+        navigator.clipboard.writeText(text);
+        toast("success", "Copied to clipboard");
     };
 
-    const toggleSelectAll = () => {
-        if (selectedIds.size === notices.length && notices.length > 0) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(notices.map(n => n.id)));
-        }
+    const handlePrint = () => window.print();
+
+    const handleExportExcel = () => {
+        const worksheet = XLSX.utils.json_to_sheet(notices.map(n => ({
+            Title: n.title,
+            'Notice Date': n.notice_date,
+            'Publish Date': n.publish_date,
+            Status: n.is_published ? 'Published' : 'Pending',
+            'Message To': n.message_to || ''
+        })));
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Notices");
+        XLSX.writeFile(workbook, "notices.xlsx");
+        toast("success", "Exported to Excel successfully");
     };
+
+    const handleExportCSV = () => {
+        const worksheet = XLSX.utils.json_to_sheet(notices.map(n => ({
+            Title: n.title,
+            'Notice Date': n.notice_date,
+            'Publish Date': n.publish_date,
+            Status: n.is_published ? 'Published' : 'Pending',
+            'Message To': n.message_to || ''
+        })));
+        const csv = XLSX.utils.sheet_to_csv(worksheet);
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "notices.csv");
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast("success", "Exported to CSV successfully");
+    };
+
+    const handleExportPDF = () => {
+        const doc = new jsPDF();
+        doc.text("Notices Report", 14, 15);
+        const tableColumn = ["Title", "Notice Date", "Publish Date", "Status", "Message To"];
+        const tableRows = notices.map(n => [
+            n.title,
+            n.notice_date,
+            n.publish_date,
+            n.is_published ? 'Published' : 'Pending',
+            n.message_to || ''
+        ]);
+        autoTable(doc, {
+            head: [tableColumn],
+            body: tableRows,
+            startY: 20,
+        });
+        doc.save("notices.pdf");
+        toast("success", "Exported to PDF successfully");
+    };
+
+    const startIndex = (currentPage - 1) * pageSize + 1;
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-             {/* Header Section */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-indigo-50 rounded-lg">
-                        <Megaphone className="h-5 w-5 text-indigo-500" />
-                    </div>
-                    <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">Notice Board</h1>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="btn-gradient gap-2 h-9 px-6 text-[10px] font-bold uppercase transition-all rounded-full shadow-lg shadow-indigo-100">
-                        <Plus className="h-4 w-4" /> New Notice
-                    </Button>
-                </div>
-            </div>
-
-             {/* Notice List Container */}
-            <div className="flex items-center justify-between px-1 py-2 mb-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox 
-                        checked={notices.length > 0 && selectedIds.size === notices.length}
-                        onCheckedChange={toggleSelectAll}
-                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
-                    />
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                        {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select All"}
-                    </span>
-                </label>
-                {selectedIds.size > 0 && (
-                    <Button
-                        onClick={() => setDeleteAllConfirm(true)}
-                        className="h-8 px-4 text-[10px] font-bold uppercase bg-rose-500 hover:bg-rose-600 text-white rounded-full shadow-sm transition-all gap-1.5"
-                    >
-                        <Trash2 className="h-3.5 w-3.5" /> Delete Selected
-                    </Button>
-                )}
-            </div>
-            <div className="space-y-3 min-h-[400px]">
-                {loading ? (
-                    <div className="flex flex-col items-center justify-center h-[400px] text-gray-400 space-y-2">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
-                        <p className="text-[11px] font-medium uppercase tracking-widest">Loading Notices...</p>
-                    </div>
-                ) : notices.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[400px] text-gray-300 space-y-4">
-                        <Mail className="h-16 w-16 opacity-20" />
-                        <div className="text-center">
-                            <p className="text-sm font-bold text-gray-400 uppercase tracking-tight">Notice Board is empty</p>
-                            <p className="text-[10px] text-gray-400">Post a new message to get started</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-700 pb-20">
+            {/* Left Column: Notice Form */}
+            <div className="lg:col-span-1">
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Megaphone className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {isEdit ? "Edit Notice" : "Post Notice"}
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {isEdit ? "Update existing notice" : "Broadcast to the school community"}
+                            </p>
                         </div>
-                    </div>
-                ) : (
-                    notices.map((notice) => {
-                        const messageTo = notice.message_to ? notice.message_to.split(',').map(s => s.trim()).filter(Boolean) : [];
-                        const notifyTo = notice.notify_to ? notice.notify_to.split(',').map(s => s.trim()).filter(Boolean) : [];
-                        return (
-                        <div
-                            key={notice.id}
-                            className="p-4 group rounded-lg border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 bg-white"
-                        >
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="flex items-start gap-3 flex-1 min-w-0">
-                                    <Checkbox 
-                                        checked={selectedIds.has(notice.id)}
-                                        onCheckedChange={() => toggleSelect(notice.id)}
-                                        className="mt-1.5 border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 shrink-0"
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-5">
+                        <form onSubmit={handleSave} className="space-y-4">
+                            {/* Title */}
+                            <div className="space-y-2 group">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
+                                    Title <span className="text-destructive font-black">*</span>
+                                </label>
+                                <Input
+                                    required
+                                    placeholder="e.g. Annual Sports Day 2026"
+                                    className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    value={formData.title}
+                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                />
+                            </div>
+
+                            {/* Dates */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2 group">
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
+                                        Notice Date <span className="text-destructive font-black">*</span>
+                                    </label>
+                                    <Input
+                                        type="date"
+                                        required
+                                        className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                        value={formData.notice_date}
+                                        onChange={(e) => setFormData({ ...formData, notice_date: e.target.value })}
                                     />
-                                    <div className="h-10 w-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
-                                        <Mail className="h-4 w-4 text-indigo-500" />
-                                    </div>
-                                    <div className="space-y-1.5 flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="text-sm text-black font-bold uppercase tracking-tight">
-                                                {notice.title}
-                                            </span>
-                                        </div>
-
-                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-400 font-medium">
-                                            <div className="flex items-center gap-1">
-                                                <Calendar className="h-3 w-3" />
-                                                Notice: {format(new Date(notice.notice_date), 'dd/MM/yyyy')}
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <Calendar className="h-3 w-3" />
-                                                Publish: {format(new Date(notice.publish_date), 'dd/MM/yyyy')}
-                                            </div>
-                                            <span className="h-3 w-px bg-gray-200" />
-                                            <span className={cn(
-                                                "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold",
-                                                notice.is_published ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                                            )}>
-                                                {notice.is_published ? "Published" : "Pending"}
-                                            </span>
-                                            {messageTo.map((to, i) => (
-                                                <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-semibold">
-                                                    {to}
-                                                </span>
-                                            ))}
-                                            {notifyTo.map((ch, i) => (
-                                                <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md bg-orange-100 text-orange-700 text-[10px] font-semibold">
-                                                    {ch}
-                                                </span>
-                                            ))}
-                                        </div>
-
-                                        <p className="text-xs text-gray-700 leading-relaxed">
-                                            {notice.message.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")}
-                                        </p>
-                                    </div>
                                 </div>
-
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    <Button size="icon" variant="ghost" onClick={() => setViewNotice(notice)} className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md transition-all shadow-sm">
-                                        <Eye className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button size="icon" variant="ghost" onClick={() => handleEdit(notice)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-all shadow-sm">
-                                        <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button size="icon" variant="ghost" onClick={() => setDeleteId(notice.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-all shadow-sm">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                <div className="space-y-2 group">
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
+                                        Publish Date <span className="text-destructive font-black">*</span>
+                                    </label>
+                                    <Input
+                                        type="date"
+                                        required
+                                        className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                        value={formData.publish_date}
+                                        onChange={(e) => setFormData({ ...formData, publish_date: e.target.value })}
+                                    />
                                 </div>
                             </div>
-                        </div>
-                        );
-                    })
-                )}
-            </div>
 
-            {total > 20 && (
-                <div className="flex items-center justify-between pt-2">
-                    <p className="text-[11px] text-gray-400 font-medium">
-                        Showing {(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, total)} of {total} notices
-                    </p>
-                    <div className="flex items-center gap-1.5">
-                        <button
-                            onClick={() => fetchNotices(currentPage - 1)}
-                            disabled={currentPage <= 1}
-                            className="px-3 py-1.5 text-[11px] font-bold uppercase rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                        >
-                            Prev
-                        </button>
-                        {Array.from({ length: lastPage }, (_, i) => i + 1).map(p => (
-                            <button
-                                key={p}
-                                onClick={() => fetchNotices(p)}
-                                className={cn(
-                                    "w-8 h-8 text-[11px] font-bold rounded-lg transition-all",
-                                    p === currentPage
-                                        ? "bg-indigo-500 text-white shadow-md"
-                                        : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                                )}
-                            >
-                                {p}
-                            </button>
-                        ))}
-                        <button
-                            onClick={() => fetchNotices(currentPage + 1)}
-                            disabled={currentPage >= lastPage}
-                            className="px-3 py-1.5 text-[11px] font-bold uppercase rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                        >
-                            Next
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Post/Edit Notice Dialog */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[600px] p-0 rounded-lg border-none shadow-2xl">
-                    <div className="bg-indigo-600 p-6 text-white">
-                        <DialogHeader>
-                            <DialogTitle className="text-xl font-bold tracking-tight uppercase flex items-center gap-2">
-                                <Megaphone className="h-5 w-5" />
-                                {editMode ? "Edit Notice" : "New Notice"}
-                            </DialogTitle>
-                            <p className="text-indigo-100 text-[11px] font-medium uppercase tracking-widest mt-1">Broadcast information to the school community</p>
-                        </DialogHeader>
-                    </div>
-                    
-                    <div className="p-8 space-y-6 bg-white overflow-y-auto max-h-[60vh]">
-                        <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Title <span className="text-red-500">*</span></Label>
-                            <Input 
-                                value={formData.title}
-                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                placeholder="e.g. Annual Sports Day 2026"
-                                className="h-11 border-gray-100 bg-gray-50/30 text-sm shadow-none focus-visible:ring-indigo-500 rounded-lg"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Notice Date <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    type="date"
-                                    value={formData.notice_date}
-                                    onChange={(e) => setFormData({ ...formData, notice_date: e.target.value })}
-                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm shadow-none focus-visible:ring-indigo-500 rounded-lg"
-                                />
+                            {/* Message To */}
+                            <div className="space-y-2 group">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
+                                    Message To
+                                </label>
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                    {['Student', 'Parent', 'Staff'].map((role) => (
+                                        <label
+                                            key={role}
+                                            className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer group/label"
+                                        >
+                                            <Checkbox
+                                                checked={formData.message_to.includes(role.toLowerCase())}
+                                                onCheckedChange={() => toggleMessageTo(role.toLowerCase())}
+                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+                                            />
+                                            <span className="text-[11px] font-bold text-muted-foreground group-hover/label:text-indigo-600 transition-colors">
+                                                {role}
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Publish Date <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    type="date"
-                                    value={formData.publish_date}
-                                    onChange={(e) => setFormData({ ...formData, publish_date: e.target.value })}
-                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm shadow-none focus-visible:ring-indigo-500 rounded-lg"
-                                />
-                            </div>
-                        </div>
 
-                        <div className="space-y-3">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Message To</Label>
-                            <div className="flex flex-wrap gap-4 pt-1">
-                                {['Student', 'Parent', 'Staff'].map((role) => (
-                                    <label key={role} className="flex items-center space-x-2 bg-gray-50 px-4 py-2 rounded-full hover:bg-indigo-50 transition-colors cursor-pointer group">
-                                        <Checkbox 
-                                            checked={formData.message_to.includes(role.toLowerCase())}
-                                            onCheckedChange={() => toggleMessageTo(role.toLowerCase())}
-                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
-                                        />
-                                        <span className="text-[11px] font-bold text-gray-600 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{role}</span>
+                            {/* Notify To */}
+                            <div className="space-y-2 group">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
+                                    Notify Via
+                                </label>
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                    {['Email', 'SMS', 'WhatsApp', 'Notification'].map((ch) => (
+                                        <label
+                                            key={ch}
+                                            className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer group/label"
+                                        >
+                                            <Checkbox
+                                                checked={formData.notify_to.includes(ch.toLowerCase())}
+                                                onCheckedChange={() => toggleNotifyTo(ch.toLowerCase())}
+                                                className="border-gray-300 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+                                            />
+                                            <span className="text-[11px] font-bold text-muted-foreground group-hover/label:text-orange-600 transition-colors">
+                                                {ch}
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Message */}
+                            <div className="space-y-2 group">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 transition-colors">
+                                        Message <span className="text-destructive font-black">*</span>
                                     </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Notify To</Label>
-                            <div className="flex flex-wrap gap-4 pt-1">
-                                {['Email', 'SMS', 'WhatsApp', 'Notification'].map((ch) => (
-                                    <label key={ch} className="flex items-center space-x-2 bg-gray-50 px-4 py-2 rounded-full hover:bg-orange-50 transition-colors cursor-pointer group">
-                                        <Checkbox 
-                                            checked={formData.notify_to.includes(ch.toLowerCase())}
-                                            onCheckedChange={() => toggleNotifyTo(ch.toLowerCase())}
-                                            className="border-gray-300 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
-                                        />
-                                        <span className="text-[11px] font-bold text-gray-600 group-hover:text-orange-600 transition-colors uppercase tracking-tight">{ch}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Message <span className="text-red-500">*</span></Label>
-                                <button 
-                                    type="button"
-                                    onClick={() => setShowHtml(!showHtml)}
-                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 hover:text-indigo-600 transition-colors uppercase tracking-wider"
-                                >
-                                    <Code className="h-3 w-3" />
-                                    {showHtml ? "Visual" : "HTML"}
-                                </button>
-                            </div>
-                            {showHtml ? (
-                                <Textarea 
-                                    value={formData.message}
-                                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                                    placeholder="Write the notice content here..."
-                                    className="border-gray-100 bg-gray-50/30 text-sm shadow-none min-h-[200px] focus-visible:ring-indigo-500 leading-relaxed rounded-lg p-4 font-mono"
-                                />
-                            ) : (
-                                <div className="border border-gray-100 rounded-lg overflow-hidden [&_.ql-toolbar]:border-gray-100 [&_.ql-container]:border-0 [&_.ql-editor]:min-h-[200px] [&_.ql-editor]:text-sm [&_.ql-editor]:leading-relaxed">
-                                    <ReactQuill 
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowHtml(!showHtml)}
+                                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 hover:text-indigo-600 transition-colors uppercase tracking-wider"
+                                    >
+                                        {showHtml ? "Visual" : "HTML"}
+                                    </button>
+                                </div>
+                                {showHtml ? (
+                                    <Textarea
+                                        required
                                         value={formData.message}
-                                        onChange={(value) => setFormData({ ...formData, message: value })}
-                                        modules={quillModules}
-                                        theme="snow"
+                                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                                         placeholder="Write the notice content here..."
+                                        className="min-h-[150px] rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium resize-none text-xs font-mono"
                                     />
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                                ) : (
+                                    <div className="border border-muted/50 rounded-lg overflow-hidden bg-muted/30 [&_.ql-toolbar]:border-muted/50 [&_.ql-container]:border-0 [&_.ql-editor]:min-h-[150px] [&_.ql-editor]:text-sm">
+                                        <ReactQuill
+                                            value={formData.message}
+                                            onChange={(value) => setFormData({ ...formData, message: value })}
+                                            modules={quillModules}
+                                            theme="snow"
+                                            placeholder="Write the notice content here..."
+                                        />
+                                    </div>
+                                )}
+                            </div>
 
-                    <div className="p-6 bg-gray-50/50 border-t border-gray-100">
-                        <DialogFooter className="gap-3">
-                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-10 text-[10px] uppercase font-bold rounded-full px-8 bg-white border-gray-200">Cancel</Button>
-                            <Button onClick={handleSave} className="btn-gradient h-10 px-10 text-[10px] uppercase font-bold rounded-full shadow-xl shadow-indigo-100">
-                                {editMode ? "Update Notice" : "Publish Notice"}
-                            </Button>
-                        </DialogFooter>
+                            <div className="pt-4 flex justify-end gap-2">
+                                {isEdit && (
+                                    <Button type="button" variant="outline" className="h-11 px-6 rounded-lg font-bold" onClick={resetForm}>
+                                        Cancel
+                                    </Button>
+                                )}
+                                <Button type="submit" variant="gradient" className="h-11 px-10 rounded-lg font-bold tracking-tight shadow-lg shadow-primary/25">
+                                    {isEdit ? "Update Notice" : "Publish Notice"}
+                                </Button>
+                            </div>
+                        </form>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Right Column: Notice List */}
+            <div className="lg:col-span-2">
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Megaphone className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Notice Board</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{total} notice{total === 1 ? '' : 's'}</p>
+                        </div>
+                    </CardHeader>
+
+                    <div className="p-6 space-y-6">
+                        {/* Toolbar */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="relative w-full max-w-sm group">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                <Input
+                                    placeholder="Search notices..."
+                                    className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                                    className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium text-muted-foreground"
+                                >
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                                <div className="h-8 w-px bg-muted/50 mx-2" />
+                                <div className="flex gap-1">
+                                    <IconButton icon={CopyIcon} onClick={handleCopy} />
+                                    <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} />
+                                    <IconButton icon={FileText} onClick={handleExportCSV} />
+                                    <IconButton icon={FileCode} onClick={handleExportPDF} />
+                                    <IconButton icon={Printer} onClick={handlePrint} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Table */}
+                        <div className="rounded-lg border border-muted/50 overflow-hidden bg-muted/10 shadow-inner">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-muted/30">
+                                            <th className="px-4 py-4 w-10 border-b border-muted/50">
+                                                <Checkbox
+                                                    checked={selectedIds.length === notices.length && notices.length > 0}
+                                                    onCheckedChange={toggleSelectAll}
+                                                />
+                                            </th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">#</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">Title</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">Notice Date</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">Publish Date</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">Status</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">Message To</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap text-right">
+                                                <div className="flex justify-end pr-1">
+                                                    {selectedIds.length > 0 ? (
+                                                        <button
+                                                            onClick={() => setIsBulkDeleteDialogOpen(true)}
+                                                            className="bg-red-500 hover:bg-red-600 p-1.5 rounded transition-colors flex items-center gap-1 text-white px-2"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                            <span className="text-xs font-bold leading-none translate-y-[1px]">Delete</span>
+                                                        </button>
+                                                    ) : (
+                                                        "Action"
+                                                    )}
+                                                </div>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-muted/50">
+                                        {loading ? (
+                                            <TableSkeleton rows={5} cols={8} />
+                                        ) : notices.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                            </tr>
+                                        ) : (
+                                            notices.map((notice, idx) => {
+                                                const messageTo = notice.message_to ? notice.message_to.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                                return (
+                                                    <tr key={notice.id} className={cn(
+                                                        "hover:bg-muted/20 transition-colors group/row",
+                                                        selectedIds.includes(notice.id) && "bg-muted/30"
+                                                    )}>
+                                                        <td className="px-4 py-4">
+                                                            <Checkbox
+                                                                checked={selectedIds.includes(notice.id)}
+                                                                onCheckedChange={() => toggleSelect(notice.id)}
+                                                            />
+                                                        </td>
+                                                        <td className="px-6 py-4 text-xs font-medium text-muted-foreground">{startIndex + idx}</td>
+                                                        <td className="px-6 py-4 text-sm font-bold text-foreground whitespace-nowrap">{notice.title}</td>
+                                                        <td className="px-6 py-4 text-xs font-medium text-muted-foreground whitespace-nowrap">
+                                                            {notice.notice_date ? format(new Date(notice.notice_date), 'dd/MM/yyyy') : '-'}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-xs font-medium text-muted-foreground whitespace-nowrap">
+                                                            {notice.publish_date ? format(new Date(notice.publish_date), 'dd/MM/yyyy') : '-'}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={cn(
+                                                                "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold",
+                                                                notice.is_published ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                                                            )}>
+                                                                {notice.is_published ? "Published" : "Pending"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex gap-1 flex-wrap">
+                                                                {messageTo.map((to, i) => (
+                                                                    <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-semibold">
+                                                                        {to}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center justify-end gap-1.5 pr-2">
+                                                                <Button
+                                                                    size="icon"
+                                                                    onClick={() => setViewNotice(notice)}
+                                                                    className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all"
+                                                                    title="View"
+                                                                >
+                                                                    <Eye className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                                <Button
+                                                                    size="icon"
+                                                                    onClick={() => startEdit(notice)}
+                                                                    className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-90 transition-all"
+                                                                    title="Edit"
+                                                                >
+                                                                    <Pencil className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                                <Button
+                                                                    size="icon"
+                                                                    onClick={() => { setDeleteId(notice.id); setIsDeleteDialogOpen(true); }}
+                                                                    className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 active:scale-90 transition-all"
+                                                                    title="Delete"
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Pagination */}
+                        {total > 0 && (
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
+                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                                    Showing {Math.min((currentPage - 1) * pageSize + 1, total)} to {Math.min(currentPage * pageSize, total)} of {total} entries
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        size="icon"
+                                        disabled={currentPage === 1}
+                                        onClick={() => fetchNotices(currentPage - 1)}
+                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
+                                    >
+                                        <ChevronDown className="h-4 w-4 rotate-90" />
+                                    </Button>
+                                    {Array.from({ length: Math.min(lastPage, 5) }, (_, i) => {
+                                        let pageNum: number;
+                                        if (lastPage <= 5) {
+                                            pageNum = i + 1;
+                                        } else if (currentPage <= 3) {
+                                            pageNum = i + 1;
+                                        } else if (currentPage >= lastPage - 2) {
+                                            pageNum = lastPage - 4 + i;
+                                        } else {
+                                            pageNum = currentPage - 2 + i;
+                                        }
+                                        return (
+                                            <Button
+                                                key={pageNum}
+                                                size="icon"
+                                                onClick={() => fetchNotices(pageNum)}
+                                                className={cn(
+                                                    "h-8 w-8 rounded-[10px] border-none p-0 font-bold active:scale-95 transition-all",
+                                                    pageNum === currentPage
+                                                        ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-orange-500/10"
+                                                        : "bg-white border border-gray-200 text-gray-600 hover:bg-card"
+                                                )}
+                                            >
+                                                {pageNum}
+                                            </Button>
+                                        );
+                                    })}
+                                    <Button
+                                        size="icon"
+                                        disabled={currentPage >= lastPage}
+                                        onClick={() => fetchNotices(currentPage + 1)}
+                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
+                                    >
+                                        <ChevronDown className="h-4 w-4 -rotate-90" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                </DialogContent>
-            </Dialog>
+                </Card>
+            </div>
 
             {/* View Notice Dialog */}
             <Dialog open={!!viewNotice} onOpenChange={(open) => !open && setViewNotice(null)}>
@@ -530,7 +734,6 @@ export default function NoticeBoardPage() {
                                     Publish: {format(new Date(viewNotice.publish_date), 'dd/MM/yyyy')}
                                 </div>
                             </div>
-
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className={cn(
                                     "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold",
@@ -539,19 +742,15 @@ export default function NoticeBoardPage() {
                                     {viewNotice.is_published ? "Published" : "Pending"}
                                 </span>
                                 {(viewNotice.message_to ? viewNotice.message_to.split(',').map(s => s.trim()).filter(Boolean) : []).map((to, i) => (
-                                    <span key={i} className="inline-flex items-center px-3 py-1 rounded-md bg-indigo-100 text-indigo-700 text-xs font-semibold">
-                                        {to}
-                                    </span>
+                                    <span key={i} className="inline-flex items-center px-3 py-1 rounded-md bg-indigo-100 text-indigo-700 text-xs font-semibold">{to}</span>
                                 ))}
                                 {(viewNotice.notify_to ? viewNotice.notify_to.split(',').map(s => s.trim()).filter(Boolean) : []).map((ch, i) => (
-                                    <span key={i} className="inline-flex items-center px-3 py-1 rounded-md bg-orange-100 text-orange-700 text-xs font-semibold">
-                                        {ch}
-                                    </span>
+                                    <span key={i} className="inline-flex items-center px-3 py-1 rounded-md bg-orange-100 text-orange-700 text-xs font-semibold">{ch}</span>
                                 ))}
                             </div>
-
                             <div className="border-t border-gray-100 pt-6">
-                                <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-headings:font-bold prose-a:text-indigo-600 prose-img:max-w-full prose-img:h-auto prose-table:w-full prose-pre:overflow-x-auto"
+                                <div
+                                    className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-headings:font-bold prose-a:text-indigo-600 prose-img:max-w-full"
                                     dangerouslySetInnerHTML={{ __html: viewNotice.message }}
                                 />
                             </div>
@@ -559,54 +758,56 @@ export default function NoticeBoardPage() {
                     )}
                     <div className="p-6 bg-gray-50/50 border-t border-gray-100">
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setViewNotice(null)} className="h-10 text-[10px] uppercase font-bold rounded-full px-8 bg-white border-gray-200">
-                                Close
-                            </Button>
+                            <Button variant="outline" onClick={() => setViewNotice(null)} className="h-10 text-[10px] uppercase font-bold rounded-full px-8 bg-white border-gray-200">Close</Button>
                         </DialogFooter>
                     </div>
                 </DialogContent>
             </Dialog>
 
-            {/* Single Delete Confirmation Dialog */}
-            <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
+            {/* Single Delete Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Notice</AlertDialogTitle>
-                        <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            Are you sure you want to delete this notice? This action cannot be undone.
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the notice.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            Yes, Delete
-                        </AlertDialogAction>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Delete All Confirmation Dialog */}
-            <AlertDialog open={deleteAllConfirm} onOpenChange={setDeleteAllConfirm}>
-                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
+            {/* Bulk Delete Dialog */}
+            <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+                <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800 text-red-500">
-                            {selectedIds.size > 0 ? "Delete Selected Notices" : "Clear Notice Board"}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            {selectedIds.size > 0
-                                ? `Are you sure you want to delete ${selectedIds.size} selected notice(s)? This action cannot be undone.`
-                                : "Are you absolutely sure you want to clear the entire notice board? This action is permanent and will delete all notices."
-                            }
+                        <AlertDialogTitle>Delete Selected Notices</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete {selectedIds.length} selected notice(s)? This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDeleteAll} className="bg-red-500 hover:bg-red-600 h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            Yes, Clear All
-                        </AlertDialogAction>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">Delete Selected</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
         </div>
+    );
+}
+
+// Helper component for icon buttons
+function IconButton({ icon: Icon, onClick }: { icon: React.ElementType; onClick?: () => void }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="p-2 hover:bg-muted rounded-lg transition-colors border border-muted/50 text-muted-foreground hover:text-foreground shadow-sm active:scale-95"
+        >
+            <Icon className="h-4 w-4" />
+        </button>
     );
 }

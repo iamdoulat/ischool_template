@@ -67,8 +67,8 @@ export default function LoginPage() {
             "accountant@ischool.com": "accountant@123",
             "receptionist@ischool.com": "receptionist@123",
             "librarian@ischool.com": "librarian@123",
-            "student@ischool.com": "password123",
-            "parent@ischool.com": "password123",
+            "STD-0100": "student123",
+            "PAR-0100": "parent123",
         };
         setPassword(passwords[roleEmail] || "password123");
     };
@@ -227,10 +227,10 @@ export default function LoginPage() {
                                         </TabsContent>
                                         <TabsContent value="user" className="m-0">
                                             <div className="grid grid-cols-2 gap-1">
-                                                <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('student@ischool.com')} className="bg-[#0284c7] hover:bg-[#0369a1] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-2 rounded-sm">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('STD-0100')} className="bg-[#0284c7] hover:bg-[#0369a1] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-2 rounded-sm">
                                                     <User className="w-4 h-4" /> <span>Student</span>
                                                 </Button>
-                                                <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('parent@ischool.com')} className="bg-[#e91e63] hover:bg-[#d81b60] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-2 rounded-sm">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('PAR-0100')} className="bg-[#e91e63] hover:bg-[#d81b60] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-2 rounded-sm">
                                                     <Users className="w-4 h-4" /> <span>Parent</span>
                                                 </Button>
                                             </div>

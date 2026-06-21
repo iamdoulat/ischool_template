@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Table,
     TableBody,
@@ -21,7 +22,8 @@ import {
     Printer,
     Columns,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Building2
 } from "lucide-react";
 import {
     Select,
@@ -40,6 +42,22 @@ import autoTable from 'jspdf-autotable';
 interface Department {
     id: number;
     name: string;
+}
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <TableRow key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
 }
 
 export default function DepartmentPage() {
@@ -88,8 +106,9 @@ export default function DepartmentPage() {
             }
             resetForm();
             fetchData();
-        } catch (error: any) {
-            toast("error", error.response?.data?.message || "Failed to save department");
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast("error", err.response?.data?.message || "Failed to save department");
         }
     };
 
@@ -106,6 +125,7 @@ export default function DepartmentPage() {
             toast("success", "Department deleted successfully");
             fetchData();
         } catch (error) {
+            console.error("Error deleting department:", error);
             toast("error", "Failed to delete department");
         }
     };
@@ -153,174 +173,198 @@ export default function DepartmentPage() {
         <div className="flex flex-col lg:flex-row gap-6 p-4 font-sans bg-gray-50/10 min-h-screen">
             {/* Left Column: Add Department Form */}
             <div className="w-full lg:w-1/3">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                    <h2 className="text-sm font-medium text-gray-800 border-b pb-2 mb-4">
-                        {isEditing ? "Edit Department" : "Add Department"}
-                    </h2>
-
-                    <div className="space-y-4">
-                        <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                Name <span className="text-red-500">*</span>
-                            </Label>
-                            <Input 
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500 rounded-lg" 
-                                placeholder="e.g. Science"
-                            />
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Building2 className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {isEditing ? "Edit Department" : "Add Department"}
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {isEditing ? "Update department details" : "Create a new department"}
+                            </p>
                         </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                                    Name <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500 rounded-lg"
+                                    placeholder="e.g. Science"
+                                />
+                            </div>
 
-                        <div className="flex justify-end pt-2 gap-2">
-                            {isEditing && (
-                                <Button 
-                                    onClick={resetForm}
-                                    variant="outline"
-                                    className="px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
+                            <div className="flex justify-end pt-2 gap-2">
+                                {isEditing && (
+                                    <Button
+                                        onClick={resetForm}
+                                        variant="outline"
+                                        className="px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
+                                    >
+                                        Cancel
+                                    </Button>
+                                )}
+                                <Button
+                                    onClick={handleSubmit}
+                                    variant="gradient"
+                                    className="px-8 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5"
                                 >
-                                    Cancel
+                                    {isEditing ? "Update" : "Save"}
                                 </Button>
-                            )}
-                            <Button 
-                                onClick={handleSubmit}
-                                variant="gradient"
-                                className="px-8 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5"
-                            >
-                                {isEditing ? "Update" : "Save"}
-                            </Button>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Right Column: Department Lists */}
             <div className="w-full lg:w-2/3">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                    <h2 className="text-sm font-medium text-gray-800 border-b pb-2">Department List</h2>
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Building2 className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                Department List
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {filteredDepartments.length} department{filteredDepartments.length === 1 ? "" : "s"}
+                            </p>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="relative w-full md:w-64">
+                                <Input
+                                    placeholder="Search"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
+                                />
+                            </div>
 
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
-                            <Input
-                                placeholder="Search"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
-                            />
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 mr-2">
+                                    <Select
+                                        value={itemsPerPage.toString()}
+                                        onValueChange={(val) => {
+                                            setItemsPerPage(parseInt(val));
+                                            setCurrentPage(1);
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="10">10</SelectItem>
+                                            <SelectItem value="25">25</SelectItem>
+                                            <SelectItem value="50">50</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center gap-1 text-gray-400">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
+                                        <Copy className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
+                                        <FileSpreadsheet className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
+                                        <FileText className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
+                                        <Printer className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
+                                        <Columns className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 mr-2">
-                                <Select
-                                    value={itemsPerPage.toString()}
-                                    onValueChange={(val) => {
-                                        setItemsPerPage(parseInt(val));
-                                        setCurrentPage(1);
-                                    }}
-                                >
-                                    <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
-                                    <Copy className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
-                                    <FileSpreadsheet className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
-                                    <FileText className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
-                                    <Printer className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
-                                    <Columns className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="rounded border border-gray-50 overflow-hidden">
-                        <Table>
-                            <TableHeader className="bg-gray-50/50">
-                                <TableRow className="hover:bg-transparent border-gray-100">
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Name</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={2} className="text-center py-10 text-gray-400 italic">Loading departments...</TableCell>
+                        <div className="rounded border border-gray-50 overflow-hidden">
+                            <Table>
+                                <TableHeader className="bg-gray-50/50">
+                                    <TableRow className="hover:bg-transparent border-gray-100">
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Name</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
                                     </TableRow>
-                                ) : paginatedData.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={2} className="text-center py-10 text-gray-400 italic">No departments found</TableCell>
-                                    </TableRow>
-                                ) : (
-                                    paginatedData.map((dept) => (
-                                        <TableRow key={dept.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
-                                            <TableCell className="py-3.5 text-gray-700 font-medium">{dept.name}</TableCell>
-                                            <TableCell className="py-3.5 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <Button onClick={() => handleEdit(dept)} size="icon" variant="ghost" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors shadow-sm">
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button onClick={() => handleDelete(dept.id)} size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm">
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={2} />
+                                    ) : paginatedData.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={2} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                    ) : (
+                                        paginatedData.map((dept) => (
+                                            <TableRow key={dept.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
+                                                <TableCell className="py-3.5 text-gray-700 font-medium">{dept.name}</TableCell>
+                                                <TableCell className="py-3.5 text-right">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        <Button onClick={() => handleEdit(dept)} size="icon" variant="ghost" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors shadow-sm">
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button onClick={() => handleDelete(dept.id)} size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm">
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
 
-                    <div className="flex justify-end items-center gap-2 py-4">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={currentPage === 1}
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            className="h-8 w-8 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
-                        >
-                            <ChevronLeft className="h-4 w-4 text-gray-600" />
-                        </Button>
-
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <div className="flex justify-end items-center gap-2 py-4">
                             <Button
-                                key={page}
-                                variant={currentPage === page ? "gradient" : "outline"}
-                                onClick={() => setCurrentPage(page)}
-                                className={cn(
-                                    "h-8 w-8 rounded-lg text-[10px] font-bold p-0 transition-all",
-                                    currentPage === page ? "shadow-md scale-105" : "border-gray-100 text-gray-400 hover:text-indigo-600"
-                                )}
+                                variant="ghost"
+                                size="icon"
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white disabled:opacity-30"
                             >
-                                {page}
+                                <ChevronLeft className="h-4 w-4" />
                             </Button>
-                        ))}
 
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={currentPage === totalPages}
-                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            className="h-8 w-8 rounded-lg border border-gray-100 hover:bg-gray-50 disabled:opacity-30"
-                        >
-                            <ChevronRight className="h-4 w-4 text-gray-600" />
-                        </Button>
-                    </div>
-                </div>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <Button
+                                    key={page}
+                                    variant="ghost"
+                                    onClick={() => setCurrentPage(page)}
+                                    className={cn(
+                                        "h-8 w-8 rounded-[10px] text-[10px] font-bold p-0 transition-all",
+                                        currentPage === page
+                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md scale-105"
+                                            : "bg-white border border-gray-200 text-gray-600 hover:text-indigo-600"
+                                    )}
+                                >
+                                    {page}
+                                </Button>
+                            ))}
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white disabled:opacity-30"
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

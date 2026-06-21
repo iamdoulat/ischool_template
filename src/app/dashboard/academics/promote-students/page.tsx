@@ -1,15 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, Filter, TrendingUp } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import api from "@/lib/api";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface Student {
     id: number;
@@ -82,7 +100,7 @@ export default function PromoteStudentsPage() {
                 setSections(sectionRes.data.data?.data || sectionRes.data.data || []);
 
                 // Set default session if active one exists
-                const activeSession = sessionRes.data.data?.find((s: any) => s.is_active);
+                const activeSession = sessionRes.data.data?.find((s: AcademicSession) => s.is_active);
                 if (activeSession) {
                     setCurrentSessionId(activeSession.id.toString());
                 }
@@ -111,13 +129,13 @@ export default function PromoteStudentsPage() {
                     section_id: currentSectionId
                 }
             });
-            const fetchedStudents = (response.data.data || []).map((s: any) => ({
+            const fetchedStudents = (response.data.data || []).map((s: Student) => ({
                 ...s,
                 result: "pass", // Default Pass
                 status: "continue" // Default Continue
             }));
             setStudents(fetchedStudents);
-            setSelectedStudentIds(fetchedStudents.map((s: any) => s.id));
+            setSelectedStudentIds(fetchedStudents.map((s: Student) => s.id));
             setHasSearched(true);
         } catch (error) {
             console.error("Error searching students:", error);
@@ -156,9 +174,10 @@ export default function PromoteStudentsPage() {
             toast("success", "Students promoted successfully");
             setStudents([]);
             setSelectedStudentIds([]);
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error promoting students:", error);
-            toast("error", error.response?.data?.message || "Failed to promote students");
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast("error", err.response?.data?.message || "Failed to promote students");
         } finally {
             setPromoting(false);
         }
@@ -191,218 +210,272 @@ export default function PromoteStudentsPage() {
     return (
         <div className="space-y-6">
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border p-4">
-                <h2 className="text-lg font-medium text-gray-800 border-b pb-2 mb-4">Select Criteria</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                        <Label className="text-xs font-semibold text-gray-600">
-                            Academic Session <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={currentSessionId} onValueChange={setCurrentSessionId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Session" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sessions.map(s => (
-                                    <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Choose session, class &amp; section to find students</p>
                     </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-semibold text-gray-600">
-                            Class <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={currentClassId} onValueChange={(val) => { setCurrentClassId(val); setCurrentSectionId(""); }}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Class" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {classes.map(c => (
-                                    <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                </CardHeader>
+                <CardContent className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600">
+                                Academic Session <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={currentSessionId} onValueChange={setCurrentSessionId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Session" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {sessions.map(s => (
+                                        <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600">
+                                Class <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={currentClassId} onValueChange={(val) => { setCurrentClassId(val); setCurrentSectionId(""); }}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Class" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {classes.map(c => (
+                                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600">
+                                Section <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={currentSectionId} onValueChange={setCurrentSectionId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Section" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {filteredSections.map(s => (
+                                        <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-semibold text-gray-600">
-                            Section <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={currentSectionId} onValueChange={setCurrentSectionId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Section" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {filteredSections.map(s => (
-                                    <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="flex justify-end pt-2 border-t mt-4">
+                        <Button
+                            onClick={handleSearch}
+                            disabled={searching || loading}
+                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-6 h-9 text-xs gap-2 transition-all duration-300 shadow-md"
+                        >
+                            {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                            Search
+                        </Button>
                     </div>
-                </div>
-                <div className="flex justify-end pt-2 border-t mt-4">
-                    <Button
-                        onClick={handleSearch}
-                        disabled={searching || loading}
-                        className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-6 h-9 text-xs gap-2 transition-all duration-300 shadow-md"
-                    >
-                        {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                        Search
-                    </Button>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
+
+            {/* Searching Skeleton */}
+            {searching && (
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <TrendingUp className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">Loading students…</p>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                        <div className="rounded-md border overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-gray-50 text-[11px] uppercase">
+                                    <TableRow>
+                                        <TableHead className="w-[40px] px-4"></TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Admission No</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Student Name</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Father Name</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Date Of Birth</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Current Result</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Next Session Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    <TableSkeleton rows={5} cols={7} />
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Empty State */}
-            {hasSearched && students.length === 0 && (
+            {hasSearched && !searching && students.length === 0 && (
                 <div className="bg-white rounded-lg shadow-sm border p-8 flex flex-col items-center justify-center text-center animate-in fade-in slide-in-from-top-4 duration-500">
                     <div className="bg-orange-50 p-4 rounded-full mb-4">
                         <Search className="h-8 w-8 text-orange-500" />
                     </div>
                     <h3 className="text-lg font-medium text-gray-800 mb-1">No Students Found</h3>
                     <p className="text-sm text-gray-500 max-w-sm">
-                        We couldn't find any active students for the selected Session, Class, and Section criteria. Please verify your selection and try again.
+                        We couldn&apos;t find any active students for the selected Session, Class, and Section criteria. Please verify your selection and try again.
                     </p>
                 </div>
             )}
 
             {/* Student List Section */}
-            {students.length > 0 && (
-                <div className="bg-white rounded-lg shadow-sm border p-4 space-y-4 font-sans animate-in fade-in slide-in-from-top-4 duration-500">
-                    <h2 className="text-lg font-medium text-gray-800 border-b pb-2">Student List</h2>
-                    
-                    {/* Promotion Target Criteria */}
-                    <div className="bg-indigo-50/50 p-4 rounded-md border border-indigo-100 mb-4">
-                        <h3 className="text-sm font-medium text-indigo-800 mb-3">Target For Promotion</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-semibold text-gray-600">
-                                    Promote In Session <span className="text-red-500">*</span>
-                                </Label>
-                                <Select value={promoteSessionId} onValueChange={setPromoteSessionId}>
-                                    <SelectTrigger className="bg-white">
-                                        <SelectValue placeholder="Select Session" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {sessions.map(s => (
-                                            <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-semibold text-gray-600">
-                                    Promote To Class <span className="text-red-500">*</span>
-                                </Label>
-                                <Select value={promoteClassId} onValueChange={(val) => { setPromoteClassId(val); setPromoteSectionId(""); }}>
-                                    <SelectTrigger className="bg-white">
-                                        <SelectValue placeholder="Select Class" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {classes.map(c => (
-                                            <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-semibold text-gray-600">
-                                    Promote To Section <span className="text-red-500">*</span>
-                                </Label>
-                                <Select value={promoteSectionId} onValueChange={setPromoteSectionId}>
-                                    <SelectTrigger className="bg-white">
-                                        <SelectValue placeholder="Select Section" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {promoteFilteredSections.map(s => (
-                                            <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+            {!searching && students.length > 0 && (
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 font-sans animate-in fade-in slide-in-from-top-4 duration-500">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <TrendingUp className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{selectedStudentIds.length} of {students.length} student{students.length === 1 ? '' : 's'} selected</p>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-4">
+                        {/* Promotion Target Criteria */}
+                        <div className="bg-indigo-50/50 p-4 rounded-md border border-indigo-100 mb-4">
+                            <h3 className="text-sm font-medium text-indigo-800 mb-3">Target For Promotion</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold text-gray-600">
+                                        Promote In Session <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Select value={promoteSessionId} onValueChange={setPromoteSessionId}>
+                                        <SelectTrigger className="bg-white">
+                                            <SelectValue placeholder="Select Session" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {sessions.map(s => (
+                                                <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold text-gray-600">
+                                        Promote To Class <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Select value={promoteClassId} onValueChange={(val) => { setPromoteClassId(val); setPromoteSectionId(""); }}>
+                                        <SelectTrigger className="bg-white">
+                                            <SelectValue placeholder="Select Class" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {classes.map(c => (
+                                                <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold text-gray-600">
+                                        Promote To Section <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Select value={promoteSectionId} onValueChange={setPromoteSectionId}>
+                                        <SelectTrigger className="bg-white">
+                                            <SelectValue placeholder="Select Section" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {promoteFilteredSections.map(s => (
+                                                <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="rounded-md border overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-gray-50 text-[11px] uppercase">
-                                <TableRow>
-                                    <TableHead className="w-[40px] px-4">
-                                        <Checkbox
-                                            checked={selectedStudentIds.length === students.length && students.length > 0}
-                                            onCheckedChange={toggleSelectAll}
-                                            className="border-gray-300"
-                                        />
-                                    </TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Admission No</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Student Name</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Father Name</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Date Of Birth</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Current Result</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Next Session Status</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {students.map((student) => (
-                                    <TableRow key={student.id} className="text-[13px] hover:bg-gray-50/50">
-                                        <TableCell className="px-4">
+                        <div className="rounded-md border overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-gray-50 text-[11px] uppercase">
+                                    <TableRow>
+                                        <TableHead className="w-[40px] px-4">
                                             <Checkbox
-                                                checked={selectedStudentIds.includes(student.id)}
-                                                onCheckedChange={() => toggleSelectStudent(student.id)}
+                                                checked={selectedStudentIds.length === students.length && students.length > 0}
+                                                onCheckedChange={toggleSelectAll}
                                                 className="border-gray-300"
                                             />
-                                        </TableCell>
-                                        <TableCell className="text-gray-600">{student.admission_no}</TableCell>
-                                        <TableCell className="text-gray-900 font-medium">{student.name}</TableCell>
-                                        <TableCell className="text-gray-600">{student.father_name}</TableCell>
-                                        <TableCell className="text-gray-600">{student.dob}</TableCell>
-                                        <TableCell>
-                                            <RadioGroup
-                                                value={student.result}
-                                                onValueChange={(val) => handleResultChange(student.id, val as "pass" | "fail")}
-                                                className="flex gap-4"
-                                            >
-                                                <div className="flex items-center space-x-1.5">
-                                                    <RadioGroupItem value="pass" id={`result-pass-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
-                                                    <Label htmlFor={`result-pass-${student.id}`} className="text-xs font-medium text-gray-700">Pass</Label>
-                                                </div>
-                                                <div className="flex items-center space-x-1.5">
-                                                    <RadioGroupItem value="fail" id={`result-fail-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
-                                                    <Label htmlFor={`result-fail-${student.id}`} className="text-xs font-medium text-gray-700">Fail</Label>
-                                                </div>
-                                            </RadioGroup>
-                                        </TableCell>
-                                        <TableCell>
-                                            <RadioGroup
-                                                value={student.status}
-                                                onValueChange={(val) => handleStatusChange(student.id, val as "continue" | "leave")}
-                                                className="flex gap-4"
-                                            >
-                                                <div className="flex items-center space-x-1.5">
-                                                    <RadioGroupItem value="continue" id={`status-cont-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
-                                                    <Label htmlFor={`status-cont-${student.id}`} className="text-xs font-medium text-gray-700">Continue</Label>
-                                                </div>
-                                                <div className="flex items-center space-x-1.5">
-                                                    <RadioGroupItem value="leave" id={`status-leave-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
-                                                    <Label htmlFor={`status-leave-${student.id}`} className="text-xs font-medium text-gray-700">Leave</Label>
-                                                </div>
-                                            </RadioGroup>
-                                        </TableCell>
+                                        </TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Admission No</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Student Name</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Father Name</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Date Of Birth</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Current Result</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">Next Session Status</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <div className="flex justify-end pt-4">
-                        <Button
-                            onClick={handlePromote}
-                            disabled={promoting || selectedStudentIds.length === 0}
-                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-xs shadow-md transition-all duration-300"
-                        >
-                            {promoting && <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />}
-                            Promote
-                        </Button>
-                    </div>
-                </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {students.map((student) => (
+                                        <TableRow key={student.id} className="text-[13px] hover:bg-gray-50/50">
+                                            <TableCell className="px-4">
+                                                <Checkbox
+                                                    checked={selectedStudentIds.includes(student.id)}
+                                                    onCheckedChange={() => toggleSelectStudent(student.id)}
+                                                    className="border-gray-300"
+                                                />
+                                            </TableCell>
+                                            <TableCell className="text-gray-600">{student.admission_no}</TableCell>
+                                            <TableCell className="text-gray-900 font-medium">{student.name}</TableCell>
+                                            <TableCell className="text-gray-600">{student.father_name}</TableCell>
+                                            <TableCell className="text-gray-600">{student.dob}</TableCell>
+                                            <TableCell>
+                                                <RadioGroup
+                                                    value={student.result}
+                                                    onValueChange={(val) => handleResultChange(student.id, val as "pass" | "fail")}
+                                                    className="flex gap-4"
+                                                >
+                                                    <div className="flex items-center space-x-1.5">
+                                                        <RadioGroupItem value="pass" id={`result-pass-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
+                                                        <Label htmlFor={`result-pass-${student.id}`} className="text-xs font-medium text-gray-700">Pass</Label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-1.5">
+                                                        <RadioGroupItem value="fail" id={`result-fail-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
+                                                        <Label htmlFor={`result-fail-${student.id}`} className="text-xs font-medium text-gray-700">Fail</Label>
+                                                    </div>
+                                                </RadioGroup>
+                                            </TableCell>
+                                            <TableCell>
+                                                <RadioGroup
+                                                    value={student.status}
+                                                    onValueChange={(val) => handleStatusChange(student.id, val as "continue" | "leave")}
+                                                    className="flex gap-4"
+                                                >
+                                                    <div className="flex items-center space-x-1.5">
+                                                        <RadioGroupItem value="continue" id={`status-cont-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
+                                                        <Label htmlFor={`status-cont-${student.id}`} className="text-xs font-medium text-gray-700">Continue</Label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-1.5">
+                                                        <RadioGroupItem value="leave" id={`status-leave-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
+                                                        <Label htmlFor={`status-leave-${student.id}`} className="text-xs font-medium text-gray-700">Leave</Label>
+                                                    </div>
+                                                </RadioGroup>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        <div className="flex justify-end pt-4">
+                            <Button
+                                onClick={handlePromote}
+                                disabled={promoting || selectedStudentIds.length === 0}
+                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-xs shadow-md transition-all duration-300"
+                            >
+                                {promoting && <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />}
+                                Promote
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
 
             {students.length === 0 && !searching && (

@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-    Search, Printer, Clock, BookOpen, MapPin, AlertCircle, LayoutGrid, Loader2
+    Search, Printer, Clock, MapPin, AlertCircle, LayoutGrid, Loader2, Filter, CalendarRange
 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -22,6 +23,46 @@ interface TimetableEntry {
 interface TimetableDay {
     day: string;
     entries: TimetableEntry[];
+}
+
+interface Staff {
+    id: number | string;
+    name: string;
+    staff_id?: string;
+    role?: string;
+}
+
+interface ApiTimetableEntry {
+    id?: number;
+    day?: string;
+    start_time?: string;
+    end_time?: string;
+    room?: string;
+    school_class?: { name?: string };
+    section?: { name?: string };
+    subject?: { name?: string; code?: string };
+}
+
+interface ApiTimetableDay {
+    day: string;
+    entries: ApiTimetableEntry[];
+}
+
+function TimetableSkeleton() {
+    return (
+        <div className="flex min-w-max gap-4">
+            {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="flex-1 min-w-[220px]">
+                    <div className="h-10 rounded-t-lg bg-muted/60 animate-pulse mb-3" />
+                    <div className="space-y-3 px-1">
+                        {Array.from({ length: 4 }).map((_, j) => (
+                            <div key={j} className="h-20 rounded-lg bg-muted/60 animate-pulse" />
+                        ))}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
 }
 
 const mockTimetable: TimetableDay[] = [
@@ -143,11 +184,11 @@ export default function TeachersTimetablePage() {
     }, [settings?.start_day_of_week]);
 
     // Prerequisite states
-    const [staffList, setStaffList] = useState<any[]>([]);
+    const [staffList, setStaffList] = useState<Staff[]>([]);
     const [selectedStaffId, setSelectedStaffId] = useState<string>("");
 
     // Timetable data
-    const [timetableData, setTimetableData] = useState<any[]>([]);
+    const [timetableData, setTimetableData] = useState<ApiTimetableDay[]>([]);
 
     // Initialize/Update empty timetable grid when orderedDays changes
     useEffect(() => {
@@ -158,15 +199,21 @@ export default function TeachersTimetablePage() {
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
 
+    // Total scheduled entries for the header subtitle
+    const totalEntries = useMemo(
+        () => timetableData.reduce((sum, d) => sum + (d.entries?.length || 0), 0),
+        [timetableData]
+    );
+
     // Load staff list (Teachers only)
     useEffect(() => {
         const fetchStaff = async () => {
             setLoading(true);
             try {
-                const res = await api.get("/hr/staff-directory", { 
-                    params: { role: 'Teacher', no_paginate: true, active: 'all' } 
+                const res = await api.get("/hr/staff-directory", {
+                    params: { role: 'Teacher', no_paginate: true, active: 'all' }
                 });
-                const teachers = (res.data?.data || res.data || []).filter((u: any) => u.role === 'Teacher');
+                const teachers = (res.data?.data || res.data || []).filter((u: Staff) => u.role === 'Teacher');
                 setStaffList(teachers);
             } catch (error) {
                 console.error("Error fetching staff:", error);
@@ -194,7 +241,7 @@ export default function TeachersTimetablePage() {
             // Group entries by day in correct order
             const grouped = orderedDays.map(day => ({
                 day,
-                entries: entries.filter((e: any) => e.day === day)
+                entries: entries.filter((e: ApiTimetableEntry) => e.day === day)
             }));
             setTimetableData(grouped);
             toast("success", "Timetable loaded");
@@ -221,98 +268,117 @@ export default function TeachersTimetablePage() {
             </div>
 
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 no-print select-criteria-section">
-                <div className="flex flex-col space-y-2">
-                    <Label htmlFor="teacher" className="text-xs font-semibold text-gray-600 uppercase">
-                        Teachers <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="flex gap-2 max-w-2xl">
-                        <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-                            <SelectTrigger id="teacher" className="h-10 flex-1">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {staffList.map(s => (
-                                    <SelectItem key={s.id} value={s.id.toString()}>{s.name} ({s.staff_id})</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Button
-                            onClick={handleSearch}
-                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-10 text-xs shadow-md transition-all duration-300"
-                            disabled={searching || loading}
-                        >
-                            {searching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
-                            Search
-                        </Button>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 no-print select-criteria-section">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{staffList.length} teacher{staffList.length === 1 ? '' : 's'} available</p>
                     </div>
-                </div>
-            </div>
+                </CardHeader>
+                <CardContent className="p-4">
+                    <div className="flex flex-col space-y-2">
+                        <Label htmlFor="teacher" className="text-xs font-semibold text-gray-600 uppercase">
+                            Teachers <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="flex gap-2 max-w-2xl">
+                            <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+                                <SelectTrigger id="teacher" className="h-10 flex-1">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {staffList.map(s => (
+                                        <SelectItem key={s.id} value={s.id.toString()}>{s.name} ({s.staff_id})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Button
+                                onClick={handleSearch}
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-10 text-xs shadow-md transition-all duration-300"
+                                disabled={searching || loading}
+                            >
+                                {searching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                                Search
+                            </Button>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Timetable Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden relative min-h-[600px]">
-                <div className="absolute right-4 top-4 z-10 no-print">
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 relative min-h-[600px]">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <CalendarRange className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Teachers Timetable</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{totalEntries} scheduled entr{totalEntries === 1 ? 'y' : 'ies'}</p>
+                        </div>
+                    </div>
                     <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white rounded shadow-sm p-0 border-0"
+                        className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white rounded shadow-sm p-0 border-0 no-print"
                         onClick={handlePrint}
                     >
                         <Printer className="h-4 w-4" />
                     </Button>
-                </div>
+                </CardHeader>
 
-                <div className="overflow-x-auto pt-14 px-4 pb-4">
-                    {searching ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                            <Loader2 className="h-10 w-10 animate-spin mb-4 text-indigo-500" />
-                            <p>Loading teacher's timetable...</p>
-                        </div>
-                    ) : (
-                        <div className="flex min-w-max gap-4">
-                            {timetableData.map((dayData) => (
-                                <div key={dayData.day} className="flex-1 min-w-[220px]">
-                                    <div className="bg-gray-50 py-2.5 px-3 text-left mb-3 rounded-t-lg border-b-2 border-indigo-500">
-                                        <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">{dayData.day}</span>
-                                    </div>
-                                    <div className="space-y-3 px-1">
-                                        {dayData.entries.length > 0 ? (
-                                            dayData.entries.map((entry: any, idx: number) => (
-                                                <div key={idx} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-all duration-200 border-l-4 border-l-indigo-400">
-                                                    <div className="space-y-2 text-[11px]">
-                                                        <div className="flex items-start gap-2">
-                                                            <LayoutGrid className="h-3.5 w-3.5 text-indigo-500 mt-0.5" />
-                                                            <div>
-                                                                <span className="font-bold text-gray-900 block">Class: {entry.school_class?.name}({entry.section?.name})</span>
-                                                                <span className="text-gray-600 font-medium">Subject: {entry.subject?.name} ({entry.subject?.code})</span>
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto px-4 py-4">
+                        {searching ? (
+                            <TimetableSkeleton />
+                        ) : (
+                            <div className="flex min-w-max gap-4">
+                                {timetableData.map((dayData) => (
+                                    <div key={dayData.day} className="flex-1 min-w-[220px]">
+                                        <div className="bg-gray-50 py-2.5 px-3 text-left mb-3 rounded-t-lg border-b-2 border-indigo-500">
+                                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">{dayData.day}</span>
+                                        </div>
+                                        <div className="space-y-3 px-1">
+                                            {dayData.entries.length > 0 ? (
+                                                dayData.entries.map((entry: ApiTimetableEntry, idx: number) => (
+                                                    <div key={idx} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-all duration-200 border-l-4 border-l-indigo-400">
+                                                        <div className="space-y-2 text-[11px]">
+                                                            <div className="flex items-start gap-2">
+                                                                <LayoutGrid className="h-3.5 w-3.5 text-indigo-500 mt-0.5" />
+                                                                <div>
+                                                                    <span className="font-bold text-gray-900 block">Class: {entry.school_class?.name}({entry.section?.name})</span>
+                                                                    <span className="text-gray-600 font-medium">Subject: {entry.subject?.name} ({entry.subject?.code})</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 pl-5">
+                                                                <Clock className="h-3.5 w-3.5 text-orange-400" />
+                                                                <span className="text-gray-700 font-semibold">{entry.start_time} - {entry.end_time}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 pl-5">
+                                                                <MapPin className="h-3.5 w-3.5 text-green-500" />
+                                                                <span className="text-gray-700 font-medium">Room: {entry.room || "N/A"}</span>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-2 pl-5">
-                                                            <Clock className="h-3.5 w-3.5 text-orange-400" />
-                                                            <span className="text-gray-700 font-semibold">{entry.start_time} - {entry.end_time}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 pl-5">
-                                                            <MapPin className="h-3.5 w-3.5 text-green-500" />
-                                                            <span className="text-gray-700 font-medium">Room: {entry.room || "N/A"}</span>
-                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="bg-gray-50/50 border border-dashed border-gray-200 rounded-lg p-4 text-center">
+                                                    <div className="flex flex-col items-center justify-center gap-1.5 text-gray-400">
+                                                        <AlertCircle className="h-5 w-5 opacity-50" />
+                                                        <span className="text-[10px] font-bold uppercase tracking-tighter">Not Scheduled</span>
                                                     </div>
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <div className="bg-gray-50/50 border border-dashed border-gray-200 rounded-lg p-4 text-center">
-                                                <div className="flex flex-col items-center justify-center gap-1.5 text-gray-400">
-                                                    <AlertCircle className="h-5 w-5 opacity-50" />
-                                                    <span className="text-[10px] font-bold uppercase tracking-tighter">Not Scheduled</span>
-                                                </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

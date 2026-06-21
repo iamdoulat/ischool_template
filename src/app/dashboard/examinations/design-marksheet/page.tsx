@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
+import {
     Pencil, Trash2, Eye, Upload, Image as ImageIcon, Search,
-    Copy, FileSpreadsheet, FileText, Printer, Columns, 
-    ChevronLeft, ChevronRight, Palette, Layout, Settings2, FileCheck
+    Copy, FileSpreadsheet, FileText, Printer, Columns,
+    ChevronLeft, ChevronRight, Palette, FileBadge, Settings2, FileCheck
 } from "lucide-react";
 import {
     AlertDialog,
@@ -32,13 +32,60 @@ interface Marksheet {
     is_active: boolean;
 }
 
+interface MarksheetFormData {
+    name: string;
+    exam_name: string;
+    school_name: string;
+    exam_center: string;
+    body_text: string;
+    footer_text: string;
+    printing_date: string;
+    header_image: string;
+    left_logo: string;
+    right_logo: string;
+    left_sign: string;
+    middle_sign: string;
+    right_sign: string;
+    background_image: string;
+    show_name: boolean;
+    show_father_name: boolean;
+    show_mother_name: boolean;
+    show_exam_number: boolean;
+    show_admission_no: boolean;
+    show_division: boolean;
+    show_roll_no: boolean;
+    show_photo: boolean;
+    show_class: boolean;
+    show_section: boolean;
+    show_status: boolean;
+    show_remark: boolean;
+    is_active: boolean;
+    [key: string]: string | boolean;
+}
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <TableRow key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="px-6 py-4">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
+
 export default function DesignMarksheetPage() {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [templates, setTemplates] = useState<Marksheet[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    
+
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState("50");
@@ -48,7 +95,7 @@ export default function DesignMarksheetPage() {
     // Form State
     const [editMode, setEditMode] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<MarksheetFormData>({
         name: "",
         exam_name: "",
         school_name: "",
@@ -132,7 +179,7 @@ export default function DesignMarksheetPage() {
         }
     };
 
-    const handleEdit = (template: any) => {
+    const handleEdit = (template: MarksheetFormData & { id: string }) => {
         setEditMode(true);
         setSelectedId(template.id);
         setFormData({
@@ -193,12 +240,19 @@ export default function DesignMarksheetPage() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Left Column: Add Marksheet Form */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col h-[calc(100vh-120px)] sticky top-4">
-                        <div className="p-6 border-b border-gray-50 bg-gray-50/30 rounded-t-2xl flex items-center gap-3">
-                            <Palette className="h-5 w-5 text-indigo-500" />
-                            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest">
-                                {editMode ? "Edit Marksheet" : "Add Marksheet"}
-                            </h2>
+                    <div className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 rounded-xl flex flex-col h-[calc(100vh-120px)] sticky top-6">
+                        <div className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Palette className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h2 className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                    {editMode ? "Edit Marksheet" : "Add Marksheet"}
+                                </h2>
+                                <p className="text-[11px] text-gray-500 mt-1">
+                                    {editMode ? "Update template configuration" : "Create a new marksheet template"}
+                                </p>
+                            </div>
                         </div>
 
                         <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
@@ -206,29 +260,29 @@ export default function DesignMarksheetPage() {
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                                     Template Name <span className="text-red-500">*</span>
                                 </Label>
-                                <Input 
+                                <Input
                                     value={formData.name}
                                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                                     placeholder="e.g. School Final Marksheet"
-                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Exam Name</Label>
-                                <Input 
+                                <Input
                                     value={formData.exam_name}
                                     onChange={(e) => setFormData({...formData, exam_name: e.target.value})}
-                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">School Name</Label>
-                                <Input 
+                                <Input
                                     value={formData.school_name}
                                     onChange={(e) => setFormData({...formData, school_name: e.target.value})}
-                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
 
@@ -245,10 +299,10 @@ export default function DesignMarksheetPage() {
                                 ].map((item) => (
                                     <div key={item.key} className="flex items-center justify-between group">
                                         <Label className="text-[11px] font-bold text-gray-600 cursor-pointer group-hover:text-indigo-600 transition-colors">{item.label}</Label>
-                                        <Switch 
-                                            checked={(formData as any)[item.key]} 
+                                        <Switch
+                                            checked={Boolean((formData as Record<string, unknown>)[item.key])}
                                             onCheckedChange={(val) => setFormData({...formData, [item.key]: val})}
-                                            className="data-[state=checked]:bg-indigo-500 scale-90" 
+                                            className="data-[state=checked]:bg-indigo-500 scale-90"
                                         />
                                     </div>
                                 ))}
@@ -275,8 +329,8 @@ export default function DesignMarksheetPage() {
                                     Cancel
                                 </Button>
                             )}
-                            <Button 
-                                onClick={handleSave} 
+                            <Button
+                                onClick={handleSave}
                                 disabled={submitting}
                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
                             >
@@ -288,15 +342,20 @@ export default function DesignMarksheetPage() {
 
                 {/* Right Column: Marksheet List */}
                 <div className="lg:col-span-3">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
-                        <div className="flex items-center justify-between border-b border-gray-50 pb-4">
-                            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
-                                <Layout className="h-5 w-5 text-indigo-500" />
-                                Marksheet Templates
-                            </h2>
+                    <div className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 rounded-xl">
+                        <div className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <div className="flex items-center gap-2.5">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                    <FileBadge className="h-5 w-5" />
+                                </span>
+                                <div>
+                                    <h2 className="text-base font-bold tracking-tight text-slate-800 leading-none">Marksheet Templates</h2>
+                                    <p className="text-[11px] text-gray-500 mt-1">{totalEntries} template{totalEntries === 1 ? "" : "s"} configured</p>
+                                </div>
+                            </div>
                             <div className="flex items-center gap-2">
                                 <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                                    <SelectTrigger className="w-[65px] h-8 text-xs border-gray-200 rounded-lg">
+                                    <SelectTrigger className="w-[65px] h-8 text-xs border-gray-200 rounded-lg bg-white">
                                         <SelectValue placeholder="50" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -326,119 +385,114 @@ export default function DesignMarksheetPage() {
                             </div>
                         </div>
 
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                            <div className="relative w-full md:w-72">
-                                <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
-                                <Input
-                                    placeholder="Search templates..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
-                                />
+                        <div className="p-6 space-y-6">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                                <div className="relative w-full md:w-72">
+                                    <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
+                                    <Input
+                                        placeholder="Search templates..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
-                            <Table>
-                                <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
-                                    <TableRow className="hover:bg-transparent border-gray-50">
-                                        <TableHead className="py-4 px-6">Certificate Name</TableHead>
-                                        <TableHead className="py-4 px-6">Design Status</TableHead>
-                                        <TableHead className="py-4 px-6">Assets</TableHead>
-                                        <TableHead className="py-4 px-6 text-right">Action</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="h-48 text-center">
-                                                <div className="flex flex-col items-center justify-center space-y-2">
-                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
-                                                    <p className="text-[10px] font-bold uppercase tracking-widest">Syncing Design Repository...</p>
-                                                </div>
-                                            </TableCell>
+                            <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
+                                <Table>
+                                    <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
+                                        <TableRow className="hover:bg-transparent border-gray-50">
+                                            <TableHead className="py-4 px-6">Certificate Name</TableHead>
+                                            <TableHead className="py-4 px-6">Design Status</TableHead>
+                                            <TableHead className="py-4 px-6">Assets</TableHead>
+                                            <TableHead className="py-4 px-6 text-right">Action</TableHead>
                                         </TableRow>
-                                    ) : templates.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="h-32 text-center text-gray-400 text-sm italic">
-                                                No designs found. Create your first template on the left.
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        templates.map((item) => (
-                                            <TableRow key={item.id} className="text-[13px] text-gray-600 hover:bg-gray-50/30 group border-b last:border-0 border-gray-50 transition-colors">
-                                                <TableCell className="py-4 px-6">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-indigo-600 uppercase tracking-tight">{item.name}</span>
-                                                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">System ID: {item.id}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="py-4 px-6">
-                                                    {item.is_active ? (
-                                                        <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full font-bold text-[9px] border border-emerald-100 flex items-center gap-1.5 w-fit">
-                                                            <FileCheck className="h-3 w-3" /> ACTIVE
-                                                        </span>
-                                                    ) : (
-                                                        <span className="bg-gray-50 text-gray-400 px-3 py-1 rounded-full font-bold text-[9px] border border-gray-100 flex items-center gap-1.5 w-fit">
-                                                            <Settings2 className="h-3 w-3" /> DRAFT
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="py-4 px-6">
-                                                    <div className="flex gap-2">
-                                                        {item.background_image ? (
-                                                            <div className="h-8 w-8 bg-indigo-50 rounded-lg border border-indigo-100 flex items-center justify-center" title="Has Background">
-                                                                <ImageIcon className="h-4 w-4 text-indigo-500" />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="h-8 w-8 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center opacity-30">
-                                                                <ImageIcon className="h-4 w-4 text-gray-400" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="py-4 px-6 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md">
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button size="icon" variant="ghost" onClick={() => setDeleteId(item.id)} className="h-8 w-8 bg-rose-500 hover:bg-rose-600 text-white rounded-lg shadow-md">
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {loading ? (
+                                            <TableSkeleton rows={5} cols={4} />
+                                        ) : templates.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                    No data found
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-
-                        <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
-                            <div>
-                                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries
+                                        ) : (
+                                            templates.map((item) => (
+                                                <TableRow key={item.id} className="text-[13px] text-gray-600 hover:bg-gray-50/30 group border-b last:border-0 border-gray-50 transition-colors">
+                                                    <TableCell className="py-4 px-6">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-indigo-600 uppercase tracking-tight">{item.name}</span>
+                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">System ID: {item.id}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="py-4 px-6">
+                                                        {item.is_active ? (
+                                                            <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full font-bold text-[9px] border border-emerald-100 flex items-center gap-1.5 w-fit">
+                                                                <FileCheck className="h-3 w-3" /> ACTIVE
+                                                            </span>
+                                                        ) : (
+                                                            <span className="bg-gray-50 text-gray-400 px-3 py-1 rounded-full font-bold text-[9px] border border-gray-100 flex items-center gap-1.5 w-fit">
+                                                                <Settings2 className="h-3 w-3" /> DRAFT
+                                                            </span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="py-4 px-6">
+                                                        <div className="flex gap-2">
+                                                            {item.background_image ? (
+                                                                <div className="h-8 w-8 bg-indigo-50 rounded-lg border border-indigo-100 flex items-center justify-center" title="Has Background">
+                                                                    <ImageIcon className="h-4 w-4 text-indigo-500" />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="h-8 w-8 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center opacity-30">
+                                                                    <ImageIcon className="h-4 w-4 text-gray-400" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="py-4 px-6 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <Button size="icon" variant="ghost" className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                                <Eye className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" onClick={() => setDeleteId(item.id)} className="h-8 w-8 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
                             </div>
-                            <div className="flex gap-2">
-                                <Button 
-                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                    variant="outline" size="sm" className="h-8 w-8 p-0 border-gray-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600" 
-                                    disabled={currentPage === 1}
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <Button variant="default" size="sm" className="h-8 w-8 p-0 btn-gradient text-white border-0 rounded-lg shadow-md">
-                                    {currentPage}
-                                </Button>
-                                <Button 
-                                    onClick={() => setCurrentPage(p => p + 1)}
-                                    variant="outline" size="sm" className="h-8 w-8 p-0 border-gray-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600" 
-                                    disabled={templates.length < itemsPerPage}
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
+
+                            <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
+                                <div>
+                                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        variant="outline" size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600"
+                                        disabled={currentPage === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="default" size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md">
+                                        {currentPage}
+                                    </Button>
+                                    <Button
+                                        onClick={() => setCurrentPage(p => p + 1)}
+                                        variant="outline" size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600"
+                                        disabled={templates.length < itemsPerPage}
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -456,7 +510,7 @@ export default function DesignMarksheetPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
                         <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
                             Yes, Delete Template
                         </AlertDialogAction>
                     </AlertDialogFooter>

@@ -1,7 +1,7 @@
 "use client";
 
-import { Search, ChevronDown, Check, Loader2, Info, ArrowRight, Trash2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Search, ChevronDown, Check, Loader2, Info, ArrowRight, Trash2, ArrowRightLeft, Filter } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect } from "react";
@@ -10,6 +10,23 @@ import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface Class {
     id: number;
@@ -85,16 +102,17 @@ export default function FeesCarryForwardPage() {
                 }
             });
             const data = res.data.data || [];
-            setStudents(data.map((s: Student) => ({ 
-                ...s, 
-                selected: s.balance > 0 && !s.is_carried_forward 
+            setStudents(data.map((s: Student) => ({
+                ...s,
+                selected: s.balance > 0 && !s.is_carried_forward
             })));
-            
+
             if (data.length === 0) {
                 toast("info", "No students found with pending balances in the previous session.");
             }
-        } catch (error: any) {
-            toast("error", error.response?.data?.message || "Failed to fetch students");
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast("error", err.response?.data?.message || "Failed to fetch students");
         } finally {
             setLoading(false);
         }
@@ -150,16 +168,14 @@ export default function FeesCarryForwardPage() {
             </div>
 
             {/* Selection Card */}
-            <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
-                <CardHeader className="border-b border-muted/20 bg-muted/5">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-primary/10 rounded-lg text-primary">
-                            <Search className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-xl">Select Criteria</CardTitle>
-                            <CardDescription>Filter students by class and section to identify pending balances.</CardDescription>
-                        </div>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Filter students by class and section</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-8">
@@ -170,7 +186,7 @@ export default function FeesCarryForwardPage() {
                                 Class <span className="text-destructive font-black">*</span>
                             </label>
                             <div className="relative">
-                                <select 
+                                <select
                                     value={selectedClass}
                                     onChange={handleClassChange}
                                     className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium text-muted-foreground"
@@ -190,7 +206,7 @@ export default function FeesCarryForwardPage() {
                                 Section <span className="text-destructive font-black">*</span>
                             </label>
                             <div className="relative">
-                                <select 
+                                <select
                                     value={selectedSection}
                                     onChange={(e) => setSelectedSection(e.target.value)}
                                     className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium text-muted-foreground"
@@ -220,11 +236,16 @@ export default function FeesCarryForwardPage() {
             </Card>
 
             {/* Results Table */}
-            {students.length > 0 ? (
-                <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
-                    <CardHeader className="border-b border-muted/20 bg-muted/5">
-                        <CardTitle className="text-xl">Students with Pending Balances</CardTitle>
-                        <CardDescription>Select students to carry forward their balances to the current session.</CardDescription>
+            {(loading || students.length > 0) ? (
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 animate-in slide-in-from-bottom-4 duration-500">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <ArrowRightLeft className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Students with Pending Balances</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{students.length} student{students.length === 1 ? '' : 's'} with pending balances</p>
+                        </div>
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
@@ -232,7 +253,7 @@ export default function FeesCarryForwardPage() {
                                 <thead>
                                     <tr className="border-b border-muted/20 bg-muted/10">
                                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground w-[80px]">
-                                            <Checkbox 
+                                            <Checkbox
                                                 checked={students.length > 0 && students.every(s => s.is_carried_forward || s.balance === 0 || s.selected)}
                                                 onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
                                                 className="h-4 w-4 rounded border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
@@ -245,46 +266,52 @@ export default function FeesCarryForwardPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-muted/10">
-                                    {students.map((student) => (
-                                        <tr key={student.id} className={cn(
-                                            "hover:bg-muted/5 transition-colors group border-b border-muted/10",
-                                            student.is_carried_forward && "bg-muted/20 opacity-60"
-                                        )}>
-                                            <td className="px-6 py-4">
-                                                <Checkbox 
-                                                    checked={student.selected}
-                                                    disabled={student.is_carried_forward || student.balance === 0}
-                                                    onCheckedChange={(checked) => handleSelectStudent(student.id, checked as boolean)}
-                                                    className="h-4 w-4 rounded border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4 text-xs font-bold text-muted-foreground">{student.admission_no}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs font-bold text-foreground">{student.name}</span>
-                                                    <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">{student.father_name}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-xs font-bold text-right text-primary">
-                                                {formatCurrency(student.balance)}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                {student.is_carried_forward ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-wider">
-                                                        <Check className="h-3 w-3" /> Done
-                                                    </span>
-                                                ) : student.balance === 0 ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-[9px] font-black uppercase tracking-wider">
-                                                        No Due
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 text-orange-500 text-[9px] font-black uppercase tracking-wider">
-                                                        Pending
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={5} />
+                                    ) : students.length === 0 ? (
+                                        <tr><td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
+                                    ) : (
+                                        students.map((student) => (
+                                            <tr key={student.id} className={cn(
+                                                "hover:bg-muted/5 transition-colors group border-b border-muted/10",
+                                                student.is_carried_forward && "bg-muted/20 opacity-60"
+                                            )}>
+                                                <td className="px-6 py-4">
+                                                    <Checkbox
+                                                        checked={student.selected}
+                                                        disabled={student.is_carried_forward || student.balance === 0}
+                                                        onCheckedChange={(checked) => handleSelectStudent(student.id, checked as boolean)}
+                                                        className="h-4 w-4 rounded border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-4 text-xs font-bold text-muted-foreground">{student.admission_no}</td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-foreground">{student.name}</span>
+                                                        <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">{student.father_name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-xs font-bold text-right text-primary">
+                                                    {formatCurrency(student.balance)}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    {student.is_carried_forward ? (
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-wider">
+                                                            <Check className="h-3 w-3" /> Done
+                                                        </span>
+                                                    ) : student.balance === 0 ? (
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-[9px] font-black uppercase tracking-wider">
+                                                            No Due
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 text-orange-500 text-[9px] font-black uppercase tracking-wider">
+                                                            Pending
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -304,7 +331,7 @@ export default function FeesCarryForwardPage() {
                 </Card>
             ) : (
                 !loading && selectedClass && selectedSection && (
-                    <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
                         <CardContent className="p-20 text-center">
                             <div className="flex flex-col items-center gap-4">
                                 <Info className="h-12 w-12 text-muted-foreground/30" />
@@ -320,4 +347,3 @@ export default function FeesCarryForwardPage() {
         </div>
     );
 }
-

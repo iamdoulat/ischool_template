@@ -14,32 +14,23 @@ import {
     MapPin,
     GraduationCap,
     Wallet,
-    Calendar,
-    Phone,
-    Mail,
-    Stethoscope,
-    Scale,
-    Weight,
-    Dna,
     Loader2,
     Percent,
     Check,
     X,
     RefreshCw
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn, formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
-import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/ui/dialog";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -277,7 +268,7 @@ export default function StudentAdmissionPage() {
         try {
             const response = await api.get(`/students/${siblingStudentId}`);
             const student = response.data.data;
-            
+
             // Sync parent/guardian details
             setFormData(prev => ({
                 ...prev,
@@ -296,7 +287,7 @@ export default function StudentAdmissionPage() {
                 guardian_address: student.guardian_address || "",
             }));
 
-            const photoUrl = student.student_photo || student.avatar 
+            const photoUrl = student.student_photo || student.avatar
                 ? getImageUrl(student.student_photo || student.avatar)
                 : null;
 
@@ -313,7 +304,7 @@ export default function StudentAdmissionPage() {
                 if (prev.some(s => s.id === newSibling.id)) return prev;
                 return [...prev, newSibling];
             });
-            
+
             setShowSiblingModal(false);
             toast("success", "Sibling added and details applied");
         } catch (error) {
@@ -403,13 +394,14 @@ export default function StudentAdmissionPage() {
 
             toast("success", "Student admitted successfully");
             window.location.reload(); // Quick reset
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error submitting admission:", error);
-            const message = error.response?.data?.message || "Failed to admit student";
+            const err = error as { response?: { data?: { message?: string; errors?: Record<string, unknown> } } };
+            const message = err.response?.data?.message || "Failed to admit student";
             toast("error", message);
-            if (error.response?.data?.errors) {
+            if (err.response?.data?.errors) {
                 // Log specific validation errors for easier debugging
-                console.log("Validation Errors:", error.response.data.errors);
+                console.log("Validation Errors:", err.response.data.errors);
             }
         } finally {
             setLoading(false);
@@ -532,14 +524,14 @@ export default function StudentAdmissionPage() {
                         <InputField label="Weight" value={formData.weight} onChange={(val) => handleChange("weight", val)} />
 
                         <DateField label="Measurement Date" value={formData.measurement_date} onChange={(val) => handleChange("measurement_date", val)} />
-                        
+
                         {/* Sibling Section Matching Screenshot */}
                         <div className="lg:col-span-4 mt-6">
                             <div className="bg-[#f8f9fa] border-b border-muted/50 px-4 py-2 flex items-center justify-between">
                                 <span className="text-sm font-medium text-foreground">Sibling</span>
                                 {selectedSiblings.length > 0 && (
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         onClick={() => setSelectedSiblings([])}
                                         className="bg-primary text-white text-[10px] px-3 py-1 rounded shadow-sm hover:bg-primary/90 transition-colors"
                                     >
@@ -552,10 +544,10 @@ export default function StudentAdmissionPage() {
                                     <div key={sibling.id} className="flex gap-4 p-3 border rounded-md bg-white min-w-[300px] shadow-sm relative group">
                                         <div className="h-20 w-20 rounded-lg bg-[#e9ecef] overflow-hidden border flex items-center justify-center shrink-0">
                                             {sibling.photo ? (
-                                                <img 
-                                                    src={sibling.photo.startsWith('http') ? sibling.photo : getImageUrl(sibling.photo)} 
-                                                    alt={sibling.name} 
-                                                    className="h-full w-full object-cover" 
+                                                <img
+                                                    src={sibling.photo.startsWith('http') ? sibling.photo : getImageUrl(sibling.photo)}
+                                                    alt={sibling.name}
+                                                    className="h-full w-full object-cover"
                                                 />
                                             ) : (
                                                 <Users className="h-10 w-10 text-muted-foreground/30" />
@@ -576,8 +568,8 @@ export default function StudentAdmissionPage() {
                                                 <span className="text-muted-foreground">{sibling.section_name}</span>
                                             </div>
                                         </div>
-                                        <button 
-                                            type="button" 
+                                        <button
+                                            type="button"
                                             onClick={() => setSelectedSiblings(prev => prev.filter(s => s.id !== sibling.id))}
                                             className="absolute top-2 right-2 h-6 w-6 rounded-full hover:bg-destructive/10 flex items-center justify-center text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
                                         >
@@ -585,12 +577,12 @@ export default function StudentAdmissionPage() {
                                         </button>
                                     </div>
                                 ))}
-                                <button 
-                                    type="button" 
+                                <button
+                                    type="button"
                                     onClick={() => setShowSiblingModal(true)}
                                     className="h-[106px] w-[300px] border-2 border-dashed border-primary/20 rounded-md text-primary font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/40 transition-all group"
                                 >
-                                    <Plus className="h-6 w-6 transition-transform group-hover:scale-110" /> 
+                                    <Plus className="h-6 w-6 transition-transform group-hover:scale-110" />
                                     <span>Add Sibling</span>
                                 </button>
                             </div>
@@ -756,8 +748,8 @@ export default function StudentAdmissionPage() {
                         <TextAreaField label="Guardian Address" rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
                     </div>
                     <div className="mt-6 pt-4 border-t border-muted/30">
-                        <button 
-                            type="button" 
+                        <button
+                            type="button"
                             onClick={() => setShowMoreDetails(!showMoreDetails)}
                             className="w-full flex items-center justify-between text-muted-foreground hover:text-foreground transition-colors py-2 px-1"
                         >
@@ -771,7 +763,7 @@ export default function StudentAdmissionPage() {
                             <div className="lg:col-span-4 mb-2">
                                 <h3 className="text-lg font-bold">Others Information</h3>
                             </div>
-                            
+
                             <div className="lg:col-span-2">
                                 <TextAreaField label="Current Address" rows={2} value={formData.current_address} onChange={(val) => handleChange("current_address", val)} />
                             </div>
@@ -783,9 +775,9 @@ export default function StudentAdmissionPage() {
                             <InputField label="Bank Name" value={formData.bank_name} onChange={(val) => handleChange("bank_name", val)} />
                             <InputField label="IFSC Code" value={formData.ifsc_code} onChange={(val) => handleChange("ifsc_code", val)} />
                             <InputField label="National Identification Number" value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
-                            
+
                             <InputField label="Local Identification Number" value={formData.local_identification_no} onChange={(val) => handleChange("local_identification_no", val)} />
-                            
+
                             <div className="py-2">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-3">
                                     RTE
@@ -909,15 +901,15 @@ export default function StudentAdmissionPage() {
                                 label=""
                                 value={siblingStudentId}
                                 onChange={setSiblingStudentId}
-                                options={siblingStudents.map(s => ({ 
-                                    label: `${s.name} ${s.last_name || ""} (${s.admission_no})`, 
-                                    value: s.id.toString() 
+                                options={siblingStudents.map(s => ({
+                                    label: `${s.name} ${s.last_name || ""} (${s.admission_no})`,
+                                    value: s.id.toString()
                                 }))}
                             />
                         </div>
                     </div>
                     <div className="px-6 py-4 border-t flex justify-end">
-                        <Button 
+                        <Button
                             onClick={handleAddSibling}
                             disabled={!siblingStudentId || loadingSiblings}
                             className="bg-primary hover:bg-primary/90 text-white px-6 rounded-lg flex items-center gap-2"
@@ -933,15 +925,15 @@ export default function StudentAdmissionPage() {
 }
 
 // Helper Components
-function SectionCard({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) {
+function SectionCard({ title, icon: Icon, children }: { title: string, icon: React.ElementType, children: React.ReactNode }) {
     return (
-        <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-muted/50 flex items-center gap-3 bg-muted/20">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                    <Icon className="h-5 w-5 text-primary" />
-                </div>
-                <h2 className="font-bold text-lg tracking-tight">{title}</h2>
-            </div>
+        <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+            <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                    <Icon className="h-5 w-5" />
+                </span>
+                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{title}</CardTitle>
+            </CardHeader>
             <CardContent className="p-8">
                 {children}
             </CardContent>
@@ -955,9 +947,9 @@ function DateField({ label, required, value = "", onChange }: { label: string, r
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
                 {label} {required && <span className="text-destructive">*</span>}
             </label>
-            <DatePicker 
-                value={value} 
-                onChange={onChange} 
+            <DatePicker
+                value={value}
+                onChange={onChange}
             />
         </div>
     );

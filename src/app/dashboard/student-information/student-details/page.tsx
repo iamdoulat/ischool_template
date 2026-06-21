@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import {
     Search,
-    ListFilter,
+    Filter,
     LayoutList,
     LayoutGrid,
     FolderSearch,
@@ -15,15 +15,15 @@ import {
     Pencil,
     Trash2,
     User,
+    Users,
     Mail,
     Phone,
     Calendar,
     BadgeCheck,
     X,
-    Check,
     GraduationCap
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -42,6 +42,43 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useImageUrl } from "@/lib/image-url";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
+
+function CardSkeleton({ count = 6 }: { count?: number }) {
+    return (
+        <>
+            {Array.from({ length: count }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-muted/30 p-4 space-y-3 bg-card animate-pulse">
+                    <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-full bg-muted/60" />
+                        <div className="space-y-2 flex-1">
+                            <div className="h-3 w-1/2 rounded bg-muted/60" />
+                            <div className="h-3 w-1/3 rounded bg-muted/60" />
+                        </div>
+                    </div>
+                    <div className="h-3 w-full rounded bg-muted/60" />
+                    <div className="h-3 w-3/4 rounded bg-muted/60" />
+                </div>
+            ))}
+        </>
+    );
+}
 
 interface Student {
     id: number;
@@ -89,7 +126,7 @@ export default function StudentDetailsPage() {
         from: 0,
         to: 0
     });
-    
+
     // Action Dialogs
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -179,16 +216,25 @@ export default function StudentDetailsPage() {
         }
     };
 
+    const tableHeaders = [
+        "Avatar", "Admission No", "Student Name", "Roll No.", "Class",
+        "Father Name", "Date Of Birth", "Gender", "Category",
+        "Mobile Number", "Status", "Action"
+    ];
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Select Criteria Card */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-muted/50 flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                        <ListFilter className="h-5 w-5 text-primary" />
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Filter students by class, section &amp; status</p>
                     </div>
-                    <h2 className="font-bold text-lg tracking-tight">Select Criteria</h2>
-                </div>
+                </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                         {/* Class and Section fields */}
@@ -312,7 +358,17 @@ export default function StudentDetailsPage() {
             </Card>
 
             {/* Results Table Card */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Users className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student Details</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{pagination.total} student{pagination.total === 1 ? "" : "s"} found</p>
+                    </div>
+                </CardHeader>
+
                 <div className="border-b border-muted/50">
                     <div className="flex px-2">
                         <button
@@ -345,17 +401,36 @@ export default function StudentDetailsPage() {
                 </div>
 
                 <div className="p-0 min-h-[400px]">
-                    {students.length > 0 ? (
+                    {loading ? (
                         viewMode === "list" ? (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-muted/30">
-                                            {[
-                                                "Avatar", "Admission No", "Student Name", "Roll No.", "Class",
-                                                "Father Name", "Date Of Birth", "Gender", "Category",
-                                                "Mobile Number", "Status", "Action"
-                                            ].map((header) => (
+                                            {tableHeaders.map((header) => (
+                                                <th key={header} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
+                                                    {header}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <TableSkeleton rows={8} cols={12} />
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                <CardSkeleton count={8} />
+                            </div>
+                        )
+                    ) : students.length > 0 ? (
+                        viewMode === "list" ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-muted/30">
+                                            {tableHeaders.map((header) => (
                                                 <th key={header} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
                                                     {header}
                                                 </th>
@@ -387,8 +462,8 @@ export default function StudentDetailsPage() {
                                                 <td className="px-6 py-4">
                                                     <Badge className={cn(
                                                         "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                                                        student.active 
-                                                            ? "bg-green-500/10 text-green-600 border-green-500/20" 
+                                                        student.active
+                                                            ? "bg-green-500/10 text-green-600 border-green-500/20"
                                                             : "bg-red-500/10 text-red-600 border-red-500/20"
                                                     )} variant="outline">
                                                         {student.active ? "Active" : "Disabled"}
@@ -396,10 +471,10 @@ export default function StudentDetailsPage() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="icon" 
-                                                            className="h-8 w-8 rounded-lg bg-orange-500/10 border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all shadow-sm"
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            className="h-8 w-8 rounded-lg bg-indigo-500 border-indigo-500 text-white hover:bg-indigo-600 transition-all shadow-sm"
                                                             onClick={() => {
                                                                 setSelectedStudent(student);
                                                                 setViewDialogOpen(true);
@@ -407,18 +482,18 @@ export default function StudentDetailsPage() {
                                                         >
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="icon" 
-                                                            className="h-8 w-8 rounded-lg bg-indigo-500/10 border-indigo-500/20 text-indigo-600 hover:bg-indigo-500 hover:text-white transition-all shadow-sm"
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            className="h-8 w-8 rounded-lg bg-amber-500 border-amber-500 text-white hover:bg-amber-600 transition-all shadow-sm"
                                                             onClick={() => router.push(`/dashboard/student-information/student-details/${student.id}/edit`)}
                                                         >
                                                             <Pencil className="h-4 w-4" />
                                                         </Button>
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="icon" 
-                                                            className="h-8 w-8 rounded-lg bg-red-500/10 border-red-500/20 text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            className="h-8 w-8 rounded-lg bg-red-500 border-red-500 text-white hover:bg-red-600 transition-all shadow-sm"
                                                             onClick={() => {
                                                                 setSelectedStudent(student);
                                                                 setDeleteDialogOpen(true);
@@ -438,10 +513,10 @@ export default function StudentDetailsPage() {
                                 {students.map((student) => (
                                     <div key={student.id} className="group relative bg-card rounded-lg border border-muted/50 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 overflow-hidden">
                                         <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2 z-10">
-                                            <Button 
-                                                variant="outline" 
-                                                size="icon" 
-                                                className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all shadow-lg"
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full bg-indigo-500 border-indigo-500 text-white hover:bg-indigo-600 transition-all shadow-lg"
                                                 onClick={() => {
                                                     setSelectedStudent(student);
                                                     setViewDialogOpen(true);
@@ -449,18 +524,18 @@ export default function StudentDetailsPage() {
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </Button>
-                                            <Button 
-                                                variant="outline" 
-                                                size="icon" 
-                                                className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm border-indigo-500/20 text-indigo-600 hover:bg-indigo-500 hover:text-white transition-all shadow-lg"
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full bg-amber-500 border-amber-500 text-white hover:bg-amber-600 transition-all shadow-lg"
                                                 onClick={() => router.push(`/dashboard/student-information/student-details/${student.id}/edit`)}
                                             >
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
-                                            <Button 
-                                                variant="outline" 
-                                                size="icon" 
-                                                className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm border-red-500/20 text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-lg"
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full bg-red-500 border-red-500 text-white hover:bg-red-600 transition-all shadow-lg"
                                                 onClick={() => {
                                                     setSelectedStudent(student);
                                                     setDeleteDialogOpen(true);
@@ -513,8 +588,8 @@ export default function StudentDetailsPage() {
                                                     </div>
                                                     <Badge className={cn(
                                                         "px-2 py-0 rounded-full text-[8px] font-bold uppercase tracking-widest border-none shadow-none h-4",
-                                                        student.active 
-                                                            ? "bg-green-500/10 text-green-600" 
+                                                        student.active
+                                                            ? "bg-green-500/10 text-green-600"
                                                             : "bg-red-500/10 text-red-600"
                                                     )}>
                                                         {student.active ? "Active" : "Disabled"}
@@ -548,41 +623,35 @@ export default function StudentDetailsPage() {
                             </div>
                             <div className="space-y-2">
                                 <p className="font-black text-xl tracking-tight text-foreground uppercase">
-                                    {loading ? "Loading Students..." : "No students found"}
+                                    No students found
                                 </p>
                                 <p className="text-sm text-muted-foreground max-w-[320px] mx-auto leading-relaxed">
-                                    {loading
-                                        ? "Please wait while we fetch the student records."
-                                        : "Click Search to show all students, or refine your filters above."
-                                    }
+                                    Click Search to show all students, or refine your filters above.
                                 </p>
                             </div>
-                            {!loading && (
-                                <div className="flex gap-3">
-                                    <Button variant="outline" className="h-12 px-6 rounded-lg" onClick={handleReset}>
-                                        <Search className="h-5 w-5" />
-                                        Try different criteria
-                                    </Button>
-                                    <Button variant="gradient" className="h-12 px-8 rounded-lg" onClick={() => window.location.href = "/dashboard/student-information/student-admission"}>
-                                        <Plus className="h-5 w-5" />
-                                        Add new record
-                                    </Button>
-                                </div>
-                            )}
+                            <div className="flex gap-3">
+                                <Button variant="outline" className="h-12 px-6 rounded-lg" onClick={handleReset}>
+                                    <Search className="h-5 w-5" />
+                                    Try different criteria
+                                </Button>
+                                <Button variant="gradient" className="h-12 px-8 rounded-lg" onClick={() => window.location.href = "/dashboard/student-information/student-admission"}>
+                                    <Plus className="h-5 w-5" />
+                                    Add new record
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {students.length > 0 && (
+                {!loading && students.length > 0 && (
                     <div className="px-6 py-4 bg-muted/10 border-t border-muted/50 flex items-center justify-between">
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                             Showing {pagination.from} to {pagination.to} of {pagination.total} entries
                         </p>
                         <div className="flex items-center gap-2">
                             <Button
-                                variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card disabled:opacity-50"
+                                className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-50"
                                 onClick={() => handleSearch(pagination.current_page - 1)}
                                 disabled={pagination.current_page === 1 || loading}
                             >
@@ -593,19 +662,18 @@ export default function StudentDetailsPage() {
                                     key={i}
                                     onClick={() => handleSearch(i + 1)}
                                     className={cn(
-                                        "h-8 w-8 rounded-lg border-none p-0 font-bold active:scale-95 transition-all shadow-md",
+                                        "h-8 w-8 rounded-[10px] p-0 font-bold active:scale-95 transition-all shadow-md",
                                         pagination.current_page === i + 1
-                                            ? "text-white bg-gradient-to-br from-[#FF9800] to-[#4F39F6] shadow-orange-500/20"
-                                            : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                                            ? "text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1]"
+                                            : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
                                     )}
                                 >
                                     {i + 1}
                                 </Button>
                             ))}
                             <Button
-                                variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card disabled:opacity-50"
+                                className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-50"
                                 onClick={() => handleSearch(pagination.current_page + 1)}
                                 disabled={pagination.current_page === pagination.last_page || loading}
                             >
@@ -655,7 +723,7 @@ export default function StudentDetailsPage() {
                             </div>
                         </div>
                     </DialogHeader>
-                    
+
                     <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {/* Personal Info */}
@@ -668,10 +736,10 @@ export default function StudentDetailsPage() {
                                     <InfoField label="Religion" value={selectedStudent?.religion || "-"} icon={BadgeCheck} />
                                 </div>
                             </div>
-                            
+
                             {/* Contact & Parent Info */}
                             <div className="space-y-6">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">Contact & Guardian</h4>
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">Contact &amp; Guardian</h4>
                                 <div className="grid grid-cols-1 gap-4">
                                     <InfoField label="Mobile Number" value={selectedStudent?.phone} icon={Phone} />
                                     <InfoField label="Email Address" value={selectedStudent?.email || "-"} icon={Mail} />
@@ -685,8 +753,8 @@ export default function StudentDetailsPage() {
                                             <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Status</p>
                                             <Badge className={cn(
                                                 "mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border-none",
-                                                selectedStudent?.active 
-                                                    ? "bg-green-500/10 text-green-600" 
+                                                selectedStudent?.active
+                                                    ? "bg-green-500/10 text-green-600"
                                                     : "bg-red-500/10 text-red-600"
                                             )}>
                                                 {selectedStudent?.active ? "Active" : "Disabled"}
@@ -697,13 +765,13 @@ export default function StudentDetailsPage() {
                             </div>
                         </div>
                     </div>
-                    
+
                     <DialogFooter className="p-6 bg-muted/20 border-t border-muted/50 flex flex-row gap-3">
                         <Button variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setViewDialogOpen(false)}>
                             Close
                         </Button>
-                        <Button 
-                            variant="gradient" 
+                        <Button
+                            variant="gradient"
                             className="flex-1 rounded-lg h-12 font-bold"
                             onClick={() => {
                                 setViewDialogOpen(false);
@@ -726,7 +794,7 @@ export default function StudentDetailsPage() {
                         </div>
                         <DialogTitle className="text-2xl font-black text-center tracking-tight">Delete Record?</DialogTitle>
                         <DialogDescription className="text-center pt-2 font-medium">
-                            Are you sure you want to delete <span className="text-foreground font-bold">{selectedStudent?.name} {selectedStudent?.last_name}</span>? 
+                            Are you sure you want to delete <span className="text-foreground font-bold">{selectedStudent?.name} {selectedStudent?.last_name}</span>?
                             <br />This action is permanent and cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
@@ -734,8 +802,8 @@ export default function StudentDetailsPage() {
                         <Button variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setDeleteDialogOpen(false)}>
                             Cancel
                         </Button>
-                        <Button 
-                            variant="destructive" 
+                        <Button
+                            variant="destructive"
                             className="flex-1 rounded-lg h-12 font-bold bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200"
                             onClick={handleDelete}
                             disabled={deleting}
@@ -749,7 +817,7 @@ export default function StudentDetailsPage() {
     );
 }
 
-function InfoField({ label, value, icon: Icon }: { label: string, value?: string, icon: any }) {
+function InfoField({ label, value, icon: Icon }: { label: string, value?: string, icon: React.ElementType }) {
     return (
         <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
             <div className="p-2.5 bg-white rounded-lg shadow-sm border border-muted group-hover:scale-110 transition-transform">
@@ -762,4 +830,3 @@ function InfoField({ label, value, icon: Icon }: { label: string, value?: string
         </div>
     );
 }
-

@@ -8,16 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Pencil, X, Copy, FileSpreadsheet, FileText, Printer, Columns, ChevronLeft, ChevronRight, CheckCircle2, Loader2, Calendar, User, UserCheck, XCircle, UploadCloud, Eye, Trash2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Search, Plus, Pencil, Copy, FileSpreadsheet, FileText, Printer, Columns, CheckCircle2, Loader2, Calendar, CalendarCheck, Filter, XCircle, UploadCloud, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
-import { cn } from "@/lib/utils";
 import { useImageUrl } from "@/lib/image-url";
 import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -50,17 +49,34 @@ interface SchoolClass {
     sections?: { id: number; name: string }[];
 }
 
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
+
 export default function ApproveLeavePage() {
     const getImageUrl = useImageUrl();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
     const [selectedSection, setSelectedSection] = useState("");
-    
+
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    
+
     const [statusDialogOpen, setStatusDialogOpen] = useState(false);
     const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
     const [adminRemark, setAdminRemark] = useState("");
@@ -68,11 +84,11 @@ export default function ApproveLeavePage() {
 
     // Add Leave State
     const [addDialogOpen, setAddDialogOpen] = useState(false);
-    const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
+    const [leaveTypes, setLeaveTypes] = useState<{ id: number; name?: string }[]>([]);
     const [newLeaveClass, setNewLeaveClass] = useState("");
     const [newLeaveSection, setNewLeaveSection] = useState("");
     const [newLeaveSections, setNewLeaveSections] = useState<{ id: number; name: string }[]>([]);
-    const [students, setStudents] = useState<any[]>([]);
+    const [students, setStudents] = useState<{ id: number; name?: string; last_name?: string }[]>([]);
     const [newLeaveStudent, setNewLeaveStudent] = useState("");
     const [newLeaveType, setNewLeaveType] = useState("");
     const [newLeaveApplyDate, setNewLeaveApplyDate] = useState(new Date().toISOString().split('T')[0]);
@@ -267,9 +283,10 @@ export default function ApproveLeavePage() {
                 resetForm();
                 fetchLeaves();
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error saving leave:", error);
-            toast.error(error?.response?.data?.message || "Failed to save leave request");
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast.error(err?.response?.data?.message || "Failed to save leave request");
         } finally {
             setSavingLeave(false);
         }
@@ -335,227 +352,233 @@ export default function ApproveLeavePage() {
             </div>
 
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
-                <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-tight mb-4 border-b border-gray-50 pb-2 flex items-center gap-2">
-                    <Search className="h-3 w-3" />
-                    Select Criteria
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class</Label>
-                        <Select value={selectedClass} onValueChange={setSelectedClass}>
-                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                <SelectValue placeholder="Select Class" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {classes.map(cls => (
-                                    <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Filter leave requests by class &amp; section</p>
                     </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class</Label>
+                            <Select value={selectedClass} onValueChange={setSelectedClass}>
+                                <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                    <SelectValue placeholder="Select Class" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {classes.map(cls => (
+                                        <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
-                        <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
-                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                <SelectValue placeholder="Select Section" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sections.map(sec => (
-                                    <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
-                <div className="flex justify-end mt-4">
-                    <Button 
-                        onClick={fetchLeaves}
-                        disabled={loading}
-                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
-                    >
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                        Search
-                    </Button>
-                </div>
-            </div>
-
-            {/* Approve Leave List Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                    <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-tight flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-indigo-500" />
-                        Approve Leave List
-                    </h2>
-                </div>
-
-                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="relative w-full md:w-80">
-                        <Input
-                            placeholder="Search by student name or admission no..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyUp={(e) => e.key === 'Enter' && fetchLeaves()}
-                            className="pl-4 h-10 text-xs border-gray-100 shadow-none rounded-full focus:ring-2 focus:ring-indigo-500/20 w-full transition-all"
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                            <SelectTrigger className="w-[70px] h-10 text-xs border-gray-100 rounded-full">
-                                <SelectValue placeholder="50" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="20">20</SelectItem>
-                                <SelectItem value="50">50</SelectItem>
-                                <SelectItem value="100">100</SelectItem>
-                                <SelectItem value="500">500</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-full border border-gray-100">
-                            {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, idx) => (
-                                <Button key={idx} variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:text-indigo-600 rounded-full transition-all">
-                                    <Icon className="h-3.5 w-3.5" />
-                                </Button>
-                            ))}
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
+                            <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
+                                <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                    <SelectValue placeholder="Select Section" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {sections.map(sec => (
+                                        <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
-                </div>
 
-                <div className="rounded-lg border border-gray-100 overflow-hidden shadow-sm">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/50">
-                                <TableHead className="py-4 px-6 w-12">Avatar</TableHead>
-                                <TableHead className="py-4 px-6">Student</TableHead>
-                                <TableHead className="py-4 px-6">Class/Section</TableHead>
-                                <TableHead className="py-4 px-6">Leave Type</TableHead>
-                                <TableHead className="py-4 px-6">Apply Date</TableHead>
-                                <TableHead className="py-4 px-6">Duration</TableHead>
-                                <TableHead className="py-4 px-6">Status</TableHead>
-                                <TableHead className="py-4 px-6">Attach Document</TableHead>
-                                <TableHead className="py-4 px-6 text-right">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={9} className="h-32 text-center">
-                                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
-                                    </TableCell>
+                    <div className="flex justify-end mt-4">
+                        <Button
+                            onClick={fetchLeaves}
+                            disabled={loading}
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
+                        >
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            Search
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Approve Leave List Section */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <CalendarCheck className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Approve Leave List</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{leaves.length} total entr{leaves.length === 1 ? 'y' : 'ies'}</p>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div className="relative w-full md:w-80">
+                            <Input
+                                placeholder="Search by student name or admission no..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyUp={(e) => e.key === 'Enter' && fetchLeaves()}
+                                className="pl-4 h-10 text-xs border-gray-100 shadow-none rounded-full focus:ring-2 focus:ring-indigo-500/20 w-full transition-all"
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
+                                <SelectTrigger className="w-[70px] h-10 text-xs border-gray-100 rounded-full">
+                                    <SelectValue placeholder="50" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="20">20</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="500">500</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-full border border-gray-100">
+                                {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, idx) => (
+                                    <Button key={idx} variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:text-indigo-600 rounded-full transition-all">
+                                        <Icon className="h-3.5 w-3.5" />
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="rounded-lg border border-gray-100 overflow-hidden shadow-sm">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/50">
+                                    <TableHead className="py-4 px-6 w-12">Avatar</TableHead>
+                                    <TableHead className="py-4 px-6">Student</TableHead>
+                                    <TableHead className="py-4 px-6">Class/Section</TableHead>
+                                    <TableHead className="py-4 px-6">Leave Type</TableHead>
+                                    <TableHead className="py-4 px-6">Apply Date</TableHead>
+                                    <TableHead className="py-4 px-6">Duration</TableHead>
+                                    <TableHead className="py-4 px-6">Status</TableHead>
+                                    <TableHead className="py-4 px-6">Attach Document</TableHead>
+                                    <TableHead className="py-4 px-6 text-right">Action</TableHead>
                                 </TableRow>
-                            ) : leaves.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={9} className="h-32 text-center text-gray-400 text-xs italic">
-                                        No leave requests found.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                leaves.slice(0, parseInt(rowsPerPage)).map((item) => (
-                                    <TableRow key={item.id} className="text-sm border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
-                                        <TableCell className="py-4 px-6">
-                                            {item.user.avatar ? (
-                                                <img
-                                                    src={getImageUrl(item.user.avatar)}
-                                                    alt=""
-                                                    className="h-9 w-9 rounded-full object-cover border-2 border-gray-100"
-                                                />
-                                            ) : (
-                                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                                                    {item.user.name.charAt(0).toUpperCase()}
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="py-4 px-6">
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{item.user.name}</span>
-                                                <span className="text-[10px] text-gray-400 font-medium">Adm: {item.user.admission_no}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="py-4 px-6">
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-gray-700 font-semibold">{item.user.school_class.name}</span>
-                                                <span className="h-1 w-1 rounded-full bg-gray-300" />
-                                                <span className="text-gray-500 font-medium">{item.user.section.name}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="py-4 px-6">
-                                            <Badge className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">
-                                                {item.leave_type.name}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="py-4 px-6 text-gray-500 font-medium">
-                                            {new Date(item.apply_date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-                                        </TableCell>
-                                        <TableCell className="py-4 px-6">
-                                            <div className="flex flex-col gap-0.5">
-                                                <div className="flex items-center gap-2 text-gray-800 font-bold">
-                                                    <Calendar className="h-3 w-3 text-gray-400" />
-                                                    {new Date(item.leave_from).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })} - {new Date(item.leave_to).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}
-                                                </div>
-                                                <span className="text-[10px] text-indigo-500 font-black uppercase tracking-wider">{item.days} days duration</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="py-4 px-6">
-                                            {getStatusBadge(item.status)}
-                                        </TableCell>
-                                        <TableCell className="py-4 px-6">
-                                            {item.attachment ? (
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => {
-                                                        window.open(getImageUrl(item.attachment), '_blank');
-                                                    }}
-                                                    className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded p-0"
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                            ) : (
-                                                <span className="text-gray-300 text-xs">—</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="py-4 px-6 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    {item.status === "Pending" && (
-                                                        <Button
-                                                            onClick={() => {
-                                                                setSelectedLeave(item);
-                                                                setAdminRemark(item.admin_remark || "");
-                                                                setStatusDialogOpen(true);
-                                                            }}
-                                                            size="sm"
-                                                            className="h-8 px-4 bg-gradient-to-r from-[#6366F1] to-[#4F46E5] hover:from-[#4F46E5] hover:to-[#4338CA] text-white rounded-full text-[10px] font-black uppercase shadow-md transition-all active:scale-95"
-                                                        >
-                                                            Review
-                                                        </Button>
-                                                    )}
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => handleEdit(item)}
-                                                        className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <TableSkeleton rows={5} cols={9} />
+                                ) : leaves.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                            No data found
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-            </div>
+                                ) : (
+                                    leaves.slice(0, parseInt(rowsPerPage)).map((item) => (
+                                        <TableRow key={item.id} className="text-sm border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                                            <TableCell className="py-4 px-6">
+                                                {item.user.avatar ? (
+                                                    <img
+                                                        src={getImageUrl(item.user.avatar)}
+                                                        alt=""
+                                                        className="h-9 w-9 rounded-full object-cover border-2 border-gray-100"
+                                                    />
+                                                ) : (
+                                                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                                                        {item.user.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{item.user.name}</span>
+                                                    <span className="text-[10px] text-gray-400 font-medium">Adm: {item.user.admission_no}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-gray-700 font-semibold">{item.user.school_class.name}</span>
+                                                    <span className="h-1 w-1 rounded-full bg-gray-300" />
+                                                    <span className="text-gray-500 font-medium">{item.user.section.name}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6">
+                                                <Badge className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">
+                                                    {item.leave_type.name}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6 text-gray-500 font-medium">
+                                                {new Date(item.apply_date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="flex items-center gap-2 text-gray-800 font-bold">
+                                                        <Calendar className="h-3 w-3 text-gray-400" />
+                                                        {new Date(item.leave_from).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })} - {new Date(item.leave_to).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}
+                                                    </div>
+                                                    <span className="text-[10px] text-indigo-500 font-black uppercase tracking-wider">{item.days} days duration</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6">
+                                                {getStatusBadge(item.status)}
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6">
+                                                {item.attachment ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            window.open(getImageUrl(item.attachment), '_blank');
+                                                        }}
+                                                        className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded p-0"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                ) : (
+                                                    <span className="text-gray-300 text-xs">—</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6 text-right">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        {item.status === "Pending" && (
+                                                            <Button
+                                                                onClick={() => {
+                                                                    setSelectedLeave(item);
+                                                                    setAdminRemark(item.admin_remark || "");
+                                                                    setStatusDialogOpen(true);
+                                                                }}
+                                                                size="sm"
+                                                                className="h-8 px-4 bg-gradient-to-r from-[#6366F1] to-[#4F46E5] hover:from-[#4F46E5] hover:to-[#4338CA] text-white rounded-full text-[10px] font-black uppercase shadow-md transition-all active:scale-95"
+                                                            >
+                                                                Review
+                                                            </Button>
+                                                        )}
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => handleEdit(item)}
+                                                            className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => handleDelete(item.id)}
+                                                            className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Approval Dialog */}
             <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
@@ -568,7 +591,7 @@ export default function ApproveLeavePage() {
                             </DialogDescription>
                         </DialogHeader>
                     </div>
-                    
+
                     <div className="p-8 space-y-8 bg-white">
                         {selectedLeave && (
                             <div className="space-y-6">
@@ -584,17 +607,17 @@ export default function ApproveLeavePage() {
                                     <div className="col-span-2 space-y-1 pt-2 border-t border-gray-100 mt-2">
                                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Reason for Leave</span>
                                         <p className="text-xs text-gray-600 font-medium leading-relaxed bg-white p-3 rounded-lg border border-gray-50 shadow-sm italic">
-                                            "{selectedLeave.reason || "No reason provided"}"
+                                            &ldquo;{selectedLeave.reason || "No reason provided"}&rdquo;
                                         </p>
                                     </div>
                                 </div>
-                                
+
                                 <div className="space-y-3">
                                     <Label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
                                         <FileText className="h-3 w-3" />
                                         Official Admin Remark
                                     </Label>
-                                    <Textarea 
+                                    <Textarea
                                         placeholder="Enter approval conditions or rejection reasons here..."
                                         value={adminRemark}
                                         onChange={(e) => setAdminRemark(e.target.value)}
@@ -605,8 +628,8 @@ export default function ApproveLeavePage() {
                         )}
 
                         <div className="flex flex-row justify-between w-full gap-4">
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 onClick={() => handleUpdateStatus("Disapproved")}
                                 disabled={updatingStatus}
                                 className="flex-1 h-12 text-[10px] font-black uppercase text-red-500 border-red-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-all active:scale-95 shadow-sm"
@@ -614,7 +637,7 @@ export default function ApproveLeavePage() {
                                 {updatingStatus ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
                                 Disapprove
                             </Button>
-                            <Button 
+                            <Button
                                 onClick={() => handleUpdateStatus("Approved")}
                                 disabled={updatingStatus}
                                 className="flex-1 h-12 text-[10px] font-black uppercase bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 border-none"
@@ -636,7 +659,7 @@ export default function ApproveLeavePage() {
                     <div className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-4 text-white flex justify-between items-center">
                         <DialogTitle className="text-sm font-medium">{editingLeaveId ? "Edit Leave" : "Add Leave"}</DialogTitle>
                     </div>
-                    
+
                     <div className="p-6 space-y-4 bg-white max-h-[80vh] overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-1.5">
@@ -652,7 +675,7 @@ export default function ApproveLeavePage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            
+
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] text-gray-600">Section <span className="text-red-500">*</span></Label>
                                 <Select value={newLeaveSection} onValueChange={setNewLeaveSection} disabled={!newLeaveClass}>
@@ -698,10 +721,10 @@ export default function ApproveLeavePage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] text-gray-600">Apply Date <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    type="date" 
-                                    value={newLeaveApplyDate} 
-                                    onChange={(e) => setNewLeaveApplyDate(e.target.value)} 
+                                <Input
+                                    type="date"
+                                    value={newLeaveApplyDate}
+                                    onChange={(e) => setNewLeaveApplyDate(e.target.value)}
                                     className="h-9 text-[12px] border-gray-200"
                                 />
                             </div>
@@ -710,19 +733,19 @@ export default function ApproveLeavePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] text-gray-600">From Date <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    type="date" 
-                                    value={newLeaveFromDate} 
-                                    onChange={(e) => setNewLeaveFromDate(e.target.value)} 
+                                <Input
+                                    type="date"
+                                    value={newLeaveFromDate}
+                                    onChange={(e) => setNewLeaveFromDate(e.target.value)}
                                     className="h-9 text-[12px] border-gray-200"
                                 />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] text-gray-600">To Date <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    type="date" 
-                                    value={newLeaveToDate} 
-                                    onChange={(e) => setNewLeaveToDate(e.target.value)} 
+                                <Input
+                                    type="date"
+                                    value={newLeaveToDate}
+                                    onChange={(e) => setNewLeaveToDate(e.target.value)}
                                     className="h-9 text-[12px] border-gray-200"
                                     min={newLeaveFromDate}
                                 />
@@ -731,17 +754,17 @@ export default function ApproveLeavePage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] text-gray-600">Reason</Label>
-                            <Textarea 
-                                value={newLeaveReason} 
-                                onChange={(e) => setNewLeaveReason(e.target.value)} 
+                            <Textarea
+                                value={newLeaveReason}
+                                onChange={(e) => setNewLeaveReason(e.target.value)}
                                 className="text-[12px] border-gray-200 resize-none min-h-[60px]"
                             />
                         </div>
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] text-gray-600">Leave Status <span className="text-red-500">*</span></Label>
-                            <RadioGroup 
-                                value={newLeaveStatus} 
+                            <RadioGroup
+                                value={newLeaveStatus}
                                 onValueChange={setNewLeaveStatus}
                                 className="flex flex-row gap-4"
                             >
@@ -768,11 +791,11 @@ export default function ApproveLeavePage() {
                                     <div className="flex text-sm text-gray-600 justify-center">
                                         <label htmlFor="file-upload" className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
                                             <span>Drag and drop a file here or click</span>
-                                            <input 
-                                                id="file-upload" 
-                                                name="file-upload" 
-                                                type="file" 
-                                                className="sr-only" 
+                                            <input
+                                                id="file-upload"
+                                                name="file-upload"
+                                                type="file"
+                                                className="sr-only"
                                                 onChange={(e) => {
                                                     if (e.target.files && e.target.files[0]) {
                                                         setNewLeaveAttachment(e.target.files[0]);
@@ -790,9 +813,9 @@ export default function ApproveLeavePage() {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="bg-gray-50 p-4 flex justify-end">
-                        <Button 
+                        <Button
                             onClick={handleSaveLeave}
                             disabled={savingLeave}
                             variant="gradient"

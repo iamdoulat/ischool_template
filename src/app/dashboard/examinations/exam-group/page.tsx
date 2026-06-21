@@ -7,17 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-    Pencil, Trash2, Plus, Copy, FileSpreadsheet, FileText, 
-    Printer, Columns, ChevronLeft, ChevronRight, Layers, 
-    Search, LayoutList, ClipboardCheck, Info, FileStack,
-    BarChart, Link, CheckCircle2, Laptop, ArrowLeft, Users, BookOpen, FileDigit, MessageSquare, Trophy, X, Calendar as CalendarIcon, Clock
+import {
+    Pencil, Trash2, Plus, Copy, FileSpreadsheet, FileText,
+    Printer, ChevronLeft, ChevronRight, FolderKanban,
+    Search, LayoutList, FileStack,
+    BarChart, Link, CheckCircle2, ArrowLeft, Users, BookOpen, FileDigit, MessageSquare, Trophy, X
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -28,6 +27,22 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface Exam {
     id: number;
@@ -49,13 +64,41 @@ interface ExamGroup {
     exams?: Exam[];
 }
 
+interface ClassItem {
+    id: number;
+    class?: string;
+    name?: string;
+}
+
+interface SectionItem {
+    id: number;
+    section?: string;
+    name?: string;
+}
+
+interface SubjectItem {
+    id: number;
+    name: string;
+    code?: string;
+}
+
+interface StudentRow {
+    id: number;
+    admission_no: string;
+    name: string;
+    father_name: string;
+    category: string;
+    gender: string;
+    assigned: boolean;
+}
+
 export default function ExamGroupPage() {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [groups, setGroups] = useState<ExamGroup[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    
+
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState("50");
@@ -78,19 +121,19 @@ export default function ExamGroupPage() {
     const [assignStudentOpen, setAssignStudentOpen] = useState(false);
     const [assignExamId, setAssignExamId] = useState<number | null>(null);
     const [assignFilters, setAssignFilters] = useState({ class_id: "", section_id: "" });
-    const [assignStudents, setAssignStudents] = useState<any[]>([]);
+    const [assignStudents, setAssignStudents] = useState<StudentRow[]>([]);
     const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
     const [assignLoading, setAssignLoading] = useState(false);
-    
+
     // Database Data State
-    const [classes, setClasses] = useState<any[]>([]);
-    const [sections, setSections] = useState<any[]>([]);
-    const [academicSubjects, setAcademicSubjects] = useState<any[]>([]);
+    const [classes, setClasses] = useState<ClassItem[]>([]);
+    const [sections, setSections] = useState<SectionItem[]>([]);
+    const [academicSubjects, setAcademicSubjects] = useState<SubjectItem[]>([]);
 
     // Exam Subject Modal State
     const [examSubjectOpen, setExamSubjectOpen] = useState(false);
     const [examSubjectData, setExamSubjectData] = useState<{ exam: Exam | null, group: ExamGroup | null }>({ exam: null, group: null });
-    
+
     interface ExamSubjectRow {
         id: string;
         subject: string;
@@ -106,7 +149,7 @@ export default function ExamGroupPage() {
 
     // Managing Exam Group State (View 2)
     const [managingGroup, setManagingGroup] = useState<ExamGroup | null>(null);
-    
+
     // Add Exam modal state
     const [addExamOpen, setAddExamOpen] = useState(false);
     const [addExamForm, setAddExamForm] = useState({
@@ -130,7 +173,7 @@ export default function ExamGroupPage() {
 
     useEffect(() => {
         fetchGroups();
-        
+
         // Fetch classes & subjects
         const fetchClassesAndSubjects = async () => {
             try {
@@ -280,7 +323,7 @@ export default function ExamGroupPage() {
             toast({ title: "Validation Error", description: "Session is required", variant: "destructive" });
             return;
         }
-        
+
         setSubmitting(true);
         try {
             await api.post("/examination/exams", { ...addExamForm, exam_group_id: managingGroup.id });
@@ -347,19 +390,27 @@ export default function ExamGroupPage() {
             toast({ title: "Error", description: "Please select Class and Section", variant: "destructive" });
             return;
         }
-        
+
         setAssignLoading(true);
         try {
-            const res = await api.get('/students', { 
-                params: { 
-                    school_class_id: assignFilters.class_id, 
-                    section_id: assignFilters.section_id 
-                } 
+            const res = await api.get('/students', {
+                params: {
+                    school_class_id: assignFilters.class_id,
+                    section_id: assignFilters.section_id
+                }
             });
             const studentsData = res.data?.data?.data || res.data?.data || res.data || [];
-            
+
             // Map the API data to the format we need
-            const mappedStudents = studentsData.map((s: any) => ({
+            const mappedStudents: StudentRow[] = studentsData.map((s: {
+                id: number;
+                admission_no?: string;
+                first_name?: string;
+                last_name?: string;
+                father_name?: string;
+                category?: string;
+                gender?: string;
+            }) => ({
                 id: s.id,
                 admission_no: s.admission_no || "-",
                 name: `${s.first_name || ""} ${s.last_name || ""}`.trim(),
@@ -368,9 +419,9 @@ export default function ExamGroupPage() {
                 gender: s.gender || "-",
                 assigned: false // Default to false since there's no exam-student API yet
             }));
-            
+
             setAssignStudents(mappedStudents);
-            setSelectedStudents(mappedStudents.filter((s: any) => s.assigned).map((s: any) => s.id));
+            setSelectedStudents(mappedStudents.filter((s) => s.assigned).map((s) => s.id));
         } catch (error) {
             console.error("Failed to fetch students", error);
             toast({ title: "Error", description: "Failed to fetch students", variant: "destructive" });
@@ -380,7 +431,7 @@ export default function ExamGroupPage() {
     };
 
     const handleToggleStudent = (studentId: number) => {
-        setSelectedStudents(prev => 
+        setSelectedStudents(prev =>
             prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]
         );
     };
@@ -443,93 +494,112 @@ export default function ExamGroupPage() {
     if (managingGroup) {
         return (
             <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
+                {/* Back navigation */}
+                <Button variant="ghost" onClick={() => setManagingGroup(null)} className="-ml-3 text-gray-500 hover:text-indigo-600 gap-2 font-bold text-[11px] uppercase tracking-widest">
+                    <ArrowLeft className="h-4 w-4" /> Back to Groups
+                </Button>
+
                 {/* Header Section */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 flex justify-between items-center">
-                    <div>
-                        <Button variant="ghost" onClick={() => setManagingGroup(null)} className="mb-2 -ml-3 text-gray-500 hover:text-indigo-600 gap-2 font-bold text-[11px] uppercase tracking-widest">
-                            <ArrowLeft className="h-4 w-4" /> Back to Groups
-                        </Button>
-                        <h2 className="text-xl font-bold text-gray-800 tracking-tight">Exam Group: {managingGroup.name}</h2>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                            <span><strong className="text-gray-700">Exam Type:</strong> {managingGroup.exam_type}</span>
-                            <span><strong className="text-gray-700">Description:</strong> {managingGroup.description || "-"}</span>
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <FolderKanban className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Exam Group: {managingGroup.name}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{managingGroup.exam_type}{managingGroup.description ? ` · ${managingGroup.description}` : ""}</p>
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={handleOpenLinkExam} className="font-bold text-[11px] uppercase tracking-widest gap-2">
-                            <Link className="h-4 w-4" /> Link Exam
-                        </Button>
-                        <Button variant="default" onClick={handleOpenAddExam} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] font-bold text-[11px] uppercase tracking-widest gap-2 text-white border-0 shadow-md">
-                            <Plus className="h-4 w-4" /> Add Exam
-                        </Button>
-                    </div>
-                </div>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={handleOpenLinkExam} className="font-bold text-[11px] uppercase tracking-widest gap-2">
+                                <Link className="h-4 w-4" /> Link Exam
+                            </Button>
+                            <Button variant="default" onClick={handleOpenAddExam} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] font-bold text-[11px] uppercase tracking-widest gap-2 text-white border-0 shadow-md">
+                                <Plus className="h-4 w-4" /> Add Exam
+                            </Button>
+                        </div>
+                    </CardHeader>
+                </Card>
 
                 {/* Sub-table */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                    <Table>
-                        <TableHeader className="bg-gray-50/50">
-                            <TableRow>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Name</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Session</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">Subjects Included</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">Publish Exam</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">Publish Result</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Description</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {!managingGroup.exams || managingGroup.exams.length === 0 ? (
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <FileStack className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Linked Exams</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{managingGroup.exams?.length || 0} exams in this group</p>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <Table>
+                            <TableHeader className="bg-gray-50/50">
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-32 text-center text-gray-400 text-sm italic">
-                                        No exams linked to this group yet.
-                                    </TableCell>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Name</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Session</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">Subjects Included</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">Publish Exam</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">Publish Result</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Description</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
                                 </TableRow>
-                            ) : (
-                                managingGroup.exams.map(exam => (
-                                    <TableRow key={exam.id} className="text-[13px] text-gray-600">
-                                        <TableCell className="font-medium text-gray-800">{exam.name}</TableCell>
-                                        <TableCell>{exam.session || "-"}</TableCell>
-                                        <TableCell className="text-center">{exam.subjects_count || 0}</TableCell>
-                                        <TableCell className="text-center">
-                                            {exam.is_published ? <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" /> : "-"}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            {exam.is_result_published ? <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" /> : "-"}
-                                        </TableCell>
-                                        <TableCell>{exam.description || "-"}</TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <Button size="icon" variant="ghost" title="Assign / View Student" onClick={() => handleOpenAssignStudent(exam.id)} className="h-8 w-8 text-blue-500 hover:text-white hover:bg-blue-500 rounded-lg">
-                                                    <Users className="h-4 w-4" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" title="Exam Subject" onClick={() => handleOpenExamSubject(exam)} className="h-8 w-8 text-indigo-500 hover:text-white hover:bg-indigo-500 rounded-lg">
-                                                    <BookOpen className="h-4 w-4" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" title="Exam Marks" className="h-8 w-8 text-purple-500 hover:text-white hover:bg-purple-500 rounded-lg">
-                                                    <FileDigit className="h-4 w-4" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" title="Teacher Remarks" className="h-8 w-8 text-pink-500 hover:text-white hover:bg-pink-500 rounded-lg">
-                                                    <MessageSquare className="h-4 w-4" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" title="Generate Rank" className="h-8 w-8 text-amber-500 hover:text-white hover:bg-amber-500 rounded-lg">
-                                                    <Trophy className="h-4 w-4" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" title="Edit Exam" className="h-8 w-8 text-emerald-500 hover:text-white hover:bg-emerald-500 rounded-lg">
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" title="Delete Exam" className="h-8 w-8 text-rose-500 hover:text-white hover:bg-rose-500 rounded-lg">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <TableSkeleton rows={4} cols={7} />
+                                ) : !managingGroup.exams || managingGroup.exams.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                            No data found
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                                ) : (
+                                    managingGroup.exams.map(exam => (
+                                        <TableRow key={exam.id} className="text-[13px] text-gray-600">
+                                            <TableCell className="font-medium text-gray-800">{exam.name}</TableCell>
+                                            <TableCell>{exam.session || "-"}</TableCell>
+                                            <TableCell className="text-center">{exam.subjects_count || 0}</TableCell>
+                                            <TableCell className="text-center">
+                                                {exam.is_published ? <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" /> : "-"}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {exam.is_result_published ? <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" /> : "-"}
+                                            </TableCell>
+                                            <TableCell>{exam.description || "-"}</TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Button size="icon" variant="ghost" title="Assign / View Student" onClick={() => handleOpenAssignStudent(exam.id)} className="h-8 w-8 text-blue-500 hover:text-white hover:bg-blue-500 rounded-lg">
+                                                        <Users className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" title="Exam Subject" onClick={() => handleOpenExamSubject(exam)} className="h-8 w-8 text-indigo-500 hover:text-white hover:bg-indigo-500 rounded-lg">
+                                                        <BookOpen className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" title="Exam Marks" className="h-8 w-8 text-purple-500 hover:text-white hover:bg-purple-500 rounded-lg">
+                                                        <FileDigit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" title="Teacher Remarks" className="h-8 w-8 text-pink-500 hover:text-white hover:bg-pink-500 rounded-lg">
+                                                        <MessageSquare className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" title="Generate Rank" className="h-8 w-8 text-amber-500 hover:text-white hover:bg-amber-500 rounded-lg">
+                                                        <Trophy className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" title="Edit Exam" className="h-8 w-8 text-amber-500 hover:text-white hover:bg-amber-500 rounded-lg">
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" title="Delete Exam" className="h-8 w-8 text-red-500 hover:text-white hover:bg-red-500 rounded-lg">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
 
                 {/* Add Exam Modal */}
                 <Dialog open={addExamOpen} onOpenChange={setAddExamOpen}>
@@ -660,7 +730,7 @@ export default function ExamGroupPage() {
                 {/* Assign / View Student Modal */}
                 <Dialog open={assignStudentOpen} onOpenChange={setAssignStudentOpen}>
                     <DialogContent className="max-w-[1000px] rounded border-0 shadow-2xl p-0 overflow-hidden bg-white">
-                        <DialogHeader className="p-3 bg-[#6366F1] text-white flex justify-between items-center relative">
+                        <DialogHeader className="p-3 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative">
                             <DialogTitle className="text-sm font-medium">Exam Students</DialogTitle>
                         </DialogHeader>
 
@@ -694,7 +764,7 @@ export default function ExamGroupPage() {
                                     </Select>
                                 </div>
                             </div>
-                            
+
                             <div className="flex justify-end border-b border-gray-100 pb-4">
                                 <Button onClick={handleSearchStudents} disabled={assignLoading} className="h-8 px-4 bg-[#6366F1] hover:bg-indigo-600 text-white rounded text-xs gap-1.5 shadow-none">
                                     <Search className="h-3.5 w-3.5" />
@@ -709,12 +779,12 @@ export default function ExamGroupPage() {
                                         <tr>
                                             <th className="py-2.5 px-3 font-semibold text-gray-700 w-16">
                                                 <div className="flex items-center gap-2">
-                                                    <input 
-                                                        type="checkbox" 
+                                                    <input
+                                                        type="checkbox"
                                                         checked={assignStudents.length > 0 && selectedStudents.length === assignStudents.length}
                                                         onChange={handleToggleAllStudents}
                                                         disabled={assignStudents.length === 0}
-                                                        className="rounded border-gray-300 text-[#6366F1] focus:ring-[#6366F1]" 
+                                                        className="rounded border-gray-300 text-[#6366F1] focus:ring-[#6366F1]"
                                                     />
                                                     <span>All</span>
                                                 </div>
@@ -727,17 +797,19 @@ export default function ExamGroupPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {assignStudents.length === 0 ? (
+                                        {assignLoading ? (
+                                            <TableSkeleton rows={5} cols={6} />
+                                        ) : assignStudents.length === 0 ? (
                                             <tr><td colSpan={6} className="text-center py-8 text-gray-400 italic border-b border-gray-50">Please select class and section to search students</td></tr>
                                         ) : (
                                             assignStudents.map((student) => (
                                                 <tr key={student.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                                                     <td className="py-2.5 px-3">
-                                                        <input 
-                                                            type="checkbox" 
+                                                        <input
+                                                            type="checkbox"
                                                             checked={selectedStudents.includes(student.id)}
                                                             onChange={() => handleToggleStudent(student.id)}
-                                                            className="rounded border-gray-300 text-[#6366F1] focus:ring-[#6366F1]" 
+                                                            className="rounded border-gray-300 text-[#6366F1] focus:ring-[#6366F1]"
                                                         />
                                                     </td>
                                                     <td className="py-2.5 px-3 text-gray-500">{student.admission_no}</td>
@@ -764,7 +836,7 @@ export default function ExamGroupPage() {
                 {/* Exam Subject Modal */}
                 <Dialog open={examSubjectOpen} onOpenChange={setExamSubjectOpen}>
                     <DialogContent showCloseButton={false} className="sm:max-w-[1600px] w-[98vw] max-h-[90vh] rounded border-0 shadow-2xl p-0 gap-0 overflow-hidden bg-white">
-                        <DialogHeader className="p-3 bg-[#6366F1] text-white flex justify-between items-center relative">
+                        <DialogHeader className="p-3 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative">
                             <DialogTitle className="text-sm font-medium">Add Exam Subject</DialogTitle>
                             <button onClick={() => setExamSubjectOpen(false)} className="absolute top-2.5 right-3 text-white/80 hover:text-white transition-colors">
                                 <X className="h-5 w-5" />
@@ -820,7 +892,7 @@ export default function ExamGroupPage() {
                                                             {academicSubjects.length === 0 ? (
                                                                 <SelectItem value="none" disabled>No subjects available</SelectItem>
                                                             ) : (
-                                                                academicSubjects.map((sub: any) => (
+                                                                academicSubjects.map((sub) => (
                                                                     <SelectItem key={sub.id} value={sub.id.toString()}>
                                                                         {sub.name} {sub.code ? `(${sub.code})` : ''}
                                                                     </SelectItem>
@@ -878,24 +950,29 @@ export default function ExamGroupPage() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Left Column: Add Exam Group Form */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col h-fit sticky top-4">
-                        <div className="p-6 border-b border-gray-50 bg-gray-50/30 rounded-t-2xl flex items-center gap-3">
-                            <Layers className="h-5 w-5 text-indigo-500" />
-                            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest">
-                                {editMode ? "Edit Exam Group" : "Add Exam Group"}
-                            </h2>
-                        </div>
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 flex flex-col h-fit sticky top-6">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <FolderKanban className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                    {editMode ? "Edit Exam Group" : "Add Exam Group"}
+                                </CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{editMode ? "Update group details" : "Create a new exam group"}</p>
+                            </div>
+                        </CardHeader>
 
-                        <div className="p-6 space-y-6 flex-1">
+                        <CardContent className="p-6 space-y-6 flex-1">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                                     Name <span className="text-red-500">*</span>
                                 </Label>
-                                <Input 
+                                <Input
                                     value={formData.name}
                                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                                     placeholder="e.g. Annual Exams 2026"
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none" 
+                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
 
@@ -919,14 +996,14 @@ export default function ExamGroupPage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Description</Label>
-                                <Textarea 
+                                <Textarea
                                     value={formData.description}
                                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                                     placeholder="Provide additional details..."
-                                    className="min-h-[120px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none resize-none" 
+                                    className="min-h-[120px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none resize-none"
                                 />
                             </div>
-                        </div>
+                        </CardContent>
 
                         <div className="p-6 border-t border-gray-50 bg-gray-50/30 rounded-b-2xl flex gap-2 justify-end">
                             {editMode && (
@@ -934,28 +1011,33 @@ export default function ExamGroupPage() {
                                     Cancel
                                 </Button>
                             )}
-                            <Button 
-                                onClick={handleSave} 
+                            <Button
+                                onClick={handleSave}
                                 disabled={submitting}
                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
                             >
                                 {submitting ? "Processing..." : editMode ? "Update Group" : "Save Group"}
                             </Button>
                         </div>
-                    </div>
+                    </Card>
                 </div>
 
                 {/* Right Column: Exam Group List */}
                 <div className="lg:col-span-3">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
-                        <div className="flex items-center justify-between border-b border-gray-50 pb-4">
-                            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
-                                <LayoutList className="h-5 w-5 text-indigo-500" />
-                                Exam Group Registry
-                            </h2>
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <div className="flex items-center gap-2.5">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                    <LayoutList className="h-5 w-5" />
+                                </span>
+                                <div>
+                                    <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Exam Group Registry</CardTitle>
+                                    <p className="text-[11px] text-gray-500 mt-1">{totalEntries} groups</p>
+                                </div>
+                            </div>
                             <div className="flex items-center gap-2">
                                 <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                                    <SelectTrigger className="w-[65px] h-8 text-xs border-gray-200 rounded-lg">
+                                    <SelectTrigger className="w-[65px] h-8 text-xs border-gray-200 rounded-lg bg-white">
                                         <SelectValue placeholder="50" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -972,111 +1054,106 @@ export default function ExamGroupPage() {
                                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer"><Printer className="h-4 w-4" /></Button>
                                 </div>
                             </div>
-                        </div>
+                        </CardHeader>
 
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                            <div className="relative w-full md:w-72">
-                                <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
-                                <Input
-                                    placeholder="Search groups..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
-                                />
+                        <CardContent className="p-6 space-y-6">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                                <div className="relative w-full md:w-72">
+                                    <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
+                                    <Input
+                                        placeholder="Search groups..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
-                            <Table>
-                                <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
-                                    <TableRow className="hover:bg-transparent border-gray-50">
-                                        <TableHead className="py-4 px-6">Group Name</TableHead>
-                                        <TableHead className="py-4 px-6 text-center">Exams</TableHead>
-                                        <TableHead className="py-4 px-6">Grading System</TableHead>
-                                        <TableHead className="py-4 px-6 text-right">Action</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="h-48 text-center">
-                                                <div className="flex flex-col items-center justify-center space-y-2">
-                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
-                                                    <p className="text-[10px] font-bold uppercase tracking-widest">Synchronizing Exam Data...</p>
-                                                </div>
-                                            </TableCell>
+                            <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
+                                <Table>
+                                    <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
+                                        <TableRow className="hover:bg-transparent border-gray-50">
+                                            <TableHead className="py-4 px-6">Group Name</TableHead>
+                                            <TableHead className="py-4 px-6 text-center">Exams</TableHead>
+                                            <TableHead className="py-4 px-6">Grading System</TableHead>
+                                            <TableHead className="py-4 px-6 text-right">Action</TableHead>
                                         </TableRow>
-                                    ) : groups.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="h-32 text-center text-gray-400 text-sm italic">
-                                                No exam groups found.
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        groups.map((group) => (
-                                            <TableRow key={group.id} className="text-[13px] text-gray-600 hover:bg-gray-50/30 group border-b last:border-0 border-gray-50 transition-colors">
-                                                <TableCell className="py-4 px-6">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-indigo-600 uppercase tracking-tight">{group.name}</span>
-                                                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter truncate max-w-[200px]">{group.description || "No description provided"}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="py-4 px-6 text-center">
-                                                    <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold text-[10px] border border-indigo-100 flex items-center gap-1.5 w-fit mx-auto">
-                                                        <FileStack className="h-3 w-3" /> {group.exams_count} EXAMS
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell className="py-4 px-6 font-medium">
-                                                    <div className="flex items-center gap-2">
-                                                        <BarChart className="h-3.5 w-3.5 text-gray-300" />
-                                                        {group.exam_type}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="py-4 px-6 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <Button size="icon" variant="ghost" onClick={() => handleManageExams(group)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
-                                                            <Plus className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button size="icon" variant="ghost" onClick={() => handleEdit(group)} className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md">
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button size="icon" variant="ghost" onClick={() => setDeleteId(group.id)} className="h-8 w-8 bg-rose-500 hover:bg-rose-600 text-white rounded-lg shadow-md">
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {loading ? (
+                                            <TableSkeleton rows={5} cols={4} />
+                                        ) : groups.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                    No data found
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                        ) : (
+                                            groups.map((group) => (
+                                                <TableRow key={group.id} className="text-[13px] text-gray-600 hover:bg-gray-50/30 group border-b last:border-0 border-gray-50 transition-colors">
+                                                    <TableCell className="py-4 px-6">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-indigo-600 uppercase tracking-tight">{group.name}</span>
+                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter truncate max-w-[200px]">{group.description || "No description provided"}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="py-4 px-6 text-center">
+                                                        <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold text-[10px] border border-indigo-100 flex items-center gap-1.5 w-fit mx-auto">
+                                                            <FileStack className="h-3 w-3" /> {group.exams_count} EXAMS
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="py-4 px-6 font-medium">
+                                                        <div className="flex items-center gap-2">
+                                                            <BarChart className="h-3.5 w-3.5 text-gray-300" />
+                                                            {group.exam_type}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="py-4 px-6 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <Button size="icon" variant="ghost" onClick={() => handleManageExams(group)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                                <Plus className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" onClick={() => handleEdit(group)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" onClick={() => setDeleteId(group.id)} className="h-8 w-8 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
 
-                        <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
-                            <div>
-                                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries
+                            <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
+                                <div>
+                                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600"
+                                        disabled={currentPage === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md">
+                                        {currentPage}
+                                    </Button>
+                                    <Button
+                                        onClick={() => setCurrentPage(p => p + 1)}
+                                        size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600"
+                                        disabled={groups.length < itemsPerPage}
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="flex gap-2">
-                                <Button 
-                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                    variant="outline" size="sm" className="h-8 w-8 p-0 border-gray-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600" 
-                                    disabled={currentPage === 1}
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <Button variant="default" size="sm" className="h-8 w-8 p-0 btn-gradient text-white border-0 rounded-lg shadow-md">
-                                    {currentPage}
-                                </Button>
-                                <Button 
-                                    onClick={() => setCurrentPage(p => p + 1)}
-                                    variant="outline" size="sm" className="h-8 w-8 p-0 border-gray-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600" 
-                                    disabled={groups.length < itemsPerPage}
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
 
@@ -1091,7 +1168,7 @@ export default function ExamGroupPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
                         <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
                             Yes, Delete Group
                         </AlertDialogAction>
                     </AlertDialogFooter>

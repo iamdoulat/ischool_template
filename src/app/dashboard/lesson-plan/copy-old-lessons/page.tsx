@@ -6,6 +6,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle
+} from "@/components/ui/card";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -13,7 +19,7 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Copy } from "lucide-react";
+import { Search, Copy, Filter } from "lucide-react";
 
 interface Topic {
     id: string;
@@ -26,14 +32,51 @@ interface Lesson {
     topics: Topic[];
 }
 
+interface OptionItem {
+    id: string | number;
+    name?: string;
+    group_name?: string;
+    session?: string;
+}
+
+interface RawTopic {
+    id: string;
+    className: string;
+    section: string;
+    subjectGroup: string;
+    subject: string;
+    lesson: string;
+    topics: { id: string; name: string }[];
+}
+
+function CardSkeleton({ count = 6 }: { count?: number }) {
+    return (
+        <>
+            {Array.from({ length: count }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-muted/30 p-4 space-y-3 bg-card animate-pulse">
+                    <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-full bg-muted/60" />
+                        <div className="space-y-2 flex-1">
+                            <div className="h-3 w-1/2 rounded bg-muted/60" />
+                            <div className="h-3 w-1/3 rounded bg-muted/60" />
+                        </div>
+                    </div>
+                    <div className="h-3 w-full rounded bg-muted/60" />
+                    <div className="h-3 w-3/4 rounded bg-muted/60" />
+                </div>
+            ))}
+        </>
+    );
+}
+
 export default function CopyOldLessonsPage() {
     const { toast } = useToast();
-    const [classes, setClasses] = useState<any[]>([]);
-    const [sections, setSections] = useState<any[]>([]);
-    const [subjectGroups, setSubjectGroups] = useState<any[]>([]);
-    const [subjects, setSubjects] = useState<any[]>([]);
-    const [sessions, setSessions] = useState<any[]>([]);
-    
+    const [classes, setClasses] = useState<OptionItem[]>([]);
+    const [sections, setSections] = useState<OptionItem[]>([]);
+    const [subjectGroups, setSubjectGroups] = useState<OptionItem[]>([]);
+    const [subjects, setSubjects] = useState<OptionItem[]>([]);
+    const [sessions, setSessions] = useState<OptionItem[]>([]);
+
     const [sourceLessons, setSourceLessons] = useState<Lesson[]>([]);
     const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
@@ -68,10 +111,13 @@ export default function CopyOldLessonsPage() {
                 api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/system-setting/sessions').catch(() => ({ data: { data: [] } }))
             ]);
-            
-            const extractData = (res: any) => {
-                if (Array.isArray(res.data)) return res.data;
-                if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
+
+            const extractData = (res: { data?: unknown }): OptionItem[] => {
+                const data = res.data as { data?: unknown } | unknown[] | undefined;
+                if (Array.isArray(data)) return data as OptionItem[];
+                if (data && Array.isArray((data as { data?: unknown }).data)) {
+                    return (data as { data: OptionItem[] }).data;
+                }
                 return [];
             };
 
@@ -94,10 +140,10 @@ export default function CopyOldLessonsPage() {
         setLoading(true);
         try {
             const response = await api.get('/lesson-plan/topics');
-            const allTopics: any[] = response.data;
-            
+            const allTopics: RawTopic[] = response.data;
+
             // Filter based on fromCriteria
-            const filtered = allTopics.filter(t => 
+            const filtered = allTopics.filter(t =>
                 t.className === fromCriteria.class_name &&
                 t.section === fromCriteria.section &&
                 t.subjectGroup === fromCriteria.subject_group &&
@@ -105,7 +151,7 @@ export default function CopyOldLessonsPage() {
             ).map(t => ({
                 id: t.id,
                 name: t.lesson,
-                topics: t.topics.map((topic: any) => ({
+                topics: t.topics.map((topic) => ({
                     id: topic.id,
                     name: topic.name
                 }))
@@ -124,7 +170,7 @@ export default function CopyOldLessonsPage() {
     };
 
     const toggleTopic = (id: string) => {
-        setSelectedTopicIds(prev => 
+        setSelectedTopicIds(prev =>
             prev.includes(id) ? prev.filter(tid => tid !== id) : [...prev, id]
         );
     };
@@ -164,244 +210,285 @@ export default function CopyOldLessonsPage() {
     };
 
     return (
-        <div className="space-y-2 font-sans p-2 bg-transparent min-h-screen">
+        <div className="space-y-4 font-sans p-2 bg-transparent min-h-screen">
             {/* Top Section: Select Old Session Details */}
-            <div className="bg-transparent rounded-lg shadow-none border border-slate-200/60 p-6">
-                <h2 className="text-sm font-bold text-gray-800 mb-6 uppercase tracking-widest">Select Source Session Details</h2>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Source Session Details</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Choose the source class &amp; subject to search old lessons</p>
+                    </div>
+                </CardHeader>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <div className="space-y-1.5">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                            Session <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={fromCriteria.session} onValueChange={(val) => setFromCriteria({...fromCriteria, session: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sessions.length > 0 ? sessions.map(s => (
-                                    <SelectItem key={s.id} value={s.session}>{s.session}</SelectItem>
-                                )) : (
-                                    <SelectItem value="2025-26">2025-26</SelectItem>
-                                )}
-                            </SelectContent>
-                        </Select>
+                <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                                Session <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={fromCriteria.session} onValueChange={(val) => setFromCriteria({...fromCriteria, session: val})}>
+                                <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {sessions.length > 0 ? sessions.map(s => (
+                                        <SelectItem key={s.id} value={s.session}>{s.session}</SelectItem>
+                                    )) : (
+                                        <SelectItem value="2025-26">2025-26</SelectItem>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                                Class <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={fromCriteria.class_name} onValueChange={(val) => setFromCriteria({...fromCriteria, class_name: val})}>
+                                <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {classes.map(c => (
+                                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                                Section <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={fromCriteria.section} onValueChange={(val) => setFromCriteria({...fromCriteria, section: val})}>
+                                <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {sections.map(s => (
+                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                                Subject Group <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={fromCriteria.subject_group} onValueChange={(val) => setFromCriteria({...fromCriteria, subject_group: val})}>
+                                <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {subjectGroups.map(g => (
+                                        <SelectItem key={g.id} value={g.name || g.group_name}>{g.name || g.group_name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                                Subject <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={fromCriteria.subject} onValueChange={(val) => setFromCriteria({...fromCriteria, subject: val})}>
+                                <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {subjects.map(s => (
+                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                            Class <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={fromCriteria.class_name} onValueChange={(val) => setFromCriteria({...fromCriteria, class_name: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {classes.map(c => (
-                                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="flex justify-end mt-6">
+                        <Button
+                            onClick={handleSearch}
+                            disabled={loading}
+                            className="btn-gradient text-white gap-2 h-11 px-10 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
+                        >
+                            {loading ? "Searching..." : <><Search className="h-4 w-4" /> Search</>}
+                        </Button>
                     </div>
+                </CardContent>
+            </Card>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                            Section <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={fromCriteria.section} onValueChange={(val) => setFromCriteria({...fromCriteria, section: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sections.map(s => (
-                                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                            Subject Group <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={fromCriteria.subject_group} onValueChange={(val) => setFromCriteria({...fromCriteria, subject_group: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {subjectGroups.map(g => (
-                                    <SelectItem key={g.id} value={g.name || g.group_name}>{g.name || g.group_name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                            Subject <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={fromCriteria.subject} onValueChange={(val) => setFromCriteria({...fromCriteria, subject: val})}>
-                            <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {subjects.map(s => (
-                                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
-                <div className="flex justify-end mt-6">
-                    <Button 
-                        onClick={handleSearch}
-                        disabled={loading}
-                        className="btn-gradient text-white gap-2 h-11 px-10 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
-                    >
-                        {loading ? "Searching..." : <><Search className="h-4 w-4" /> Search</>}
-                    </Button>
-                </div>
-            </div>
-
-            {sourceLessons.length > 0 && (
+            {loading ? (
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Copy className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Available Lessons &amp; Topics</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">Searching for source lessons…</p>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <CardSkeleton count={4} />
+                    </CardContent>
+                </Card>
+            ) : sourceLessons.length > 0 ? (
                 <>
-                    <div className="text-sm font-bold text-gray-500 mt-8 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                    <div className="text-sm font-bold text-gray-500 mt-4 mb-2 flex items-center gap-2 uppercase tracking-widest">
                         Source Lessons For: <span className="text-indigo-600 underline decoration-indigo-200 underline-offset-4">{fromCriteria.subject}</span>
                     </div>
 
                     <div className="flex flex-col lg:flex-row gap-4">
                         {/* Left Column: Lesson & Topics Selection */}
                         <div className="w-full lg:w-2/3">
-                            <div className="bg-transparent rounded-lg shadow-none border border-slate-200/60 overflow-hidden">
-                                <div className="p-4 border-b bg-gray-50/50">
-                                    <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Available Lessons & Topics</h3>
-                                </div>
-
-                                <div className="divide-y divide-gray-50">
-                                    <div className="grid grid-cols-[40px_1fr] bg-gray-100/30 text-[10px] font-bold uppercase text-gray-400 p-3">
-                                        <div>#</div>
-                                        <div>Lesson Topic Structure</div>
+                            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                        <Copy className="h-5 w-5" />
+                                    </span>
+                                    <div>
+                                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Available Lessons &amp; Topics</CardTitle>
+                                        <p className="text-[11px] text-gray-500 mt-1">{sourceLessons.length} lesson{sourceLessons.length === 1 ? '' : 's'} found</p>
                                     </div>
+                                </CardHeader>
 
-                                    {sourceLessons.map((lesson, index) => (
-                                        <div key={lesson.id} className="grid grid-cols-[40px_1fr] p-4 group hover:bg-gray-50/30 transition-all border-b border-gray-50">
-                                            <div className="text-[11px] text-gray-400 font-bold">{index + 1}</div>
-                                            <div className="space-y-4">
-                                                <div className="text-xs font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
-                                                    <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                                                    {lesson.name}
-                                                </div>
-                                                <div className="pl-6 space-y-3">
-                                                    {lesson.topics.map((topic) => (
-                                                        <div key={topic.id} className="flex items-center gap-3 group/item">
-                                                            <Checkbox 
-                                                                id={topic.id} 
-                                                                checked={selectedTopicIds.includes(topic.id)}
-                                                                onCheckedChange={() => toggleTopic(topic.id)}
-                                                                className="h-4 w-4 rounded-md border-gray-200 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 shadow-sm transition-all" 
-                                                            />
-                                                            <Label 
-                                                                htmlFor={topic.id} 
-                                                                className="text-[12px] text-gray-500 font-medium cursor-pointer group-hover/item:text-indigo-600 transition-colors"
-                                                            >
-                                                                {topic.name}
-                                                            </Label>
-                                                        </div>
-                                                    ))}
+                                <CardContent className="p-0">
+                                    <div className="divide-y divide-gray-50">
+                                        <div className="grid grid-cols-[40px_1fr] bg-gray-100/30 text-[10px] font-bold uppercase text-gray-400 p-3">
+                                            <div>#</div>
+                                            <div>Lesson Topic Structure</div>
+                                        </div>
+
+                                        {sourceLessons.map((lesson, index) => (
+                                            <div key={lesson.id} className="grid grid-cols-[40px_1fr] p-4 group hover:bg-gray-50/30 transition-all border-b border-gray-50">
+                                                <div className="text-[11px] text-gray-400 font-bold">{index + 1}</div>
+                                                <div className="space-y-4">
+                                                    <div className="text-xs font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
+                                                        <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                                                        {lesson.name}
+                                                    </div>
+                                                    <div className="pl-6 space-y-3">
+                                                        {lesson.topics.map((topic) => (
+                                                            <div key={topic.id} className="flex items-center gap-3 group/item">
+                                                                <Checkbox
+                                                                    id={topic.id}
+                                                                    checked={selectedTopicIds.includes(topic.id)}
+                                                                    onCheckedChange={() => toggleTopic(topic.id)}
+                                                                    className="h-4 w-4 rounded-md border-gray-200 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 shadow-sm transition-all"
+                                                                />
+                                                                <Label
+                                                                    htmlFor={topic.id}
+                                                                    className="text-[12px] text-gray-500 font-medium cursor-pointer group-hover/item:text-indigo-600 transition-colors"
+                                                                >
+                                                                    {topic.name}
+                                                                </Label>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
 
                         {/* Right Column: Target Subject Selection */}
                         <div className="w-full lg:w-1/3">
-                            <div className="bg-transparent rounded-lg shadow-none border border-slate-200/60 p-6 space-y-4 sticky top-4">
-                                <h3 className="text-sm font-bold text-gray-800 border-b border-gray-50 pb-4 uppercase tracking-widest">Target Selection</h3>
+                            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                        <Copy className="h-5 w-5" />
+                                    </span>
+                                    <div>
+                                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Target Selection</CardTitle>
+                                        <p className="text-[11px] text-gray-500 mt-1">{selectedTopicIds.length} topic{selectedTopicIds.length === 1 ? '' : 's'} selected</p>
+                                    </div>
+                                </CardHeader>
 
-                                <div className="space-y-2">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                        Class <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Select value={toCriteria.class_name} onValueChange={(val) => setToCriteria({...toCriteria, class_name: val})}>
-                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                            <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {classes.map(c => (
-                                                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                                            Class <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Select value={toCriteria.class_name} onValueChange={(val) => setToCriteria({...toCriteria, class_name: val})}>
+                                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {classes.map(c => (
+                                                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                        Section <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Select value={toCriteria.section} onValueChange={(val) => setToCriteria({...toCriteria, section: val})}>
-                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                            <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {sections.map(s => (
-                                                <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                                            Section <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Select value={toCriteria.section} onValueChange={(val) => setToCriteria({...toCriteria, section: val})}>
+                                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {sections.map(s => (
+                                                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                        Subject Group <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Select value={toCriteria.subject_group} onValueChange={(val) => setToCriteria({...toCriteria, subject_group: val})}>
-                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                            <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {subjectGroups.map(g => (
-                                                <SelectItem key={g.id} value={g.name || g.group_name}>{g.name || g.group_name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                                            Subject Group <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Select value={toCriteria.subject_group} onValueChange={(val) => setToCriteria({...toCriteria, subject_group: val})}>
+                                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {subjectGroups.map(g => (
+                                                    <SelectItem key={g.id} value={g.name || g.group_name}>{g.name || g.group_name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                        Subject <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Select value={toCriteria.subject} onValueChange={(val) => setToCriteria({...toCriteria, subject: val})}>
-                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                            <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {subjects.map(s => (
-                                                <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                                            Subject <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Select value={toCriteria.subject} onValueChange={(val) => setToCriteria({...toCriteria, subject: val})}>
+                                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {subjects.map(s => (
+                                                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                                <div className="pt-4">
-                                    <Button 
-                                        onClick={handleCopy}
-                                        disabled={copying || selectedTopicIds.length === 0}
-                                        className="btn-gradient w-full text-white h-12 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex items-center gap-3"
-                                    >
-                                        {copying ? "Copying..." : <><Copy className="h-4 w-4" /> Copy Selected ({selectedTopicIds.length})</>}
-                                    </Button>
-                                </div>
-                            </div>
+                                    <div className="pt-4">
+                                        <Button
+                                            onClick={handleCopy}
+                                            disabled={copying || selectedTopicIds.length === 0}
+                                            className="btn-gradient w-full text-white h-12 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex items-center gap-3"
+                                        >
+                                            {copying ? "Copying..." : <><Copy className="h-4 w-4" /> Copy Selected ({selectedTopicIds.length})</>}
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     </div>
                 </>
-            )}
-
-            {!loading && sourceLessons.length === 0 && (
+            ) : (
                 <div className="bg-transparent rounded-lg border border-dashed border-slate-300 p-20 flex flex-col items-center justify-center text-center mt-6">
                     <div className="bg-gray-50 p-4 rounded-full mb-4">
                         <Search className="h-8 w-8 text-gray-300" />

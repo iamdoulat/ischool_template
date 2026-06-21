@@ -25,6 +25,7 @@ import {
     Pencil,
     Trash2,
     ArrowUpDown,
+    Building2,
 } from "lucide-react";
 import {
     Select,
@@ -47,6 +48,25 @@ interface HostelMaster {
     address: string;
     intake: number;
     description: string;
+}
+
+function SkeletonRows({ rows = 6, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <TableRow key={i} className="border-b border-gray-50">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <div
+                                className="h-3 rounded bg-gray-200/70 animate-pulse"
+                                style={{ width: `${55 + ((i * 3 + j * 7) % 40)}%` }}
+                            />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
 }
 
 export default function HostelMasterPage() {
@@ -183,8 +203,14 @@ export default function HostelMasterPage() {
                 {/* Left Section: Add Hostel Form */}
                 <div className="w-full lg:w-1/3 xl:w-1/4">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-4 border-b border-gray-100">
-                            <h2 className="text-sm font-medium text-gray-800 tracking-tight">Add Hostel</h2>
+                        <div className="flex items-center gap-2.5 px-4 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Building2 className="h-5 w-5" />
+                            </span>
+                            <div className="min-w-0">
+                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{form.id ? "Edit Hostel" : "Add Hostel"}</h2>
+                                <p className="text-[11px] text-gray-500">Hostel master record</p>
+                            </div>
                         </div>
                         <div className="p-4 space-y-4">
                             <div className="space-y-1.5">
@@ -261,8 +287,17 @@ export default function HostelMasterPage() {
 
                 {/* Right Section: Hostel List */}
                 <div className="flex-1 min-w-0">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
-                        <h2 className="text-sm font-medium text-gray-800 tracking-tight">Hostel List</h2>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="flex flex-wrap items-center gap-2.5 px-4 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Building2 className="h-5 w-5" />
+                            </span>
+                            <div className="min-w-0">
+                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Hostel List</h2>
+                                <p className="text-[11px] text-gray-500">{filteredHostels.length} hostel{filteredHostels.length === 1 ? "" : "s"}</p>
+                            </div>
+                        </div>
+                        <div className="p-4 space-y-4">
 
                         {/* Toolbar */}
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
@@ -331,9 +366,7 @@ export default function HostelMasterPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {fetching ? (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="text-center py-10 text-gray-400 italic">Loading hostels...</TableCell>
-                                        </TableRow>
+                                        <SkeletonRows cols={5} />
                                     ) : paginatedHostels.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={5} className="text-center py-10 text-gray-400 italic">No hostels found</TableCell>
@@ -405,6 +438,7 @@ export default function HostelMasterPage() {
                                 </div>
                             </div>
                         )}
+                        </div>
                     </div>
                 </div>
             </div>

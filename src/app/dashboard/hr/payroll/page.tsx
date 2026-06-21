@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Select,
     SelectContent,
@@ -31,23 +32,40 @@ import {
     Search,
     Copy,
     FileSpreadsheet,
-    FileText,
     Printer,
     Columns,
     ChevronLeft,
     ChevronRight,
     Loader2,
-    CheckCircle2,
-    AlertCircle,
     History,
     DollarSign,
     Eye,
     X,
+    Filter,
+    Banknote,
 } from "lucide-react";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import * as XLSX from 'xlsx';
+
+// ─── Skeleton ──────────────────────────────────────────────────────────────────
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -145,7 +163,7 @@ function Payslip({ row, month, year, school }: {
             <div className="bg-indigo-600 text-white text-center py-1.5 text-[12px] font-bold mb-4 rounded uppercase tracking-wider">
                 Salary Payslip
             </div>
-            
+
             <div className="flex justify-between items-center mb-6">
                 <p className="text-[14px] font-semibold text-gray-800">
                     Period: <span className="text-indigo-600">{monthName} {year}</span>
@@ -247,7 +265,7 @@ function Payslip({ row, month, year, school }: {
 
 export default function PayrollPage() {
     const { toast } = useToast();
-    
+
     // Criteria
     const [role, setRole] = useState("all");
     const [month, setMonth] = useState(currentMonth);
@@ -302,7 +320,7 @@ export default function PayrollPage() {
             const params: Record<string, string | number> = { month, year, per_page: limit, page: pg };
             if (role && role !== "all") params.role = role;
             if (kw) params.keyword = kw;
-            
+
             const res = await api.get("/hr/payroll", { params });
             if (res.data?.success) {
                 setRows(res.data.data ?? []);
@@ -343,15 +361,16 @@ export default function PayrollPage() {
                 deductions: parseFloat(genForm.deductions) || 0,
                 note: genForm.note || null,
             };
-            
+
             const res = await api.post("/hr/payroll", payload);
             if (res.data?.success) {
                 toast("success", `Payroll generated for ${genRow.name}`);
                 setGenOpen(false);
                 fetchPayroll();
             }
-        } catch (e: any) {
-            toast("error", e.response?.data?.message || "Failed to generate payroll.");
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast("error", err.response?.data?.message || "Failed to generate payroll.");
         } finally {
             setGenSaving(false);
         }
@@ -427,267 +446,293 @@ export default function PayrollPage() {
 
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
-            <h1 className="text-xl font-medium text-gray-800">Payroll</h1>
+            {/* ── Page header ─────────────────────────────────────────────────── */}
+            <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                    <Banknote className="h-5 w-5" />
+                </span>
+                <h1 className="text-xl font-medium text-gray-800">Payroll</h1>
+            </div>
 
             {/* ── Select Criteria ─────────────────────────────────────────────── */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
-                <div className="flex items-center gap-2 pb-2 border-b border-gray-50">
-                    <div className="h-4 w-1 bg-indigo-500 rounded-full"></div>
-                    <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Search Payroll Records</h2>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Role <span className="text-red-500">*</span></Label>
-                        <Select value={String(role)} onValueChange={setRole}>
-                            <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
-                                <SelectValue placeholder="All Roles" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-lg border-gray-100">
-                                <SelectItem value="all">All Roles</SelectItem>
-                                <SelectItem value="Admin">Admin</SelectItem>
-                                <SelectItem value="Teacher">Teacher</SelectItem>
-                                <SelectItem value="Accountant">Accountant</SelectItem>
-                                <SelectItem value="Receptionist">Receptionist</SelectItem>
-                                <SelectItem value="Librarian">Librarian</SelectItem>
-                                <SelectItem value="Driver">Driver</SelectItem>
-                            </SelectContent>
-                        </Select>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Search payroll records by role, month &amp; year</p>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Role <span className="text-red-500">*</span></Label>
+                            <Select value={String(role)} onValueChange={setRole}>
+                                <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
+                                    <SelectValue placeholder="All Roles" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-lg border-gray-100">
+                                    <SelectItem value="all">All Roles</SelectItem>
+                                    <SelectItem value="Admin">Admin</SelectItem>
+                                    <SelectItem value="Teacher">Teacher</SelectItem>
+                                    <SelectItem value="Accountant">Accountant</SelectItem>
+                                    <SelectItem value="Receptionist">Receptionist</SelectItem>
+                                    <SelectItem value="Librarian">Librarian</SelectItem>
+                                    <SelectItem value="Driver">Driver</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Month <span className="text-red-500">*</span></Label>
+                            <Select value={String(month)} onValueChange={v => setMonth(Number(v))}>
+                                <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-lg border-gray-100">
+                                    {MONTHS.map(m => (
+                                        <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Year <span className="text-red-500">*</span></Label>
+                            <Select value={String(year)} onValueChange={v => setYear(Number(v))}>
+                                <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-lg border-gray-100">
+                                    {years.map(y => (
+                                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Month <span className="text-red-500">*</span></Label>
-                        <Select value={String(month)} onValueChange={v => setMonth(Number(v))}>
-                            <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-lg border-gray-100">
-                                {MONTHS.map(m => (
-                                    <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="flex justify-end pt-2">
+                        <Button
+                            onClick={handleSearch}
+                            disabled={loading}
+                            variant="gradient"
+                            className="gap-2 h-10 px-8 text-[11px] font-bold uppercase tracking-widest rounded shadow-md"
+                        >
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            Search
+                        </Button>
                     </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Year <span className="text-red-500">*</span></Label>
-                        <Select value={String(year)} onValueChange={v => setYear(Number(v))}>
-                            <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-lg border-gray-100">
-                                {years.map(y => (
-                                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
-                <div className="flex justify-end pt-2">
-                    <Button
-                        onClick={handleSearch}
-                        disabled={loading}
-                        variant="gradient"
-                        className="gap-2 h-10 px-8 text-[11px] font-bold uppercase tracking-widest rounded shadow-md"
-                    >
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                        Search
-                    </Button>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
             {/* ── Staff List ──────────────────────────────────────────────────── */}
             {searched && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="flex items-center gap-2 w-full md:w-auto">
-                            <Input
-                                placeholder="Search staff..."
-                                value={keyword}
-                                onChange={e => setKeyword(e.target.value)}
-                                onKeyDown={e => e.key === "Enter" && handleSearch()}
-                                className="h-8 w-64 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
-                            />
-                            <Button
-                                onClick={handleSearch}
-                                disabled={loading}
-                                variant="gradient"
-                                className="h-8 px-6 text-[10px] font-bold uppercase rounded shadow-sm"
-                            >
-                                Search
-                            </Button>
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Banknote className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Payroll List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{meta?.total ?? rows.length} staff record{(meta?.total ?? rows.length) === 1 ? "" : "s"}</p>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-4">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-2 w-full md:w-auto">
+                                <Input
+                                    placeholder="Search staff..."
+                                    value={keyword}
+                                    onChange={e => setKeyword(e.target.value)}
+                                    onKeyDown={e => e.key === "Enter" && handleSearch()}
+                                    className="h-8 w-64 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
+                                />
+                                <Button
+                                    onClick={handleSearch}
+                                    disabled={loading}
+                                    variant="gradient"
+                                    className="h-8 px-6 text-[10px] font-bold uppercase rounded shadow-sm"
+                                >
+                                    Search
+                                </Button>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 mr-2">
+                                    <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); setPage(1); fetchPayroll(1, Number(v)); }}>
+                                        <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {[10, 25, 50, 100].map(n => (
+                                                <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center gap-1 text-gray-400">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={handleCopy}>
+                                        <Copy className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={handleExportCSV}>
+                                        <FileSpreadsheet className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
+                                        <Printer className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
+                                        <Columns className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 mr-2">
-                                <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); setPage(1); fetchPayroll(1, Number(v)); }}>
-                                    <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {[10, 25, 50, 100].map(n => (
-                                            <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                        <div className="rounded border border-gray-50 overflow-hidden">
+                            <Table>
+                                <TableHeader className="bg-gray-50/50">
+                                    <TableRow className="hover:bg-transparent border-gray-100">
+                                        {["Staff ID", "Name", "Role", "Department", "Designation", "Phone", "Status", "Action"].map(h => (
+                                            <TableHead key={h} className={`text-[10px] font-bold uppercase text-gray-600 py-3 ${h === "Action" ? "text-right" : ""}`}>{h}</TableHead>
                                         ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={handleCopy}>
-                                    <Copy className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={handleExportCSV}>
-                                    <FileSpreadsheet className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
-                                    <Printer className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
-                                    <Columns className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="rounded border border-gray-50 overflow-hidden">
-                        <Table>
-                            <TableHeader className="bg-gray-50/50">
-                                <TableRow className="hover:bg-transparent border-gray-100">
-                                    {["Staff ID", "Name", "Role", "Department", "Designation", "Phone", "Status", "Action"].map(h => (
-                                        <TableHead key={h} className={`text-[10px] font-bold uppercase text-gray-600 py-3 ${h === "Action" ? "text-right" : ""}`}>{h}</TableHead>
-                                    ))}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {rows.length === 0 ? (
-                                    <TableRow><TableCell colSpan={8} className="h-24 text-center text-gray-400 text-[11px] italic">No staff found.</TableCell></TableRow>
-                                ) : rows.map(row => (
-                                    <TableRow key={row.id} className="border-b border-gray-50 hover:bg-gray-50/20 transition-colors text-[11px]">
-                                        <TableCell className="py-3 text-gray-500 font-mono">{row.staff_id}</TableCell>
-                                        <TableCell className="py-3 text-gray-800 font-medium">{row.name}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{row.role}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{row.department || "—"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{row.designation || "—"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{row.phone || "—"}</TableCell>
-                                        <TableCell className="py-3">
-                                            {row.status ? (
-                                                <span className={cn(
-                                                    "text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm",
-                                                    statusColors[row.status]
-                                                )}>
-                                                    {row.status}
-                                                </span>
-                                            ) : (
-                                                <span className="text-[10px] text-gray-300 italic">Not Generated</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1.5">
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    onClick={() => openGenerate(row)}
-                                                    className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded transition-colors shadow-sm"
-                                                    title={row.status ? "Edit Payroll" : "Generate Payroll"}
-                                                >
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </Button>
-                                                
-                                                {row.status && (
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={8} />
+                                    ) : rows.length === 0 ? (
+                                        <TableRow><TableCell colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</TableCell></TableRow>
+                                    ) : rows.map(row => (
+                                        <TableRow key={row.id} className="border-b border-gray-50 hover:bg-gray-50/20 transition-colors text-[11px]">
+                                            <TableCell className="py-3 text-gray-500 font-mono">{row.staff_id}</TableCell>
+                                            <TableCell className="py-3 text-gray-800 font-medium">{row.name}</TableCell>
+                                            <TableCell className="py-3 text-gray-500">{row.role}</TableCell>
+                                            <TableCell className="py-3 text-gray-500">{row.department || "—"}</TableCell>
+                                            <TableCell className="py-3 text-gray-500">{row.designation || "—"}</TableCell>
+                                            <TableCell className="py-3 text-gray-500">{row.phone || "—"}</TableCell>
+                                            <TableCell className="py-3">
+                                                {row.status ? (
+                                                    <span className={cn(
+                                                        "text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm",
+                                                        statusColors[row.status]
+                                                    )}>
+                                                        {row.status}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] text-gray-300 italic">Not Generated</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="py-3 text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
                                                     <Button
                                                         size="icon"
                                                         variant="ghost"
-                                                        onClick={() => setSlipRow(row)}
-                                                        className="h-7 w-7 bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors shadow-sm"
-                                                        title="View Payslip"
+                                                        onClick={() => openGenerate(row)}
+                                                        className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded transition-colors shadow-sm"
+                                                        title={row.status ? "Edit Payroll" : "Generate Payroll"}
                                                     >
-                                                        <Eye className="h-3.5 w-3.5" />
+                                                        <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
-                                                )}
 
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-7 w-7 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded transition-colors"
-                                                    title="Payroll History"
-                                                >
-                                                    <History className="h-3.5 w-3.5" />
-                                                </Button>
+                                                    {row.status && (
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            onClick={() => setSlipRow(row)}
+                                                            className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded transition-colors shadow-sm"
+                                                            title="View Payslip"
+                                                        >
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    )}
 
-                                                {row.status && row.status !== "Paid" && (
                                                     <Button
-                                                        onClick={() => setPayRow(row)}
-                                                        variant="gradient"
-                                                        className="h-7 px-4 text-[10px] font-bold uppercase rounded-full shadow-md"
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-7 w-7 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded transition-colors"
+                                                        title="Payroll History"
                                                     >
-                                                        Proceed to Pay
+                                                        <History className="h-3.5 w-3.5" />
                                                     </Button>
+
+                                                    {row.status && row.status !== "Paid" && (
+                                                        <Button
+                                                            onClick={() => setPayRow(row)}
+                                                            variant="gradient"
+                                                            className="h-7 px-4 text-[10px] font-bold uppercase rounded-full shadow-md"
+                                                        >
+                                                            Proceed to Pay
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {/* Pagination */}
+                        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2">
+                            <div>
+                                Showing {rows.length === 0 ? 0 : (page - 1) * perPage + 1} to {Math.min(page * perPage, meta?.total || 0)} of {meta?.total || 0} entries
+                            </div>
+                            <div className="flex gap-2 items-center">
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-sm"
+                                    disabled={page === 1}
+                                    onClick={() => { setPage(page - 1); fetchPayroll(page - 1); }}
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+
+                                {Array.from({ length: meta?.last_page || 1 }).map((_, i) => {
+                                    const p = i + 1;
+                                    const isCurrent = p === page;
+                                    const isAdjacent = Math.abs(p - page) <= 1;
+                                    const isEdge = p === 1 || p === (meta?.last_page || 1);
+
+                                    if (isCurrent || isAdjacent || isEdge) {
+                                        return (
+                                            <Button
+                                                key={p}
+                                                size="sm"
+                                                className={cn(
+                                                    "h-8 w-8 rounded-[10px] font-bold shadow-sm transition-all",
+                                                    isCurrent
+                                                        ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white"
+                                                        : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-100"
                                                 )}
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                                onClick={() => { setPage(p); fetchPayroll(p); }}
+                                            >
+                                                {p}
+                                            </Button>
+                                        );
+                                    } else if (p === 2 && page > 4) {
+                                        return <span key={p} className="text-gray-400">...</span>;
+                                    } else if (p === (meta?.last_page || 1) - 1 && page < (meta?.last_page || 1) - 3) {
+                                        return <span key={p} className="text-gray-400">...</span>;
+                                    }
+                                    return null;
+                                })}
 
-                    {/* Pagination */}
-                    <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2">
-                        <div>
-                            Showing {rows.length === 0 ? 0 : (page - 1) * perPage + 1} to {Math.min(page * perPage, meta?.total || 0)} of {meta?.total || 0} entries
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-sm"
+                                    disabled={page === (meta?.last_page || 1) || !meta}
+                                    onClick={() => { setPage(page + 1); fetchPayroll(page + 1); }}
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
-                        <div className="flex gap-2 items-center">
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8 rounded-lg border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm"
-                                disabled={page === 1}
-                                onClick={() => { setPage(page - 1); fetchPayroll(page - 1); }}
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-
-                            {Array.from({ length: meta?.last_page || 1 }).map((_, i) => {
-                                const p = i + 1;
-                                const isCurrent = p === page;
-                                const isAdjacent = Math.abs(p - page) <= 1;
-                                const isEdge = p === 1 || p === (meta?.last_page || 1);
-
-                                if (isCurrent || isAdjacent || isEdge) {
-                                    return (
-                                        <Button
-                                            key={p}
-                                            variant={isCurrent ? "gradient" : "outline"}
-                                            size="sm"
-                                            className={cn(
-                                                "h-8 w-8 rounded-lg font-bold shadow-sm transition-all",
-                                                !isCurrent && "border-transparent bg-transparent hover:bg-gray-100 text-gray-600"
-                                            )}
-                                            onClick={() => { setPage(p); fetchPayroll(p); }}
-                                        >
-                                            {p}
-                                        </Button>
-                                    );
-                                } else if (p === 2 && page > 4) {
-                                    return <span key={p} className="text-gray-400">...</span>;
-                                } else if (p === (meta?.last_page || 1) - 1 && page < (meta?.last_page || 1) - 3) {
-                                    return <span key={p} className="text-gray-400">...</span>;
-                                }
-                                return null;
-                            })}
-
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8 rounded-lg border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm"
-                                disabled={page === (meta?.last_page || 1) || !meta}
-                                onClick={() => { setPage(page + 1); fetchPayroll(page + 1); }}
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Empty state */}
@@ -702,7 +747,7 @@ export default function PayrollPage() {
             {/* ── Generate Payroll Dialog ──────────────────────────────────────── */}
             <Dialog open={genOpen} onOpenChange={setGenOpen}>
                 <DialogContent className="sm:max-w-[450px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-lg">
-                    <DialogHeader className="bg-gradient-to-r from-orange-400 to-indigo-500 p-5 text-white">
+                    <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-5 text-white">
                         <div className="flex justify-between items-center w-full pr-6">
                             <div className="space-y-0.5">
                                 <DialogTitle className="text-sm font-bold uppercase tracking-wider">
@@ -715,7 +760,7 @@ export default function PayrollPage() {
                             </div>
                         </div>
                     </DialogHeader>
-                    
+
                     <div className="p-6 space-y-5">
                         <div className="grid grid-cols-1 gap-4">
                             <div className="space-y-1.5">
@@ -805,7 +850,7 @@ export default function PayrollPage() {
                                 Are you sure you want to mark <strong>{payRow?.name}</strong>&apos;s payroll as Paid?
                             </p>
                         </div>
-                        
+
                         <div className="w-full bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
                             <div className="flex justify-between text-[11px] text-gray-500">
                                 <span>Period</span>
@@ -836,7 +881,7 @@ export default function PayrollPage() {
             {/* ── View Payslip Dialog ──────────────────────────────────────────── */}
             <Dialog open={!!slipRow} onOpenChange={() => setSlipRow(null)}>
                 <DialogContent className="max-w-2xl p-0 overflow-hidden border-0 shadow-2xl rounded-lg">
-                    <div className="flex items-center justify-between px-6 py-4 bg-indigo-900 text-white">
+                    <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white">
                         <DialogTitle className="text-sm font-bold uppercase tracking-[.2em]">Salary Payslip Details</DialogTitle>
                         <Button
                             size="icon"

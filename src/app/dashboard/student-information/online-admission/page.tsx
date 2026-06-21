@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import React from "react";
 import {
@@ -8,8 +8,6 @@ import {
     FileText,
     Table as TableIcon,
     Printer,
-    FileDown,
-    ChevronDown,
     Eye,
     Pencil,
     Trash2,
@@ -18,11 +16,10 @@ import {
     Loader2,
     ChevronLeft,
     ChevronRight,
+    ChevronDown,
     Copy,
-    X,
-    GraduationCap,
-    Info,
-    User
+    User,
+    Globe
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,6 +33,23 @@ import { useImageUrl } from "@/lib/image-url";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 const formatDate = (dateString?: string | null) => {
     if (!dateString) return "-";
@@ -284,9 +298,15 @@ export default function OnlineAdmissionPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm print:shadow-none print:border-none">
-                <CardHeader className="flex flex-row items-center justify-between border-b border-muted/50 pb-4 print:hidden">
-                    <CardTitle className="text-xl font-bold tracking-tight">Student List</CardTitle>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 print:shadow-none print:border-none">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] print:hidden">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Globe className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Online Admission List</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{total} application{total === 1 ? "" : "s"} total</p>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-6">
                     {/* Toolbar */}
@@ -317,11 +337,6 @@ export default function OnlineAdmissionPage() {
 
                     {/* Table */}
                     <div className="overflow-x-auto rounded-lg border border-muted/50 relative min-h-[200px]">
-                        {loading && (
-                            <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            </div>
-                        )}
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-muted/50 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                 <tr>
@@ -342,75 +357,78 @@ export default function OnlineAdmissionPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-muted/30">
-                                {admissions.map((student) => (
-                                    <tr key={student.id} className="hover:bg-muted/10 transition-colors">
-                                        <Td><span className="font-semibold text-primary/80">{student.reference_no}</span></Td>
-                                        <Td className="font-semibold">{student.first_name} {student.last_name}</Td>
-                                        <Td>{student.school_class?.name || ""}</Td>
-                                        <Td>{student.section?.name || ""}</Td>
-                                        <Td>{student.father_name || "-"}</Td>
-                                        <Td>{formatDate(student.dob)}</Td>
-                                        <Td>{student.gender || "-"}</Td>
-                                        <Td>{student.student_category?.category_name || student.category || "-"}</Td>
-                                        <Td>{student.phone}</Td>
-                                        <Td>
-                                            <Badge className={cn(
-                                                "font-bold text-[10px] px-2 py-0.5 whitespace-nowrap",
-                                                student.form_status.startsWith("Submitted") || student.form_status === "Enrolled"
-                                                    ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200"
-                                                    : "bg-red-100 text-red-700 hover:bg-red-100/80 border-red-200"
-                                            )}>
-                                                {student.form_status}
-                                            </Badge>
-                                        </Td>
-                                        <Td>
-                                            <Badge className={cn(
-                                                "font-bold text-[10px] px-2 py-0.5",
-                                                student.payment_status === "Paid"
-                                                    ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200"
-                                                    : "bg-red-100 text-red-700 hover:bg-red-100/80 border-red-200"
-                                            )}>
-                                                {student.payment_status}
-                                            </Badge>
-                                        </Td>
-                                        <Td>
-                                            <div className="flex justify-center">
-                                                {student.is_enrolled ? (
-                                                    <Check className="h-4 w-4 text-green-600 font-bold" strokeWidth={3} />
-                                                ) : (
-                                                    <div className="h-4 w-4 flex items-center justify-center">
-                                                        <div className="h-3 w-3 rounded-full border-2 border-slate-400 flex items-center justify-center">
-                                                            <div className="h-1 w-1 bg-slate-400 rounded-full" />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </Td>
-                                        <Td>{new Date(student.created_at).toLocaleDateString()}</Td>
-                                        <Td className="text-right print:hidden">
-                                            <div className="flex justify-end gap-1">
-                                                {!student.is_enrolled && (
-                                                    <ActionBtn
-                                                        icon={Check}
-                                                        onClick={() => {
-                                                            setSelectedAdmission(student);
-                                                            setEnrollDialogOpen(true);
-                                                        }}
-                                                        className="bg-green-500 hover:bg-green-600"
-                                                        title="Enroll"
-                                                    />
-                                                )}
-                                                <ActionBtn icon={Eye} onClick={() => handleView(student)} className="bg-indigo-500 hover:bg-indigo-600" title="View" />
-                                                <ActionBtn icon={Pencil} onClick={() => handleEdit(student)} className="bg-indigo-500 hover:bg-indigo-600" title="Edit" />
-                                                <ActionBtn icon={Trash2} onClick={() => handleDelete(student.id)} className="bg-red-500 hover:bg-red-600" title="Delete" />
-                                            </div>
-                                        </Td>
-                                    </tr>
-                                ))}
-                                {!loading && admissions.length === 0 && (
+                                {loading ? (
+                                    <TableSkeleton rows={5} cols={14} />
+                                ) : admissions.length === 0 ? (
                                     <tr>
-                                        <Td colSpan={14} className="text-center py-10 text-muted-foreground">No records found.</Td>
+                                        <td colSpan={14} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
                                     </tr>
+                                ) : (
+                                    admissions.map((student) => (
+                                        <tr key={student.id} className="hover:bg-muted/10 transition-colors">
+                                            <Td><span className="font-semibold text-primary/80">{student.reference_no}</span></Td>
+                                            <Td className="font-semibold">{student.first_name} {student.last_name}</Td>
+                                            <Td>{student.school_class?.name || ""}</Td>
+                                            <Td>{student.section?.name || ""}</Td>
+                                            <Td>{student.father_name || "-"}</Td>
+                                            <Td>{formatDate(student.dob)}</Td>
+                                            <Td>{student.gender || "-"}</Td>
+                                            <Td>{student.student_category?.category_name || student.category || "-"}</Td>
+                                            <Td>{student.phone}</Td>
+                                            <Td>
+                                                <Badge className={cn(
+                                                    "font-bold text-[10px] px-2 py-0.5 whitespace-nowrap",
+                                                    student.form_status.startsWith("Submitted") || student.form_status === "Enrolled"
+                                                        ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200"
+                                                        : "bg-red-100 text-red-700 hover:bg-red-100/80 border-red-200"
+                                                )}>
+                                                    {student.form_status}
+                                                </Badge>
+                                            </Td>
+                                            <Td>
+                                                <Badge className={cn(
+                                                    "font-bold text-[10px] px-2 py-0.5",
+                                                    student.payment_status === "Paid"
+                                                        ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200"
+                                                        : "bg-red-100 text-red-700 hover:bg-red-100/80 border-red-200"
+                                                )}>
+                                                    {student.payment_status}
+                                                </Badge>
+                                            </Td>
+                                            <Td>
+                                                <div className="flex justify-center">
+                                                    {student.is_enrolled ? (
+                                                        <Check className="h-4 w-4 text-green-600 font-bold" strokeWidth={3} />
+                                                    ) : (
+                                                        <div className="h-4 w-4 flex items-center justify-center">
+                                                            <div className="h-3 w-3 rounded-full border-2 border-slate-400 flex items-center justify-center">
+                                                                <div className="h-1 w-1 bg-slate-400 rounded-full" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </Td>
+                                            <Td>{new Date(student.created_at).toLocaleDateString()}</Td>
+                                            <Td className="text-right print:hidden">
+                                                <div className="flex justify-end gap-1">
+                                                    {!student.is_enrolled && (
+                                                        <ActionBtn
+                                                            icon={Check}
+                                                            onClick={() => {
+                                                                setSelectedAdmission(student);
+                                                                setEnrollDialogOpen(true);
+                                                            }}
+                                                            className="bg-green-500 hover:bg-green-600"
+                                                            title="Enroll"
+                                                        />
+                                                    )}
+                                                    <ActionBtn icon={Eye} onClick={() => handleView(student)} className="bg-indigo-500 hover:bg-indigo-600" title="View" />
+                                                    <ActionBtn icon={Pencil} onClick={() => handleEdit(student)} className="bg-amber-500 hover:bg-amber-600" title="Edit" />
+                                                    <ActionBtn icon={Trash2} onClick={() => handleDelete(student.id)} className="bg-red-500 hover:bg-red-600" title="Delete" />
+                                                </div>
+                                            </Td>
+                                        </tr>
+                                    ))
                                 )}
                             </tbody>
                         </table>
@@ -422,7 +440,7 @@ export default function OnlineAdmissionPage() {
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-50"
+                                className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 active:scale-95 transition-all disabled:opacity-50"
                                 onClick={() => currentPage > 1 && fetchAdmissions(currentPage - 1)}
                                 disabled={currentPage === 1}
                             >
@@ -433,10 +451,10 @@ export default function OnlineAdmissionPage() {
                                 <Button
                                     key={page}
                                     className={cn(
-                                        "h-8 w-8 rounded-lg border-none p-0 font-bold active:scale-95 transition-all shadow-md",
+                                        "h-8 w-8 rounded-[10px] border-none p-0 font-bold active:scale-95 transition-all shadow-md",
                                         currentPage === page
-                                            ? "bg-gradient-to-br from-[#FF9800] to-[#4F39F6] text-white shadow-orange-500/10"
-                                            : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-orange-500/10"
+                                            : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
                                     )}
                                     onClick={() => fetchAdmissions(page)}
                                 >
@@ -447,7 +465,7 @@ export default function OnlineAdmissionPage() {
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-50"
+                                className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 active:scale-95 transition-all disabled:opacity-50"
                                 onClick={() => currentPage < lastPage && fetchAdmissions(currentPage + 1)}
                                 disabled={currentPage === lastPage}
                             >
@@ -473,9 +491,9 @@ export default function OnlineAdmissionPage() {
                             <div className="flex justify-center mb-6">
                                 <div className="w-40 h-40 rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center overflow-hidden shadow-lg">
                                     {selectedAdmission.student_photo ? (
-                                        <img 
-                                            src={getImageUrl(selectedAdmission.student_photo)} 
-                                            alt="Student" 
+                                        <img
+                                            src={getImageUrl(selectedAdmission.student_photo)}
+                                            alt="Student"
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
@@ -527,15 +545,15 @@ export default function OnlineAdmissionPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex justify-end gap-3 mt-4">
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             onClick={() => setEnrollDialogOpen(false)}
                             className="rounded-lg border-muted/50 active:scale-95 transition-all"
                         >
                             Cancel
                         </Button>
-                        <Button 
-                            onClick={handleEnroll} 
+                        <Button
+                            onClick={handleEnroll}
                             disabled={submitting}
                             className="rounded-lg bg-green-500 hover:bg-green-600 active:scale-95 transition-all shadow-lg shadow-green-500/20"
                         >
@@ -562,7 +580,7 @@ function Td({ children, className, colSpan }: { children: React.ReactNode, class
     return <td colSpan={colSpan} className={cn("px-4 py-4 text-sm font-medium text-slate-600", className)}>{children}</td>;
 }
 
-function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () => void, title?: string }) {
+function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, onClick?: () => void, title?: string }) {
     return (
         <button
             onClick={onClick}
@@ -574,7 +592,7 @@ function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () =>
     );
 }
 
-function ActionBtn({ icon: Icon, className, onClick, title }: { icon: any, className?: string, onClick?: () => void, title?: string }) {
+function ActionBtn({ icon: Icon, className, onClick, title }: { icon: React.ElementType, className?: string, onClick?: () => void, title?: string }) {
     return (
         <button
             onClick={onClick}

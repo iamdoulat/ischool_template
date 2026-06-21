@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-    Plus,
     Search,
     FileSpreadsheet,
     FileText,
@@ -12,11 +11,11 @@ import {
     Pencil,
     Trash2,
     LayoutGrid,
-    Tag,
     ChevronDown,
-    Copy as CopyIcon
+    Copy as CopyIcon,
+    FolderTree
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,13 +35,30 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 interface FeeGroup {
     id: number;
     name: string;
     description: string | null;
     school_class_id: string | null;
+}
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
 }
 
 export default function FeesGroupPage() {
@@ -120,9 +136,10 @@ export default function FeesGroupPage() {
             }
             fetchFeesGroups();
             resetForm();
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error saving fees group:", error);
-            const message = error.response?.data?.message || "Failed to save fees group";
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            const message = err.response?.data?.message || "Failed to save fees group";
             toast("error", message);
         }
     };
@@ -242,7 +259,7 @@ export default function FeesGroupPage() {
             g.description || ""
         ]);
 
-        (doc as any).autoTable({
+        autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
             startY: 20,
@@ -256,15 +273,20 @@ export default function FeesGroupPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-700 pb-20">
             {/* Left Column: Add Fees Group Form */}
             <div className="lg:col-span-1">
-                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden sticky top-24">
-                    <div className="px-6 py-4 border-b border-muted/50 flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                            {isEdit ? <Pencil className="h-5 w-5 text-primary" /> : <Plus className="h-5 w-5 text-primary" />}
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <FolderTree className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {isEdit ? "Edit Fees Group" : "Add Fees Group"}
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {isEdit ? "Update fees group details" : "Create a new fees group"}
+                            </p>
                         </div>
-                        <h2 className="font-bold text-lg tracking-tight">
-                            {isEdit ? "Edit Fees Group" : "Add Fees Group"}
-                        </h2>
-                    </div>
+                    </CardHeader>
                     <CardContent className="p-6 space-y-5">
                         <form onSubmit={handleSave} className="space-y-4">
                             {/* Name */}
@@ -328,15 +350,16 @@ export default function FeesGroupPage() {
 
             {/* Right Column: Fees Group List */}
             <div className="lg:col-span-2">
-                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                    <div className="px-6 py-4 border-b border-muted/50 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                                <Tag className="h-5 w-5 text-primary" />
-                            </div>
-                            <h2 className="font-bold text-lg tracking-tight">Fees Group List</h2>
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <FolderTree className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Fees Group List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{feesGroups.length} total entr{feesGroups.length === 1 ? 'y' : 'ies'}</p>
                         </div>
-                    </div>
+                    </CardHeader>
 
                     <div className="p-6 space-y-6">
                         {/* Toolbar */}
@@ -352,7 +375,7 @@ export default function FeesGroupPage() {
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <select 
+                                <select
                                     value={pageSize === Number.MAX_SAFE_INTEGER ? "All" : pageSize}
                                     onChange={(e) => {
                                         const val = e.target.value;
@@ -416,12 +439,10 @@ export default function FeesGroupPage() {
                                     </thead>
                                     <tbody className="divide-y divide-muted/50">
                                         {loading ? (
-                                            <tr>
-                                                <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground font-medium">Loading fees groups...</td>
-                                            </tr>
+                                            <TableSkeleton rows={5} cols={5} />
                                         ) : feesGroups.length === 0 ? (
                                             <tr>
-                                                <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground font-medium">No fees groups found</td>
+                                                <td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
                                             </tr>
                                         ) : (
                                             paginatedGroups.map((group) => (
@@ -457,14 +478,14 @@ export default function FeesGroupPage() {
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => startEdit(group)}
-                                                                className="h-8 w-8 rounded-lg bg-[#4F39F6] hover:bg-[#4F39F6]/90 text-white shadow-lg shadow-indigo-500/20 active:scale-90 transition-all font-bold"
+                                                                className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-90 transition-all font-bold"
                                                             >
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => { setDeleteId(group.id); setIsDeleteDialogOpen(true); }}
-                                                                className="h-8 w-8 rounded-lg bg-destructive hover:bg-destructive/90 text-white shadow-lg shadow-destructive/20 active:scale-90 transition-all"
+                                                                className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 active:scale-90 transition-all"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
@@ -484,24 +505,24 @@ export default function FeesGroupPage() {
                                     Showing {Math.min((currentPage - 1) * pageSize + 1, feesGroups.length)} to {Math.min(currentPage * pageSize, feesGroups.length)} of {feesGroups.length} entries
                                 </p>
                                 <div className="flex items-center gap-2">
-                                    <Button 
-                                        variant="outline" 
-                                        size="icon" 
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
                                         disabled={currentPage === 1}
                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 active:scale-95 transition-all"
                                     >
                                         <ChevronDown className="h-4 w-4 rotate-90" />
                                     </Button>
-                                    <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#6366F1]">
+                                    <Button className="h-8 w-8 rounded-[10px] border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
                                         {currentPage}
                                     </Button>
-                                    <Button 
-                                        variant="outline" 
-                                        size="icon" 
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
                                         disabled={currentPage >= totalPages}
                                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 active:scale-95 transition-all"
                                     >
                                         <ChevronDown className="h-4 w-4 -rotate-90" />
                                     </Button>
@@ -548,7 +569,7 @@ export default function FeesGroupPage() {
 }
 
 // Helper component for icon buttons
-function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () => void, title?: string }) {
+function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, onClick?: () => void, title?: string }) {
     return (
         <button
             type="button"

@@ -4,13 +4,13 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Loader2, Calendar, BookOpen, Copy, FileSpreadsheet, FileText, Printer, Columns, UserCheck } from "lucide-react";
+import { Search, Loader2, Filter, BarChart3, BookOpen, Copy, FileSpreadsheet, FileText, Printer, Columns } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
-import { cn } from "@/lib/utils";
 
 interface Student {
     id: number;
@@ -31,13 +31,30 @@ interface SchoolClass {
     sections?: { id: number; name: string }[];
 }
 
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
+
 export default function AttendanceReportPage() {
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
     const [selectedSection, setSelectedSection] = useState("");
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
-    
+
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
@@ -142,90 +159,101 @@ export default function AttendanceReportPage() {
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
-                <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-tight mb-4 border-b border-gray-50 pb-2 flex items-center gap-2">
-                    <Search className="h-3 w-3" />
-                    Select Criteria
-                </h2>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Choose class, section &amp; date</p>
+                    </div>
+                </CardHeader>
+                <CardContent className="px-5 pb-5">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                                Class <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={selectedClass} onValueChange={setSelectedClass}>
+                                <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {classes.map(cls => (
+                                        <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                            Class <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={selectedClass} onValueChange={setSelectedClass}>
-                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {classes.map(cls => (
-                                    <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                                Section <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
+                                <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {sections.map(sec => (
+                                        <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                                Attendance Date <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                type="date"
+                                value={attendanceDate}
+                                onChange={(e) => setAttendanceDate(e.target.value)}
+                                className="h-8 text-[11px] border-gray-200 shadow-none rounded focus:ring-indigo-500"
+                            />
+                        </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                            Section <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
-                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sections.map(sec => (
-                                    <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="flex justify-end mt-4">
+                        <Button
+                            onClick={handleSearch}
+                            disabled={loading}
+                            variant="gradient"
+                            className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                        >
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            Search
+                        </Button>
                     </div>
-
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                            Attendance Date <span className="text-red-500">*</span>
-                        </Label>
-                        <Input 
-                            type="date" 
-                            value={attendanceDate} 
-                            onChange={(e) => setAttendanceDate(e.target.value)} 
-                            className="h-8 text-[11px] border-gray-200 shadow-none rounded focus:ring-indigo-500"
-                        />
-                    </div>
-                </div>
-
-                <div className="flex justify-end mt-4">
-                    <Button 
-                        onClick={handleSearch}
-                        disabled={loading}
-                        variant="gradient"
-                        className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
-                    >
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                        Search
-                    </Button>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
             {/* Attendance Report Section */}
             {hasSearched && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                        <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-tight flex items-center gap-2">
-                            <UserCheck className="h-4 w-4 text-indigo-500" />
-                            Student Attendance Report
-                        </h2>
-                        
-                        <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-full border border-gray-100">
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <BarChart3 className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student Attendance Report</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{students.length} record{students.length === 1 ? '' : 's'}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 bg-white/60 p-1 rounded-full border border-gray-100">
                             {[Copy, FileSpreadsheet, FileText, Printer, Columns].map((Icon, idx) => (
                                 <Button key={idx} variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:text-indigo-600 rounded-full transition-all">
                                     <Icon className="h-3.5 w-3.5" />
                                 </Button>
                             ))}
                         </div>
-                    </div>
+                    </CardHeader>
 
-                    {students.length > 0 ? (
+                    <CardContent className="px-5 pb-5">
                         <div className="rounded-lg border border-gray-100 overflow-hidden shadow-sm">
                             <Table>
                                 <TableHeader>
@@ -241,41 +269,49 @@ export default function AttendanceReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {students.map((student, idx) => (
-                                        <TableRow key={student.id} className="text-sm border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
-                                            <TableCell className="py-4 px-6 text-center font-medium text-gray-400">{idx + 1}</TableCell>
-                                            <TableCell className="py-4 px-6 font-bold text-gray-800">{student.admission_no}</TableCell>
-                                            <TableCell className="py-4 px-6 text-gray-600 font-medium">{student.roll_no || "-"}</TableCell>
-                                            <TableCell className="py-4 px-6 font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{student.name}</TableCell>
-                                            <TableCell className="py-4 px-6 text-center">
-                                                {getStatusBadge(getAttendanceStatus(student))}
-                                            </TableCell>
-                                            <TableCell className="py-4 px-6 text-center text-gray-600 text-[11px] font-mono">
-                                                {getEntryTime(student)}
-                                            </TableCell>
-                                            <TableCell className="py-4 px-6 text-center text-gray-600 text-[11px] font-mono">
-                                                {getExitTime(student)}
-                                            </TableCell>
-                                            <TableCell className="py-4 px-6 text-gray-500 font-medium italic">
-                                                {getAttendanceNote(student)}
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={8} />
+                                    ) : students.length === 0 ? (
+                                        <TableRow className="hover:bg-transparent">
+                                            <TableCell colSpan={8} className="p-12 text-center">
+                                                <div className="flex flex-col items-center justify-center space-y-4">
+                                                    <div className="h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-200 border border-gray-100">
+                                                        <BookOpen className="h-8 w-8" />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No Records Found</p>
+                                                        <p className="text-[11px] text-gray-400 max-w-[200px] mx-auto leading-relaxed">We couldn&apos;t find any student records for the selected parameters.</p>
+                                                    </div>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
-                                    ))}
+                                    ) : (
+                                        students.map((student, idx) => (
+                                            <TableRow key={student.id} className="text-sm border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                                                <TableCell className="py-4 px-6 text-center font-medium text-gray-400">{idx + 1}</TableCell>
+                                                <TableCell className="py-4 px-6 font-bold text-gray-800">{student.admission_no}</TableCell>
+                                                <TableCell className="py-4 px-6 text-gray-600 font-medium">{student.roll_no || "-"}</TableCell>
+                                                <TableCell className="py-4 px-6 font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{student.name}</TableCell>
+                                                <TableCell className="py-4 px-6 text-center">
+                                                    {getStatusBadge(getAttendanceStatus(student))}
+                                                </TableCell>
+                                                <TableCell className="py-4 px-6 text-center text-gray-600 text-[11px] font-mono">
+                                                    {getEntryTime(student)}
+                                                </TableCell>
+                                                <TableCell className="py-4 px-6 text-center text-gray-600 text-[11px] font-mono">
+                                                    {getExitTime(student)}
+                                                </TableCell>
+                                                <TableCell className="py-4 px-6 text-gray-500 font-medium italic">
+                                                    {getAttendanceNote(student)}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
-                    ) : (
-                        <div className="p-12 text-center flex flex-col items-center justify-center space-y-4">
-                            <div className="h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-200 border border-gray-100">
-                                <BookOpen className="h-8 w-8" />
-                            </div>
-                            <div className="space-y-1">
-                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No Records Found</p>
-                                <p className="text-[11px] text-gray-400 max-w-[200px] mx-auto leading-relaxed">We couldn't find any student records for the selected parameters.</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                    </CardContent>
+                </Card>
             )}
         </div>
     );

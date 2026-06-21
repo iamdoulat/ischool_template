@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
     Search,
-    Plus,
     FileSpreadsheet,
     FileText,
     FileCode,
@@ -13,10 +12,9 @@ import {
     Trash2,
     ChevronDown,
     LayoutGrid,
-    Wallet,
     X
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -37,7 +35,24 @@ import {
 } from "@/components/ui/alert-dialog";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface FeeGroup {
     id: number;
@@ -77,6 +92,7 @@ export default function FeesMasterPage() {
     const [feeMasters, setFeeMasters] = useState<FeeMaster[]>([]);
     const [feeGroups, setFeeGroups] = useState<FeeGroup[]>([]);
     const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
+    const [sessionName, setSessionName] = useState("2025-26");
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const { symbol, formatCurrency } = useCurrencyFormatter();
@@ -103,14 +119,18 @@ export default function FeesMasterPage() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [mastersRes, groupsRes, typesRes] = await Promise.all([
+            const [mastersRes, groupsRes, typesRes, sessionsRes] = await Promise.all([
                 api.get("/fees-masters", { params: { search: searchQuery } }),
                 api.get("/fees-groups"),
-                api.get("/fees-types")
+                api.get("/fees-types"),
+                api.get("/system-setting/sessions")
             ]);
             setFeeMasters(mastersRes.data.data);
             setFeeGroups(groupsRes.data.data);
             setFeeTypes(typesRes.data.data);
+            const sessions = sessionsRes.data.data || [];
+            sessions.sort((a: any, b: any) => (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0));
+            if (sessions.length > 0) setSessionName(sessions[0].session);
         } catch (error) {
             console.error("Error fetching data:", error);
             toast("error", "Failed to load data");
@@ -143,9 +163,10 @@ export default function FeesMasterPage() {
             }
             fetchData();
             resetForm();
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error saving fees master:", error);
-            const message = error.response?.data?.message || "Failed to save fees master";
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            const message = err.response?.data?.message || "Failed to save fees master";
             toast("error", message);
         }
     };
@@ -289,7 +310,7 @@ export default function FeesMasterPage() {
             m.fine_type,
             m.due_date
         ]);
-        (doc as any).autoTable({ head: [tableColumn], body: tableRows, startY: 20 });
+        autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
         doc.save("fees_master.pdf");
         toast("success", "Exported to PDF");
     };
@@ -298,15 +319,18 @@ export default function FeesMasterPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-700 pb-20">
             {/* Left: Add Fees Master Form */}
             <div className="lg:col-span-1 space-y-6">
-                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden sticky top-24">
-                    <div className="px-6 py-4 border-b border-muted/50 flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                            {isEdit ? <Pencil className="h-5 w-5 text-primary" /> : <Plus className="h-5 w-5 text-primary" />}
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <FileSpreadsheet className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {isEdit ? "Edit Fees Master" : "Add Fees Master"} : {sessionName}
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{isEdit ? "Update fee record" : "Create a new fee record"}</p>
                         </div>
-                        <h2 className="font-bold text-lg tracking-tight">
-                            {isEdit ? "Edit Fees Master" : "Add Fees Master"} : 2025-26
-                        </h2>
-                    </div>
+                    </CardHeader>
                     <CardContent className="p-6 space-y-5">
                         <form onSubmit={handleSave} className="space-y-4">
                             {/* Fees Group */}
@@ -540,15 +564,16 @@ export default function FeesMasterPage() {
 
             {/* Right: Fees Master List */}
             <div className="lg:col-span-2">
-                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                    <div className="px-6 py-4 border-b border-muted/50 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                                <Wallet className="h-5 w-5 text-primary" />
-                            </div>
-                            <h2 className="font-bold text-lg tracking-tight">Fees Master List : 2025-26</h2>
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <FileSpreadsheet className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Fees Master List : {sessionName}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{feeMasters.length} total entr{feeMasters.length === 1 ? 'y' : 'ies'}</p>
                         </div>
-                    </div>
+                    </CardHeader>
 
                     <div className="p-6 space-y-6">
                         {/* Toolbar */}
@@ -597,9 +622,9 @@ export default function FeesMasterPage() {
                                     </thead>
                                     <tbody className="divide-y divide-muted/50">
                                         {loading ? (
-                                            <tr><td colSpan={8} className="px-6 py-8 text-center text-muted-foreground font-medium">Loading...</td></tr>
+                                            <TableSkeleton rows={5} cols={8} />
                                         ) : groupedData.length === 0 ? (
-                                            <tr><td colSpan={8} className="px-6 py-8 text-center text-muted-foreground font-medium">No results found</td></tr>
+                                            <tr><td colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
                                         ) : (
                                             groupedData.map((group, gIdx) => (
                                                 group.items.map((item, iIdx) => (
@@ -654,14 +679,14 @@ export default function FeesMasterPage() {
                                                                 <Button
                                                                     size="icon"
                                                                     onClick={() => startEdit(item)}
-                                                                    className="h-8 w-8 rounded-lg bg-[#4F39F6] hover:bg-[#4F39F6]/90 text-white shadow-lg shadow-indigo-500/20 active:scale-90"
+                                                                    className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-90"
                                                                 >
                                                                     <Pencil className="h-3.5 w-3.5" />
                                                                 </Button>
                                                                 <Button
                                                                     size="icon"
                                                                     onClick={() => { setDeleteId(item.id); setIsDeleteDialogOpen(true); }}
-                                                                    className="h-8 w-8 rounded-lg bg-destructive hover:bg-destructive/90 text-white shadow-lg shadow-destructive/20 active:scale-90"
+                                                                    className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 active:scale-90"
                                                                 >
                                                                     <Trash2 className="h-3.5 w-3.5" />
                                                                 </Button>
@@ -682,11 +707,11 @@ export default function FeesMasterPage() {
                                 Showing {feeMasters.length > 0 ? 1 : 0} to {feeMasters.length} of {feeMasters.length} entries
                             </p>
                             <div className="flex items-center gap-2">
-                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
+                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all">
                                     <ChevronDown className="h-4 w-4 rotate-90" />
                                 </Button>
-                                <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]">1</Button>
-                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
+                                <Button className="h-8 w-8 rounded-[10px] border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">1</Button>
+                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all">
                                     <ChevronDown className="h-4 w-4 -rotate-90" />
                                 </Button>
                             </div>
@@ -715,7 +740,7 @@ export default function FeesMasterPage() {
 }
 
 // Helper component for icon buttons
-function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () => void, title?: string }) {
+function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, onClick?: () => void, title?: string }) {
     return (
         <button
             type="button"

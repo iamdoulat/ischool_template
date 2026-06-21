@@ -10,6 +10,8 @@ import {
     Pencil,
     Trash2,
     Copy,
+    Settings2,
+    List,
     FileSpreadsheet,
     ChevronLeft,
     ChevronRight,
@@ -220,7 +222,7 @@ export default function SetupFrontOfficePage() {
 
                 {/* Column 1: Vertical Tabs */}
                 <div className="md:col-span-2">
-                    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden sticky top-6">
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden sticky top-6">
                         <div className="flex flex-col">
                             {tabs.map((tab) => (
                                 <button
@@ -247,11 +249,17 @@ export default function SetupFrontOfficePage() {
 
                 {/* Column 2: Add Form */}
                 <div className="md:col-span-4">
-                    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm sticky top-6">
-                        <CardHeader className="border-b border-muted/50 pb-4">
-                            <CardTitle className="text-xl font-bold tracking-tight text-slate-800">
-                                {isEdit ? `Edit ${currentTabLabel}` : `Add ${currentTabLabel}`}
-                            </CardTitle>
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Settings2 className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                    {isEdit ? `Edit ${currentTabLabel}` : `Add ${currentTabLabel}`}
+                                </CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{isEdit ? "Update entry" : "Create a new entry"}</p>
+                            </div>
                         </CardHeader>
                         <CardContent className="p-6">
                             <form onSubmit={handleSave} className="space-y-4">
@@ -293,9 +301,15 @@ export default function SetupFrontOfficePage() {
 
                 {/* Column 3: List Table */}
                 <div className="md:col-span-6">
-                    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm">
-                        <CardHeader className="border-b border-muted/50 pb-4">
-                            <CardTitle className="text-xl font-bold tracking-tight text-slate-800">{currentTabLabel} List</CardTitle>
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <List className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{currentTabLabel} List</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{total} total entr{total === 1 ? "y" : "ies"}</p>
+                            </div>
                         </CardHeader>
                         <CardContent className="p-6">
                             {/* Toolbar */}
@@ -398,7 +412,7 @@ export default function SetupFrontOfficePage() {
                                                     <Td className="text-slate-600 font-medium truncate max-w-[200px]">{item.description || "-"}</Td>
                                                     <Td className="text-right">
                                                         <div className="flex justify-end gap-1 px-2">
-                                                            <ActionBtn icon={Pencil} className="bg-[#4F39F6]" onClick={() => startEdit(item)} />
+                                                            <ActionBtn icon={Pencil} className="bg-amber-500" onClick={() => startEdit(item)} />
                                                             <ActionBtn icon={Trash2} className="bg-red-500" onClick={() => { setDeleteId(item.id); setIsDeleteDialogOpen(true); }} />
                                                         </div>
                                                     </Td>
@@ -436,9 +450,9 @@ export default function SetupFrontOfficePage() {
                                                     key={p}
                                                     className={cn(
                                                         "h-8 w-8 rounded-lg font-bold transition-all active:scale-95",
-                                                        isCurrent 
-                                                            ? "border-none p-0 text-white shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]"
-                                                            : "border-muted/50 text-muted-foreground hover:bg-card bg-transparent border"
+                                                        isCurrent
+                                                            ? "border-none p-0 text-white shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]"
+                                                            : "bg-white border border-gray-200 text-gray-600 hover:bg-muted"
                                                     )}
                                                     onClick={() => setPage(p)}
                                                 >

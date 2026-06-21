@@ -38,9 +38,9 @@ import {
     ChevronLeft,
     ChevronRight,
     X,
-    Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CardListSkeleton } from "@/components/ui/table-skeleton";
 
 interface ScheduledLog {
     id: string;
@@ -312,9 +312,7 @@ export default function ScheduleEmailSmsLogPage() {
                 {/* Cards */}
                 <div className="space-y-2">
                     {loading ? (
-                        <div className="flex items-center justify-center py-20">
-                            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-                        </div>
+                        <CardListSkeleton count={4} />
                     ) : filteredLogs.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-300">
                             <MessageSquare className="h-16 w-16 opacity-20" />

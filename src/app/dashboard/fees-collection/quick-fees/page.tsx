@@ -1,19 +1,25 @@
 "use client";
 
-import { Search, Zap, ChevronDown, UserCircle, CreditCard, Calendar, FileText, CheckCircle2, Loader2, AlertCircle, History, ArrowRight, DollarSign } from "lucide-react";
+interface FeePayment { amount: number; [key: string]: unknown; }
+interface DueFee { id: number; fee_master: { amount: number; [key: string]: unknown }; payments: FeePayment[]; [key: string]: unknown; }
+interface StudentData { [key: string]: unknown; }
+interface ClassItem { id: number; name: string; sections?: SectionItem[]; [key: string]: unknown; }
+interface SectionItem { id: number; name: string; [key: string]: unknown; }
+interface StudentItem { id: number; name: string; [key: string]: unknown; }
+
+import { Search, Zap, ChevronDown, UserCircle, CreditCard, Calendar, FileText, CheckCircle2, Loader2, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import api from "@/lib/api";
-import { cn } from "@/lib/utils";
-import { 
-    Dialog, 
-    DialogContent, 
-    DialogHeader, 
-    DialogTitle, 
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
     DialogDescription,
-    DialogFooter 
+    DialogFooter
 } from "@/components/ui/dialog";
 import {
     Table,
@@ -26,21 +32,38 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useCallback } from "react";
 
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
+
 export default function QuickFeesPage() {
-    const [classes, setClasses] = useState<any[]>([]);
-    const [sections, setSections] = useState<any[]>([]);
-    const [students, setStudents] = useState<any[]>([]);
+    const [classes, setClasses] = useState<ClassItem[]>([]);
+    const [sections, setSections] = useState<SectionItem[]>([]);
+    const [students, setStudents] = useState<StudentItem[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
     const [selectedSection, setSelectedSection] = useState("");
     const [selectedStudentId, setSelectedStudentId] = useState("");
-    
+
     const [loading, setLoading] = useState(false);
     const [fetchingStudents, setFetchingStudents] = useState(false);
-    const [studentData, setStudentData] = useState<any>(null);
-    const [dueFees, setDueFees] = useState<any[]>([]);
-    
+    const [studentData, setStudentData] = useState<StudentData | null>(null);
+    const [dueFees, setDueFees] = useState<DueFee[]>([]);
+
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-    const [selectedFee, setSelectedFee] = useState<any>(null);
+    const [selectedFee, setSelectedFee] = useState<DueFee | null>(null);
     const [paymentData, setPaymentData] = useState({
         amount: "",
         discount: "0",
@@ -105,11 +128,11 @@ export default function QuickFeesPage() {
         }
     };
 
-    const openPaymentDialog = (fee: any) => {
+    const openPaymentDialog = (fee: DueFee) => {
         const total = fee.fee_master.amount;
-        const paid = fee.payments.reduce((acc: number, p: any) => acc + p.amount, 0);
+        const paid = fee.payments.reduce((acc: number, p: FeePayment) => acc + p.amount, 0);
         const due = total - paid;
-        
+
         setSelectedFee(fee);
         setPaymentData({
             ...paymentData,
@@ -130,8 +153,9 @@ export default function QuickFeesPage() {
             toast("success", "Fee payment collected successfully");
             setIsPaymentDialogOpen(false);
             handleSearch(); // Refresh fees
-        } catch (error: any) {
-            toast("error", error.response?.data?.message || "Failed to collect payment");
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast("error", err.response?.data?.message || "Failed to collect payment");
         } finally {
             setLoading(false);
         }
@@ -140,13 +164,14 @@ export default function QuickFeesPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
             {/* Quick Fees Master Card */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <CardHeader className="border-b border-muted/50 pb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                            <Zap className="h-5 w-5 text-primary" />
-                        </div>
-                        <CardTitle className="text-xl font-bold tracking-tight text-slate-800">Quick Fees Master</CardTitle>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Zap className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Quick Fees Master</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Search and collect student fees</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-8">
@@ -157,7 +182,7 @@ export default function QuickFeesPage() {
                                 Class
                             </label>
                             <div className="relative">
-                                <select 
+                                <select
                                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                     value={selectedClass}
                                     onChange={(e) => { setSelectedClass(e.target.value); setSelectedStudentId(""); }}
@@ -175,7 +200,7 @@ export default function QuickFeesPage() {
                                 Section
                             </label>
                             <div className="relative">
-                                <select 
+                                <select
                                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                     value={selectedSection}
                                     onChange={(e) => { setSelectedSection(e.target.value); setSelectedStudentId(""); }}
@@ -193,7 +218,7 @@ export default function QuickFeesPage() {
                                 Student
                             </label>
                             <div className="relative">
-                                <select 
+                                <select
                                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                     value={selectedStudentId}
                                     onChange={(e) => setSelectedStudentId(e.target.value)}
@@ -225,7 +250,16 @@ export default function QuickFeesPage() {
             {studentData && (
                 <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
                     {/* Fees Table */}
-                    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card overflow-hidden">
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Zap className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Due Fees</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{dueFees.length} fee record{dueFees.length === 1 ? '' : 's'}</p>
+                            </div>
+                        </CardHeader>
                         <CardContent className="p-0">
                             <Table>
                                 <TableHeader>
@@ -241,76 +275,80 @@ export default function QuickFeesPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {dueFees.map((fee) => {
-                                        const total = fee.fee_master.amount;
-                                        const paid = fee.payments.reduce((acc: number, p: any) => acc + p.amount, 0);
-                                        const due = total - paid;
-                                        const isPaid = due <= 0;
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={8} />
+                                    ) : (
+                                        dueFees.map((fee) => {
+                                            const total = fee.fee_master.amount;
+                                            const paid = fee.payments.reduce((acc: number, p: FeePayment) => acc + p.amount, 0);
+                                            const due = total - paid;
+                                            const isPaid = due <= 0;
 
-                                        return (
-                                            <TableRow key={fee.id} className="group border-b border-muted/50 last:border-none hover:bg-muted/20 transition-colors">
-                                                <TableCell className="py-4 pl-8">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                                            <UserCircle className="h-5 w-5 text-primary" />
+                                            return (
+                                                <TableRow key={fee.id} className="group border-b border-muted/50 last:border-none hover:bg-muted/20 transition-colors">
+                                                    <TableCell className="py-4 pl-8">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                                <UserCircle className="h-5 w-5 text-primary" />
+                                                            </div>
+                                                            <div className="space-y-0.5">
+                                                                <p className="font-bold text-sm text-slate-800 truncate max-w-[150px]">{studentData.name} {studentData.last_name}</p>
+                                                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{studentData.admission_no}</p>
+                                                            </div>
                                                         </div>
-                                                        <div className="space-y-0.5">
-                                                            <p className="font-bold text-sm text-slate-800 truncate max-w-[150px]">{studentData.name} {studentData.last_name}</p>
-                                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{studentData.admission_no}</p>
+                                                    </TableCell>
+                                                    <TableCell className="py-4">
+                                                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-bold px-2.5 py-0.5 rounded-lg">
+                                                            {fee.fee_master.fee_group?.name}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="py-4">
+                                                        <p className="text-sm font-semibold text-slate-600">{fee.fee_master.fee_type?.name}</p>
+                                                    </TableCell>
+                                                    <TableCell className="py-4">
+                                                        <code className="text-[11px] bg-slate-100 px-2 py-1 rounded font-mono text-slate-600">
+                                                            {fee.fee_master.fee_type?.code || "N/A"}
+                                                        </code>
+                                                    </TableCell>
+                                                    <TableCell className="py-4">
+                                                        <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                                                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                                            {fee.fee_master.due_date ? new Date(fee.fee_master.due_date).toLocaleDateString() : "No Date"}
                                                         </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="py-4">
-                                                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-bold px-2.5 py-0.5 rounded-lg">
-                                                        {fee.fee_master.fee_group?.name}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="py-4">
-                                                    <p className="text-sm font-semibold text-slate-600">{fee.fee_master.fee_type?.name}</p>
-                                                </TableCell>
-                                                <TableCell className="py-4">
-                                                    <code className="text-[11px] bg-slate-100 px-2 py-1 rounded font-mono text-slate-600">
-                                                        {fee.fee_master.fee_type?.code || "N/A"}
-                                                    </code>
-                                                </TableCell>
-                                                <TableCell className="py-4">
-                                                    <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
-                                                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                                        {fee.fee_master.due_date ? new Date(fee.fee_master.due_date).toLocaleDateString() : "No Date"}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="py-4 text-right">
-                                                    <p className="text-sm font-bold text-destructive">
-                                                        ${(fee.fee_master.fine_amount || 0).toLocaleString()}
-                                                    </p>
-                                                </TableCell>
-                                                <TableCell className="py-4 text-right">
-                                                    <div className="space-y-1">
-                                                        <p className="text-sm font-black text-slate-800">${total.toLocaleString()}</p>
-                                                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Paid: ${paid.toLocaleString()}</p>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="py-4 text-center pr-8">
-                                                    {isPaid ? (
-                                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] uppercase tracking-wider">
-                                                            <CheckCircle2 className="h-3 w-3" /> Paid
+                                                    </TableCell>
+                                                    <TableCell className="py-4 text-right">
+                                                        <p className="text-sm font-bold text-destructive">
+                                                            ${(fee.fee_master.fine_amount || 0).toLocaleString()}
+                                                        </p>
+                                                    </TableCell>
+                                                    <TableCell className="py-4 text-right">
+                                                        <div className="space-y-1">
+                                                            <p className="text-sm font-black text-slate-800">${total.toLocaleString()}</p>
+                                                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Paid: ${paid.toLocaleString()}</p>
                                                         </div>
-                                                    ) : (
-                                                        <Button 
-                                                            size="sm"
-                                                            onClick={() => openPaymentDialog(fee)}
-                                                            className="h-8 rounded-lg bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-200 flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 px-3"
-                                                        >
-                                                            <DollarSign className="h-3 w-3" /> Collect
-                                                        </Button>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
+                                                    </TableCell>
+                                                    <TableCell className="py-4 text-center pr-8">
+                                                        {isPaid ? (
+                                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] uppercase tracking-wider">
+                                                                <CheckCircle2 className="h-3 w-3" /> Paid
+                                                            </div>
+                                                        ) : (
+                                                            <Button
+                                                                size="sm"
+                                                                onClick={() => openPaymentDialog(fee)}
+                                                                className="h-8 rounded-lg bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-200 flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 px-3"
+                                                            >
+                                                                <DollarSign className="h-3 w-3" /> Collect
+                                                            </Button>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
+                                    )}
                                 </TableBody>
                             </Table>
-                            {dueFees.length === 0 && (
+                            {!loading && dueFees.length === 0 && (
                                 <div className="p-20 text-center space-y-3">
                                     <div className="h-20 w-20 rounded-full bg-muted/30 flex items-center justify-center mx-auto">
                                         <CreditCard className="h-10 w-10 text-muted-foreground/30" />
@@ -326,14 +364,14 @@ export default function QuickFeesPage() {
             {/* Payment Dialog */}
             <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
                 <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border-none shadow-2xl">
-                    <DialogHeader className="p-8 bg-slate-900 text-white relative">
+                    <DialogHeader className="p-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white relative">
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-white/20 rounded-lg backdrop-blur-md border border-white/30">
                                 <CreditCard className="h-6 w-6" />
                             </div>
                             <div>
                                 <DialogTitle className="text-2xl font-bold tracking-tight">Collect Fee</DialogTitle>
-                                <DialogDescription className="text-slate-300 font-medium">
+                                <DialogDescription className="text-white/80 font-medium">
                                     {selectedFee?.fee_master.fee_group?.name} - {selectedFee?.fee_master.fee_type?.name}
                                 </DialogDescription>
                             </div>
@@ -349,8 +387,8 @@ export default function QuickFeesPage() {
                                     </label>
                                     <div className="relative">
                                         <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input 
-                                            type="number" 
+                                        <Input
+                                            type="number"
                                             className="pl-11 h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white font-bold"
                                             value={paymentData.amount}
                                             onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
@@ -364,8 +402,8 @@ export default function QuickFeesPage() {
                                     </label>
                                     <div className="relative">
                                         <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input 
-                                            type="date" 
+                                        <Input
+                                            type="date"
                                             className="pl-11 h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white font-medium"
                                             value={paymentData.date}
                                             onChange={(e) => setPaymentData({ ...paymentData, date: e.target.value })}
@@ -380,8 +418,8 @@ export default function QuickFeesPage() {
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
                                         Discount
                                     </label>
-                                    <Input 
-                                        type="number" 
+                                    <Input
+                                        type="number"
                                         className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white"
                                         value={paymentData.discount}
                                         onChange={(e) => setPaymentData({ ...paymentData, discount: e.target.value })}
@@ -391,8 +429,8 @@ export default function QuickFeesPage() {
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
                                         Fine
                                     </label>
-                                    <Input 
-                                        type="number" 
+                                    <Input
+                                        type="number"
                                         className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white"
                                         value={paymentData.fine}
                                         onChange={(e) => setPaymentData({ ...paymentData, fine: e.target.value })}
@@ -405,7 +443,7 @@ export default function QuickFeesPage() {
                                     Payment Mode <span className="text-destructive">*</span>
                                 </label>
                                 <div className="relative">
-                                    <select 
+                                    <select
                                         className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all font-medium"
                                         value={paymentData.payment_mode}
                                         onChange={(e) => setPaymentData({ ...paymentData, payment_mode: e.target.value })}
@@ -426,7 +464,7 @@ export default function QuickFeesPage() {
                                 </label>
                                 <div className="relative">
                                     <FileText className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
-                                    <textarea 
+                                    <textarea
                                         className="flex min-h-[100px] w-full rounded-lg border border-muted/50 bg-muted/30 px-11 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white transition-all resize-none"
                                         placeholder="Add any specific instructions or notes..."
                                         value={paymentData.note}
@@ -437,17 +475,17 @@ export default function QuickFeesPage() {
                         </div>
 
                         <DialogFooter className="p-8 bg-muted/20 border-t border-muted/50 flex gap-4">
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                className="flex-1 h-12 rounded-lg font-bold border-muted/50" 
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="flex-1 h-12 rounded-lg font-bold border-muted/50"
                                 onClick={() => setIsPaymentDialogOpen(false)}
                             >
                                 Cancel
                             </Button>
-                            <Button 
-                                type="submit" 
-                                variant="gradient" 
+                            <Button
+                                type="submit"
+                                variant="gradient"
                                 className="flex-1 h-12 rounded-lg font-bold shadow-lg shadow-primary/20"
                                 disabled={loading}
                             >

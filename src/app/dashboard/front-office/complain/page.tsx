@@ -5,21 +5,18 @@ import {
     Search,
     Printer,
     FileText,
-    Table as TableIcon,
-    FileDown,
     Download,
     Columns,
     ChevronDown,
     Eye,
     Pencil,
     Trash2,
-    Calendar,
     CloudUpload,
+    MessageSquareWarning,
     Copy,
     FileSpreadsheet,
     ChevronLeft,
-    ChevronRight,
-    LucideIcon
+    ChevronRight
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -73,8 +70,8 @@ interface Complaint {
 
 export default function ComplainPage() {
     const [complaints, setComplaints] = useState<Complaint[]>([]);
-    const [dynamicComplaintTypes, setDynamicComplaintTypes] = useState<any[]>([]);
-    const [dynamicSources, setDynamicSources] = useState<any[]>([]);
+    const [dynamicComplaintTypes, setDynamicComplaintTypes] = useState<{ id: number; name: string }[]>([]);
+    const [dynamicSources, setDynamicSources] = useState<{ id: number; name: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -176,9 +173,10 @@ export default function ComplainPage() {
             }
             fetchComplaints();
             resetForm();
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error saving complaint:", error);
-            const message = error.response?.data?.message || "Failed to save complaint";
+            const err = error as { response?: { data?: { message?: string } } };
+            const message = err.response?.data?.message || "Failed to save complaint";
             toast("error", message);
         }
     };
@@ -191,9 +189,10 @@ export default function ComplainPage() {
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
             fetchComplaints();
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error deleting complaint:", error);
-            if (error.response?.status === 404) {
+            const err = error as { response?: { status?: number } };
+            if (err.response?.status === 404) {
                 toast("error", "Complaint not found. It may have been already deleted.");
             } else {
                 toast("error", "Failed to delete complaint");
@@ -303,11 +302,17 @@ export default function ComplainPage() {
 
                 {/* Left Column: Add Complain Form */}
                 <div className="md:col-span-4">
-                    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm sticky top-6">
-                        <CardHeader className="border-b border-muted/50 pb-4">
-                            <CardTitle className="text-xl font-bold tracking-tight text-slate-800">
-                                {isEdit ? "Edit Complain" : "Add Complain"}
-                            </CardTitle>
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <MessageSquareWarning className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                    {isEdit ? "Edit Complain" : "Add Complain"}
+                                </CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{isEdit ? "Update complaint record" : "Register a new complaint"}</p>
+                            </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-4">
                             <form onSubmit={handleSave} className="space-y-4">
@@ -447,9 +452,15 @@ export default function ComplainPage() {
 
                 {/* Right Column: Complaint List Table */}
                 <div className="md:col-span-8">
-                    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm">
-                        <CardHeader className="border-b border-muted/50 pb-4">
-                            <CardTitle className="text-xl font-bold tracking-tight text-slate-800">Complaint List</CardTitle>
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <MessageSquareWarning className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Complaint List</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{total} total complaint{total === 1 ? "" : "s"}</p>
+                            </div>
                         </CardHeader>
                         <CardContent className="p-6">
                             {/* Toolbar */}
@@ -558,8 +569,8 @@ export default function ComplainPage() {
                                                     <Td className="text-slate-600 font-medium">{item.date ? new Date(item.date).toLocaleDateString() : "-"}</Td>
                                                     <Td className="text-right">
                                                         <div className="flex justify-end gap-1 px-2">
-                                                            <ActionBtn icon={Eye} className="bg-[#4F39F6]" onClick={() => { setSelectedComplaint(item); setIsViewDialogOpen(true); }} />
-                                                            <ActionBtn icon={Pencil} className="bg-[#4F39F6]" onClick={() => startEdit(item)} />
+                                                            <ActionBtn icon={Eye} className="bg-indigo-500" onClick={() => { setSelectedComplaint(item); setIsViewDialogOpen(true); }} />
+                                                            <ActionBtn icon={Pencil} className="bg-amber-500" onClick={() => startEdit(item)} />
                                                             <ActionBtn icon={Trash2} className="bg-red-500" onClick={() => { setDeleteId(item.id); setIsDeleteDialogOpen(true); }} />
                                                         </div>
                                                     </Td>
@@ -590,8 +601,8 @@ export default function ComplainPage() {
                                             className={cn(
                                                 "h-8 w-8 rounded-lg border-none p-0 font-bold active:scale-95 transition-all shadow-md",
                                                 p === page
-                                                    ? "text-white shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]"
-                                                    : "bg-muted/50 hover:bg-muted text-muted-foreground"
+                                                    ? "text-white shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]"
+                                                    : "bg-white border border-gray-200 hover:bg-muted text-gray-600"
                                             )}
                                             onClick={() => setPage(p)}
                                         >
@@ -646,7 +657,7 @@ export default function ComplainPage() {
 
             <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
                 <DialogContent className="max-w-2xl p-0 overflow-hidden border-none shadow-2xl">
-                    <DialogHeader className="bg-[#4F39F6] p-6">
+                    <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-6">
                         <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
                             <Eye className="h-5 w-5" />
                             Complaint Details
@@ -700,7 +711,7 @@ function Td({ children, className }: { children: React.ReactNode, className?: st
     return <td className={cn("px-4 py-4 text-sm whitespace-nowrap", className)}>{children}</td>;
 }
 
-function IconButton({ icon: Icon, onClick }: { icon: any, onClick?: () => void }) {
+function IconButton({ icon: Icon, onClick }: { icon: React.ElementType, onClick?: () => void }) {
     return (
         <button
             type="button"
@@ -712,7 +723,7 @@ function IconButton({ icon: Icon, onClick }: { icon: any, onClick?: () => void }
     );
 }
 
-function ActionBtn({ icon: Icon, className, onClick }: { icon: any, className?: string, onClick?: () => void }) {
+function ActionBtn({ icon: Icon, className, onClick }: { icon: React.ElementType, className?: string, onClick?: () => void }) {
     return (
         <button
             type="button"

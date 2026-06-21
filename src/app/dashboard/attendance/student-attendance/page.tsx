@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Select,
     SelectContent,
@@ -34,7 +35,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Info, AlertCircle, CheckCircle2, Search, Save, Loader2, UserCheck } from "lucide-react";
+import { Info, CheckCircle2, Search, Save, Loader2, UserCheck, ClipboardCheck, Filter } from "lucide-react";
 import CsvImportDialog from "@/components/attendance/CsvImportDialog";
 import { useSettings } from "@/components/providers/settings-provider";
 
@@ -50,7 +51,26 @@ interface StudentAttendanceRecord {
     exit_time: string;
     note: string;
     isOnLeave?: boolean;
-    leaveDetails?: any;
+    leaveDetails?: Record<string, unknown> | null;
+}
+
+interface RawStudent {
+    id: number;
+    admission_no?: string;
+    roll_no?: string;
+    name?: string;
+    last_name?: string;
+    attendances?: { attendance?: StudentAttendanceRecord["attendance"]; reason?: string; entry_time?: string; exit_time?: string; note?: string }[];
+    student_attendances?: { attendance?: StudentAttendanceRecord["attendance"]; reason?: string; entry_time?: string; exit_time?: string; note?: string }[];
+    leave_requests?: Record<string, unknown>[];
+}
+
+interface ClassAttendanceSetting {
+    class_id: number | string;
+    sections?: {
+        section_id: number | string;
+        settings?: { type?: string; from?: string }[];
+    }[];
 }
 
 interface SchoolClass {
@@ -71,6 +91,23 @@ const ATTENDANCE_OPTIONS = [
     { id: "holiday", label: "Holiday" },
     { id: "half_day", label: "Half Day" },
 ];
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 export default function StudentAttendancePage() {
     const { settings } = useSettings();
@@ -125,8 +162,8 @@ export default function StudentAttendancePage() {
 
         try {
             // Step 1: Try to get students with existing attendance data
-            let studentsData: any[] = [];
-            
+            let studentsData: RawStudent[] = [];
+
             try {
                 const attendanceRes = await api.get("/attendance/student", {
                     params: {
@@ -165,11 +202,11 @@ export default function StudentAttendancePage() {
             }
 
             if (studentsData.length > 0) {
-                const mappedStudents = studentsData.map((student: any) => {
+                const mappedStudents = studentsData.map((student) => {
                     const attendance = student.attendances?.[0] || student.student_attendances?.[0];
-                    const hasApprovedLeave = 
-                        attendance?.attendance === "on_leave" || 
-                        (student.leave_requests && student.leave_requests.length > 0) || 
+                    const hasApprovedLeave =
+                        attendance?.attendance === "on_leave" ||
+                        (student.leave_requests && student.leave_requests.length > 0) ||
                         (student.leave_requests && student.leave_requests.length > 0);
                     return {
                         id: student.id,
@@ -192,9 +229,10 @@ export default function StudentAttendancePage() {
             } else {
                 toast.info("No students found for this class and section");
             }
-        } catch (error: any) {
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
             console.error("Error searching students:", error);
-            toast.error(error?.response?.data?.message || "Failed to load students");
+            toast.error(err?.response?.data?.message || "Failed to load students");
         } finally {
             setLoading(false);
         }
@@ -203,16 +241,16 @@ export default function StudentAttendancePage() {
     const getAutoEntryTime = () => {
         let entryTime = "";
         if (settings?.student_attendance_settings) {
-            const classSettings = (settings.student_attendance_settings as any[]).find(
-                (c: any) => String(c.class_id) === selectedClass
+            const classSettings = (settings.student_attendance_settings as ClassAttendanceSetting[]).find(
+                (c) => String(c.class_id) === selectedClass
             );
             if (classSettings) {
                 const sectionSettings = classSettings.sections?.find(
-                    (s: any) => String(s.section_id) === selectedSection
+                    (s) => String(s.section_id) === selectedSection
                 );
                 if (sectionSettings) {
                     const presentSetting = sectionSettings.settings?.find(
-                        (s: any) => s.type?.toLowerCase().startsWith("present")
+                        (s) => s.type?.toLowerCase().startsWith("present")
                     );
                     if (presentSetting) {
                         entryTime = presentSetting.from ? presentSetting.from.substring(0, 5) : "";
@@ -226,8 +264,8 @@ export default function StudentAttendancePage() {
     const handleAttendanceChange = (studentId: number, value: "present" | "late" | "absent" | "holiday" | "half_day") => {
         setStudents(prev => prev.map(s => {
             if (s.id !== studentId || s.isOnLeave) return s;
-            
-            const updates: any = { attendance: value };
+
+            const updates: Partial<StudentAttendanceRecord> = { attendance: value };
             if (value === "present") {
                 const entryTime = getAutoEntryTime();
                 if (entryTime && !s.entry_time) updates.entry_time = entryTime;
@@ -238,22 +276,22 @@ export default function StudentAttendancePage() {
 
     const handleBulkAction = (value: string) => {
         setBulkAttendance(value);
-        
+
         let autoEntry = "";
-        
+
         if (value === "present") {
             autoEntry = getAutoEntryTime();
         }
 
         setStudents(prev => prev.map(s => {
             if (s.isOnLeave) return s;
-            const updates: any = { attendance: value as any };
+            const updates: Partial<StudentAttendanceRecord> = { attendance: value as StudentAttendanceRecord["attendance"] };
             if (value === "present" && autoEntry) {
                 updates.entry_time = autoEntry;
             }
             return { ...s, ...updates };
         }));
-        
+
         toast.info(`Set all students to ${value}`);
     };
 
@@ -288,15 +326,16 @@ export default function StudentAttendancePage() {
                 });
                 setIsConfirmOpen(false);
             }
-        } catch (error: any) {
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
             console.error("Error saving attendance:", error);
-            toast.error(error?.response?.data?.message || "Failed to save attendance");
+            toast.error(err?.response?.data?.message || "Failed to save attendance");
         } finally {
             setSaving(false);
         }
     };
 
-    const handleCsvImport = (records: any[]) => {
+    const handleCsvImport = (records: StudentAttendanceRecord[]) => {
         setStudents(records);
         setHasSearched(true);
         setBulkAttendance("");
@@ -305,291 +344,310 @@ export default function StudentAttendancePage() {
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             {/* Select Criteria */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
-                <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-tight mb-4 border-b border-gray-50 pb-2 flex items-center gap-2">
-                    <Search className="h-3 w-3" />
-                    Select Criteria
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                            Class <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={selectedClass} onValueChange={setSelectedClass}>
-                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {classes.map((cls) => (
-                                    <SelectItem key={cls.id} value={cls.id.toString()}>
-                                        {cls.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Filter students by class, section &amp; date</p>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                                Class <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={selectedClass} onValueChange={setSelectedClass}>
+                                <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {classes.map((cls) => (
+                                        <SelectItem key={cls.id} value={cls.id.toString()}>
+                                            {cls.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                                Section <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
+                                <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {sections.map((sec) => (
+                                        <SelectItem key={sec.id} value={sec.id.toString()}>
+                                            {sec.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                                Attendance Date <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                type="date"
+                                value={attendanceDate}
+                                onChange={(e) => setAttendanceDate(e.target.value)}
+                                className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                            />
+                        </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                            Section <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
-                            <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sections.map((sec) => (
-                                    <SelectItem key={sec.id} value={sec.id.toString()}>
-                                        {sec.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="flex justify-end mt-4">
+                        <Button
+                            onClick={handleSearch}
+                            disabled={loading}
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
+                        >
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            Search
+                        </Button>
                     </div>
+                </CardContent>
+            </Card>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                            Attendance Date <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                            type="date"
-                            value={attendanceDate}
-                            onChange={(e) => setAttendanceDate(e.target.value)}
-                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                        />
-                    </div>
-                </div>
-
-                <div className="flex justify-end mt-4">
-                    <Button 
-                        onClick={handleSearch}
-                        disabled={loading}
-                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
-                    >
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                        Search
-                    </Button>
-                </div>
-            </div>
-
-            {/* Student List - shown after search */}
-            {hasSearched && students.length > 0 && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-center justify-between border-b border-gray-50 pb-3">
-                        <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                            <UserCheck className="h-4 w-4 text-indigo-500" />
-                            Student List
-                            <span className="text-[10px] font-medium text-gray-400 ml-1">({students.length} students)</span>
-                        </h2>
+            {/* Student List - shown after search (or while loading) */}
+            {hasSearched && (loading || students.length > 0) && (
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <ClipboardCheck className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{students.length} student{students.length === 1 ? '' : 's'}</p>
+                            </div>
+                        </div>
                         <CsvImportDialog
                             onImport={handleCsvImport}
                             attendanceDate={attendanceDate}
                             selectedClass={selectedClass}
                             selectedSection={selectedSection}
                         />
-                    </div>
+                    </CardHeader>
 
-                    {/* Bulk Actions & Save Button Row */}
-                    <div className="flex items-center justify-between flex-wrap gap-4 bg-gray-50/50 p-4 rounded-lg border border-gray-100">
-                        <div className="flex items-center gap-4 flex-wrap">
-                            <span className="text-[11px] font-semibold text-gray-500">
-                                Set attendance for all students as
-                            </span>
-                            <RadioGroup
-                                value={bulkAttendance}
-                                onValueChange={handleBulkAction}
-                                className="flex items-center gap-4"
-                            >
-                                {ATTENDANCE_OPTIONS.map((opt) => (
-                                    <div key={opt.id} className="flex items-center gap-1.5">
-                                        <RadioGroupItem
-                                            value={opt.id}
-                                            id={`bulk-${opt.id}`}
-                                            className={cn(
-                                                "h-4 w-4 border-gray-300",
-                                                bulkAttendance === opt.id && "text-indigo-600 border-indigo-600"
-                                            )}
-                                        />
-                                        <label
-                                            htmlFor={`bulk-${opt.id}`}
-                                            className={cn(
-                                                "text-[11px] font-medium cursor-pointer",
-                                                "text-gray-600"
-                                            )}
-                                        >
-                                            {opt.label}
-                                        </label>
-                                    </div>
-                                ))}
-                            </RadioGroup>
-                        </div>
-                        <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-                            <AlertDialogTrigger asChild>
-                                <Button 
-                                    disabled={saving || students.length === 0}
-                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
+                    <CardContent className="p-5 space-y-4">
+                        {/* Bulk Actions & Save Button Row */}
+                        <div className="flex items-center justify-between flex-wrap gap-4 bg-gray-50/50 p-4 rounded-lg border border-gray-100">
+                            <div className="flex items-center gap-4 flex-wrap">
+                                <span className="text-[11px] font-semibold text-gray-500">
+                                    Set attendance for all students as
+                                </span>
+                                <RadioGroup
+                                    value={bulkAttendance}
+                                    onValueChange={handleBulkAction}
+                                    className="flex items-center gap-4"
                                 >
-                                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                    Save Attendance
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl">
-                                <AlertDialogHeader>
-                                    <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
-                                        <Info className="h-6 w-6 text-indigo-600" />
-                                    </div>
-                                    <AlertDialogTitle className="text-lg font-bold text-gray-800">Confirm Attendance</AlertDialogTitle>
-                                    <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed">
-                                        You are about to save attendance for <span className="font-bold text-indigo-600">{students.length}</span> students for <span className="font-bold text-gray-700">{attendanceDate}</span>. 
-                                        <br /><br />
-                                        Are you sure you want to proceed with these records?
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter className="mt-6 gap-2">
-                                    <AlertDialogCancel className="rounded-full border-gray-100 text-xs font-bold uppercase h-10 px-6">
-                                        Cancel
-                                    </AlertDialogCancel>
-                                    <AlertDialogAction 
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            handleSave();
-                                        }}
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-bold uppercase h-10 px-8 transition-all active:scale-95"
+                                    {ATTENDANCE_OPTIONS.map((opt) => (
+                                        <div key={opt.id} className="flex items-center gap-1.5">
+                                            <RadioGroupItem
+                                                value={opt.id}
+                                                id={`bulk-${opt.id}`}
+                                                className={cn(
+                                                    "h-4 w-4 border-gray-300",
+                                                    bulkAttendance === opt.id && "text-indigo-600 border-indigo-600"
+                                                )}
+                                            />
+                                            <label
+                                                htmlFor={`bulk-${opt.id}`}
+                                                className={cn(
+                                                    "text-[11px] font-medium cursor-pointer",
+                                                    "text-gray-600"
+                                                )}
+                                            >
+                                                {opt.label}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </RadioGroup>
+                            </div>
+                            <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        disabled={saving || students.length === 0}
+                                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
                                     >
-                                        Confirm & Save
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </div>
+                                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                        Save Attendance
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl">
+                                    <AlertDialogHeader>
+                                        <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
+                                            <Info className="h-6 w-6 text-indigo-600" />
+                                        </div>
+                                        <AlertDialogTitle className="text-lg font-bold text-gray-800">Confirm Attendance</AlertDialogTitle>
+                                        <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed">
+                                            You are about to save attendance for <span className="font-bold text-indigo-600">{students.length}</span> students for <span className="font-bold text-gray-700">{attendanceDate}</span>.
+                                            <br /><br />
+                                            Are you sure you want to proceed with these records?
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter className="mt-6 gap-2">
+                                        <AlertDialogCancel className="rounded-full border-gray-100 text-xs font-bold uppercase h-10 px-6">
+                                            Cancel
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                handleSave();
+                                            }}
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-bold uppercase h-10 px-8 transition-all active:scale-95"
+                                        >
+                                            Confirm &amp; Save
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
 
-                    {/* Attendance Table */}
-                    <div className="rounded-lg border border-gray-100 overflow-x-auto shadow-sm">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/50">
-                                    <TableHead className="py-3 px-4 w-10 text-center">#</TableHead>
-                                    <TableHead className="py-3 px-4">Admission No</TableHead>
-                                    <TableHead className="py-3 px-4">Roll Number</TableHead>
-                                    <TableHead className="py-3 px-4">Name</TableHead>
-                                    <TableHead className="py-3 px-4">Attendance</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Date</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Source</TableHead>
-                                    <TableHead className="py-3 px-4">Entry Time</TableHead>
-                                    <TableHead className="py-3 px-4">Exit Time</TableHead>
-                                    <TableHead className="py-3 px-4">Note</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {students.map((student, idx) => (
-                                    <TableRow
-                                        key={student.id}
-                                        className={cn(
-                                            "text-[12px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors bg-white"
-                                        )}
-                                    >
-                                        <TableCell className="py-3 px-4 text-center text-gray-400 font-medium">
-                                            {idx + 1}
-                                        </TableCell>
-                                        <TableCell className="py-3 px-4 text-indigo-600 font-bold">
-                                            {student.admission_no}
-                                        </TableCell>
-                                        <TableCell className="py-3 px-4 text-gray-600 font-medium">
-                                            {student.roll_no}
-                                        </TableCell>
-                                        <TableCell className="py-3 px-4 text-gray-800 font-semibold">
-                                            {student.name}
-                                        </TableCell>
-                                        {student.isOnLeave ? (
-                                            <TableCell colSpan={6} className="py-3 px-4 bg-gradient-to-r from-orange-50/30 to-indigo-50/30 border-y border-gray-100">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-[10px] font-black bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md uppercase tracking-wider animate-pulse">
-                                                            On Leave
-                                                        </span>
-                                                        <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50/50 border border-indigo-100/50 px-3 py-1 rounded-full uppercase tracking-tight">
-                                                            {student.leaveDetails?.leaveType?.name || student.leaveDetails?.leave_type?.name || "Approved Leave"}
-                                                        </span>
-                                                        {student.leaveDetails?.reason && (
-                                                            <span className="text-[11px] font-medium text-gray-500 italic max-w-[200px] truncate" title={student.leaveDetails.reason}>
-                                                                "{student.leaveDetails.reason}"
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white border border-gray-100 px-3 py-1 rounded-full shadow-sm">
-                                                        Leave Range: {student.leaveDetails?.leave_from ? new Date(student.leaveDetails.leave_from).toLocaleDateString() : ""} - {student.leaveDetails?.leave_to ? new Date(student.leaveDetails.leave_to).toLocaleDateString() : ""}
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                        ) : (
-                                            <>
-                                                <TableCell className="py-3 px-4">
-                                                    <RadioGroup 
-                                                        value={student.attendance} 
-                                                        onValueChange={(val) => handleAttendanceChange(student.id, val as any)}
-                                                        className="flex flex-col gap-1"
-                                                    >
-                                                        {ATTENDANCE_OPTIONS.map((opt) => (
-                                                            <div key={opt.id} className="flex items-center gap-1.5">
-                                                                <RadioGroupItem
-                                                                    value={opt.id}
-                                                                    id={`${opt.id}-${student.id}`}
-                                                                    className={cn(
-                                                                        "h-3.5 w-3.5 border-gray-300",
-                                                                        student.attendance === opt.id && "text-indigo-600 border-indigo-600"
-                                                                    )}
-                                                                />
-                                                                <label
-                                                                    htmlFor={`${opt.id}-${student.id}`}
-                                                                    className={cn(
-                                                                        "text-[11px] font-medium cursor-pointer leading-none",
-                                                                        "text-gray-600"
-                                                                    )}
-                                                                >
-                                                                    {opt.label}
-                                                                </label>
-                                                            </div>
-                                                        ))}
-                                                    </RadioGroup>
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-gray-500 font-medium text-[11px]">
-                                                    {attendanceDate}
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-gray-400 font-medium text-[11px]">
-                                                    {student.reason || "Manual"}
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4">
-                                                    <Input
-                                                        type="time"
-                                                        value={student.entry_time}
-                                                        onChange={(e) => handleInputChange(student.id, 'entry_time', e.target.value)}
-                                                        className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[145px] focus:ring-2 focus:ring-indigo-500/20"
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4">
-                                                    <Input
-                                                        type="time"
-                                                        value={student.exit_time}
-                                                        onChange={(e) => handleInputChange(student.id, 'exit_time', e.target.value)}
-                                                        className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[145px] focus:ring-2 focus:ring-indigo-500/20"
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4">
-                                                    <Input
-                                                        placeholder="Note..."
-                                                        value={student.note}
-                                                        onChange={(e) => handleInputChange(student.id, 'note', e.target.value)}
-                                                        className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[100px] focus:ring-2 focus:ring-indigo-500/20"
-                                                    />
-                                                </TableCell>
-                                            </>
-                                        )}
+                        {/* Attendance Table */}
+                        <div className="rounded-lg border border-gray-100 overflow-x-auto shadow-sm">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/50">
+                                        <TableHead className="py-3 px-4 w-10 text-center">#</TableHead>
+                                        <TableHead className="py-3 px-4">Admission No</TableHead>
+                                        <TableHead className="py-3 px-4">Roll Number</TableHead>
+                                        <TableHead className="py-3 px-4">Name</TableHead>
+                                        <TableHead className="py-3 px-4">Attendance</TableHead>
+                                        <TableHead className="py-3 px-4 text-center">Date</TableHead>
+                                        <TableHead className="py-3 px-4 text-center">Source</TableHead>
+                                        <TableHead className="py-3 px-4">Entry Time</TableHead>
+                                        <TableHead className="py-3 px-4">Exit Time</TableHead>
+                                        <TableHead className="py-3 px-4">Note</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={10} />
+                                    ) : students.length === 0 ? (
+                                        <tr><td colSpan={10} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
+                                    ) : (
+                                        students.map((student, idx) => (
+                                            <TableRow
+                                                key={student.id}
+                                                className={cn(
+                                                    "text-[12px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors bg-white"
+                                                )}
+                                            >
+                                                <TableCell className="py-3 px-4 text-center text-gray-400 font-medium">
+                                                    {idx + 1}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-indigo-600 font-bold">
+                                                    {student.admission_no}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-600 font-medium">
+                                                    {student.roll_no}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    {student.name}
+                                                </TableCell>
+                                                {student.isOnLeave ? (
+                                                    <TableCell colSpan={6} className="py-3 px-4 bg-gradient-to-r from-orange-50/30 to-indigo-50/30 border-y border-gray-100">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-[10px] font-black bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md uppercase tracking-wider animate-pulse">
+                                                                    On Leave
+                                                                </span>
+                                                                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50/50 border border-indigo-100/50 px-3 py-1 rounded-full uppercase tracking-tight">
+                                                                    {student.leaveDetails?.leaveType?.name || student.leaveDetails?.leave_type?.name || "Approved Leave"}
+                                                                </span>
+                                                                {student.leaveDetails?.reason && (
+                                                                    <span className="text-[11px] font-medium text-gray-500 italic max-w-[200px] truncate" title={student.leaveDetails.reason}>
+                                                                        &quot;{student.leaveDetails.reason}&quot;
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white border border-gray-100 px-3 py-1 rounded-full shadow-sm">
+                                                                Leave Range: {student.leaveDetails?.leave_from ? new Date(student.leaveDetails.leave_from).toLocaleDateString() : ""} - {student.leaveDetails?.leave_to ? new Date(student.leaveDetails.leave_to).toLocaleDateString() : ""}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                ) : (
+                                                    <>
+                                                        <TableCell className="py-3 px-4">
+                                                            <RadioGroup
+                                                                value={student.attendance}
+                                                                onValueChange={(val) => handleAttendanceChange(student.id, val as "present" | "late" | "absent" | "holiday" | "half_day")}
+                                                                className="flex flex-col gap-1"
+                                                            >
+                                                                {ATTENDANCE_OPTIONS.map((opt) => (
+                                                                    <div key={opt.id} className="flex items-center gap-1.5">
+                                                                        <RadioGroupItem
+                                                                            value={opt.id}
+                                                                            id={`${opt.id}-${student.id}`}
+                                                                            className={cn(
+                                                                                "h-3.5 w-3.5 border-gray-300",
+                                                                                student.attendance === opt.id && "text-indigo-600 border-indigo-600"
+                                                                            )}
+                                                                        />
+                                                                        <label
+                                                                            htmlFor={`${opt.id}-${student.id}`}
+                                                                            className={cn(
+                                                                                "text-[11px] font-medium cursor-pointer leading-none",
+                                                                                "text-gray-600"
+                                                                            )}
+                                                                        >
+                                                                            {opt.label}
+                                                                        </label>
+                                                                    </div>
+                                                                ))}
+                                                            </RadioGroup>
+                                                        </TableCell>
+                                                        <TableCell className="py-3 px-4 text-center text-gray-500 font-medium text-[11px]">
+                                                            {attendanceDate}
+                                                        </TableCell>
+                                                        <TableCell className="py-3 px-4 text-center text-gray-400 font-medium text-[11px]">
+                                                            {student.reason || "Manual"}
+                                                        </TableCell>
+                                                        <TableCell className="py-3 px-4">
+                                                            <Input
+                                                                type="time"
+                                                                value={student.entry_time}
+                                                                onChange={(e) => handleInputChange(student.id, 'entry_time', e.target.value)}
+                                                                className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[145px] focus:ring-2 focus:ring-indigo-500/20"
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell className="py-3 px-4">
+                                                            <Input
+                                                                type="time"
+                                                                value={student.exit_time}
+                                                                onChange={(e) => handleInputChange(student.id, 'exit_time', e.target.value)}
+                                                                className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[145px] focus:ring-2 focus:ring-indigo-500/20"
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell className="py-3 px-4">
+                                                            <Input
+                                                                placeholder="Note..."
+                                                                value={student.note}
+                                                                onChange={(e) => handleInputChange(student.id, 'note', e.target.value)}
+                                                                className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[100px] focus:ring-2 focus:ring-indigo-500/20"
+                                                            />
+                                                        </TableCell>
+                                                    </>
+                                                )}
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Empty State */}

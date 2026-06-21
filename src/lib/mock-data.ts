@@ -27,8 +27,14 @@ export const mockDashboardData = {
         { name: "Rent", value: 30, color: "#78350f" },
     ],
     summary: {
-        monthlyFees: "$45,231.89",
+        monthlyFeesAmount: 45231.89,      // raw number (FeePayment + Income combined)
+        monthlyExpensesAmount: 12450,
+        totalIncomeAmount: 125480,
+        totalExpensesAmount: 38200,
+        monthlyFees: "$45,231.89",        // formatted fallback
         monthlyExpenses: "$12,450.00",
+        totalIncome: "$125,480.00",
+        totalExpenses: "$38,200.00",
         studentCount: 1250,
         studentHeadCount: 1250,
         admin: 3,
@@ -55,9 +61,8 @@ export const mockDashboardData = {
     ],
     overviews: {
         fees: [
-            { label: "UNPAID", value: 130, percentage: 83.87, color: "bg-blue-600" },
-            { label: "PARTIAL", value: 11, percentage: 7.1, color: "bg-orange-500" },
-            { label: "PAID", value: 14, percentage: 9.03, color: "bg-cyan-500" },
+            { label: "UNPAID", value: "$42,300.00", percentage: 65.4, color: "bg-blue-600" },
+            { label: "PAID", value: "$22,360.00", percentage: 34.6, color: "bg-cyan-500" },
         ],
         enquiry: [
             { label: "ACTIVE", value: 9, percentage: 64.29, color: "bg-red-500" },

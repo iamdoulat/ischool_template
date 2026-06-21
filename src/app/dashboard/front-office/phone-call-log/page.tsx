@@ -5,23 +5,13 @@ import {
     Search,
     Printer,
     FileText,
-    Table as TableIcon,
-    FileDown,
     Download,
     Columns,
-    ChevronDown,
     Eye,
     Pencil,
     Trash2,
-    Calendar,
     Phone,
-    X,
-    Filter,
     FileSpreadsheet,
-    Copy,
-    ArrowUpDown,
-    CheckCircle2,
-    AlertCircle,
     Copy as CopyIcon,
     ChevronLeft,
     ChevronRight
@@ -38,7 +28,6 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -152,9 +141,10 @@ export default function PhoneCallLogPage() {
             }
             fetchLogs();
             resetForm();
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error saving phone call log:", error);
-            const message = error.response?.data?.message || "Failed to save phone call log";
+            const err = error as { response?: { data?: { message?: string } } };
+            const message = err.response?.data?.message || "Failed to save phone call log";
             toast("error", message);
         }
     };
@@ -266,11 +256,17 @@ export default function PhoneCallLogPage() {
 
                 {/* Left Column: Add Phone Call Log Form */}
                 <div className="md:col-span-4">
-                    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm sticky top-6">
-                        <CardHeader className="border-b border-muted/50 pb-4">
-                            <CardTitle className="text-xl font-bold tracking-tight text-slate-800">
-                                {isEdit ? "Edit Phone Call Log" : "Add Phone Call Log"}
-                            </CardTitle>
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Phone className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                    {isEdit ? "Edit Phone Call Log" : "Add Phone Call Log"}
+                                </CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{isEdit ? "Update call record" : "Log a new call"}</p>
+                            </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-4">
                             <form onSubmit={handleSave} className="space-y-4">
@@ -358,7 +354,7 @@ export default function PhoneCallLogPage() {
                                             <input
                                                 type="radio"
                                                 name="callType"
-                                                className="w-4 h-4 accent-[#008489]"
+                                                className="w-4 h-4 accent-indigo-500"
                                                 checked={formData.call_type === "Incoming"}
                                                 onChange={() => setFormData({ ...formData, call_type: "Incoming" })}
                                             />
@@ -368,7 +364,7 @@ export default function PhoneCallLogPage() {
                                             <input
                                                 type="radio"
                                                 name="callType"
-                                                className="w-4 h-4 accent-[#008489]"
+                                                className="w-4 h-4 accent-indigo-500"
                                                 checked={formData.call_type === "Outgoing"}
                                                 onChange={() => setFormData({ ...formData, call_type: "Outgoing" })}
                                             />
@@ -394,9 +390,15 @@ export default function PhoneCallLogPage() {
 
                 {/* Right Column: Phone Call Log List Table */}
                 <div className="md:col-span-8">
-                    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm">
-                        <CardHeader className="border-b border-muted/50 pb-4">
-                            <CardTitle className="text-xl font-bold tracking-tight text-slate-800">Phone Call Log List</CardTitle>
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Phone className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Phone Call Log List</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{total} total log{total === 1 ? "" : "s"}</p>
+                            </div>
                         </CardHeader>
                         <CardContent className="p-6">
                             {/* Toolbar */}
@@ -506,8 +508,8 @@ export default function PhoneCallLogPage() {
                                                     </Td>
                                                     <Td className="text-right">
                                                         <div className="flex justify-end gap-1 px-2">
-                                                            <ActionBtn icon={Eye} className="bg-[#4F39F6]" onClick={() => { setSelectedLog(item); setIsViewDialogOpen(true); }} />
-                                                            <ActionBtn icon={Pencil} className="bg-[#4F39F6]" onClick={() => startEdit(item)} />
+                                                            <ActionBtn icon={Eye} className="bg-indigo-500" onClick={() => { setSelectedLog(item); setIsViewDialogOpen(true); }} />
+                                                            <ActionBtn icon={Pencil} className="bg-amber-500" onClick={() => startEdit(item)} />
                                                             <ActionBtn icon={Trash2} className="bg-red-500" onClick={() => { setDeleteId(item.id); setIsDeleteDialogOpen(true); }} />
                                                         </div>
                                                     </Td>
@@ -545,8 +547,8 @@ export default function PhoneCallLogPage() {
                                                     className={cn(
                                                         "h-8 w-8 rounded-lg font-bold transition-all active:scale-95",
                                                         isCurrent
-                                                            ? "border-none p-0 text-white shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]"
-                                                            : "border-muted/50 text-muted-foreground hover:bg-card bg-transparent border"
+                                                            ? "border-none p-0 text-white shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]"
+                                                            : "bg-white border border-gray-200 text-gray-600 hover:bg-muted"
                                                     )}
                                                     onClick={() => setPage(p)}
                                                  >
@@ -608,7 +610,7 @@ export default function PhoneCallLogPage() {
 
             <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
                 <DialogContent className="max-w-2xl p-0 overflow-hidden border-none shadow-2xl">
-                    <DialogHeader className="bg-[#4F39F6] p-6">
+                    <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-6">
                         <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
                             <Eye className="h-5 w-5" />
                             Phone Call Log Details
@@ -660,7 +662,7 @@ function Td({ children, className }: { children: React.ReactNode, className?: st
     return <td className={cn("px-4 py-4 text-sm whitespace-nowrap", className)}>{children}</td>;
 }
 
-function IconButton({ icon: Icon, onClick }: { icon: any, onClick?: () => void }) {
+function IconButton({ icon: Icon, onClick }: { icon: React.ElementType, onClick?: () => void }) {
     return (
         <button
             type="button"
@@ -672,7 +674,7 @@ function IconButton({ icon: Icon, onClick }: { icon: any, onClick?: () => void }
     );
 }
 
-function ActionBtn({ icon: Icon, className, onClick }: { icon: any, className?: string, onClick?: () => void }) {
+function ActionBtn({ icon: Icon, className, onClick }: { icon: React.ElementType, className?: string, onClick?: () => void }) {
     return (
         <button
             type="button"

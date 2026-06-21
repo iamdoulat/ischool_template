@@ -1,13 +1,12 @@
 "use client";
 
-import { Search, Info, User, Calendar, CreditCard, Receipt, Eye, Printer, Download, CheckCircle2 } from "lucide-react";
+import { Search, Info, User, Calendar, CreditCard, Receipt, ReceiptText, Eye, Printer, Download, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
 
 interface PaymentRecord {
     id: number;
@@ -32,6 +31,26 @@ interface PaymentRecord {
     collected_by: {
         name: string;
     };
+}
+
+function CardSkeleton({ count = 6 }: { count?: number }) {
+    return (
+        <>
+            {Array.from({ length: count }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-muted/30 p-4 space-y-3 bg-card animate-pulse">
+                    <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-full bg-muted/60" />
+                        <div className="space-y-2 flex-1">
+                            <div className="h-3 w-1/2 rounded bg-muted/60" />
+                            <div className="h-3 w-1/3 rounded bg-muted/60" />
+                        </div>
+                    </div>
+                    <div className="h-3 w-full rounded bg-muted/60" />
+                    <div className="h-3 w-3/4 rounded bg-muted/60" />
+                </div>
+            ))}
+        </>
+    );
 }
 
 export default function SearchFeesPaymentPage() {
@@ -70,7 +89,16 @@ export default function SearchFeesPaymentPage() {
             </div>
 
             {/* Search Section */}
-            <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <ReceiptText className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Search Fees Payment</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{results.length} result{results.length === 1 ? '' : 's'} found</p>
+                    </div>
+                </CardHeader>
                 <CardContent className="p-8">
                     <div className="flex flex-col sm:flex-row items-end gap-6">
                         <div className="space-y-2.5 flex-1 max-w-md group">
@@ -98,7 +126,7 @@ export default function SearchFeesPaymentPage() {
                         </Button>
                     </div>
 
-                    {!results.length && (
+                    {!results.length && !loading && (
                         <div className="mt-8 p-6 rounded-lg bg-primary/5 border border-primary/10 flex items-start gap-4 max-w-2xl animate-in slide-in-from-bottom-2 duration-700">
                             <div className="p-2 bg-primary/10 rounded-lg">
                                 <Info className="h-5 w-5 text-primary" />
@@ -106,7 +134,7 @@ export default function SearchFeesPaymentPage() {
                             <div className="space-y-1">
                                 <h4 className="text-sm font-bold text-primary tracking-tight uppercase tracking-wider">Search Instructions</h4>
                                 <p className="text-xs text-muted-foreground leading-relaxed">
-                                    Enter the unique <strong>Payment ID</strong> found on the student's receipt or transaction log. This will retrieve full details including student info, fee type, and collector details.
+                                    Enter the unique <strong>Payment ID</strong> found on the student&apos;s receipt or transaction log. This will retrieve full details including student info, fee type, and collector details.
                                 </p>
                             </div>
                         </div>
@@ -114,35 +142,45 @@ export default function SearchFeesPaymentPage() {
                 </CardContent>
             </Card>
 
+            {/* Loading Skeleton */}
+            {loading && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 space-y-6">
+                        <CardSkeleton count={1} />
+                    </div>
+                    <div className="space-y-6">
+                        <CardSkeleton count={2} />
+                    </div>
+                </div>
+            )}
+
             {/* Results Section */}
-            {results.length > 0 && (
+            {!loading && results.length > 0 && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
                     {/* Main Receipt Card */}
                     {results.map((payment) => (
-                        <Card key={payment.id} className="lg:col-span-2 border-none shadow-2xl bg-card overflow-hidden rounded-lg relative">
+                        <Card key={payment.id} className="lg:col-span-2 border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 rounded-lg relative">
                             <div className="absolute top-0 right-0 p-8 opacity-5">
                                 <Receipt className="h-32 w-32 rotate-12 text-primary" />
                             </div>
-                            
-                            <CardHeader className="p-8 border-b border-muted/20 bg-muted/5">
-                                <div className="flex items-center justify-between relative z-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-primary/10 rounded-lg text-primary">
-                                            <Receipt className="h-6 w-6" />
-                                        </div>
-                                        <div>
-                                            <CardTitle className="text-2xl font-bold tracking-tight">Payment Receipt</CardTitle>
-                                            <p className="text-muted-foreground text-xs font-black uppercase tracking-widest">Transaction ID: #{payment.id}</p>
-                                        </div>
+
+                            <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] relative z-10">
+                                <div className="flex items-center gap-2.5">
+                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                        <ReceiptText className="h-5 w-5" />
+                                    </span>
+                                    <div>
+                                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Payment Receipt</CardTitle>
+                                        <p className="text-[11px] text-gray-500 mt-1">Transaction ID: #{payment.id}</p>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
-                                            <Printer className="h-3.5 w-3.5 mr-2" /> Print
-                                        </Button>
-                                        <Button variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
-                                            <Download className="h-3.5 w-3.5 mr-2" /> PDF
-                                        </Button>
-                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
+                                        <Printer className="h-3.5 w-3.5 mr-2" /> Print
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
+                                        <Download className="h-3.5 w-3.5 mr-2" /> PDF
+                                    </Button>
                                 </div>
                             </CardHeader>
 
@@ -237,9 +275,15 @@ export default function SearchFeesPaymentPage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="border-none shadow-xl bg-card overflow-hidden rounded-lg border border-muted/20">
-                            <CardHeader className="p-6 border-b border-muted/10 bg-muted/5">
-                                <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Action Center</CardTitle>
+                        <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 rounded-lg">
+                            <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                    <ReceiptText className="h-5 w-5" />
+                                </span>
+                                <div>
+                                    <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Action Center</CardTitle>
+                                    <p className="text-[11px] text-gray-500 mt-1">Quick links</p>
+                                </div>
                             </CardHeader>
                             <CardContent className="p-6 space-y-3">
                                 <Button variant="outline" className="w-full h-11 rounded-lg border-muted/50 font-bold text-xs justify-start hover:bg-muted/10 group">

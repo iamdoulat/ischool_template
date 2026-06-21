@@ -16,7 +16,7 @@ import {
     X,
     Copy
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +28,23 @@ import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface Discount {
     id?: number;
@@ -91,8 +108,8 @@ export default function FeesDiscountPage() {
     };
 
     const handleTypeChange = (type: "percentage" | "fix") => {
-        setFormData(prev => ({ 
-            ...prev, 
+        setFormData(prev => ({
+            ...prev,
             type,
             amount: type === "percentage" ? null : prev.amount,
             percentage: type === "fix" ? null : prev.percentage
@@ -124,7 +141,7 @@ export default function FeesDiscountPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm("Are you sure you want to delete this discount?")) return;
-        
+
         try {
             await api.delete(`/fee-discounts/${id}`);
             toast("success", "Discount deleted successfully");
@@ -147,14 +164,15 @@ export default function FeesDiscountPage() {
             }
             resetForm();
             fetchDiscounts();
-        } catch (error: any) {
-            toast("error", error.response?.data?.message || "Something went wrong");
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast("error", err.response?.data?.message || "Something went wrong");
         } finally {
             setSaving(false);
         }
     };
 
-    const filteredDiscounts = discounts.filter(d => 
+    const filteredDiscounts = discounts.filter(d =>
         d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         d.code.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -221,22 +239,27 @@ export default function FeesDiscountPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-700 p-6">
             {/* Left Column: Add/Edit Fees Discount Form */}
             <div className="lg:col-span-1">
-                <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden sticky top-24">
-                    <div className="px-6 py-4 border-b border-muted/20 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                                {editingId ? <Pencil className="h-5 w-5 text-primary" /> : <Plus className="h-5 w-5 text-primary" />}
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                    <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <BadgePercent className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                    {editingId ? "Edit Fees Discount" : "Add Fees Discount"}
+                                </CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">
+                                    {editingId ? "Update discount details" : "Create a new discount"}
+                                </p>
                             </div>
-                            <h2 className="font-bold text-lg tracking-tight">
-                                {editingId ? "Edit Fees Discount" : "Add Fees Discount"}
-                            </h2>
                         </div>
                         {editingId && (
                             <Button variant="ghost" size="icon" onClick={resetForm} className="h-8 w-8 rounded-full">
                                 <X className="h-4 w-4" />
                             </Button>
                         )}
-                    </div>
+                    </CardHeader>
                     <CardContent className="p-6">
                         <form onSubmit={handleSubmit} className="space-y-5">
                             {/* Name */}
@@ -279,12 +302,12 @@ export default function FeesDiscountPage() {
                                         { id: "percentage", label: "Percentage" },
                                         { id: "fix", label: "Fix Amount" }
                                     ].map((type) => (
-                                        <label 
-                                            key={type.id} 
+                                        <label
+                                            key={type.id}
                                             className={cn(
                                                 "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all group",
-                                                formData.type === type.id 
-                                                    ? "bg-primary/10 border-primary shadow-sm" 
+                                                formData.type === type.id
+                                                    ? "bg-primary/10 border-primary shadow-sm"
                                                     : "bg-muted/20 border-muted/50 hover:bg-primary/5"
                                             )}
                                         >
@@ -292,7 +315,7 @@ export default function FeesDiscountPage() {
                                                 type="radio"
                                                 name="discountType"
                                                 checked={formData.type === type.id}
-                                                onChange={() => handleTypeChange(type.id as any)}
+                                                onChange={() => handleTypeChange(type.id as "percentage" | "fix")}
                                                 className="w-4 h-4 text-primary bg-muted border-muted focus:ring-primary/20"
                                             />
                                             <span className={cn(
@@ -389,7 +412,7 @@ export default function FeesDiscountPage() {
                                         Cancel
                                     </Button>
                                 )}
-                                <Button 
+                                <Button
                                     type="submit"
                                     variant="gradient"
                                     disabled={saving}
@@ -406,18 +429,18 @@ export default function FeesDiscountPage() {
 
             {/* Right Column: Fees Discount List */}
             <div className="lg:col-span-2">
-                <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
-                    <div className="px-6 py-4 border-b border-muted/20 bg-muted/5 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                                <BadgePercent className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <h2 className="font-bold text-lg tracking-tight">Fees Discount List</h2>
-                                <p className="text-xs text-muted-foreground italic font-medium">Manage all active fee discounts</p>
-                            </div>
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <BadgePercent className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Fees Discount List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {filteredDiscounts.length} total entr{filteredDiscounts.length === 1 ? 'y' : 'ies'}
+                            </p>
                         </div>
-                    </div>
+                    </CardHeader>
 
                     <div className="p-6 space-y-6">
                         {/* Toolbar */}
@@ -433,7 +456,7 @@ export default function FeesDiscountPage() {
                             </div>
 
                             <div className="flex items-center gap-4">
-                                <select 
+                                <select
                                     value={pageSize === Number.MAX_SAFE_INTEGER ? "All" : pageSize}
                                     onChange={(e) => {
                                         const val = e.target.value;
@@ -478,21 +501,10 @@ export default function FeesDiscountPage() {
                                     </thead>
                                     <tbody className="divide-y divide-muted/10">
                                         {loading ? (
-                                            Array.from({ length: 3 }).map((_, i) => (
-                                                <tr key={i} className="animate-pulse">
-                                                    <td colSpan={7} className="px-6 py-8">
-                                                        <div className="h-8 bg-muted/20 rounded-lg" />
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        ) : discounts.length === 0 ? (
+                                            <TableSkeleton rows={5} cols={7} />
+                                        ) : paginatedDiscounts.length === 0 ? (
                                             <tr>
-                                                <td colSpan={7} className="px-6 py-20 text-center">
-                                                    <div className="flex flex-col items-center gap-3 opacity-30">
-                                                        <BadgePercent className="h-12 w-12" />
-                                                        <p className="font-bold tracking-tight">No discounts found</p>
-                                                    </div>
-                                                </td>
+                                                <td colSpan={7} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
                                             </tr>
                                         ) : (
                                             paginatedDiscounts.map((discount) => (
@@ -530,14 +542,14 @@ export default function FeesDiscountPage() {
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => handleEdit(discount)}
-                                                                className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-md active:scale-90"
+                                                                className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-md active:scale-90"
                                                             >
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => handleDelete(discount.id!)}
-                                                                className="h-8 w-8 rounded-lg bg-rose-500 hover:bg-rose-600 text-white shadow-md active:scale-90"
+                                                                className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-md active:scale-90"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
@@ -557,24 +569,24 @@ export default function FeesDiscountPage() {
                                     Showing {Math.min((currentPage - 1) * pageSize + 1, filteredDiscounts.length)} to {Math.min(currentPage * pageSize, filteredDiscounts.length)} of {filteredDiscounts.length} entries
                                 </p>
                                 <div className="flex items-center gap-2">
-                                    <Button 
-                                        variant="outline" 
-                                        size="icon" 
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
                                         disabled={currentPage === 1}
                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
                                     >
                                         <ChevronDown className="h-4 w-4 rotate-90" />
                                     </Button>
-                                    <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]">
+                                    <Button className="h-8 w-8 rounded-[10px] border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
                                         {currentPage}
                                     </Button>
-                                    <Button 
-                                        variant="outline" 
-                                        size="icon" 
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
                                         disabled={currentPage >= totalPages}
                                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                        className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
                                     >
                                         <ChevronDown className="h-4 w-4 -rotate-90" />
                                     </Button>
@@ -589,7 +601,7 @@ export default function FeesDiscountPage() {
 }
 
 // Helper component for icon buttons
-function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () => void, title?: string }) {
+function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, onClick?: () => void, title?: string }) {
     return (
         <button
             type="button"
@@ -601,4 +613,3 @@ function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () =>
         </button>
     );
 }
-

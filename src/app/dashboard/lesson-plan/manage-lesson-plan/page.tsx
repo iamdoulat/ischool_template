@@ -6,6 +6,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -31,10 +37,37 @@ import {
     MapPin,
     ClipboardList,
     FileText,
+    Filter,
     Calendar as CalendarIcon
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+
+function CardSkeleton({ count = 6 }: { count?: number }) {
+    return (
+        <>
+            {Array.from({ length: count }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-muted/30 p-4 space-y-3 bg-card animate-pulse">
+                    <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-full bg-muted/60" />
+                        <div className="space-y-2 flex-1">
+                            <div className="h-3 w-1/2 rounded bg-muted/60" />
+                            <div className="h-3 w-1/3 rounded bg-muted/60" />
+                        </div>
+                    </div>
+                    <div className="h-3 w-full rounded bg-muted/60" />
+                    <div className="h-3 w-3/4 rounded bg-muted/60" />
+                </div>
+            ))}
+        </>
+    );
+}
+
+interface TeacherOption {
+    id: string | number;
+    role?: string;
+    name?: string;
+}
 
 interface LessonPlanItem {
     id: string; // Timetable ID
@@ -48,6 +81,8 @@ interface LessonPlanItem {
         lesson: string;
         topic: string;
         sub_topic: string;
+        presentation?: string;
+        objectives?: string;
     } | null;
     actions: ("add" | "edit" | "report" | "view")[];
 }
@@ -60,7 +95,7 @@ interface DayPlan {
 
 export default function ManageLessonPlanPage() {
     const { toast } = useToast();
-    const [teachers, setTeachers] = useState<any[]>([]);
+    const [teachers, setTeachers] = useState<TeacherOption[]>([]);
     const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
     const [startDate, setStartDate] = useState<Date>(() => {
         const d = new Date();
@@ -74,7 +109,7 @@ export default function ManageLessonPlanPage() {
     // Form Dialog State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [dialogMode, setDialogMode] = useState<"add" | "edit" | "view">("add");
-    const [selectedSlot, setSelectedSlot] = useState<any>(null);
+    const [selectedSlot, setSelectedSlot] = useState<{ dayPlan: DayPlan; lesson: LessonPlanItem } | null>(null);
     const [formData, setFormData] = useState({
         lesson: "",
         topic: "",
@@ -92,9 +127,9 @@ export default function ManageLessonPlanPage() {
             const response = await api.get('/hr/staff-directory', {
                 params: { role: 'Teacher', no_paginate: true, active: 'all' }
             });
-            let data: any[] = response.data?.data || response.data || [];
+            let data: TeacherOption[] = response.data?.data || response.data || [];
             // Enforce Teacher-only filter on client side as a safety net
-            data = data.filter((u: any) => u.role === 'Teacher');
+            data = data.filter((u) => u.role === 'Teacher');
             setTeachers(data);
             if (data.length > 0) setSelectedTeacherId(data[0].id.toString());
         } catch (error) {
@@ -108,7 +143,7 @@ export default function ManageLessonPlanPage() {
         try {
             const endDate = new Date(startDate);
             endDate.setDate(startDate.getDate() + 6);
-            
+
             const response = await api.get('/lesson-plan/manage-lesson-plan', {
                 params: {
                     staff_id: selectedTeacherId,
@@ -144,8 +179,8 @@ export default function ManageLessonPlanPage() {
                 lesson: lesson.plan?.lesson || "",
                 topic: lesson.plan?.topic || "",
                 sub_topic: lesson.plan?.sub_topic || "",
-                presentation: (lesson.plan as any)?.presentation || "", 
-                objectives: (lesson.plan as any)?.objectives || ""
+                presentation: lesson.plan?.presentation || "",
+                objectives: lesson.plan?.objectives || ""
             });
         }
         setIsDialogOpen(true);
@@ -156,6 +191,8 @@ export default function ManageLessonPlanPage() {
             toast({ title: "Validation Error", description: "Lesson and Topic are required", variant: "destructive" });
             return;
         }
+
+        if (!selectedSlot) return;
 
         try {
             const payload = {
@@ -184,139 +221,167 @@ export default function ManageLessonPlanPage() {
         return `${startDate.toLocaleDateString()} To ${end.toLocaleDateString()}`;
     };
 
+    const totalLessons = weekPlan.reduce((acc, d) => acc + d.lessons.length, 0);
+
     return (
         <div className="p-4 space-y-6 font-sans bg-gray-50/30 min-h-screen">
             <div className="flex justify-between items-center">
                 <h1 className="text-xl font-medium text-gray-800">Manage Lesson Plan</h1>
             </div>
 
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm space-y-4">
-                <div className="space-y-3 max-w-2xl">
-                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                        Teachers <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="flex gap-3 items-center">
-                        <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
-                            <SelectTrigger className="w-full h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500">
-                                <SelectValue placeholder="Select Teacher" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {teachers.map(t => (
-                                    <SelectItem key={t.id} value={t.id.toString()}>{t.name} ({t.staff_id})</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Button onClick={fetchWeekPlan} className="btn-gradient text-white gap-2 h-11 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full">
-                            <Search className="h-4 w-4" /> Search
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{teachers.length} teacher{teachers.length === 1 ? '' : 's'} available</p>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <div className="space-y-3 max-w-2xl">
+                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                            Teachers <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="flex gap-3 items-center">
+                            <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                                <SelectTrigger className="w-full h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500">
+                                    <SelectValue placeholder="Select Teacher" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {teachers.map(t => (
+                                        <SelectItem key={t.id} value={t.id.toString()}>{t.name} ({t.staff_id})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Button onClick={fetchWeekPlan} className="btn-gradient text-white gap-2 h-11 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full">
+                                <Search className="h-4 w-4" /> Search
+                            </Button>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <ClipboardList className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Weekly Lesson Plan</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{totalLessons} total lesson{totalLessons === 1 ? '' : 's'} this week</p>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6 overflow-x-auto">
+                    <div className="flex justify-center items-center gap-8 mb-8 bg-gray-50/50 p-4 rounded-lg border border-gray-50">
+                        <Button onClick={() => handleNavigate('prev')} variant="ghost" size="icon" className="h-10 w-10 text-gray-400 rounded-full hover:bg-white hover:text-indigo-600 transition-all shadow-sm bg-white">
+                            <ChevronLeft className="h-6 w-6" />
+                        </Button>
+                        <div className="text-sm font-bold text-gray-700 uppercase tracking-widest flex items-center gap-3">
+                            <CalendarIcon className="h-5 w-5 text-indigo-500" />
+                            {getWeekRangeString()}
+                        </div>
+                        <Button onClick={() => handleNavigate('next')} variant="ghost" size="icon" className="h-10 w-10 text-gray-400 rounded-full hover:bg-white hover:text-indigo-600 transition-all shadow-sm bg-white">
+                            <ChevronRight className="h-6 w-6" />
                         </Button>
                     </div>
-                </div>
-            </div>
 
-            <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-6 overflow-x-auto">
-                <div className="flex justify-center items-center gap-8 mb-8 bg-gray-50/50 p-4 rounded-lg border border-gray-50">
-                    <Button onClick={() => handleNavigate('prev')} variant="ghost" size="icon" className="h-10 w-10 text-gray-400 rounded-full hover:bg-white hover:text-indigo-600 transition-all shadow-sm bg-white">
-                        <ChevronLeft className="h-6 w-6" />
-                    </Button>
-                    <div className="text-sm font-bold text-gray-700 uppercase tracking-widest flex items-center gap-3">
-                        <CalendarIcon className="h-5 w-5 text-indigo-500" />
-                        {getWeekRangeString()}
-                    </div>
-                    <Button onClick={() => handleNavigate('next')} variant="ghost" size="icon" className="h-10 w-10 text-gray-400 rounded-full hover:bg-white hover:text-indigo-600 transition-all shadow-sm bg-white">
-                        <ChevronRight className="h-6 w-6" />
-                    </Button>
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 min-w-[1400px]">
+                        {loading ? (
+                            <CardSkeleton count={7} />
+                        ) : (
+                            weekPlan.map((dayPlan) => (
+                                <div key={dayPlan.day} className="space-y-4">
+                                    <div className="bg-gray-50/80 p-3 rounded-lg border border-gray-100 text-center shadow-sm">
+                                        <div className="text-[11px] font-bold text-gray-800 uppercase tracking-wider">{dayPlan.day}</div>
+                                        <div className="text-[10px] text-indigo-400 font-bold mt-1 tracking-tighter">{dayPlan.date}</div>
+                                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 min-w-[1400px]">
-                    {weekPlan.map((dayPlan) => (
-                        <div key={dayPlan.day} className="space-y-4">
-                            <div className="bg-gray-50/80 p-3 rounded-lg border border-gray-100 text-center shadow-sm">
-                                <div className="text-[11px] font-bold text-gray-800 uppercase tracking-wider">{dayPlan.day}</div>
-                                <div className="text-[10px] text-indigo-400 font-bold mt-1 tracking-tighter">{dayPlan.date}</div>
-                            </div>
-
-                            {dayPlan.lessons.length > 0 ? (
-                                <div className="space-y-4">
-                                    {dayPlan.lessons.map((lesson) => (
-                                        <div key={lesson.id} className="bg-white border border-gray-50 rounded-lg shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 relative overflow-hidden group border-l-4 border-l-indigo-500">
-                                            <div className="absolute top-0 right-0 p-2 flex gap-1 transform translate-y-[-100%] group-hover:translate-y-0 transition-transform duration-300">
-                                                {lesson.plan ? (
-                                                    <>
-                                                        <Button onClick={() => openDialog("edit", dayPlan, lesson)} size="icon" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
-                                                            <Pencil className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                        <Button onClick={() => openDialog("view", dayPlan, lesson)} size="icon" className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md">
-                                                            <Eye className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <Button onClick={() => openDialog("add", dayPlan, lesson)} size="icon" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
-                                                        <Plus className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                )}
-                                            </div>
-
-                                            <div className="p-4 pt-6 space-y-3">
-                                                <div className="flex items-start gap-2">
-                                                    <div className="bg-indigo-50 p-1.5 rounded-lg">
-                                                        <ClipboardList className="h-4 w-4 text-indigo-500" />
+                                    {dayPlan.lessons.length > 0 ? (
+                                        <div className="space-y-4">
+                                            {dayPlan.lessons.map((lesson) => (
+                                                <div key={lesson.id} className="bg-white border border-gray-50 rounded-lg shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 relative overflow-hidden group border-l-4 border-l-indigo-500">
+                                                    <div className="absolute top-0 right-0 p-2 flex gap-1 transform translate-y-[-100%] group-hover:translate-y-0 transition-transform duration-300">
+                                                        {lesson.plan ? (
+                                                            <>
+                                                                <Button onClick={() => openDialog("edit", dayPlan, lesson)} size="icon" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
+                                                                    <Pencil className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                                <Button onClick={() => openDialog("view", dayPlan, lesson)} size="icon" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                                    <Eye className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </>
+                                                        ) : (
+                                                            <Button onClick={() => openDialog("add", dayPlan, lesson)} size="icon" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
+                                                                <Plus className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        )}
                                                     </div>
-                                                    <div className="text-[11px] leading-tight pt-1">
-                                                        <div className="font-bold text-gray-800 uppercase tracking-tight">{lesson.subject}</div>
-                                                        <div className="text-indigo-400 font-bold text-[9px]">{lesson.subjectCode}</div>
-                                                    </div>
-                                                </div>
 
-                                                <div className="flex items-start gap-2">
-                                                    <div className="bg-emerald-50 p-1.5 rounded-lg">
-                                                        <Clock className="h-4 w-4 text-emerald-500" />
-                                                    </div>
-                                                    <div className="text-[11px] leading-tight pt-1">
-                                                        <div className="font-bold text-gray-700">{lesson.className}</div>
-                                                        <div className="text-gray-400 font-medium mt-1">{lesson.timeRange}</div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-start gap-2">
-                                                    <div className="bg-rose-50 p-1.5 rounded-lg">
-                                                        <MapPin className="h-4 w-4 text-rose-500" />
-                                                    </div>
-                                                    <div className="text-[11px] leading-tight pt-1">
-                                                        <span className="font-bold text-gray-700">Room:</span>{" "}
-                                                        <span className="text-rose-500 font-bold">{lesson.roomNo}</span>
-                                                    </div>
-                                                </div>
-
-                                                {lesson.plan && (
-                                                    <div className="mt-2 pt-2 border-t border-dashed border-gray-100">
-                                                        <div className="flex items-center gap-1.5 text-[10px] text-indigo-600 font-bold">
-                                                            <div className="h-1.5 w-1.5 rounded-full bg-indigo-600 animate-pulse" />
-                                                            PLAN ADDED
+                                                    <div className="p-4 pt-6 space-y-3">
+                                                        <div className="flex items-start gap-2">
+                                                            <div className="bg-indigo-50 p-1.5 rounded-lg">
+                                                                <ClipboardList className="h-4 w-4 text-indigo-500" />
+                                                            </div>
+                                                            <div className="text-[11px] leading-tight pt-1">
+                                                                <div className="font-bold text-gray-800 uppercase tracking-tight">{lesson.subject}</div>
+                                                                <div className="text-indigo-400 font-bold text-[9px]">{lesson.subjectCode}</div>
+                                                            </div>
                                                         </div>
-                                                        <div className="text-[9px] text-gray-400 mt-1 truncate italic">
-                                                            {lesson.plan.topic}
+
+                                                        <div className="flex items-start gap-2">
+                                                            <div className="bg-emerald-50 p-1.5 rounded-lg">
+                                                                <Clock className="h-4 w-4 text-emerald-500" />
+                                                            </div>
+                                                            <div className="text-[11px] leading-tight pt-1">
+                                                                <div className="font-bold text-gray-700">{lesson.className}</div>
+                                                                <div className="text-gray-400 font-medium mt-1">{lesson.timeRange}</div>
+                                                            </div>
                                                         </div>
+
+                                                        <div className="flex items-start gap-2">
+                                                            <div className="bg-rose-50 p-1.5 rounded-lg">
+                                                                <MapPin className="h-4 w-4 text-rose-500" />
+                                                            </div>
+                                                            <div className="text-[11px] leading-tight pt-1">
+                                                                <span className="font-bold text-gray-700">Room:</span>{" "}
+                                                                <span className="text-rose-500 font-bold">{lesson.roomNo}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {lesson.plan && (
+                                                            <div className="mt-2 pt-2 border-t border-dashed border-gray-100">
+                                                                <div className="flex items-center gap-1.5 text-[10px] text-indigo-600 font-bold">
+                                                                    <div className="h-1.5 w-1.5 rounded-full bg-indigo-600 animate-pulse" />
+                                                                    PLAN ADDED
+                                                                </div>
+                                                                <div className="text-[9px] text-gray-400 mt-1 truncate italic">
+                                                                    {lesson.plan.topic}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
+                                    ) : (
+                                        <div className="bg-red-50/30 border border-dashed border-red-100 rounded-lg p-6 flex flex-col items-center justify-center gap-2 text-center min-h-[150px]">
+                                            <CircleSlash className="h-6 w-6 text-red-300" />
+                                            <div className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Off Day</div>
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="bg-red-50/30 border border-dashed border-red-100 rounded-lg p-6 flex flex-col items-center justify-center gap-2 text-center min-h-[150px]">
-                                    <CircleSlash className="h-6 w-6 text-red-300" />
-                                    <div className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Off Day</div>
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
+                            ))
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Add/Edit Lesson Plan Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-2xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-6 btn-gradient text-white">
+                    <DialogHeader className="p-6 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white">
                         <DialogTitle className="text-xl font-bold uppercase tracking-widest flex items-center gap-3">
                             <FileText className="h-6 w-6" />
                             {dialogMode === "view" ? "View Lesson Plan" : dialogMode === "edit" ? "Edit Lesson Plan" : "Add Lesson Plan"}
@@ -330,21 +395,21 @@ export default function ManageLessonPlanPage() {
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Lesson <span className="text-red-500">*</span></Label>
-                                <Input 
+                                <Input
                                     readOnly={dialogMode === "view"}
-                                    value={formData.lesson} 
+                                    value={formData.lesson}
                                     onChange={(e) => setFormData({...formData, lesson: e.target.value})}
-                                    placeholder="Enter lesson name" 
+                                    placeholder="Enter lesson name"
                                     className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Topic <span className="text-red-500">*</span></Label>
-                                <Input 
+                                <Input
                                     readOnly={dialogMode === "view"}
-                                    value={formData.topic} 
+                                    value={formData.topic}
                                     onChange={(e) => setFormData({...formData, topic: e.target.value})}
-                                    placeholder="Enter topic name" 
+                                    placeholder="Enter topic name"
                                     className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500"
                                 />
                             </div>
@@ -352,33 +417,33 @@ export default function ManageLessonPlanPage() {
 
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Sub Topic</Label>
-                            <Input 
+                            <Input
                                 readOnly={dialogMode === "view"}
-                                value={formData.sub_topic} 
+                                value={formData.sub_topic}
                                 onChange={(e) => setFormData({...formData, sub_topic: e.target.value})}
-                                placeholder="Enter sub topic" 
+                                placeholder="Enter sub topic"
                                 className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500"
                             />
                         </div>
 
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Presentation</Label>
-                            <Textarea 
+                            <Textarea
                                 readOnly={dialogMode === "view"}
-                                value={formData.presentation} 
+                                value={formData.presentation}
                                 onChange={(e) => setFormData({...formData, presentation: e.target.value})}
-                                placeholder="How will you present this lesson?" 
+                                placeholder="How will you present this lesson?"
                                 className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 p-4"
                             />
                         </div>
 
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Lesson Summary / Objectives</Label>
-                            <Textarea 
+                            <Textarea
                                 readOnly={dialogMode === "view"}
-                                value={formData.objectives} 
+                                value={formData.objectives}
                                 onChange={(e) => setFormData({...formData, objectives: e.target.value})}
-                                placeholder="What should students achieve?" 
+                                placeholder="What should students achieve?"
                                 className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 p-4"
                             />
                         </div>

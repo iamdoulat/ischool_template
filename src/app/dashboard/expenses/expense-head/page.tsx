@@ -2,17 +2,34 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, X, ChevronLeft, ChevronRight, Loader2, Save, Trash2, FileCode } from "lucide-react";
+import { Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, ChevronLeft, ChevronRight, Loader2, Save, Trash2, FileCode, Receipt } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface ExpenseHeadRecord {
     id: string;
@@ -38,7 +55,7 @@ export default function ExpenseHeadPage() {
             setLoading(true);
             const res = await api.get("expense/expense-heads");
             if (res.data?.status === "Success") {
-                const mappedData = res.data.data.map((item: any) => ({
+                const mappedData = res.data.data.map((item: { id: number | string; expense_head: string; description?: string }) => ({
                     id: item.id.toString(),
                     expense_head: item.expense_head,
                     description: item.description || ""
@@ -66,7 +83,7 @@ export default function ExpenseHeadPage() {
 
         try {
             setSaving(true);
-            const res = editingId 
+            const res = editingId
                 ? await api.put(`expense/expense-heads/${editingId}`, formData)
                 : await api.post("expense/expense-heads", formData);
 
@@ -167,189 +184,204 @@ export default function ExpenseHeadPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Left Column: Add Expense Head Form */}
-                <div className="bg-white rounded-lg shadow-sm border p-4 space-y-4 h-fit">
-                    <h2 className="text-lg font-medium text-gray-800 border-b pb-2">
-                        {editingId ? "Edit Expense Head" : "Add Expense Head"}
-                    </h2>
-
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="expense-head" className="text-xs font-semibold text-gray-600">
-                                Expense Head <span className="text-red-500">*</span>
-                            </Label>
-                            <Input 
-                                id="expense-head" 
-                                value={formData.expense_head}
-                                onChange={(e) => setFormData({ ...formData, expense_head: e.target.value })}
-                            />
+                <Card className="h-fit border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Receipt className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {editingId ? "Edit Expense Head" : "Add Expense Head"}
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {editingId ? "Update the selected expense head" : "Create a new expense head"}
+                            </p>
                         </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="description" className="text-xs font-semibold text-gray-600">
-                                Description
-                            </Label>
-                            <Textarea 
-                                id="description" 
-                                className="resize-none" 
-                                rows={4} 
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="flex justify-end pt-2 gap-2">
-                            {editingId && (
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    onClick={resetForm}
-                                    className="h-9 px-6 rounded-full text-xs font-bold"
-                                >
-                                    Cancel
-                                </Button>
-                            )}
-                            <Button 
-                                type="submit"
-                                disabled={saving}
-                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
-                            >
-                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                {editingId ? "Update" : "Save"}
-                            </Button>
-                        </div>
-                    </form>
-                </div>
-
-                {/* Right Column: Expense Head List */}
-                <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border p-4 space-y-4">
-                    <h2 className="text-lg font-medium text-gray-800 border-b pb-2">Expense Head List</h2>
-
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="flex w-full md:w-auto items-center gap-2">
-                            <div className="relative w-full md:w-64">
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="expense-head" className="text-xs font-semibold text-gray-600">
+                                    Expense Head <span className="text-red-500">*</span>
+                                </Label>
                                 <Input
-                                    placeholder="Search..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-3 pr-10"
+                                    id="expense-head"
+                                    value={formData.expense_head}
+                                    onChange={(e) => setFormData({ ...formData, expense_head: e.target.value })}
                                 />
                             </div>
-                        </div>
 
-                        <div className="flex items-center gap-2">
-                            <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                                <SelectTrigger className="w-[70px]">
-                                    <SelectValue placeholder="50" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
-                                <Button 
-                                    variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                    onClick={copyToClipboard}
+                            <div className="space-y-2">
+                                <Label htmlFor="description" className="text-xs font-semibold text-gray-600">
+                                    Description
+                                </Label>
+                                <Textarea
+                                    id="description"
+                                    className="resize-none"
+                                    rows={4}
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="flex justify-end pt-2 gap-2">
+                                {editingId && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={resetForm}
+                                        className="h-9 px-6 rounded-full text-xs font-bold"
+                                    >
+                                        Cancel
+                                    </Button>
+                                )}
+                                <Button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                                 >
-                                    <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                    variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                    onClick={exportToExcel}
-                                >
-                                    <FileSpreadsheet className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                    variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                    onClick={exportToCSV}
-                                >
-                                    <FileText className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                    variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                    onClick={exportToPDF}
-                                >
-                                    <FileCode className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                    variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                    onClick={() => window.print()}
-                                >
-                                    <Printer className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200">
-                                    <Columns className="h-4 w-4" />
+                                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                    {editingId ? "Update" : "Save"}
                                 </Button>
                             </div>
-                        </div>
-                    </div>
+                        </form>
+                    </CardContent>
+                </Card>
 
-                    <div className="rounded-md border overflow-x-auto">
-                        <Table className="w-full">
-                            <TableHeader className="bg-gray-50 text-xs uppercase">
-                                <TableRow>
-                                    <TableHead className="font-semibold text-gray-600">Expense Head</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 w-full text-center">Description</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
+                {/* Right Column: Expense Head List */}
+                <Card className="lg:col-span-2 border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Receipt className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Expense Head List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{expenseHeads.length} expense head{expenseHeads.length === 1 ? "" : "s"}</p>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex w-full md:w-auto items-center gap-2">
+                                <div className="relative w-full md:w-64">
+                                    <Input
+                                        placeholder="Search..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-3 pr-10"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
+                                    <SelectTrigger className="w-[70px]">
+                                        <SelectValue placeholder="50" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="25">25</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
+                                    <Button
+                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                        onClick={copyToClipboard}
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                        onClick={exportToExcel}
+                                    >
+                                        <FileSpreadsheet className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                        onClick={exportToCSV}
+                                    >
+                                        <FileText className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                        onClick={exportToPDF}
+                                    >
+                                        <FileCode className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                        onClick={() => window.print()}
+                                    >
+                                        <Printer className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200">
+                                        <Columns className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-md border overflow-x-auto">
+                            <Table className="w-full">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center py-8">
-                                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
-                                        </TableCell>
+                                        <TableHead className="font-semibold text-gray-600">Expense Head</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 w-full text-center">Description</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
                                     </TableRow>
-                                ) : filteredData.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={3} className="text-center py-8 text-gray-500">
-                                            No records found.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredData.map((item) => (
-                                        <TableRow key={item.id} className="text-sm">
-                                            <TableCell className="font-medium text-gray-700 py-3">{item.expense_head}</TableCell>
-                                            <TableCell className="text-gray-600 text-center">{item.description}</TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => handleEdit(item)}
-                                                        className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={3} />
+                                    ) : filteredData.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                No data found
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
-                        <div>
-                            Showing 1 to {filteredData.length} of {expenseHeads.length} entries
+                                    ) : (
+                                        filteredData.map((item) => (
+                                            <TableRow key={item.id} className="text-sm">
+                                                <TableCell className="font-medium text-gray-700 py-3">{item.expense_head}</TableCell>
+                                                <TableCell className="text-gray-600 text-center">{item.description}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => handleEdit(item)}
+                                                            className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => handleDelete(item.id)}
+                                                            className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
-                        <div className="flex gap-1">
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-md shadow-sm" disabled><ChevronLeft className="h-4 w-4" /></Button>
-                            <Button variant="default" size="sm" className="h-8 w-8 p-0 rounded-md bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md">1</Button>
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-md shadow-sm" disabled><ChevronRight className="h-4 w-4" /></Button>
-                        </div>
-                    </div>
 
-                </div>
+                        <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
+                            <div>
+                                Showing 1 to {filteredData.length} of {expenseHeads.length} entries
+                            </div>
+                            <div className="flex gap-1">
+                                <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronLeft className="h-4 w-4" /></Button>
+                                <Button variant="default" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md">1</Button>
+                                <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronRight className="h-4 w-4" /></Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

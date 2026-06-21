@@ -4,11 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import {
     Search,
     ChevronDown,
-    AlertCircle,
     Printer,
     FileText,
     Table as TableIcon,
-    FileDown,
     Download,
     Columns,
     Copy,
@@ -16,18 +14,19 @@ import {
     Trash2,
     Plus,
     UserCircle,
-    X,
     ChevronLeft,
     ChevronRight,
-    User
+    User,
+    GitBranch,
+    Filter
 } from "lucide-react";
-import { 
-    Dialog, 
-    DialogContent, 
-    DialogHeader, 
-    DialogTitle, 
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
     DialogDescription,
-    DialogFooter 
+    DialogFooter
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +38,23 @@ import { useImageUrl } from "@/lib/image-url";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface MultiClassRecord {
     id: string;
@@ -211,8 +227,8 @@ export default function MultiClassStudentPage() {
             setIsAddDialogOpen(false);
             setAddFormData({ user_id: "", school_class_id: "", section_id: "" });
             fetchRecords(currentPage, searchTerm);
-        } catch (error: any) {
-            const message = error.response?.data?.message || "Failed to assign student";
+        } catch (error) {
+            const message = (error as any)?.response?.data?.message || "Failed to assign student";
             toast("error", message);
         } finally {
             setLoading(false);
@@ -232,8 +248,8 @@ export default function MultiClassStudentPage() {
                         <p className="text-sm text-muted-foreground font-medium">Manage students enrolled in additional classes</p>
                     </div>
                 </div>
-                <Button 
-                    variant="gradient" 
+                <Button
+                    variant="gradient"
                     className="h-12 px-6 rounded-lg shadow-lg shadow-primary/20 font-bold"
                     onClick={() => setIsAddDialogOpen(true)}
                 >
@@ -242,9 +258,15 @@ export default function MultiClassStudentPage() {
             </div>
 
             {/* Select Criteria Section */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm print:hidden">
-                <CardHeader className="border-b border-muted/50 pb-4">
-                    <CardTitle className="text-xl font-bold tracking-tight text-slate-800">Select Criteria</CardTitle>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 print:hidden">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Filter by class and section</p>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
@@ -299,13 +321,13 @@ export default function MultiClassStudentPage() {
                                 onKeyDown={(e) => e.key === "Enter" && fetchRecords(1, searchTerm)}
                             />
                         </div>
-                        <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => { 
+                        <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => {
                             if (!selectedClass || !selectedSection) {
                                 toast("error", "Please select Class and Section first.");
                                 return;
                             }
-                            setCurrentPage(1); 
-                            fetchRecords(1, searchTerm); 
+                            setCurrentPage(1);
+                            fetchRecords(1, searchTerm);
                         }} disabled={loading}>
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
                         </Button>
@@ -324,8 +346,17 @@ export default function MultiClassStudentPage() {
             </div>
 
             {/* Data Table */}
-            {records.length > 0 ? (
-                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
+            {(searched || loading) ? (
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <GitBranch className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Multi Class Student List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{totalRecords} records</p>
+                        </div>
+                    </CardHeader>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
@@ -342,138 +373,132 @@ export default function MultiClassStudentPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-muted/30">
-                                    {records.map((record) => (
-                                        <tr key={record.id} className="hover:bg-muted/10 transition-colors">
-                                            <Td>
-                                                <div className="h-10 w-10 rounded-full border-2 border-muted overflow-hidden bg-muted/20">
-                                                    {(record.student as any)?.avatar ? (
-                                                        <img 
-                                                            src={getImageUrl((record.student as any).avatar)} 
-                                                            alt="Avatar" 
-                                                            className="h-full w-full object-cover" 
-                                                        />
-                                                    ) : (
-                                                        <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-                                                            <User className="h-5 w-5" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </Td>
-                                            <Td className="font-semibold text-primary">{record.student.admission_no}</Td>
-                                            <Td className="font-medium">{record.student.name} {record.student.last_name}</Td>
-                                            <Td>
-                                                <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
-                                                    {(record.student as any).student_category?.category_name || (record.student as any).category || "General"}
-                                                </span>
-                                            </Td>
-                                            <Td>{record.school_class.name}</Td>
-                                            <Td>{record.section.name}</Td>
-                                            <Td>{record.student.phone}</Td>
-                                            <Td className="text-right print:hidden">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-destructive hover:text-white hover:bg-destructive rounded-lg transition-all"
-                                                    onClick={() => handleDelete(record.id)}
-                                                    title="Remove Enrollment"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </Td>
-                                        </tr>
-                                    ))}
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={8} />
+                                    ) : records.length === 0 ? (
+                                        <tr><td colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
+                                    ) : (
+                                        records.map((record) => (
+                                            <tr key={record.id} className="hover:bg-muted/10 transition-colors">
+                                                <Td>
+                                                    <div className="h-10 w-10 rounded-full border-2 border-muted overflow-hidden bg-muted/20">
+                                                        {(record.student as any)?.avatar ? (
+                                                            <img
+                                                                src={getImageUrl((record.student as any).avatar)}
+                                                                alt="Avatar"
+                                                                className="h-full w-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+                                                                <User className="h-5 w-5" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </Td>
+                                                <Td className="font-semibold text-primary">{record.student.admission_no}</Td>
+                                                <Td className="font-medium">{record.student.name} {record.student.last_name}</Td>
+                                                <Td>
+                                                    <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
+                                                        {(record.student as any).student_category?.category_name || (record.student as any).category || "General"}
+                                                    </span>
+                                                </Td>
+                                                <Td>{record.school_class.name}</Td>
+                                                <Td>{record.section.name}</Td>
+                                                <Td>{record.student.phone}</Td>
+                                                <Td className="text-right print:hidden">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 bg-red-500 text-white hover:bg-red-600 rounded-lg transition-all"
+                                                        onClick={() => handleDelete(record.id)}
+                                                        title="Remove Enrollment"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </Td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>
 
                         {/* Pagination Section */}
-                        <div className="px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/10 border-t border-muted/50">
-                            <p className="text-xs text-muted-foreground font-medium">
-                                Showing {(currentPage - 1) * 50 + 1} to {Math.min(currentPage * 50, totalRecords)} of {totalRecords} entries
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-lg"
-                                    disabled={currentPage === 1 || loading}
-                                    onClick={() => {
-                                        const newPg = currentPage - 1;
-                                        setCurrentPage(newPg);
-                                        fetchRecords(newPg, searchTerm);
-                                    }}
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
+                        {!loading && records.length > 0 && (
+                            <div className="px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/10 border-t border-muted/50">
+                                <p className="text-xs text-muted-foreground font-medium">
+                                    Showing {(currentPage - 1) * 50 + 1} to {Math.min(currentPage * 50, totalRecords)} of {totalRecords} entries
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        size="icon"
+                                        className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white"
+                                        disabled={currentPage === 1 || loading}
+                                        onClick={() => {
+                                            const newPg = currentPage - 1;
+                                            setCurrentPage(newPg);
+                                            fetchRecords(newPg, searchTerm);
+                                        }}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
 
-                                {[...Array(totalPages)].map((_, i) => {
-                                    const page = i + 1;
-                                    if (
-                                        page === 1 ||
-                                        page === totalPages ||
-                                        (page >= currentPage - 1 && page <= currentPage + 1)
-                                    ) {
-                                        return (
-                                            <Button
-                                                key={page}
-                                                variant={currentPage === page ? "gradient" : "outline"}
-                                                className={cn(
-                                                    "h-8 w-8 rounded-lg text-xs font-bold",
-                                                    currentPage === page && "shadow-md scale-105"
-                                                )}
-                                                onClick={() => {
-                                                    setCurrentPage(page);
-                                                    fetchRecords(page, searchTerm);
-                                                }}
-                                                disabled={loading}
-                                            >
-                                                {page}
-                                            </Button>
-                                        );
-                                    } else if (
-                                        page === currentPage - 2 ||
-                                        page === currentPage + 2
-                                    ) {
-                                        return <span key={page} className="text-muted-foreground">...</span>;
-                                    }
-                                    return null;
-                                })}
+                                    {[...Array(totalPages)].map((_, i) => {
+                                        const page = i + 1;
+                                        if (
+                                            page === 1 ||
+                                            page === totalPages ||
+                                            (page >= currentPage - 1 && page <= currentPage + 1)
+                                        ) {
+                                            return (
+                                                <Button
+                                                    key={page}
+                                                    className={cn(
+                                                        "h-8 w-8 rounded-[10px] text-xs font-bold",
+                                                        currentPage === page
+                                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md scale-105"
+                                                            : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                                    )}
+                                                    onClick={() => {
+                                                        setCurrentPage(page);
+                                                        fetchRecords(page, searchTerm);
+                                                    }}
+                                                    disabled={loading}
+                                                >
+                                                    {page}
+                                                </Button>
+                                            );
+                                        } else if (
+                                            page === currentPage - 2 ||
+                                            page === currentPage + 2
+                                        ) {
+                                            return <span key={page} className="text-muted-foreground">...</span>;
+                                        }
+                                        return null;
+                                    })}
 
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-lg"
-                                    disabled={currentPage === totalPages || loading}
-                                    onClick={() => {
-                                        const newPg = currentPage + 1;
-                                        setCurrentPage(newPg);
-                                        fetchRecords(newPg, searchTerm);
-                                    }}
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
+                                    <Button
+                                        size="icon"
+                                        className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white"
+                                        disabled={currentPage === totalPages || loading}
+                                        onClick={() => {
+                                            const newPg = currentPage + 1;
+                                            setCurrentPage(newPg);
+                                            fetchRecords(newPg, searchTerm);
+                                        }}
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </CardContent>
                 </Card>
-            ) : searched && !loading && (
-                <div className="px-6 py-4 bg-red-100/80 border border-red-200 rounded-lg text-red-600 font-bold text-sm shadow-sm flex items-center gap-3 animate-in slide-in-from-top-2">
-                    <AlertCircle className="h-5 w-5 opacity-80" />
-                    No Record Found
-                </div>
-            )}
-
-            {!searched && !loading && (
+            ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-300 bg-white rounded-lg border border-dashed border-gray-200 shadow-sm print:hidden">
                     <User className="h-16 w-16 mb-4 opacity-10" />
                     <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">No Data Selected</p>
                     <p className="text-[11px] text-gray-400 mt-2 italic">Select class and section, then click search.</p>
-                </div>
-            )}
-
-            {loading && (
-                <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
                 </div>
             )}
 
@@ -495,7 +520,7 @@ export default function MultiClassStudentPage() {
                             </div>
                         </div>
                     </DialogHeader>
-                    
+
                     <form onSubmit={handleAddSubmit}>
                         <div className="p-8 space-y-6">
                             <div className="space-y-4">
@@ -522,7 +547,7 @@ export default function MultiClassStudentPage() {
                                             >
                                                 <option value="">Select Student</option>
                                                 {allStudents
-                                                    .filter(s => 
+                                                    .filter(s =>
                                                         `${s.name} ${s.last_name} ${s.admission_no}`.toLowerCase().includes(studentSearch.toLowerCase())
                                                     )
                                                     .slice(0, 100)
@@ -583,17 +608,17 @@ export default function MultiClassStudentPage() {
                         </div>
 
                         <DialogFooter className="p-8 bg-muted/20 border-t border-muted/50 flex gap-4">
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                className="flex-1 h-12 rounded-lg font-bold border-muted/50" 
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="flex-1 h-12 rounded-lg font-bold border-muted/50"
                                 onClick={() => setIsAddDialogOpen(false)}
                             >
                                 Cancel
                             </Button>
-                            <Button 
-                                type="submit" 
-                                variant="gradient" 
+                            <Button
+                                type="submit"
+                                variant="gradient"
                                 className="flex-1 h-12 rounded-lg font-bold shadow-lg shadow-primary/20"
                                 disabled={loading}
                             >
@@ -617,7 +642,7 @@ function Td({ children, className }: { children: React.ReactNode, className?: st
     return <td className={cn("px-6 py-4 text-sm", className)}>{children}</td>;
 }
 
-function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () => void, title?: string }) {
+function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, onClick?: () => void, title?: string }) {
     return (
         <button
             onClick={onClick}

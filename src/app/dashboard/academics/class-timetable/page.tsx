@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-    Plus, Search, Printer, Clock, User, BookOpen, MapPin, AlertCircle, Loader2, X, Trash2
+    Plus, Search, Printer, Clock, User, BookOpen, MapPin, AlertCircle, Loader2, Trash2, CalendarClock, Filter
 } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
-import { useMemo } from "react";
 
 interface TimetableEntry {
     id: number;
@@ -32,7 +31,44 @@ interface TimetableDay {
     entries: TimetableEntry[];
 }
 
+interface ClassOption {
+    id: number | string;
+    name: string;
+}
+
+interface SectionOption {
+    id: number | string;
+    name: string;
+    school_class_id?: number | string;
+}
+
+interface SubjectGroupOption {
+    id: number | string;
+    name: string;
+}
+
 const DEFAULT_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function TimetableSkeleton({ days }: { days: string[] }) {
+    return (
+        <div className="overflow-x-auto">
+            <div className="flex min-w-max">
+                {days.map((day) => (
+                    <div key={day} className="flex-1 min-w-[200px] border-r last:border-r-0">
+                        <div className="bg-gray-50/50 p-2 text-center border-b">
+                            <span className="text-sm font-bold text-gray-700">{day}</span>
+                        </div>
+                        <div className="p-3 space-y-3 bg-white min-h-[400px]">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <div key={i} className="h-20 rounded-lg bg-muted/60 animate-pulse" />
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 export default function ClassTimetablePage() {
     const { toast } = useToast();
@@ -47,9 +83,9 @@ export default function ClassTimetablePage() {
     }, [settings?.start_day_of_week]);
 
     // Prerequisite states
-    const [classes, setClasses] = useState<any[]>([]);
-    const [sections, setSections] = useState<any[]>([]);
-    const [subjectGroups, setSubjectGroups] = useState<any[]>([]);
+    const [classes, setClasses] = useState<ClassOption[]>([]);
+    const [sections, setSections] = useState<SectionOption[]>([]);
+    const [subjectGroups, setSubjectGroups] = useState<SubjectGroupOption[]>([]);
 
     // Selection states
     const [selectedClassId, setSelectedClassId] = useState<string>("");
@@ -67,6 +103,12 @@ export default function ClassTimetablePage() {
     // UI states
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
+
+    // Total scheduled entries (for header subtitle count)
+    const totalEntries = useMemo(
+        () => timetableData.reduce((sum, d) => sum + d.entries.length, 0),
+        [timetableData]
+    );
 
     // Load prerequisites (classes, subject groups)
     useEffect(() => {
@@ -94,8 +136,8 @@ export default function ClassTimetablePage() {
         if (!classId) { setSections([]); return; }
         try {
             const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
-            const all: any[] = res.data?.data || res.data || [];
-            const filtered = all.filter((s: any) => String(s.school_class_id) === String(classId));
+            const all: SectionOption[] = res.data?.data || res.data || [];
+            const filtered = all.filter((s: SectionOption) => String(s.school_class_id) === String(classId));
             setSections(filtered);
         } catch {
             setSections([]);
@@ -122,7 +164,7 @@ export default function ClassTimetablePage() {
             // Group entries by day in the correct order
             const grouped = orderedDays.map(day => ({
                 day,
-                entries: entries.filter((e: any) => e.day === day)
+                entries: entries.filter((e: TimetableEntry) => e.day === day)
             }));
             setTimetableData(grouped);
         } catch (error) {
@@ -155,156 +197,181 @@ export default function ClassTimetablePage() {
             {/* Header/Title */}
             <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-100 no-print">
                 <div className="flex items-center gap-2 text-[#6366f1]">
-                    <Clock className="h-6 w-6" />
+                    <CalendarClock className="h-6 w-6" />
                     <h1 className="text-xl font-medium text-gray-800">Class Time Table</h1>
                 </div>
             </div>
 
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 no-print select-criteria-section">
-                <div className="flex justify-between items-center mb-4 pb-2 border-b">
-                    <h2 className="text-lg font-medium text-gray-800">Select Criteria</h2>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 no-print select-criteria-section">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Filter className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">Choose class &amp; section to view timetable</p>
+                        </div>
+                    </div>
                     <Link href="/dashboard/academics/class-timetable/add">
-                        <Button className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-3 h-8 text-xs gap-1 shadow-md transition-all duration-300">
+                        <Button className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-3 h-8 text-xs gap-1 shadow-md transition-all duration-300">
                             <Plus className="h-4 w-4" /> Add
                         </Button>
                     </Link>
-                </div>
+                </CardHeader>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                    <div className="space-y-2">
-                        <Label className="text-xs font-semibold text-gray-600 uppercase">
-                            Class <span className="text-red-500">*</span>
-                        </Label>
-                        <Select 
-                            value={selectedClassId} 
-                            onValueChange={(val) => {
-                                setSelectedClassId(val);
-                                setSelectedSectionId('');
-                                setSelectedSubjectGroupId('');
-                                fetchSectionsByClass(val);
-                            }}
+                <CardContent className="px-5">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600 uppercase">
+                                Class <span className="text-red-500">*</span>
+                            </Label>
+                            <Select
+                                value={selectedClassId}
+                                onValueChange={(val) => {
+                                    setSelectedClassId(val);
+                                    setSelectedSectionId('');
+                                    setSelectedSubjectGroupId('');
+                                    fetchSectionsByClass(val);
+                                }}
+                            >
+                                <SelectTrigger className="h-10">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600 uppercase">
+                                Section <span className="text-red-500">*</span>
+                            </Label>
+                            <Select
+                                value={selectedSectionId}
+                                onValueChange={setSelectedSectionId}
+                                disabled={!selectedClassId}
+                            >
+                                <SelectTrigger className="h-10">
+                                    <SelectValue placeholder={!selectedClassId ? "Select class first" : "Select"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600 uppercase">
+                                Subject Group
+                            </Label>
+                            <Select value={selectedSubjectGroupId} onValueChange={setSelectedSubjectGroupId}>
+                                <SelectTrigger className="h-10">
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {subjectGroups.filter(sg => !selectedClassId || sg.school_class_id.toString() === selectedClassId).map(sg => (
+                                        <SelectItem key={sg.id} value={sg.id.toString()}>{sg.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                        <Button
+                            onClick={handleSearch}
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-xs gap-2 shadow-md transition-all duration-300"
+                            disabled={searching || loading}
                         >
-                            <SelectTrigger className="h-10">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            Search
+                        </Button>
                     </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-xs font-semibold text-gray-600 uppercase">
-                            Section <span className="text-red-500">*</span>
-                        </Label>
-                        <Select 
-                            value={selectedSectionId} 
-                            onValueChange={setSelectedSectionId}
-                            disabled={!selectedClassId}
-                        >
-                            <SelectTrigger className="h-10">
-                                <SelectValue placeholder={!selectedClassId ? "Select class first" : "Select"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-xs font-semibold text-gray-600 uppercase">
-                            Subject Group
-                        </Label>
-                        <Select value={selectedSubjectGroupId} onValueChange={setSelectedSubjectGroupId}>
-                            <SelectTrigger className="h-10">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {subjectGroups.filter(sg => !selectedClassId || sg.school_class_id.toString() === selectedClassId).map(sg => (
-                                    <SelectItem key={sg.id} value={sg.id.toString()}>{sg.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
-                <div className="flex justify-end">
-                    <Button
-                        onClick={handleSearch}
-                        className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-xs gap-2 shadow-md transition-all duration-300"
-                        disabled={searching || loading}
-                    >
-                        {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                        Search
-                    </Button>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
             {/* Timetable Section */}
-            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-                <div className="flex justify-end p-2 border-b no-print">
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <CalendarClock className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Class Timetable</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{totalEntries} scheduled entr{totalEntries === 1 ? 'y' : 'ies'}</p>
+                        </div>
+                    </div>
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white rounded shadow-sm p-0 border-0"
+                        className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white rounded shadow-sm p-0 border-0 no-print"
                         onClick={handlePrint}
                     >
                         <Printer className="h-5 w-5" />
                     </Button>
-                </div>
+                </CardHeader>
 
-                <div className="overflow-x-auto">
-                    <div className="flex min-w-max">
-                        {timetableData.map((dayData) => (
-                            <div key={dayData.day} className="flex-1 min-w-[200px] border-r last:border-r-0">
-                                <div className="bg-gray-50/50 p-2 text-center border-b">
-                                    <span className="text-sm font-bold text-gray-700">{dayData.day}</span>
-                                </div>
-                                <div className="p-3 space-y-3 bg-white min-h-[400px]">
-                                    {dayData.entries.length > 0 ? (
-                                        dayData.entries.map((entry, idx) => (
-                                            <div key={idx} className="bg-white border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow relative group">
-                                                <button
-                                                    onClick={() => handleDeleteEntry(entry.id)}
-                                                    className="absolute top-2 right-2 p-1 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
-                                                <div className="space-y-2 text-[11px]">
-                                                    <div className="flex items-start gap-2">
-                                                        <BookOpen className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                        <span className="font-semibold text-green-600">Subject: {entry.subject?.name} ({entry.subject?.code})</span>
+                <CardContent className="px-0">
+                    {searching ? (
+                        <TimetableSkeleton days={orderedDays} />
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <div className="flex min-w-max">
+                                {timetableData.map((dayData) => (
+                                    <div key={dayData.day} className="flex-1 min-w-[200px] border-r last:border-r-0">
+                                        <div className="bg-gray-50/50 p-2 text-center border-b">
+                                            <span className="text-sm font-bold text-gray-700">{dayData.day}</span>
+                                        </div>
+                                        <div className="p-3 space-y-3 bg-white min-h-[400px]">
+                                            {dayData.entries.length > 0 ? (
+                                                dayData.entries.map((entry, idx) => (
+                                                    <div key={idx} className="bg-white border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow relative group">
+                                                        <button
+                                                            onClick={() => handleDeleteEntry(entry.id)}
+                                                            className="absolute top-2 right-2 p-1 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <div className="space-y-2 text-[11px]">
+                                                            <div className="flex items-start gap-2">
+                                                                <BookOpen className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
+                                                                <span className="font-semibold text-green-600">Subject: {entry.subject?.name} ({entry.subject?.code})</span>
+                                                            </div>
+                                                            <div className="flex items-start gap-2">
+                                                                <Clock className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
+                                                                <span className="text-green-700 font-medium">{entry.start_time} - {entry.end_time}</span>
+                                                            </div>
+                                                            <div className="flex items-start gap-2">
+                                                                <User className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
+                                                                <span className="text-green-700 font-medium">{entry.staff?.name} ({entry.staff?.staff_id})</span>
+                                                            </div>
+                                                            <div className="flex items-start gap-2">
+                                                                <MapPin className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
+                                                                <span className="text-green-700 font-medium">Room: {entry.room || "N/A"}</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-start gap-2">
-                                                        <Clock className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                        <span className="text-green-700 font-medium">{entry.start_time} - {entry.end_time}</span>
-                                                    </div>
-                                                    <div className="flex items-start gap-2">
-                                                        <User className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                        <span className="text-green-700 font-medium">{entry.staff?.name} ({entry.staff?.staff_id})</span>
-                                                    </div>
-                                                    <div className="flex items-start gap-2">
-                                                        <MapPin className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                        <span className="text-green-700 font-medium">Room: {entry.room || "N/A"}</span>
+                                                ))
+                                            ) : (
+                                                <div className="bg-white border rounded-lg p-3 text-center">
+                                                    <div className="flex items-center justify-center gap-2 text-red-500 text-[11px] font-medium py-1">
+                                                        <AlertCircle className="h-3.5 w-3.5" />
+                                                        <span>Not Scheduled</span>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="bg-white border rounded-lg p-3 text-center">
-                                            <div className="flex items-center justify-center gap-2 text-red-500 text-[11px] font-medium py-1">
-                                                <AlertCircle className="h-3.5 w-3.5" />
-                                                <span>Not Scheduled</span>
-                                            </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }

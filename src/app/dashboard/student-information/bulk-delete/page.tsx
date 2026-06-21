@@ -9,7 +9,6 @@ import {
     Printer,
     FileText,
     Table as TableIcon,
-    FileDown,
     Download,
     Columns,
     Copy,
@@ -18,6 +17,7 @@ import {
     ChevronLeft,
     ChevronRight,
     User,
+    Filter,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,23 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface Student {
     id: string;
@@ -239,9 +256,15 @@ export default function BulkDeletePage() {
             </div>
 
             {/* Select Criteria Section */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm print:hidden">
-                <CardHeader className="border-b border-muted/50 pb-4">
-                    <CardTitle className="text-xl font-bold tracking-tight text-slate-800">Select Criteria</CardTitle>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 print:hidden">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Choose class and section to find students</p>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
@@ -291,8 +314,8 @@ export default function BulkDeletePage() {
                                 toast("error", "Please select Class and Section first.");
                                 return;
                             }
-                            setCurrentPage(1); 
-                            fetchStudents(1, searchTerm); 
+                            setCurrentPage(1);
+                            fetchStudents(1, searchTerm);
                         }} disabled={loading}>
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
                         </Button>
@@ -344,8 +367,17 @@ export default function BulkDeletePage() {
                     </div>
                 </div>
 
-                {students.length > 0 ? (
-                    <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
+                {(loading || students.length > 0) ? (
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Trash2 className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{totalStudents} students found</p>
+                            </div>
+                        </CardHeader>
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
@@ -363,7 +395,12 @@ export default function BulkDeletePage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-muted/30">
-                                        {students.map((student) => (
+                                        {loading ? (
+                                            <TableSkeleton rows={5} cols={9} />
+                                        ) : students.length === 0 ? (
+                                            <tr><td colSpan={9} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
+                                        ) : (
+                                            students.map((student) => (
                                             <tr key={student.id} className="hover:bg-muted/10 transition-colors">
                                                 <Td>
                                                     <input
@@ -376,10 +413,10 @@ export default function BulkDeletePage() {
                                                 <Td>
                                                 <div className="h-10 w-10 rounded-full border-2 border-muted overflow-hidden bg-muted/20">
                                                     {student.avatar ? (
-                                                        <img 
-                                                            src={getImageUrl(student.avatar)} 
-                                                            alt="Avatar" 
-                                                            className="h-full w-full object-cover" 
+                                                        <img
+                                                            src={getImageUrl(student.avatar)}
+                                                            alt="Avatar"
+                                                            className="h-full w-full object-cover"
                                                         />
                                                     ) : (
                                                         <div className="h-full w-full flex items-center justify-center text-muted-foreground">
@@ -400,21 +437,22 @@ export default function BulkDeletePage() {
                                             </Td>
                                                 <Td>{student.phone}</Td>
                                             </tr>
-                                        ))}
+                                            ))
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
 
                             {/* Pagination */}
+                            {!loading && students.length > 0 && (
                             <div className="px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/10 border-t border-muted/50">
                                 <p className="text-xs text-muted-foreground font-medium">
                                     Showing {(currentPage - 1) * 50 + 1} to {Math.min(currentPage * 50, totalStudents)} of {totalStudents} entries
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
-                                        variant="outline"
                                         size="icon"
-                                        className="h-8 w-8 rounded-lg"
+                                        className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white"
                                         disabled={currentPage === 1 || loading}
                                         onClick={() => {
                                             const newPg = currentPage - 1;
@@ -436,10 +474,11 @@ export default function BulkDeletePage() {
                                             return (
                                                 <Button
                                                     key={page}
-                                                    variant={currentPage === page ? "gradient" : "outline"}
                                                     className={cn(
-                                                        "h-8 w-8 rounded-lg text-xs font-bold",
-                                                        currentPage === page && "shadow-md scale-105"
+                                                        "h-8 w-8 rounded-[10px] text-xs font-bold",
+                                                        currentPage === page
+                                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md scale-105"
+                                                            : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
                                                     )}
                                                     onClick={() => {
                                                         setCurrentPage(page);
@@ -460,9 +499,8 @@ export default function BulkDeletePage() {
                                     })}
 
                                     <Button
-                                        variant="outline"
                                         size="icon"
-                                        className="h-8 w-8 rounded-lg"
+                                        className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white"
                                         disabled={currentPage === totalPages || loading}
                                         onClick={() => {
                                             const newPg = currentPage + 1;
@@ -474,6 +512,7 @@ export default function BulkDeletePage() {
                                     </Button>
                                 </div>
                             </div>
+                            )}
                         </CardContent>
                     </Card>
                 ) : searched && !loading && (
@@ -482,18 +521,12 @@ export default function BulkDeletePage() {
                         No Record Found
                     </div>
                 )}
-                
+
                 {!searched && !loading && (
                     <div className="flex flex-col items-center justify-center py-20 text-gray-300 bg-white rounded-lg border border-dashed border-gray-200 shadow-sm print:hidden">
                         <User className="h-16 w-16 mb-4 opacity-10" />
                         <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">No Data Selected</p>
                         <p className="text-[11px] text-gray-400 mt-2 italic">Select class and section, then click search.</p>
-                    </div>
-                )}
-
-                {loading && (
-                    <div className="flex justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
                     </div>
                 )}
             </div>
@@ -520,7 +553,7 @@ export default function BulkDeletePage() {
                         <AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-muted/50 mt-0">
                             Cancel, Keep Records
                         </AlertDialogCancel>
-                        <AlertDialogAction 
+                        <AlertDialogAction
                             onClick={confirmDelete}
                             className="flex-1 h-12 rounded-lg font-bold bg-destructive hover:bg-destructive/90 text-white shadow-lg shadow-destructive/20 border-none"
                         >
@@ -542,7 +575,7 @@ function Td({ children, className }: { children: React.ReactNode, className?: st
     return <td className={cn("px-4 py-3 text-[14px]", className)}>{children}</td>;
 }
 
-function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () => void, title?: string }) {
+function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, onClick?: () => void, title?: string }) {
     return (
         <button
             onClick={onClick}

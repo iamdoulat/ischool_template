@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Trash2, Printer, Copy, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Printer, Copy, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Loader2, Library } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import {
     AlertDialog,
@@ -25,9 +26,27 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
+
 interface Section {
     id: number;
     name: string;
+    school_class_id?: number | string;
 }
 
 interface SchoolClass {
@@ -109,7 +128,7 @@ export default function SubjectGroupPage() {
         try {
             const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
             const all: Section[] = res.data?.data || res.data || [];
-            const filtered = all.filter((s: any) => String(s.school_class_id) === String(selectedClassId));
+            const filtered = all.filter((s: Section) => String(s.school_class_id) === String(selectedClassId));
             setSections(filtered);
         } catch {
             setSections([]);
@@ -181,9 +200,10 @@ export default function SubjectGroupPage() {
             }
             resetForm();
             fetchSubjectGroups(currentPage);
-        } catch (error: any) {
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
             console.error("Error saving subject group:", error);
-            toast("error", error.response?.data?.message || "Error saving subject group");
+            toast("error", err.response?.data?.message || "Error saving subject group");
         } finally {
             setSaving(false);
         }
@@ -221,9 +241,10 @@ export default function SubjectGroupPage() {
             await api.delete(`/academics/subject-groups/${idToDelete}`);
             fetchSubjectGroups(currentPage);
             toast("success", "Subject Group deleted successfully");
-        } catch (error: any) {
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
             console.error("Error deleting subject group:", error);
-            toast("error", error.response?.data?.message || "Failed to delete subject group");
+            toast("error", err.response?.data?.message || "Failed to delete subject group");
         } finally {
             setLoading(false);
             setIsDeleteDialogOpen(false);
@@ -290,26 +311,37 @@ export default function SubjectGroupPage() {
     };
 
     // Styling logic
-    const activeGradient = "bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 border-0";
-    const saveGradient = "bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white shadow-sm transition-all";
+    const saveGradient = "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm transition-all";
+    const pagerActive = "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white rounded-[10px] border-0";
+    const pagerInactive = "bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600";
 
     return (
         <div className="flex flex-col lg:flex-row gap-6 font-sans">
             {/* Left Column: Form */}
             <form onSubmit={handleSave} className="w-full lg:w-1/3">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                    <div className="flex justify-between items-center border-b pb-2 mb-4">
-                        <h2 className="text-lg font-medium text-gray-800">
-                            {editingId ? "Edit Subject Group" : "Add Subject Group"}
-                        </h2>
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                    <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Library className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                    {editingId ? "Edit Subject Group" : "Add Subject Group"}
+                                </CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">
+                                    {selectedSubjects.length} subject{selectedSubjects.length === 1 ? '' : 's'} selected
+                                </p>
+                            </div>
+                        </div>
                         {editingId && (
                             <Button type="button" variant="ghost" size="sm" onClick={resetForm} className="text-xs text-indigo-600">
                                 Cancel Edit
                             </Button>
                         )}
-                    </div>
+                    </CardHeader>
 
-                    <div className="space-y-4">
+                    <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="name" className="text-sm font-medium text-gray-700">
                                 Name <span className="text-red-500">*</span>
@@ -420,165 +452,171 @@ export default function SubjectGroupPage() {
                                 {editingId ? "Update" : "Save"}
                             </Button>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             </form>
 
             {/* Right Column: List View */}
             <div className="w-full lg:w-2/3">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                    <h2 className="text-lg font-medium text-gray-800 border-b pb-2">Subject Group List</h2>
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Library className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Subject Group List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{total} total entr{total === 1 ? 'y' : 'ies'}</p>
+                        </div>
+                    </CardHeader>
 
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
-                            <Input
-                                placeholder="Search"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500"
-                            />
+                    <CardContent className="space-y-4">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="relative w-full md:w-64">
+                                <Input
+                                    placeholder="Search"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 mr-2">
+                                    <Select value={limit} onValueChange={(v) => setLimit(v)}>
+                                        <SelectTrigger className="h-8 w-[70px] text-xs border-gray-200 focus:ring-indigo-500">
+                                            <SelectValue placeholder="10" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="10">10</SelectItem>
+                                            <SelectItem value="25">25</SelectItem>
+                                            <SelectItem value="50">50</SelectItem>
+                                            <SelectItem value="100">100</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center gap-1 text-gray-500">
+                                    <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-colors shadow-sm border border-gray-100 bg-white">
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                    <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-colors shadow-sm border border-gray-100 bg-white">
+                                        <FileSpreadsheet className="h-4 w-4" />
+                                    </Button>
+                                    <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-colors shadow-sm border border-gray-100 bg-white">
+                                        <FileText className="h-4 w-4" />
+                                    </Button>
+                                    <Button onClick={printTable} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-colors shadow-sm border border-gray-100 bg-white">
+                                        <Printer className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 mr-2">
-                                <Select value={limit} onValueChange={(v) => setLimit(v)}>
-                                    <SelectTrigger className="h-8 w-[70px] text-xs border-gray-200 focus:ring-indigo-500">
-                                        <SelectValue placeholder="10" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-500">
-                                <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-colors shadow-sm border border-gray-100 bg-white">
-                                    <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-colors shadow-sm border border-gray-100 bg-white">
-                                    <FileSpreadsheet className="h-4 w-4" />
-                                </Button>
-                                <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-colors shadow-sm border border-gray-100 bg-white">
-                                    <FileText className="h-4 w-4" />
-                                </Button>
-                                <Button onClick={printTable} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-colors shadow-sm border border-gray-100 bg-white">
-                                    <Printer className="h-4 w-4" />
-                                </Button>
-                            </div>
+                        <div className="rounded-md border border-gray-100 overflow-hidden min-h-[300px] relative">
+                            <Table>
+                                <TableHeader className="bg-gray-50/50 text-[11px] uppercase">
+                                    <TableRow className="hover:bg-transparent border-gray-100">
+                                        <TableHead className="font-bold text-gray-700 py-3">Name</TableHead>
+                                        <TableHead className="font-bold text-gray-700 py-3">Class (Section)</TableHead>
+                                        <TableHead className="font-bold text-gray-700 py-3">Subject</TableHead>
+                                        <TableHead className="font-bold text-gray-700 text-right py-3 w-[80px]">Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={4} />
+                                    ) : subjectGroups.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                        </tr>
+                                    ) : (
+                                        subjectGroups.map((group) => (
+                                            <TableRow key={group.id} className="text-[13px] hover:bg-gray-50/50 group border-b last:border-0 border-gray-50 align-top">
+                                                <TableCell className="text-gray-600 font-medium py-3.5">{group.name}</TableCell>
+                                                <TableCell className="text-gray-600 py-3.5">
+                                                    <div className="flex flex-col gap-1">
+                                                        {group.sections.map((sec) => (
+                                                            <div key={sec.id}>
+                                                                {group.school_class?.name} - {sec.name}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-gray-600 py-3.5">
+                                                    <div className="flex flex-col gap-1">
+                                                        {group.subjects.map((sub) => (
+                                                            <div key={sub.id}>
+                                                                {sub.name}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right py-3.5">
+                                                    <div className="flex items-center justify-end gap-1 transition-opacity">
+                                                        <Button
+                                                            onClick={() => handleEdit(group)}
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded shadow-sm"
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            onClick={() => confirmDelete(group.id)}
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded shadow-sm"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
-                    </div>
 
-                    <div className="rounded-md border border-gray-100 overflow-hidden min-h-[300px] relative">
-                        {loading && (
-                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
-                                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                        {total > 0 && (
+                            <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
+                                <div>
+                                    Showing {from} to {to} of {total} entries
+                                </div>
+                                <div className="flex gap-1">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className={`h-7 w-7 p-0 ${pagerInactive}`}
+                                        disabled={currentPage === 1}
+                                        onClick={() => fetchSubjectGroups(currentPage - 1)}
+                                    >
+                                        <ChevronLeft className="h-3.5 w-3.5" />
+                                    </Button>
+                                    {Array.from({ length: lastPage }, (_, i) => i + 1).map((page) => (
+                                        <Button
+                                            key={page}
+                                            variant={currentPage === page ? "default" : "outline"}
+                                            size="sm"
+                                            className={`h-7 w-7 p-0 ${currentPage === page ? pagerActive : pagerInactive}`}
+                                            onClick={() => fetchSubjectGroups(page)}
+                                        >
+                                            {page}
+                                        </Button>
+                                    ))}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className={`h-7 w-7 p-0 ${pagerInactive}`}
+                                        disabled={currentPage === lastPage}
+                                        onClick={() => fetchSubjectGroups(currentPage + 1)}
+                                    >
+                                        <ChevronRight className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
                             </div>
                         )}
-                        <Table>
-                            <TableHeader className="bg-gray-50/50 text-[11px] uppercase">
-                                <TableRow className="hover:bg-transparent border-gray-100">
-                                    <TableHead className="font-bold text-gray-700 py-3">Name</TableHead>
-                                    <TableHead className="font-bold text-gray-700 py-3">Class (Section)</TableHead>
-                                    <TableHead className="font-bold text-gray-700 py-3">Subject</TableHead>
-                                    <TableHead className="font-bold text-gray-700 text-right py-3 w-[80px]">Action</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {subjectGroups.map((group) => (
-                                    <TableRow key={group.id} className="text-[13px] hover:bg-gray-50/50 group border-b last:border-0 border-gray-50 align-top">
-                                        <TableCell className="text-gray-600 font-medium py-3.5">{group.name}</TableCell>
-                                        <TableCell className="text-gray-600 py-3.5">
-                                            <div className="flex flex-col gap-1">
-                                                {group.sections.map((sec) => (
-                                                    <div key={sec.id}>
-                                                        {group.school_class?.name} - {sec.name}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-gray-600 py-3.5">
-                                            <div className="flex flex-col gap-1">
-                                                {group.subjects.map((sub) => (
-                                                    <div key={sub.id}>
-                                                        {sub.name}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right py-3.5">
-                                            <div className="flex items-center justify-end gap-1 transition-opacity">
-                                                <Button
-                                                    onClick={() => handleEdit(group)}
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm"
-                                                >
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button
-                                                    onClick={() => confirmDelete(group.id)}
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded shadow-sm"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {subjectGroups.length === 0 && !loading && (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center text-gray-500 text-sm">
-                                            No results found.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    {total > 0 && (
-                        <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
-                            <div>
-                                Showing {from} to {to} of {total} entries
-                            </div>
-                            <div className="flex gap-1">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 w-7 p-0 border-gray-200"
-                                    disabled={currentPage === 1}
-                                    onClick={() => fetchSubjectGroups(currentPage - 1)}
-                                >
-                                    <ChevronLeft className="h-3.5 w-3.5" />
-                                </Button>
-                                {Array.from({ length: lastPage }, (_, i) => i + 1).map((page) => (
-                                    <Button
-                                        key={page}
-                                        variant={currentPage === page ? "default" : "outline"}
-                                        size="sm"
-                                        className={`h-7 w-7 p-0 border-gray-200 ${currentPage === page ? activeGradient : "hover:bg-indigo-50 hover:text-indigo-600"}`}
-                                        onClick={() => fetchSubjectGroups(page)}
-                                    >
-                                        {page}
-                                    </Button>
-                                ))}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 w-7 p-0 border-gray-200"
-                                    disabled={currentPage === lastPage}
-                                    onClick={() => fetchSubjectGroups(currentPage + 1)}
-                                >
-                                    <ChevronRight className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Delete Confirmation Dialog */}

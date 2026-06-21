@@ -1,0 +1,122 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { RefreshCw, CalendarDays, Clock, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import api from "@/lib/api";
+
+interface DashboardHeaderProps {
+    onRefresh: () => void;
+    refreshing: boolean;
+    lastUpdated: Date | null;
+}
+
+function getGreeting(): string {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
+}
+
+function formatLastUpdated(date: Date | null): string {
+    if (!date) return "";
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+export function DashboardHeader({ onRefresh, refreshing, lastUpdated }: DashboardHeaderProps) {
+    const [user, setUser] = useState<{ name?: string; role?: string } | null>(null);
+    const [session, setSession] = useState<string>("");
+    const [now, setNow] = useState(new Date());
+
+    // tick the live clock every minute
+    useEffect(() => {
+        const id = setInterval(() => setNow(new Date()), 60_000);
+        return () => clearInterval(id);
+    }, []);
+
+    useEffect(() => {
+        api.get("/profile")
+            .then(r => setUser(r.data?.data))
+            .catch(() => {});
+        api.get("/system-setting/general-setting")
+            .then(r => {
+                const d = r.data?.data || r.data || {};
+                setSession(d.session || "");
+            })
+            .catch(() => {});
+    }, []);
+
+    const dateStr = now.toLocaleDateString([], {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
+
+    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    return (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            {/* Left: greeting + date */}
+            <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                    <h2 className="text-lg md:text-2xl font-extrabold tracking-tight text-foreground truncate">
+                        {getGreeting()}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
+                    </h2>
+                    {user?.role && (
+                        <Badge
+                            variant="secondary"
+                            className="text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border-primary/20 px-2.5 py-0.5 rounded-full"
+                        >
+                            {user.role}
+                        </Badge>
+                    )}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                    <span className="flex items-center gap-1.5">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        {dateStr}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5" />
+                        {timeStr}
+                    </span>
+                </div>
+            </div>
+
+            {/* Right: session badge + refresh */}
+            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                {session && (
+                    <Badge
+                        variant="outline"
+                        className="text-[11px] font-bold uppercase tracking-widest border-indigo-200 text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-400 px-3 py-1 rounded-lg"
+                    >
+                        Session {session}
+                    </Badge>
+                )}
+                <div className="flex items-center gap-1.5">
+                    {lastUpdated && (
+                        <span className="text-[10px] text-muted-foreground/70 font-medium hidden sm:inline">
+                            Updated {formatLastUpdated(lastUpdated)}
+                        </span>
+                    )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onRefresh}
+                        disabled={refreshing}
+                        className={cn(
+                            "h-8 gap-1.5 text-xs font-semibold border-border/60 hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all rounded-lg",
+                        )}
+                    >
+                        <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+                        {refreshing ? "Refreshing…" : "Refresh"}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}

@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Upload, Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, Trash2, Loader2, Save, FileCode, X, ChevronLeft, ChevronRight, FileDown, Eye } from "lucide-react";
+import { Upload, Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, Trash2, Loader2, Save, FileCode, ChevronLeft, ChevronRight, FileDown, Eye, PlusCircle, Receipt } from "lucide-react";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { useImageUrl, useBaseUrl } from "@/lib/image-url";
 import api from "@/lib/api";
@@ -19,6 +20,22 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 import { useSettings } from "@/components/providers/settings-provider";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface IncomeHead {
     id: number;
@@ -77,7 +94,7 @@ export default function AddIncomePage() {
         try {
             const res = await api.get("system-setting/print-settings");
             if (res.data?.status === "success") {
-                const invoice = (res.data.data || []).find((s: any) => s.type === "Invoice");
+                const invoice = (res.data.data || []).find((s: { type: string; header_image_url?: string | null; footer_content?: string }) => s.type === "Invoice");
                 if (invoice) {
                     setInvoicePrintSettings({
                         header_image_url: invoice.header_image_url || null,
@@ -103,7 +120,17 @@ export default function AddIncomePage() {
             }
 
             if (incomesRes.data?.status === "Success") {
-                const mappedIncomes = incomesRes.data.data.map((item: any) => ({
+                const mappedIncomes = incomesRes.data.data.map((item: {
+                    id: number | string;
+                    name: string;
+                    description?: string;
+                    invoice_number?: string;
+                    date: string;
+                    income_head_id: number | string;
+                    income_head?: { income_head?: string };
+                    amount: string | number;
+                    document?: string;
+                }) => ({
                     id: item.id.toString(),
                     name: item.name,
                     description: item.description || "",
@@ -111,7 +138,7 @@ export default function AddIncomePage() {
                     date: item.date,
                     income_head_id: item.income_head_id.toString(),
                     income_head_name: item.income_head?.income_head || "N/A",
-                    amount: parseFloat(item.amount),
+                    amount: parseFloat(String(item.amount)),
                     document: item.document
                 }));
                 setIncomes(mappedIncomes);
@@ -294,7 +321,7 @@ export default function AddIncomePage() {
             str = str.replace(/₹/g, "Rs ");
             str = str.replace(/€/g, "EUR ");
             str = str.replace(/£/g, "GBP ");
-            
+
             // Remove any other non-ASCII characters to prevent PDF corruption
             return str.replace(/[^\x00-\x7F]/g, "").trim();
         };
@@ -323,7 +350,7 @@ export default function AddIncomePage() {
                 // silently continue without header image
             }
         }
-        
+
         if (!imageLoaded) {
             const schoolName = settings?.school_name || "SMART SCHOOL";
             doc.setFontSize(22);
@@ -335,14 +362,14 @@ export default function AddIncomePage() {
         // Top Section Left
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        
+
         let leftY = startY;
         doc.text(`Name: ${item.name}`, 14, leftY);
-        
+
         leftY += 6;
         doc.text(`Roll No:`, 14, leftY);
         doc.text(`Class:`, 60, leftY);
-        
+
         leftY += 6;
         doc.text(`Section:`, 14, leftY);
         doc.text(`Session:`, 60, leftY);
@@ -370,9 +397,9 @@ export default function AddIncomePage() {
         // Table
         autoTable(doc, {
             head: [[
-                'NO', 
-                'Description', 
-                { content: 'QTY', styles: { halign: 'right' } }, 
+                'NO',
+                'Description',
+                { content: 'QTY', styles: { halign: 'right' } },
                 { content: 'Amount', styles: { halign: 'right' } }
             ]],
             body: [
@@ -398,17 +425,17 @@ export default function AddIncomePage() {
             }
         });
 
-        let finalY = (doc as any).lastAutoTable.finalY + 10;
+        let finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
 
         // Totals
         doc.setFontSize(9);
         doc.text(`Discount:`, pageWidth - 40, finalY, { align: "right" });
         doc.text(formatPdfCurrency(0), pageWidth - 14, finalY, { align: "right" });
-        
+
         finalY += 5;
         doc.text(`Sub Total:`, pageWidth - 40, finalY, { align: "right" });
         doc.text(formatPdfCurrency(item.amount), pageWidth - 14, finalY, { align: "right" });
-        
+
         finalY += 6;
         doc.setFontSize(11);
         doc.text(`Total:`, pageWidth - 40, finalY, { align: "right" });
@@ -416,7 +443,7 @@ export default function AddIncomePage() {
 
         // Footer Text
         finalY += 30; // spacing
-        
+
         // additional footer content from settings
         if (footer_content) {
             doc.setFontSize(10);
@@ -445,297 +472,311 @@ export default function AddIncomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Left Column: Add Income Form */}
-                <div className="bg-white rounded-lg shadow-sm border p-4 space-y-4 h-fit">
-                    <h2 className="text-lg font-medium text-gray-800 border-b pb-2">
-                        {editingId ? "Edit Income" : "Add Income"}
-                    </h2>
-
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="income-head" className="text-xs font-semibold text-gray-600">
-                                Income Head <span className="text-red-500">*</span>
-                            </Label>
-                            <Select 
-                                value={formData.income_head_id} 
-                                onValueChange={(val) => setFormData({ ...formData, income_head_id: val })}
-                            >
-                                <SelectTrigger id="income-head">
-                                    <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {incomeHeads.map((head) => (
-                                        <SelectItem key={head.id} value={head.id.toString()}>
-                                            {head.income_head}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 h-fit sticky top-6">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <PlusCircle className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {editingId ? "Edit Income" : "Add Income"}
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">Record a new income entry</p>
                         </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="name" className="text-xs font-semibold text-gray-600">
-                                Name <span className="text-red-500">*</span>
-                            </Label>
-                            <Input 
-                                id="name" 
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="invoice-number" className="text-xs font-semibold text-gray-600">
-                                Invoice Number
-                            </Label>
-                            <Input 
-                                id="invoice-number" 
-                                value={formData.invoice_number}
-                                onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="date" className="text-xs font-semibold text-gray-600">
-                                Date <span className="text-red-500">*</span>
-                            </Label>
-                            <DatePicker 
-                                value={formData.date}
-                                onChange={(val) => setFormData({ ...formData, date: val })}
-                                className="h-11 border-gray-200"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="amount" className="text-xs font-semibold text-gray-600">
-                                Amount ({symbol}) <span className="text-red-500">*</span>
-                            </Label>
-                            <Input 
-                                id="amount" 
-                                type="number"
-                                step="0.01"
-                                value={formData.amount}
-                                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">
-                                Attach Document
-                            </Label>
-                            <input 
-                                type="file" 
-                                className="hidden" 
-                                ref={fileInputRef}
-                                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                            />
-                            <div 
-                                onClick={() => fileInputRef.current?.click()}
-                                className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer"
-                            >
-                                <Upload className="h-6 w-6 mb-2" />
-                                <span className="text-xs">
-                                    {selectedFile ? selectedFile.name : "Drag and drop a file here or click"}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="description" className="text-xs font-semibold text-gray-600">
-                                Description
-                            </Label>
-                            <Textarea 
-                                id="description" 
-                                className="resize-none" 
-                                rows={3} 
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="flex justify-end pt-2 gap-2">
-                            {editingId && (
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    onClick={resetForm}
-                                    className="h-9 px-6 rounded-full text-xs font-bold"
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="income-head" className="text-xs font-semibold text-gray-600">
+                                    Income Head <span className="text-red-500">*</span>
+                                </Label>
+                                <Select
+                                    value={formData.income_head_id}
+                                    onValueChange={(val) => setFormData({ ...formData, income_head_id: val })}
                                 >
-                                    Cancel
-                                </Button>
-                            )}
-                            <Button 
-                                type="submit"
-                                disabled={saving}
-                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
-                            >
-                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                {editingId ? "Update" : "Save"}
-                            </Button>
-                        </div>
-                    </form>
-                </div>
+                                    <SelectTrigger id="income-head">
+                                        <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {incomeHeads.map((head) => (
+                                            <SelectItem key={head.id} value={head.id.toString()}>
+                                                {head.income_head}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                {/* Right Column: Income List */}
-                <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border p-4 space-y-4">
-                    <h2 className="text-lg font-medium text-gray-800 border-b pb-2">Income List</h2>
-
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="flex w-full md:w-auto items-center gap-2">
-                            <div className="relative w-full md:w-64">
+                            <div className="space-y-2">
+                                <Label htmlFor="name" className="text-xs font-semibold text-gray-600">
+                                    Name <span className="text-red-500">*</span>
+                                </Label>
                                 <Input
-                                    placeholder="Search..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-3 pr-10"
+                                    id="name"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 />
                             </div>
-                        </div>
 
-                        <div className="flex items-center gap-2">
-                            <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                                <SelectTrigger className="w-[70px]">
-                                    <SelectValue placeholder="50" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
-                                <Button 
-                                    variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                    onClick={copyToClipboard}
+                            <div className="space-y-2">
+                                <Label htmlFor="invoice-number" className="text-xs font-semibold text-gray-600">
+                                    Invoice Number
+                                </Label>
+                                <Input
+                                    id="invoice-number"
+                                    value={formData.invoice_number}
+                                    onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="date" className="text-xs font-semibold text-gray-600">
+                                    Date <span className="text-red-500">*</span>
+                                </Label>
+                                <DatePicker
+                                    value={formData.date}
+                                    onChange={(val) => setFormData({ ...formData, date: val })}
+                                    className="h-11 border-gray-200"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="amount" className="text-xs font-semibold text-gray-600">
+                                    Amount ({symbol}) <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                    id="amount"
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.amount}
+                                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold text-gray-600">
+                                    Attach Document
+                                </Label>
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    ref={fileInputRef}
+                                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                                />
+                                <div
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer"
                                 >
-                                    <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                    variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                    onClick={exportToExcel}
+                                    <Upload className="h-6 w-6 mb-2" />
+                                    <span className="text-xs">
+                                        {selectedFile ? selectedFile.name : "Drag and drop a file here or click"}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="description" className="text-xs font-semibold text-gray-600">
+                                    Description
+                                </Label>
+                                <Textarea
+                                    id="description"
+                                    className="resize-none"
+                                    rows={3}
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="flex justify-end pt-2 gap-2">
+                                {editingId && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={resetForm}
+                                        className="h-9 px-6 rounded-full text-xs font-bold"
+                                    >
+                                        Cancel
+                                    </Button>
+                                )}
+                                <Button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                                 >
-                                    <FileSpreadsheet className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                    variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                    onClick={exportToCSV}
-                                >
-                                    <FileText className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                    variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                    onClick={exportToPDF}
-                                >
-                                    <FileCode className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                    variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                    onClick={() => window.print()}
-                                >
-                                    <Printer className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200">
-                                    <Columns className="h-4 w-4" />
+                                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                    {editingId ? "Update" : "Save"}
                                 </Button>
                             </div>
-                        </div>
-                    </div>
+                        </form>
+                    </CardContent>
+                </Card>
 
-                    <div className="rounded-md border overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-gray-50 text-xs uppercase">
-                                <TableRow>
-                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Name</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 min-w-[300px]">Description</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Invoice Number</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Date</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Income Head</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Attachment</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Amount ({symbol})</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Action</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
+                {/* Right Column: Income List */}
+                <Card className="lg:col-span-2 border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Receipt className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Income List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{incomes.length} income {incomes.length === 1 ? "entry" : "entries"}</p>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex w-full md:w-auto items-center gap-2">
+                                <div className="relative w-full md:w-64">
+                                    <Input
+                                        placeholder="Search..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-3 pr-10"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
+                                    <SelectTrigger className="w-[70px]">
+                                        <SelectValue placeholder="50" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="25">25</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
+                                    <Button
+                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                        onClick={copyToClipboard}
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                        onClick={exportToExcel}
+                                    >
+                                        <FileSpreadsheet className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                        onClick={exportToCSV}
+                                    >
+                                        <FileText className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                        onClick={exportToPDF}
+                                    >
+                                        <FileCode className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                        onClick={() => window.print()}
+                                    >
+                                        <Printer className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200">
+                                        <Columns className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-md border overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow>
-                                        <TableCell colSpan={8} className="text-center py-8">
-                                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
-                                        </TableCell>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Name</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 min-w-[300px]">Description</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Invoice Number</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Date</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Income Head</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Attachment</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Amount ({symbol})</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Action</TableHead>
                                     </TableRow>
-                                ) : filteredData.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                                            No records found.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredData.map((item) => (
-                                        <TableRow key={item.id} className="text-sm">
-                                            <TableCell className="font-medium text-gray-700 py-3">{item.name}</TableCell>
-                                            <TableCell className="text-gray-600 text-xs">{item.description}</TableCell>
-                                            <TableCell className="text-gray-600">{item.invoice_number}</TableCell>
-                                            <TableCell className="text-gray-600">{formatDate(item.date)}</TableCell>
-                                            <TableCell className="text-gray-600">{item.income_head_name}</TableCell>
-                                            <TableCell>
-                                                {item.document ? (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() => {
-                                                            window.open(getImageUrl(item.document), '_blank');
-                                                        }}
-                                                        className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded p-0"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                ) : (
-                                                    <span className="text-gray-300 text-xs">—</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-gray-600 text-right">{formatCurrency(item.amount)}</TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => handleEdit(item)}
-                                                        className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => downloadInvoicePDF(item)}
-                                                        className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                        title="Download Invoice PDF"
-                                                    >
-                                                        <FileDown className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={8} />
+                                    ) : filteredData.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                No data found
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
-                        <div>
-                            Showing 1 to {filteredData.length} of {incomes.length} entries
+                                    ) : (
+                                        filteredData.map((item) => (
+                                            <TableRow key={item.id} className="text-sm">
+                                                <TableCell className="font-medium text-gray-700 py-3">{item.name}</TableCell>
+                                                <TableCell className="text-gray-600 text-xs">{item.description}</TableCell>
+                                                <TableCell className="text-gray-600">{item.invoice_number}</TableCell>
+                                                <TableCell className="text-gray-600">{formatDate(item.date)}</TableCell>
+                                                <TableCell className="text-gray-600">{item.income_head_name}</TableCell>
+                                                <TableCell>
+                                                    {item.document ? (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => {
+                                                                window.open(getImageUrl(item.document), '_blank');
+                                                            }}
+                                                            className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded p-0"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-gray-300 text-xs">—</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-gray-600 text-right">{formatCurrency(item.amount)}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => handleEdit(item)}
+                                                            className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => downloadInvoicePDF(item)}
+                                                            className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                            title="Download Invoice PDF"
+                                                        >
+                                                            <FileDown className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => handleDelete(item.id)}
+                                                            className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
-                        <div className="flex gap-1">
-                            <Button variant="outline" size="sm" className="h-7 w-7 rounded-md p-0 shadow-sm" disabled><ChevronLeft className="h-4 w-4" /></Button>
-                            <Button variant="default" size="sm" className="h-7 w-7 rounded-md p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md">1</Button>
-                            <Button variant="outline" size="sm" className="h-7 w-7 rounded-md p-0 shadow-sm" disabled><ChevronRight className="h-4 w-4" /></Button>
+                        <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
+                            <div>
+                                Showing 1 to {filteredData.length} of {incomes.length} entries
+                            </div>
+                            <div className="flex gap-1">
+                                <Button variant="outline" size="sm" className="h-7 w-7 rounded-[10px] p-0 bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronLeft className="h-4 w-4" /></Button>
+                                <Button variant="default" size="sm" className="h-7 w-7 rounded-[10px] p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md">1</Button>
+                                <Button variant="outline" size="sm" className="h-7 w-7 rounded-[10px] p-0 bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronRight className="h-4 w-4" /></Button>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
 
             </div>
         </div>

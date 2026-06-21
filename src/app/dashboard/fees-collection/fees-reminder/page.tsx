@@ -1,7 +1,7 @@
 "use client";
 
-import { BellRing, Check, Save, Loader2, Info } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { BellRing, Save, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,23 @@ interface Reminder {
     type: string;
     days: number;
     is_active: boolean;
+}
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
 }
 
 export default function FeesReminderPage() {
@@ -67,16 +84,14 @@ export default function FeesReminderPage() {
                 <p className="text-muted-foreground">Configure automated fee reminder notifications for students and parents.</p>
             </div>
 
-            <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
-                <CardHeader className="border-b border-muted/20 bg-muted/5">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-primary/10 rounded-lg text-primary">
-                            <BellRing className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-xl">Reminder Settings</CardTitle>
-                            <CardDescription>Toggle and set days for each reminder type.</CardDescription>
-                        </div>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <BellRing className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Reminder Settings</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{reminders.length} reminder type{reminders.length === 1 ? '' : 's'}</p>
                     </div>
                 </CardHeader>
 
@@ -92,22 +107,10 @@ export default function FeesReminderPage() {
                             </thead>
                             <tbody className="divide-y divide-muted/10">
                                 {loading ? (
-                                    <tr>
-                                        <td colSpan={3} className="px-8 py-20 text-center">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
-                                                <p className="text-sm font-medium text-muted-foreground">Loading reminders...</p>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    <TableSkeleton rows={5} cols={3} />
                                 ) : reminders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={3} className="px-8 py-20 text-center">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <Info className="h-10 w-10 text-muted-foreground/30" />
-                                                <p className="text-sm font-medium text-muted-foreground">No reminders configured.</p>
-                                            </div>
-                                        </td>
+                                        <td colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
                                     </tr>
                                 ) : reminders.map((reminder) => (
                                     <tr key={reminder.id} className="hover:bg-muted/5 transition-colors group">
@@ -119,7 +122,7 @@ export default function FeesReminderPage() {
                                                     onCheckedChange={(checked) => handleActiveChange(reminder.id, checked as boolean)}
                                                     className="h-5 w-5 rounded-md border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all"
                                                 />
-                                                <label 
+                                                <label
                                                     htmlFor={`reminder-${reminder.id}`}
                                                     className={cn(
                                                         "text-[11px] font-black uppercase tracking-widest cursor-pointer transition-colors",
@@ -189,5 +192,3 @@ export default function FeesReminderPage() {
         </div>
     );
 }
-
-

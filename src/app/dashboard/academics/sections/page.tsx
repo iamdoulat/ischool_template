@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-    Pencil, Trash2, Copy, FileSpreadsheet, FileText, Printer, Columns, ChevronLeft, ChevronRight, Loader2
+    Pencil, Trash2, Copy, FileSpreadsheet, FileText, Printer, Columns, ChevronLeft, ChevronRight, Loader2, LayoutGrid
 } from "lucide-react";
 import api from "@/lib/api";
 import * as XLSX from "xlsx";
@@ -27,6 +28,23 @@ import {
 interface Section {
     id: number;
     name: string;
+}
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
 }
 
 export default function SectionsPage() {
@@ -95,9 +113,10 @@ export default function SectionsPage() {
             setSectionName("");
             setEditingId(null);
             fetchSections(currentPage);
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error saving section:", error);
-            toast("error", error.response?.data?.message || "Error saving section");
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast("error", err.response?.data?.message || "Error saving section");
         } finally {
             setSaving(false);
         }
@@ -120,9 +139,10 @@ export default function SectionsPage() {
             await api.delete(`/academics/sections/${idToDelete}`);
             fetchSections(currentPage);
             toast("success", "Section deleted successfully (globally)");
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error deleting section:", error);
-            toast("error", error.response?.data?.message || "Error deleting section");
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast("error", err.response?.data?.message || "Error deleting section");
         } finally {
             setLoading(false);
             setIsDeleteDialogOpen(false);
@@ -168,175 +188,188 @@ export default function SectionsPage() {
         printWindow.print();
     };
 
-    // Gradient background utility for active pagination
-    const activeGradient = "bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 border-0";
-    // Gradient background utility for save button
-    const saveGradient = "bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white shadow-sm transition-all";
+    // Gradient background utility for save button (primary action)
+    const saveGradient = "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm transition-all";
 
     return (
         <div className="flex flex-col lg:flex-row gap-6 font-sans">
             {/* Left Column: Add Section Form */}
             <form onSubmit={handleSave} className="w-full lg:w-1/3">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                    <h2 className="text-lg font-medium text-gray-800 border-b pb-2 mb-4">
-                        {editingId ? "Edit Section" : "Add Section"}
-                    </h2>
-
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="sectionName" className="text-sm font-medium text-gray-700">
-                                Section Name <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                                id="sectionName"
-                                className="h-9 focus-visible:ring-indigo-500"
-                                value={sectionName}
-                                onChange={(e) => setSectionName(e.target.value)}
-                                required
-                            />
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <LayoutGrid className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {editingId ? "Edit Section" : "Add Section"}
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {editingId ? "Update an existing section" : "Create a new section"}
+                            </p>
                         </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="sectionName" className="text-sm font-medium text-gray-700">
+                                    Section Name <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                    id="sectionName"
+                                    className="h-9 focus-visible:ring-indigo-500"
+                                    value={sectionName}
+                                    onChange={(e) => setSectionName(e.target.value)}
+                                    required
+                                />
+                            </div>
 
-                        <div className="flex justify-end pt-2">
-                            <Button
-                                type="submit"
-                                disabled={saving}
-                                className={`px-8 h-9 text-xs flex items-center gap-2 ${saveGradient}`}
-                            >
-                                {saving && <Loader2 className="h-3 w-3 animate-spin" />}
-                                {editingId ? "Update" : "Save"}
-                            </Button>
+                            <div className="flex justify-end pt-2">
+                                <Button
+                                    type="submit"
+                                    disabled={saving}
+                                    className={`px-8 h-9 text-xs flex items-center gap-2 ${saveGradient}`}
+                                >
+                                    {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+                                    {editingId ? "Update" : "Save"}
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             </form>
 
             {/* Right Column: Section List */}
             <div className="w-full lg:w-2/3">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                    <h2 className="text-lg font-medium text-gray-800 border-b pb-2">Section List</h2>
-
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
-                            <Input
-                                placeholder="Search"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 mr-2">
-                                <span className="text-xs text-gray-500 font-medium">50</span>
-                                <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
-                                    <Copy className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
-                                    <FileSpreadsheet className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
-                                    <FileText className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button onClick={printTable} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
-                                    <Printer className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
-                                    <Columns className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="rounded-md border border-gray-100 overflow-hidden min-h-[300px] relative">
-                        {loading && (
-                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
-                                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-                            </div>
-                        )}
-                        <Table>
-                            <TableHeader className="bg-gray-50/50 text-[11px] uppercase">
-                                <TableRow className="hover:bg-transparent border-gray-100">
-                                    <TableHead className="font-bold text-gray-700 py-3">Section</TableHead>
-                                    <TableHead className="font-bold text-gray-700 text-right py-3">Action</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {sections.map((sec) => (
-                                    <TableRow key={sec.id} className="text-[13px] hover:bg-gray-50/50 group border-b last:border-0 border-gray-50">
-                                        <TableCell className="text-gray-600 font-normal py-3.5">{sec.name}</TableCell>
-                                        <TableCell className="text-right py-3.5">
-                                            <div className="flex items-center justify-end gap-1 transition-opacity">
-                                                <Button
-                                                    onClick={() => handleEdit(sec)}
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm"
-                                                >
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button
-                                                    onClick={() => confirmDelete(sec.id)}
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded shadow-sm"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {sections.length === 0 && !loading && (
-                                    <TableRow>
-                                        <TableCell colSpan={2} className="h-24 text-center text-gray-500 text-sm">
-                                            No results found.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <LayoutGrid className="h-5 w-5" />
+                        </span>
                         <div>
-                            Showing {from} to {to} of {total} entries
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Section List</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{total} total entr{total === 1 ? 'y' : 'ies'}</p>
                         </div>
-                        <div className="flex gap-1">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 w-7 p-0 border-gray-200"
-                                disabled={currentPage === 1}
-                                onClick={() => fetchSections(currentPage - 1)}
-                            >
-                                <ChevronLeft className="h-3.5 w-3.5" />
-                            </Button>
-                            {Array.from({ length: lastPage }, (_, i) => i + 1).map((page) => (
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="relative w-full md:w-64">
+                                <Input
+                                    placeholder="Search"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 mr-2">
+                                    <span className="text-xs text-gray-500 font-medium">50</span>
+                                    <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
+                                </div>
+                                <div className="flex items-center gap-1 text-gray-400">
+                                    <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                                        <Copy className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                                        <FileSpreadsheet className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                                        <FileText className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button onClick={printTable} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                                        <Printer className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                                        <Columns className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-md border border-gray-100 overflow-hidden">
+                            <Table>
+                                <TableHeader className="bg-gray-50/50 text-[11px] uppercase">
+                                    <TableRow className="hover:bg-transparent border-gray-100">
+                                        <TableHead className="font-bold text-gray-700 py-3">Section</TableHead>
+                                        <TableHead className="font-bold text-gray-700 text-right py-3">Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        <TableSkeleton rows={5} cols={2} />
+                                    ) : sections.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={2} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                        </tr>
+                                    ) : (
+                                        sections.map((sec) => (
+                                            <TableRow key={sec.id} className="text-[13px] hover:bg-gray-50/50 group border-b last:border-0 border-gray-50">
+                                                <TableCell className="text-gray-600 font-normal py-3.5">{sec.name}</TableCell>
+                                                <TableCell className="text-right py-3.5">
+                                                    <div className="flex items-center justify-end gap-1 transition-opacity">
+                                                        <Button
+                                                            onClick={() => handleEdit(sec)}
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded shadow-sm"
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            onClick={() => confirmDelete(sec.id)}
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded shadow-sm"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
+                            <div>
+                                Showing {from} to {to} of {total} entries
+                            </div>
+                            <div className="flex gap-1">
                                 <Button
-                                    key={page}
-                                    variant={currentPage === page ? "default" : "outline"}
                                     size="sm"
-                                    className={`h-7 w-7 p-0 border-gray-200 ${currentPage === page ? activeGradient : "hover:bg-indigo-50 hover:text-indigo-600"}`}
-                                    onClick={() => fetchSections(page)}
+                                    className="h-7 w-7 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-50"
+                                    disabled={currentPage === 1}
+                                    onClick={() => fetchSections(currentPage - 1)}
                                 >
-                                    {page}
+                                    <ChevronLeft className="h-3.5 w-3.5" />
                                 </Button>
-                            ))}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 w-7 p-0 border-gray-200"
-                                disabled={currentPage === lastPage}
-                                onClick={() => fetchSections(currentPage + 1)}
-                            >
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </Button>
+                                {Array.from({ length: lastPage }, (_, i) => i + 1).map((page) => (
+                                    <Button
+                                        key={page}
+                                        size="sm"
+                                        className={`h-7 w-7 p-0 rounded-[10px] ${currentPage === page
+                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0"
+                                            : "bg-white border border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"}`}
+                                        onClick={() => fetchSections(page)}
+                                    >
+                                        {page}
+                                    </Button>
+                                ))}
+                                <Button
+                                    size="sm"
+                                    className="h-7 w-7 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-50"
+                                    disabled={currentPage === lastPage}
+                                    onClick={() => fetchSections(currentPage + 1)}
+                                >
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Delete Confirmation Dialog */}

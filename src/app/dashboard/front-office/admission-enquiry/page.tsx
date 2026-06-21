@@ -7,21 +7,19 @@ import {
     Printer,
     FileText,
     Table as TableIcon,
-    FileDown,
     Download,
     Columns,
     ChevronDown,
     Phone,
     Pencil,
     X,
-    Calendar,
     Filter,
     Loader2,
-    AlertCircle,
     Trash2,
-    Eye,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Users,
+    RefreshCw
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -91,6 +89,7 @@ export default function AdmissionEnquiryPage() {
     const [references, setReferences] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingEnquiry, setEditingEnquiry] = useState<AdmissionEnquiry | null>(null);
@@ -140,7 +139,7 @@ export default function AdmissionEnquiryPage() {
             if (filters.status) params.append("status", filters.status);
             params.append("page", String(page));
             params.append("limit", String(limit));
-            if (searchTerm) params.append("search", searchTerm);
+            if (debouncedSearch) params.append("search", debouncedSearch);
 
             const response = await api.get(`/admission-enquiries?${params.toString()}`);
             const resData = response.data?.data;
@@ -163,7 +162,7 @@ export default function AdmissionEnquiryPage() {
         } finally {
             setLoading(false);
         }
-    }, [filters, page, limit, searchTerm, toast]);
+    }, [filters, page, limit, debouncedSearch, toast]);
 
     const fetchClasses = useCallback(async () => {
         try {
@@ -196,6 +195,15 @@ export default function AdmissionEnquiryPage() {
             console.error("Error fetching references:", error);
         }
     }, []);
+
+    // Debounce the search box → server-side search, reset to first page
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+            setPage(1);
+        }, 400);
+        return () => clearTimeout(t);
+    }, [searchTerm]);
 
     useEffect(() => {
         fetchEnquiries();
@@ -311,8 +319,8 @@ export default function AdmissionEnquiryPage() {
     const filteredEnquiries = isBackendPaginated
         ? enquiries
         : enquiries.filter(e =>
-            e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            e.phone.toLowerCase().includes(searchTerm.toLowerCase())
+            e.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            e.phone.toLowerCase().includes(debouncedSearch.toLowerCase())
         );
 
     const displayedEnquiries = isBackendPaginated
@@ -356,13 +364,39 @@ export default function AdmissionEnquiryPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+            {/* Page Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
+                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-lg">
+                            <Users className="h-5 w-5" />
+                        </span>
+                        Admission Enquiry
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-1 ml-11">Manage and follow up on prospective admission leads</p>
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 text-xs font-semibold rounded-lg self-start sm:self-auto"
+                    onClick={() => { setPage(1); fetchEnquiries(); }}
+                    disabled={loading}
+                >
+                    <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+                    Refresh
+                </Button>
+            </div>
+
             {/* Select Criteria Section */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm">
-                <CardHeader className="border-b border-muted/50 pb-4">
-                    <CardTitle className="text-xl font-bold tracking-tight text-slate-800 flex items-center gap-2">
-                        <Filter className="h-5 w-5 text-indigo-500" />
-                        Select Criteria
-                    </CardTitle>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Filter admission enquiries</p>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-6 gap-4 items-end">
@@ -445,7 +479,7 @@ export default function AdmissionEnquiryPage() {
                         </div>
 
                         <div className="flex justify-end">
-                            <Button variant="gradient" className="h-10 px-8" onClick={fetchEnquiries} disabled={loading}>
+                            <Button variant="gradient" className="h-10 px-8" onClick={() => { setPage(1); fetchEnquiries(); }} disabled={loading}>
                                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 text-white mr-2" />}
                                 Search
                             </Button>
@@ -455,9 +489,17 @@ export default function AdmissionEnquiryPage() {
             </Card>
 
             {/* List Table */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between border-b border-muted/50 pb-4">
-                    <CardTitle className="text-xl font-bold tracking-tight text-slate-800">Admission Enquiry</CardTitle>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Users className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Admission Enquiry</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{total} total enquir{total === 1 ? "y" : "ies"}</p>
+                        </div>
+                    </div>
                     <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingEnquiry(null); resetForm(); } }}>
                         <DialogTrigger asChild>
                             <Button variant="gradient" size="sm" className="h-9 px-6">
@@ -715,9 +757,9 @@ export default function AdmissionEnquiryPage() {
                                     </Th>
                                     <Th>Name</Th>
                                     <Th>Phone</Th>
-                                    <Th>Source</Th>
-                                    <Th>Enquiry Date</Th>
-                                    <Th>Next Follow Up</Th>
+                                    <Th className="hidden lg:table-cell">Source</Th>
+                                    <Th className="hidden md:table-cell">Enquiry Date</Th>
+                                    <Th className="hidden xl:table-cell">Next Follow Up</Th>
                                     <Th>Status</Th>
                                     <Th className="text-right flex items-center justify-end gap-2">
                                         <span>Action</span>
@@ -764,9 +806,9 @@ export default function AdmissionEnquiryPage() {
                                             </Td>
                                             <Td className="font-semibold text-slate-700">{item.name}</Td>
                                             <Td className="text-slate-600 font-medium">{item.phone}</Td>
-                                            <Td className="text-slate-600 font-medium">{item.source || "-"}</Td>
-                                            <Td className="text-slate-600 font-medium">{item.date ? item.date.split("T")[0] : "-"}</Td>
-                                            <Td className="text-slate-600 font-medium">{item.next_follow_up_date ? item.next_follow_up_date.split("T")[0] : "-"}</Td>
+                                            <Td className="text-slate-600 font-medium hidden lg:table-cell">{item.source || "-"}</Td>
+                                            <Td className="text-slate-600 font-medium hidden md:table-cell">{item.date ? item.date.split("T")[0] : "-"}</Td>
+                                            <Td className="text-slate-600 font-medium hidden xl:table-cell">{item.next_follow_up_date ? item.next_follow_up_date.split("T")[0] : "-"}</Td>
                                             <Td>
                                                 <Badge variant="outline" className={cn(
                                                     "text-[10px] font-bold px-2 py-0.5",
@@ -781,7 +823,7 @@ export default function AdmissionEnquiryPage() {
                                             </Td>
                                             <Td className="text-right">
                                                 <div className="flex justify-end gap-1 px-2">
-                                                    <ActionBtn icon={Phone} className="bg-green-500" title="Call" />
+                                                    <ActionBtn icon={Phone} className="bg-green-500" title={`Call ${item.phone}`} onClick={() => { if (item.phone) window.location.href = `tel:${item.phone}`; }} />
                                                     <ActionBtn icon={Pencil} className="bg-indigo-500" onClick={() => handleEdit(item)} title="Edit" />
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
@@ -815,27 +857,44 @@ export default function AdmissionEnquiryPage() {
                         </table>
                     </div>
 
-                    <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
+                    <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
                             Showing {total > 0 ? ((page - 1) * limit) + 1 : 0} to {Math.min(page * limit, total)} of {total} entries
                         </p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap justify-center">
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all bg-white"
+                                className="h-8 w-8 rounded-[10px] border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:scale-95 transition-all bg-white"
                                 onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-                                disabled={page === 1}
+                                disabled={page === 1 || loading}
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <span className="text-xs text-muted-foreground px-2">Page {page} of {lastPage}</span>
+
+                            {getPageNumbers(page, lastPage).map((p, idx) =>
+                                p === "…" ? (
+                                    <span key={`gap-${idx}`} className="px-1.5 text-gray-400 text-sm select-none">…</span>
+                                ) : (
+                                    <Button
+                                        key={p}
+                                        variant={page === p ? "pagination-active" : "pagination-inactive"}
+                                        size="icon"
+                                        className="h-8 w-8 rounded-[10px] text-xs font-bold"
+                                        onClick={() => setPage(p)}
+                                        disabled={loading}
+                                    >
+                                        {p}
+                                    </Button>
+                                )
+                            )}
+
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all bg-white"
+                                className="h-8 w-8 rounded-[10px] border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:scale-95 transition-all bg-white"
                                 onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
-                                disabled={page === lastPage}
+                                disabled={page === lastPage || lastPage === 0 || loading}
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
@@ -845,6 +904,19 @@ export default function AdmissionEnquiryPage() {
             </Card>
         </div>
     );
+}
+
+// Build a windowed list of page numbers with ellipsis, e.g. [1, '…', 4, 5, 6, '…', 20]
+function getPageNumbers(current: number, last: number): (number | "…")[] {
+    if (last <= 7) return Array.from({ length: last }, (_, i) => i + 1);
+    const pages: (number | "…")[] = [1];
+    const start = Math.max(2, current - 1);
+    const end = Math.min(last - 1, current + 1);
+    if (start > 2) pages.push("…");
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < last - 1) pages.push("…");
+    pages.push(last);
+    return pages;
 }
 
 // Helper Components

@@ -10,16 +10,16 @@ interface SummaryCardProps {
 }
 
 const colorMaps = {
-    blue: "bg-gradient-to-br from-blue-600 to-indigo-700",
-    red: "bg-gradient-to-br from-rose-500 to-orange-500",
-    purple: "bg-gradient-to-br from-violet-600 to-indigo-800",
+    blue:    "bg-gradient-to-br from-blue-600 to-indigo-700",
+    red:     "bg-gradient-to-br from-rose-500 to-orange-500",
+    purple:  "bg-gradient-to-br from-violet-600 to-indigo-800",
     primary: "bg-gradient-to-br from-primary to-primary/80",
-    cyan: "bg-gradient-to-br from-cyan-500 to-blue-600",
-    indigo: "bg-gradient-to-br from-indigo-600 to-purple-700",
-    orange: "bg-gradient-to-br from-orange-400 to-rose-400",
-    yellow: "bg-gradient-to-br from-amber-400 to-orange-500",
+    cyan:    "bg-gradient-to-br from-cyan-500 to-blue-600",
+    indigo:  "bg-gradient-to-br from-indigo-600 to-purple-700",
+    orange:  "bg-gradient-to-br from-orange-400 to-rose-400",
+    yellow:  "bg-gradient-to-br from-amber-400 to-orange-500",
     emerald: "bg-gradient-to-br from-emerald-500 to-teal-600",
-    rose: "bg-gradient-to-br from-rose-400 to-pink-600"
+    rose:    "bg-gradient-to-br from-rose-400 to-pink-600"
 };
 
 export function SummaryCard({ title, value, icon: Icon, color }: SummaryCardProps) {

@@ -3,27 +3,40 @@
 import { useState, useEffect, useCallback } from "react";
 import {
     Search,
-    ListFilter,
-    Users,
     ChevronDown,
-    Plus,
     FolderSearch,
     FileSpreadsheet,
     FileText,
     FileCode,
     Printer,
-    Eye,
-    Wallet
+    Wallet,
+    Filter
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+}
 
 interface SchoolClass {
     id: number;
@@ -87,7 +100,7 @@ export default function CollectFeesPage() {
     const handleSearch = async (type: 'criteria' | 'keyword') => {
         setLoading(true);
         try {
-            const params: any = {};
+            const params: Record<string, string | number> = {};
             if (type === 'criteria') {
                 if (classId) params.school_class_id = classId;
                 if (sectionId) params.section_id = sectionId;
@@ -130,8 +143,8 @@ export default function CollectFeesPage() {
             XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
             XLSX.writeFile(workbook, `student_list.${format === 'excel' ? 'xlsx' : 'csv'}`);
         } else if (format === 'pdf') {
-            const doc = new jsPDF() as any;
-            doc.autoTable({
+            const doc = new jsPDF();
+            autoTable(doc, {
                 head: [["Class", "Section", "Admission No", "Student Name", "Father Name", "DOB", "Mobile No"]],
                 body: exportData.map(d => Object.values(d)),
             });
@@ -150,13 +163,16 @@ export default function CollectFeesPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Toolbar Card */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden mb-6">
-                <div className="px-4 py-3 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                            <Wallet className="h-5 w-5 text-primary" />
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 mb-6">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Wallet className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Collect Fees</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{students.length} student{students.length === 1 ? '' : 's'} listed</p>
                         </div>
-                        <h2 className="font-bold text-lg tracking-tight">Collect Fees</h2>
                     </div>
                     <div className="flex items-center gap-2">
                         <Button
@@ -196,17 +212,20 @@ export default function CollectFeesPage() {
                             Print
                         </Button>
                     </div>
-                </div>
+                </CardHeader>
             </Card>
 
             {/* Select Criteria Card */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-muted/50 flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                        <ListFilter className="h-5 w-5 text-primary" />
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">Search students to collect fees</p>
                     </div>
-                    <h2 className="font-bold text-lg tracking-tight">Select Criteria</h2>
-                </div>
+                </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -299,13 +318,16 @@ export default function CollectFeesPage() {
                 </CardContent>
             </Card>
 
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden print:shadow-none print:bg-white">
-                <div className="px-6 py-4 border-b border-muted/50 flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                        <Users className="h-5 w-5 text-primary" />
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 print:shadow-none print:bg-white">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Wallet className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{students.length} student{students.length === 1 ? '' : 's'} found</p>
                     </div>
-                    <h2 className="font-bold text-lg tracking-tight">Student List</h2>
-                </div>
+                </CardHeader>
 
                 <div className="p-0 overflow-x-auto">
                     <table className="w-full text-left border-collapse">
@@ -322,35 +344,39 @@ export default function CollectFeesPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-muted/50">
-                            {students.map((student) => (
-                                <tr key={student.id} className="group hover:bg-muted/20 transition-colors border-b border-muted/50">
-                                    <td className="px-6 py-4 text-xs font-bold text-muted-foreground">{student.schoolClass?.name}</td>
-                                    <td className="px-6 py-4 text-xs font-bold text-muted-foreground">{student.section?.name}</td>
-                                    <td className="px-6 py-4 text-xs font-black text-primary hover:text-primary/80 transition-colors cursor-pointer">{student.admission_no}</td>
-                                    <td className="px-6 py-4 text-xs font-bold text-foreground capitalize">{`${student.name} ${student.last_name}`}</td>
-                                    <td className="px-6 py-4 text-xs font-bold text-muted-foreground capitalize">{student.father_name}</td>
-                                    <td className="px-6 py-4 text-xs font-bold text-muted-foreground italic">{student.dob}</td>
-                                    <td className="px-6 py-4 text-xs font-bold text-muted-foreground">{student.phone}</td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                variant="gradient"
-                                                size="sm"
-                                                className="h-8 px-4 rounded-lg font-bold text-[10px] shadow-lg shadow-primary/20"
-                                                onClick={() => window.location.href = `/dashboard/fees-collection/collect-fees/student/${student.id}`}
-                                            >
-                                                <Wallet className="h-3 w-3 mr-2" />
-                                                Collect Fee
-                                            </Button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                            {loading ? (
+                                <TableSkeleton rows={5} cols={8} />
+                            ) : (
+                                students.map((student) => (
+                                    <tr key={student.id} className="group hover:bg-muted/20 transition-colors border-b border-muted/50">
+                                        <td className="px-6 py-4 text-xs font-bold text-muted-foreground">{student.schoolClass?.name}</td>
+                                        <td className="px-6 py-4 text-xs font-bold text-muted-foreground">{student.section?.name}</td>
+                                        <td className="px-6 py-4 text-xs font-black text-primary hover:text-primary/80 transition-colors cursor-pointer">{student.admission_no}</td>
+                                        <td className="px-6 py-4 text-xs font-bold text-foreground capitalize">{`${student.name} ${student.last_name}`}</td>
+                                        <td className="px-6 py-4 text-xs font-bold text-muted-foreground capitalize">{student.father_name}</td>
+                                        <td className="px-6 py-4 text-xs font-bold text-muted-foreground italic">{student.dob}</td>
+                                        <td className="px-6 py-4 text-xs font-bold text-muted-foreground">{student.phone}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="gradient"
+                                                    size="sm"
+                                                    className="h-8 px-4 rounded-lg font-bold text-[10px] shadow-lg shadow-primary/20"
+                                                    onClick={() => window.location.href = `/dashboard/fees-collection/collect-fees/student/${student.id}`}
+                                                >
+                                                    <Wallet className="h-3 w-3 mr-2" />
+                                                    Collect Fee
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
 
                     {/* Empty State */}
-                    {students.length === 0 && (
+                    {!loading && students.length === 0 && (
                         <div className="py-24 flex flex-col items-center justify-center text-center space-y-6">
                             <div className="relative group">
                                 <div className="absolute -inset-4 bg-gradient-to-tr from-amber-500/20 to-orange-500/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
@@ -367,7 +393,7 @@ export default function CollectFeesPage() {
                             </div>
                             <div className="space-y-4">
                                 <p className="text-destructive font-semibold text-xs transition-colors">
-                                    {loading ? "Searching for students..." : "No data available in table"}
+                                    No data available in table
                                 </p>
                             </div>
                         </div>
@@ -379,11 +405,11 @@ export default function CollectFeesPage() {
                         Showing 0 to 0 of 0 entries
                     </p>
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
+                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all">
                             <ChevronDown className="h-4 w-4 rotate-90" />
                         </Button>
-                        <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#4F39F6]">1</Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all">
+                        <Button className="h-8 w-8 rounded-[10px] border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">1</Button>
+                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all">
                             <ChevronDown className="h-4 w-4 -rotate-90" />
                         </Button>
                     </div>

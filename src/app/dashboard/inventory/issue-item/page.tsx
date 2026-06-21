@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,7 @@ import {
     ChevronRight,
     ArrowUpDown,
     Trash2,
+    ArrowLeftRight,
 } from "lucide-react";
 import {
     Select,
@@ -45,6 +46,16 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface InventoryIssue {
     id: number;
@@ -70,22 +81,44 @@ interface PaginationData {
     to: number;
 }
 
+const TABLE_COLS = 9;
+
+function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <TableRow key={i} className="border-b border-gray-50">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <div className="h-3 rounded bg-gray-200/70 animate-pulse" style={{ width: `${55 + ((i * 3 + j * 7) % 40)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
 
 export default function IssueItemPage() {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [issues, setIssues] = useState<InventoryIssue[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [limit, setLimit] = useState("50");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+    const [returnItemId, setReturnItemId] = useState<number | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [deleteIssueId, setDeleteIssueId] = useState<number | null>(null);
 
-    const [categories, setCategories] = useState<any[]>([]);
-    const [items, setItems] = useState<any[]>([]);
+    const [categories, setCategories] = useState<{ id: number; item_category: string }[]>([]);
+    const [items, setItems] = useState<{ id: number; item_name: string }[]>([]);
     const [formData, setFormData] = useState({
         user_type: "staff",
         issue_to: "",
-        issue_by: "Admin", // Should be logged in user
+        issue_by: "Admin",
         issue_date: new Date().toISOString().split('T')[0],
         return_date: "",
         item_category_id: "",
@@ -97,9 +130,9 @@ export default function IssueItemPage() {
     const fetchCategories = async () => {
         try {
             const response = await api.get('/inventory/item-categories?limit=100');
-            setCategories(response.data.data);
-        } catch (error) {
-            console.error("Error fetching categories:", error);
+            setCategories(response.data.data ?? []);
+        } catch (err) {
+            console.error("Error fetching categories:", err);
         }
     };
 
@@ -107,9 +140,9 @@ export default function IssueItemPage() {
         if (!categoryId) return;
         try {
             const response = await api.get(`/inventory/items?limit=100&item_category_id=${categoryId}`);
-            setItems(response.data.data);
-        } catch (error) {
-            console.error("Error fetching items:", error);
+            setItems(response.data.data ?? []);
+        } catch (err) {
+            console.error("Error fetching items:", err);
         }
     };
 
@@ -117,7 +150,7 @@ export default function IssueItemPage() {
         setLoading(true);
         try {
             const response = await api.get(`/inventory/issue-items?page=${page}&search=${searchTerm}&limit=${limit}`);
-            setIssues(response.data.data);
+            setIssues(response.data.data ?? response.data ?? []);
             setPagination({
                 current_page: response.data.current_page,
                 last_page: response.data.last_page,
@@ -136,17 +169,17 @@ export default function IssueItemPage() {
     useEffect(() => {
         fetchCategories();
         fetchIssues();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [limit]);
 
     useEffect(() => {
-        if (formData.item_category_id) {
-            fetchItemsByCategory(formData.item_category_id);
-        }
+        if (formData.item_category_id) fetchItemsByCategory(formData.item_category_id);
     }, [formData.item_category_id]);
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        fetchIssues(1);
+    const handleSearch = (e: React.FormEvent) => { e.preventDefault(); fetchIssues(1); };
+
+    const resetIssueForm = () => {
+        setFormData({ user_type: "staff", issue_to: "", issue_by: "Admin", issue_date: new Date().toISOString().split('T')[0], return_date: "", item_category_id: "", item_id: "", quantity: "1", note: "" });
     };
 
     const handleIssueItem = async () => {
@@ -154,53 +187,48 @@ export default function IssueItemPage() {
             toast({ title: "Validation Error", description: "Please fill required fields", variant: "destructive" });
             return;
         }
-
+        setSaving(true);
         try {
             await api.post('/inventory/issue-items', formData);
             toast({ title: "Success", description: "Item issued successfully" });
             setIsDialogOpen(false);
-            setFormData({
-                user_type: "staff",
-                issue_to: "",
-                issue_by: "Admin",
-                issue_date: new Date().toISOString().split('T')[0],
-                return_date: "",
-                item_category_id: "",
-                item_id: "",
-                quantity: "1",
-                note: ""
-            });
+            resetIssueForm();
             fetchIssues();
-        } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.response?.data?.message || "Failed to issue item",
-                variant: "destructive",
-            });
+        } catch (error) {
+            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to issue item";
+            toast({ title: "Error", description: message, variant: "destructive" });
+        } finally {
+            setSaving(false);
         }
     };
 
-    const handleReturn = async (id: number) => {
-        if (confirm("Are you sure you want to return this item?")) {
-            try {
-                await api.put(`/inventory/issue-items/${id}`, { status: 'returned' });
-                toast({ title: "Success", description: "Item returned successfully" });
-                fetchIssues();
-            } catch (error) {
-                toast({ title: "Error", description: "Failed to return item", variant: "destructive" });
-            }
+    const handleReturn = (id: number) => { setReturnItemId(id); setIsReturnDialogOpen(true); };
+
+    const confirmReturn = async () => {
+        if (!returnItemId) return;
+        try {
+            await api.put(`/inventory/issue-items/${returnItemId}`, { status: 'returned' });
+            toast({ title: "Success", description: "Item returned successfully" });
+            setIsReturnDialogOpen(false);
+            setReturnItemId(null);
+            fetchIssues();
+        } catch {
+            toast({ title: "Error", description: "Failed to return item", variant: "destructive" });
         }
     };
 
-    const handleDelete = async (id: number) => {
-        if (confirm("Are you sure you want to delete this record?")) {
-            try {
-                await api.delete(`/inventory/issue-items/${id}`);
-                toast({ title: "Success", description: "Record deleted successfully" });
-                fetchIssues();
-            } catch (error) {
-                toast({ title: "Error", description: "Failed to delete record", variant: "destructive" });
-            }
+    const handleDelete = (id: number) => { setDeleteIssueId(id); setIsDeleteDialogOpen(true); };
+
+    const confirmDeleteIssue = async () => {
+        if (!deleteIssueId) return;
+        try {
+            await api.delete(`/inventory/issue-items/${deleteIssueId}`);
+            toast({ title: "Success", description: "Record deleted successfully" });
+            setIsDeleteDialogOpen(false);
+            setDeleteIssueId(null);
+            fetchIssues();
+        } catch {
+            toast({ title: "Error", description: "Failed to delete record", variant: "destructive" });
         }
     };
 
@@ -234,140 +262,32 @@ export default function IssueItemPage() {
     ];
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <div className="flex justify-between items-center mb-2">
-                <h1 className="text-sm font-medium text-gray-800 tracking-tight">Issue Item List</h1>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
-                            <Plus className="h-3.5 w-3.5" /> Issue Item
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                            <DialogTitle className="text-lg font-bold text-gray-800">Issue Item</DialogTitle>
-                        </DialogHeader>
-                        <div className="grid grid-cols-2 gap-4 py-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">User Type *</Label>
-                                <Select value={formData.user_type} onValueChange={(val) => setFormData({ ...formData, user_type: val })}>
-                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-md shadow-none">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="staff">Staff</SelectItem>
-                                        <SelectItem value="student">Student</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Issue To *</Label>
-                                <Input 
-                                    className="h-9 border-gray-200 text-xs rounded-md shadow-none" 
-                                    placeholder="Search by Name/ID"
-                                    value={formData.issue_to}
-                                    onChange={(e) => setFormData({ ...formData, issue_to: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Issue By *</Label>
-                                <Input 
-                                    className="h-9 border-gray-200 text-xs rounded-md shadow-none"
-                                    value={formData.issue_by}
-                                    onChange={(e) => setFormData({ ...formData, issue_by: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Issue Date *</Label>
-                                <DatePicker 
-                                    value={formData.issue_date}
-                                    onChange={(val) => setFormData({ ...formData, issue_date: val })}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Return Date</Label>
-                                <DatePicker 
-                                    value={formData.return_date}
-                                    onChange={(val) => setFormData({ ...formData, return_date: val })}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Item Category *</Label>
-                                <Select value={formData.item_category_id} onValueChange={(val) => setFormData({ ...formData, item_category_id: val, item_id: "" })}>
-                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-md shadow-none">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {categories.map(c => (
-                                            <SelectItem key={c.id} value={String(c.id)}>{c.item_category}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Item *</Label>
-                                <Select value={formData.item_id} onValueChange={(val) => setFormData({ ...formData, item_id: val })} disabled={!formData.item_category_id}>
-                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-md shadow-none">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {items.map(i => (
-                                            <SelectItem key={i.id} value={String(i.id)}>{i.item_name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Quantity *</Label>
-                                <Input 
-                                    type="number" 
-                                    className="h-9 border-gray-200 text-xs rounded-md shadow-none"
-                                    value={formData.quantity}
-                                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                                />
-                            </div>
-                            <div className="col-span-2 space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Note</Label>
-                                <Textarea 
-                                    className="min-h-[80px] border-gray-200 text-xs rounded-md shadow-none resize-none"
-                                    value={formData.note}
-                                    onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">Cancel</Button>
-                            <Button onClick={handleIssueItem} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">Save Issue Record</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </div>
-
-            <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
-                 {/* Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
-                    <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-fit">
-                        <div className="relative w-full md:w-64">
-                            <Input
-                                placeholder="Search"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-9 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50"
-                            />
-                        </div>
-                        <Button type="submit" className="btn-gradient h-9 px-6 text-[11px] font-bold flex items-center gap-2">
-                            <Search className="h-4 w-4" />
-                            Search
-                        </Button>
-                    </form>
-
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
+        <div className="space-y-6">
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <ArrowLeftRight className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Issue Item List</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? issues.length} issue record{(pagination?.total ?? issues.length) === 1 ? "" : "s"}</p>
+                    </div>
+                    <Button onClick={() => setIsDialogOpen(true)} className="ml-auto h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
+                        <Plus className="h-4 w-4" /> Issue Item
+                    </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {/* Toolbar */}
+                    <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                        <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
+                            <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 text-xs w-full md:w-64" />
+                            <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
+                                <Search className="h-4 w-4" /> Search
+                            </Button>
+                        </form>
+                        <div className="flex items-center gap-2">
                             <Select value={limit} onValueChange={setLimit}>
-                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 bg-transparent shadow-none rounded-md px-2 flex gap-1 items-center justify-between">
-                                    <SelectValue />
-                                    <ChevronLeft className="h-2 w-2 text-gray-400 rotate-90" />
-                                </SelectTrigger>
+                                <SelectTrigger className="w-[70px] h-9 text-xs"><SelectValue placeholder="50" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="10">10</SelectItem>
                                     <SelectItem value="25">25</SelectItem>
@@ -375,135 +295,172 @@ export default function IssueItemPage() {
                                     <SelectItem value="100">100</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
-                        </div>
-                        <div className="flex items-center gap-1 text-gray-400">
-                            {toolbarActions.map((action, i) => (
-                                <Button 
-                                    key={i} 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={action.onClick}
-                                    title={action.title}
-                                    className="h-7 w-7 hover:bg-gray-100 rounded"
-                                >
-                                    <action.Icon className="h-3.5 w-3.5" />
-                                </Button>
-                            ))}
+                            <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
+                                {toolbarActions.map((action, i) => (
+                                    <Button key={i} variant="ghost" size="icon" onClick={action.onClick} title={action.title} className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200">
+                                        <action.Icon className="h-4 w-4" />
+                                    </Button>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Action Table */}
-                <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
-                    <Table className="min-w-[1200px]">
-                        <TableHeader className="bg-gray-50/50">
-                            <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1 cursor-pointer">Item <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1 cursor-pointer">Note <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1 cursor-pointer">Item Category <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Issue - Return</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1 cursor-pointer">Issue To <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1 cursor-pointer">Issued By <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1 cursor-pointer">Quantity <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
-                                </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Status</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                             {issues.map((issue) => (
-                                <TableRow key={issue.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
-                                    <TableCell className="py-3 text-gray-700 font-medium">{issue.item?.item_name}</TableCell>
-                                    <TableCell className="py-3 text-gray-400">{issue.note || "-"}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{issue.item_category?.item_category}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">
-                                        {issue.issue_date} - {issue.return_date || "Open"}
-                                    </TableCell>
-                                    <TableCell className="py-3 text-gray-700 font-medium">{issue.issue_to}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{issue.issue_by}</TableCell>
-                                    <TableCell className="py-3 text-gray-500">{issue.quantity}</TableCell>
-                                    <TableCell className="py-3">
-                                        {issue.status === "issued" ? (
-                                            <Button 
-                                                onClick={() => handleReturn(issue.id)}
-                                                className="h-5 px-2 bg-rose-500 hover:bg-rose-600 text-white text-[9px] font-bold rounded-full uppercase whitespace-nowrap shadow-sm shadow-rose-100"
-                                            >
-                                                Click to Return
-                                            </Button>
-                                        ) : (
-                                            <span className="h-5 px-2 bg-emerald-500 text-white text-[9px] font-bold rounded-full uppercase flex items-center justify-center w-fit shadow-sm shadow-emerald-100">
-                                                Returned
-                                            </span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="py-3 text-right">
-                                        <Button 
-                                            size="icon" 
-                                            onClick={() => handleDelete(issue.id)}
-                                            className="btn-action bg-rose-500 hover:bg-rose-600 shadow-rose-100"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </TableCell>
+                    {/* Table */}
+                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                        <Table className="min-w-[1200px]">
+                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                                <TableRow className="hover:bg-transparent whitespace-nowrap">
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Item <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Note</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Item Category</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Issue — Return</TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Issue To <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Issued By</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Quantity</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Status</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <SkeletonRows rows={6} cols={TABLE_COLS} />
+                                ) : issues.length === 0 ? (
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</TableCell></TableRow>
+                                ) : issues.map((issue) => (
+                                    <TableRow key={issue.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                        <TableCell className="py-3 text-gray-700 font-medium">{issue.item?.item_name}</TableCell>
+                                        <TableCell className="py-3 text-gray-400">{issue.note || "—"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{issue.item_category?.item_category}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{issue.issue_date} — {issue.return_date || "Open"}</TableCell>
+                                        <TableCell className="py-3 text-gray-700 font-medium">{issue.issue_to}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{issue.issue_by}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{issue.quantity}</TableCell>
+                                        <TableCell className="py-3">
+                                            {issue.status === "issued" ? (
+                                                <Button onClick={() => handleReturn(issue.id)} className="h-5 px-2 bg-rose-500 hover:bg-rose-600 text-white text-[9px] font-bold rounded-full uppercase shadow-sm">
+                                                    Click to Return
+                                                </Button>
+                                            ) : (
+                                                <span className="inline-flex h-5 px-2 items-center bg-emerald-500 text-white text-[9px] font-bold rounded-full uppercase shadow-sm">
+                                                    Returned
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="py-3 text-right">
+                                            <Button size="sm" onClick={() => handleDelete(issue.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-4 w-4" /></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
 
-                 {/* Footer / Pagination */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50">
-                    <div>
-                        Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
+                    {/* Pagination */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
+                        <div>Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries</div>
+                        <div className="flex gap-1 items-center">
+                            <Button variant="outline" size="sm" disabled={!pagination || pagination.current_page === 1} onClick={() => fetchIssues(pagination!.current_page - 1)} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
+                            {[...Array(pagination?.last_page || 0)].map((_, i) => (
+                                <Button key={i + 1} size="sm" onClick={() => fetchIssues(i + 1)} className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all", pagination?.current_page === i + 1 ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}>{i + 1}</Button>
+                            ))}
+                            <Button variant="outline" size="sm" disabled={!pagination || pagination.current_page === pagination.last_page} onClick={() => fetchIssues(pagination!.current_page + 1)} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronRight className="h-4 w-4" /></Button>
+                        </div>
                     </div>
-                    <div className="flex gap-2 items-center">
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            disabled={pagination?.current_page === 1}
-                            onClick={() => fetchIssues(pagination!.current_page - 1)}
-                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
-                        >
-                            <ChevronLeft className="h-3.5 w-3.5" />
-                        </Button>
-                        {[...Array(pagination?.last_page || 0)].map((_, i) => (
-                            <Button 
-                                key={i + 1}
-                                onClick={() => fetchIssues(i + 1)}
-                                className={cn(
-                                    "h-7 w-7 p-0 text-[11px] font-bold rounded-lg shadow-sm transition-all duration-300",
-                                    pagination?.current_page === i + 1 
-                                        ? "btn-gradient" 
-                                        : "bg-white text-gray-400 hover:bg-gray-50 border border-gray-100"
-                                )}
-                            >
-                                {i + 1}
-                            </Button>
-                        ))}
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            disabled={pagination?.current_page === pagination?.last_page}
-                            onClick={() => fetchIssues(pagination!.current_page + 1)}
-                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
-                        >
-                            <ChevronRight className="h-3.5 w-3.5" />
-                        </Button>
+                </CardContent>
+            </Card>
+
+            {/* Issue Item Dialog */}
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetIssueForm(); }}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-bold text-gray-800">Issue Item</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">User Type <span className="text-red-500">*</span></Label>
+                            <Select value={formData.user_type} onValueChange={(val) => setFormData({ ...formData, user_type: val })}>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="staff">Staff</SelectItem>
+                                    <SelectItem value="student">Student</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Issue To <span className="text-red-500">*</span></Label>
+                            <Input className="h-9 text-xs" placeholder="Name or ID" value={formData.issue_to} onChange={(e) => setFormData({ ...formData, issue_to: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Issue By <span className="text-red-500">*</span></Label>
+                            <Input className="h-9 text-xs" value={formData.issue_by} onChange={(e) => setFormData({ ...formData, issue_by: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Issue Date <span className="text-red-500">*</span></Label>
+                            <DatePicker value={formData.issue_date} onChange={(val) => setFormData({ ...formData, issue_date: val })} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Return Date</Label>
+                            <DatePicker value={formData.return_date} onChange={(val) => setFormData({ ...formData, return_date: val })} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Item Category <span className="text-red-500">*</span></Label>
+                            <Select value={formData.item_category_id} onValueChange={(val) => setFormData({ ...formData, item_category_id: val, item_id: "" })}>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent>{categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.item_category}</SelectItem>)}</SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Item <span className="text-red-500">*</span></Label>
+                            <Select value={formData.item_id} onValueChange={(val) => setFormData({ ...formData, item_id: val })} disabled={!formData.item_category_id}>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent>{items.map(i => <SelectItem key={i.id} value={String(i.id)}>{i.item_name}</SelectItem>)}</SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Quantity <span className="text-red-500">*</span></Label>
+                            <Input type="number" className="h-9 text-xs" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
+                        </div>
+                        <div className="sm:col-span-2 space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Note</Label>
+                            <Textarea className="min-h-[80px] text-xs resize-none" value={formData.note} onChange={(e) => setFormData({ ...formData, note: e.target.value })} />
+                        </div>
                     </div>
-                </div>
-            </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full" disabled={saving}>Cancel</Button>
+                        <Button onClick={handleIssueItem} disabled={saving} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] uppercase font-bold shadow-lg active:scale-95 transition-all">
+                            {saving ? "Saving..." : "Save Issue Record"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Return Confirmation */}
+            <AlertDialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
+                <AlertDialogContent className="sm:max-w-[400px]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Return Item</AlertDialogTitle>
+                        <AlertDialogDescription>Mark this item as returned?</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmReturn} className="bg-emerald-500 hover:bg-emerald-600 text-white">Confirm Return</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Confirmation */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent className="sm:max-w-[400px]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Issue Record</AlertDialogTitle>
+                        <AlertDialogDescription>Are you sure? This action cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteIssue} className="bg-red-500 hover:bg-red-600 text-white">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

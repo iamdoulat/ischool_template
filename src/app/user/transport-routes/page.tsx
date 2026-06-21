@@ -49,12 +49,9 @@ export default function TransportRoutesPage() {
                         description: response.data.message || "Failed to fetch transport route",
                     });
                 }
-            } catch (error: any) {
-                toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: error.response?.data?.message || "An error occurred while fetching data",
-                });
+            } catch (error) {
+                const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "An error occurred while fetching data";
+                toast({ variant: "destructive", title: "Error", description: message });
             } finally {
                 setLoading(false);
             }

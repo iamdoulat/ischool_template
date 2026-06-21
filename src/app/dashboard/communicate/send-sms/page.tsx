@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Select,
     SelectContent,
@@ -28,10 +29,26 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import {
-    MessageSquare, Users, User, GraduationCap, Cake, Send, Clock, Layout, Calendar, Search, Loader2
+    MessageSquare, Users, User, GraduationCap, Cake, Send, Clock, Layout, Calendar, Search
 } from "lucide-react";
 import { format } from "date-fns";
 import VariablePicker from "@/components/ui/variable-picker";
+
+function RecipientSkeleton({ rows = 4 }: { rows?: number }) {
+    return (
+        <div className="space-y-2">
+            {Array.from({ length: rows }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg">
+                    <div className="h-4 w-4 rounded bg-muted/60 animate-pulse" />
+                    <div className="flex-1 space-y-2">
+                        <div className="h-3 w-3/4 rounded-md bg-muted/60 animate-pulse" />
+                        <div className="h-2 w-1/2 rounded-md bg-muted/40 animate-pulse" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
 
 interface SmsTemplate {
     id: number;
@@ -62,7 +79,6 @@ export default function SendSMSPage() {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [activeTab, setActiveTab] = useState("Group");
     const [templates, setTemplates] = useState<SmsTemplate[]>([]);
-    const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -98,34 +114,78 @@ export default function SendSMSPage() {
         sms_template_id: ""
     });
 
+    const fetchTemplates = useCallback(async () => {
+        try {
+            const response = await api.get('/communicate/sms-templates');
+            setTemplates(response.data.data || response.data);
+        } catch {
+            toast({ title: "Error", description: "Failed to load SMS templates", variant: "destructive" });
+        }
+    }, [toast]);
+
+    const fetchUsersByRole = useCallback(async (role: string) => {
+        setUsersLoading(true);
+        try {
+            const response = await api.get(`/communicate/users-by-role/${role}`);
+            setAllUsers(response.data?.data || response.data || []);
+        } catch {
+            toast({ title: "Error", description: "Failed to load users", variant: "destructive" });
+            setAllUsers([]);
+        } finally {
+            setUsersLoading(false);
+        }
+    }, [toast]);
+
+    const fetchClasses = useCallback(async () => {
+        try {
+            const response = await api.get('/communicate/classes');
+            setClasses(response.data?.data || response.data || []);
+        } catch {
+            toast({ title: "Error", description: "Failed to load classes", variant: "destructive" });
+        }
+    }, [toast]);
+
+    const fetchStudentsByClass = useCallback(async (classId: string) => {
+        setClassLoading(true);
+        try {
+            const response = await api.get(`/communicate/students-by-class/${classId}`);
+            setClassStudents(response.data?.data || response.data || []);
+        } catch {
+            toast({ title: "Error", description: "Failed to load students", variant: "destructive" });
+            setClassStudents([]);
+        } finally {
+            setClassLoading(false);
+        }
+    }, [toast]);
+
+    const fetchBirthdayUsers = useCallback(async () => {
+        setBirthdayLoading(true);
+        try {
+            const params = birthdayClassId && birthdayClassId !== 'all' ? `?class_id=${birthdayClassId}` : '';
+            const response = await api.get('/communicate/birthday-users' + params);
+            setBirthdayUsers(response.data?.data || response.data || []);
+        } catch {
+            toast({ title: "Error", description: "Failed to load birthday users", variant: "destructive" });
+            setBirthdayUsers([]);
+        } finally {
+            setBirthdayLoading(false);
+        }
+    }, [birthdayClassId, toast]);
+
     useEffect(() => {
         fetchTemplates();
-    }, []);
+    }, [fetchTemplates]);
 
     useEffect(() => {
         if (activeTab === "Individual") {
             fetchUsersByRole(userRoleFilter);
-        } else if (activeTab === "Class" || activeTab === "Today's Birthday") {
+        } else if (activeTab === "Class") {
             fetchClasses();
         } else if (activeTab === "Today's Birthday") {
+            fetchClasses();
             fetchBirthdayUsers();
         }
-    }, [activeTab]);
-
-    useEffect(() => {
-        if (activeTab === "Today's Birthday") {
-            fetchBirthdayUsers();
-        }
-    }, [birthdayClassId, activeTab]);
-
-    const fetchTemplates = async () => {
-        try {
-            const response = await api.get('/communicate/sms-templates');
-            setTemplates(response.data.data || response.data);
-        } catch (error) {
-            console.error("Failed to fetch templates");
-        }
-    };
+    }, [activeTab, userRoleFilter, fetchUsersByRole, fetchClasses, fetchBirthdayUsers]);
 
     const handleVariableSelect = (variable: string) => {
         const textarea = textareaRef.current;
@@ -140,50 +200,6 @@ export default function SendSMSPage() {
             }, 0);
         } else {
             setFormData({ ...formData, message: formData.message + variable });
-        }
-    };
-
-    const fetchUsersByRole = async (role: string) => {
-        setUsersLoading(true);
-        try {
-            const response = await api.get(`/communicate/users-by-role/${role}`);
-            setAllUsers(response.data?.data || response.data || []);
-        } catch {
-            setAllUsers([]);
-        } finally {
-            setUsersLoading(false);
-        }
-    };
-
-    const fetchClasses = async () => {
-        try {
-            const response = await api.get('/communicate/classes');
-            setClasses(response.data?.data || response.data || []);
-        } catch { }
-    };
-
-    const fetchStudentsByClass = async (classId: string) => {
-        setClassLoading(true);
-        try {
-            const response = await api.get(`/communicate/students-by-class/${classId}`);
-            setClassStudents(response.data?.data || response.data || []);
-        } catch {
-            setClassStudents([]);
-        } finally {
-            setClassLoading(false);
-        }
-    };
-
-    const fetchBirthdayUsers = async () => {
-        setBirthdayLoading(true);
-        try {
-            const params = birthdayClassId && birthdayClassId !== 'all' ? `?class_id=${birthdayClassId}` : '';
-            const response = await api.get('/communicate/birthday-users' + params);
-            setBirthdayUsers(response.data?.data || response.data || []);
-        } catch {
-            setBirthdayUsers([]);
-        } finally {
-            setBirthdayLoading(false);
         }
     };
 
@@ -314,16 +330,19 @@ export default function SendSMSPage() {
         { id: "Today's Birthday", label: "Birthday", Icon: Cake }
     ];
 
-    const filteredUsers = allUsers.filter(u => {
-        if (!userSearch) return true;
-        const q = userSearch.toLowerCase();
-        return (u.name + ' ' + (u.last_name || '')).toLowerCase().includes(q) ||
-            (u.phone || '').toLowerCase().includes(q) ||
-            (u.admission_no || '').toLowerCase().includes(q);
-    });
+    const filteredUsers = useMemo(() => {
+        return allUsers.filter(u => {
+            if (!userSearch) return true;
+            const q = userSearch.toLowerCase();
+            return (u.name + ' ' + (u.last_name || '')).toLowerCase().includes(q) ||
+                (u.phone || '').toLowerCase().includes(q) ||
+                (u.admission_no || '').toLowerCase().includes(q);
+        });
+    }, [allUsers, userSearch]);
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
+            {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-2">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-indigo-50 rounded-lg shadow-sm shadow-indigo-50/50">
@@ -355,290 +374,315 @@ export default function SendSMSPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Column: Compose SMS Area */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-8 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
-                            <Send className="h-48 w-48 text-indigo-500 rotate-12" />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                    <Layout className="h-3 w-3" /> SMS Template
-                                </Label>
-                                <Select value={formData.sms_template_id} onValueChange={handleTemplateChange}>
-                                    <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm focus:ring-indigo-500 rounded-lg shadow-none">
-                                        <SelectValue placeholder="Quick Templates" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {templates.map(t => (
-                                            <SelectItem key={t.id} value={String(t.id)}>{t.title}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <MessageSquare className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Compose SMS</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">Send text messages to your community</p>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-8 space-y-8 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+                                <Send className="h-48 w-48 text-indigo-500 rotate-12" />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                    Title <span className="text-red-500">*</span>
-                                </Label>
-                                <Input
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    placeholder="Notice title..."
-                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-lg shadow-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
-                            <div className="space-y-3">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                    Send Through <span className="text-red-500">*</span>
-                                </Label>
-                                <div className="flex items-center gap-6">
-                                    <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 hover:bg-indigo-50 transition-colors cursor-pointer group" onClick={() => toggleSendThrough('sms')}>
-                                        <Checkbox
-                                            id="sms"
-                                            checked={formData.send_through.includes('sms')}
-                                            onCheckedChange={() => toggleSendThrough('sms')}
-                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-5 w-5 rounded-md"
-                                        />
-                                        <Label htmlFor="sms" className="text-[11px] text-gray-600 font-bold uppercase tracking-tight cursor-pointer group-hover:text-indigo-600 transition-colors">SMS Gateway</Label>
-                                    </div>
-                                    <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 hover:bg-indigo-50 transition-colors cursor-pointer group" onClick={() => toggleSendThrough('mobile_app')}>
-                                        <Checkbox
-                                            id="mobile-app"
-                                            checked={formData.send_through.includes('mobile_app')}
-                                            onCheckedChange={() => toggleSendThrough('mobile_app')}
-                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-5 w-5 rounded-md"
-                                        />
-                                        <Label htmlFor="mobile-app" className="text-[11px] text-gray-600 font-bold uppercase tracking-tight cursor-pointer group-hover:text-indigo-600 transition-colors">Mobile App</Label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                    DLT Template ID <span className="text-[9px] lowercase font-medium text-gray-300 normal-case">(India Only)</span>
-                                </Label>
-                                <Input className="h-11 border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-lg shadow-none placeholder:text-gray-200" placeholder="120716..." />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                    Message Content <span className="text-red-500">*</span>
-                                </Label>
-                                <div className="flex items-center gap-2">
-                                    <VariablePicker onSelect={handleVariableSelect} />
-                                    <span className={cn(
-                                        "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                                        formData.message.length > 160 ? "bg-amber-50 text-amber-600" : "bg-indigo-50 text-indigo-600"
-                                    )}>
-                                        {formData.message.length} Characters ({Math.ceil(formData.message.length / 160)} SMS)
-                                    </span>
-                                </div>
-                            </div>
-                            <Textarea
-                                ref={textareaRef}
-                                className="w-full min-h-[200px] p-4 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 resize-none transition-all shadow-none group-hover:border-indigo-200 leading-relaxed"
-                                placeholder="Type your SMS message here..."
-                                value={formData.message}
-                                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 min-h-[400px] flex flex-col h-full">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                <Users className="h-3.5 w-3.5" /> Recipients <span className="text-red-500">*</span>
-                            </h2>
-                            <span className="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full font-bold uppercase">{activeTab === "Today's Birthday" ? "Birthday" : activeTab}</span>
-                        </div>
-
-                        <div className="space-y-2 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                            {/* Group Tab */}
-                            {activeTab === "Group" && (
-                                <div className="space-y-1">
-                                    {roles.map((role) => (
-                                        <div
-                                            key={role.id}
-                                            onClick={() => toggleRole(role.id)}
-                                            className={cn(
-                                                "flex items-center gap-3 p-3 rounded-lg transition-all duration-300 cursor-pointer border border-transparent",
-                                                selectedRoles.includes(role.id)
-                                                    ? "bg-indigo-50/50 border-indigo-100"
-                                                    : "hover:bg-gray-50/50 hover:border-gray-100"
-                                            )}
-                                        >
-                                            <Checkbox
-                                                checked={selectedRoles.includes(role.id)}
-                                                onCheckedChange={() => toggleRole(role.id)}
-                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-5 w-5 rounded-md"
-                                            />
-                                            <Label className="text-xs text-gray-600 cursor-pointer font-bold uppercase tracking-tight">
-                                                {role.label}
-                                            </Label>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Individual Tab */}
-                            {activeTab === "Individual" && (
-                                <div className="space-y-3">
-                                    <div className="flex gap-2">
-                                        <Select value={userRoleFilter} onValueChange={(v) => { setUserRoleFilter(v); fetchUsersByRole(v); }}>
-                                            <SelectTrigger className="h-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none flex-1">
-                                                <SelectValue placeholder="Role" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {roles.map(r => (
-                                                    <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                                        <Input
-                                            value={userSearch}
-                                            onChange={(e) => setUserSearch(e.target.value)}
-                                            placeholder="Search by name or phone..."
-                                            className="h-9 pl-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                                        {usersLoading ? (
-                                            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-indigo-500" /></div>
-                                        ) : filteredUsers.length === 0 ? (
-                                            <p className="text-[11px] text-gray-400 text-center py-8">No users found</p>
-                                        ) : (
-                                            filteredUsers.map(u => (
-                                                <div
-                                                    key={u.id}
-                                                    onClick={() => toggleUser(u.id)}
-                                                    className={cn(
-                                                        "flex items-center gap-3 p-2.5 rounded-lg transition-all cursor-pointer border border-transparent",
-                                                        selectedUsers.has(u.id) ? "bg-indigo-50/50 border-indigo-100" : "hover:bg-gray-50/50 hover:border-gray-100"
-                                                    )}
-                                                >
-                                                    <Checkbox
-                                                        checked={selectedUsers.has(u.id)}
-                                                        onCheckedChange={() => toggleUser(u.id)}
-                                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
-                                                    />
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
-                                                        <p className="text-[10px] text-gray-400 truncate">{u.phone || 'No phone'}</p>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Class Tab */}
-                            {activeTab === "Class" && (
-                                <div className="space-y-3">
-                                    <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setSelectedStudents(new Set()); fetchStudentsByClass(v); }}>
-                                        <SelectTrigger className="h-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none">
-                                            <SelectValue placeholder="Select a class" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-2">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Layout className="h-3 w-3" /> SMS Template
+                                    </Label>
+                                    <Select value={formData.sms_template_id} onValueChange={handleTemplateChange}>
+                                        <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm focus:ring-indigo-500 rounded-lg shadow-none">
+                                            <SelectValue placeholder="Quick Templates" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {classes.map(c => (
-                                                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                            {templates.map(t => (
+                                                <SelectItem key={t.id} value={String(t.id)}>{t.title}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                </div>
 
-                                    {selectedClass && (
-                                        <div className="space-y-1 max-h-[320px] overflow-y-auto">
-                                            {classLoading ? (
-                                                <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-indigo-500" /></div>
-                                            ) : classStudents.length === 0 ? (
-                                                <p className="text-[11px] text-gray-400 text-center py-8">No students in this class</p>
+                                <div className="space-y-2">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                        Title <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Input
+                                        value={formData.title}
+                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                        placeholder="Notice title..."
+                                        className="h-11 border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-lg shadow-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+                                <div className="space-y-3">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                        Send Through <span className="text-red-500">*</span>
+                                    </Label>
+                                    <div className="flex items-center gap-6">
+                                        <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 hover:bg-indigo-50 transition-colors cursor-pointer group" onClick={() => toggleSendThrough('sms')}>
+                                            <Checkbox
+                                                id="sms"
+                                                checked={formData.send_through.includes('sms')}
+                                                onCheckedChange={() => toggleSendThrough('sms')}
+                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-5 w-5 rounded-md"
+                                            />
+                                            <Label htmlFor="sms" className="text-[11px] text-gray-600 font-bold uppercase tracking-tight cursor-pointer group-hover:text-indigo-600 transition-colors">SMS Gateway</Label>
+                                        </div>
+                                        <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 hover:bg-indigo-50 transition-colors cursor-pointer group" onClick={() => toggleSendThrough('mobile_app')}>
+                                            <Checkbox
+                                                id="mobile-app"
+                                                checked={formData.send_through.includes('mobile_app')}
+                                                onCheckedChange={() => toggleSendThrough('mobile_app')}
+                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-5 w-5 rounded-md"
+                                            />
+                                            <Label htmlFor="mobile-app" className="text-[11px] text-gray-600 font-bold uppercase tracking-tight cursor-pointer group-hover:text-indigo-600 transition-colors">Mobile App</Label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                        DLT Template ID <span className="text-[9px] lowercase font-medium text-gray-300 normal-case">(India Only)</span>
+                                    </Label>
+                                    <Input className="h-11 border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-lg shadow-none placeholder:text-gray-200" placeholder="120716..." />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                        Message Content <span className="text-red-500">*</span>
+                                    </Label>
+                                    <div className="flex items-center gap-2">
+                                        <VariablePicker onSelect={handleVariableSelect} />
+                                        <span className={cn(
+                                            "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                                            formData.message.length > 160 ? "bg-amber-50 text-amber-600" : "bg-indigo-50 text-indigo-600"
+                                        )}>
+                                            {formData.message.length} Characters ({Math.ceil(formData.message.length / 160)} SMS)
+                                        </span>
+                                    </div>
+                                </div>
+                                <Textarea
+                                    ref={textareaRef}
+                                    className="w-full min-h-[200px] p-4 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 resize-none transition-all shadow-none leading-relaxed"
+                                    placeholder="Type your SMS message here..."
+                                    value={formData.message}
+                                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Right Column: Recipients Panel */}
+                <div className="space-y-6">
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Users className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Recipients</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">Select your target audience</p>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 min-h-[400px] flex flex-col">
+                            <div className="flex items-center justify-between mb-6">
+                                <span className="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full font-bold uppercase">
+                                    {activeTab === "Today's Birthday" ? "Birthday" : activeTab}
+                                </span>
+                                <span className="text-[10px] font-bold text-indigo-600">{getRecipientCount()} selected</span>
+                            </div>
+
+                            <div className="space-y-2 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                                {/* Group Tab */}
+                                {activeTab === "Group" && (
+                                    <div className="space-y-1">
+                                        {roles.map((role) => (
+                                            <div
+                                                key={role.id}
+                                                onClick={() => toggleRole(role.id)}
+                                                className={cn(
+                                                    "flex items-center gap-3 p-3 rounded-lg transition-all duration-300 cursor-pointer border border-transparent",
+                                                    selectedRoles.includes(role.id)
+                                                        ? "bg-indigo-50/50 border-indigo-100"
+                                                        : "hover:bg-gray-50/50 hover:border-gray-100"
+                                                )}
+                                            >
+                                                <Checkbox
+                                                    checked={selectedRoles.includes(role.id)}
+                                                    onCheckedChange={() => toggleRole(role.id)}
+                                                    className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-5 w-5 rounded-md"
+                                                />
+                                                <Label className="text-xs text-gray-600 cursor-pointer font-bold uppercase tracking-tight">
+                                                    {role.label}
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Individual Tab */}
+                                {activeTab === "Individual" && (
+                                    <div className="space-y-3">
+                                        <div className="flex gap-2">
+                                            <Select value={userRoleFilter} onValueChange={(v) => { setUserRoleFilter(v); }}>
+                                                <SelectTrigger className="h-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none flex-1">
+                                                    <SelectValue placeholder="Role" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {roles.map(r => (
+                                                        <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                                            <Input
+                                                value={userSearch}
+                                                onChange={(e) => setUserSearch(e.target.value)}
+                                                placeholder="Search by name or phone..."
+                                                className="h-9 pl-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                                            {usersLoading ? (
+                                                <RecipientSkeleton rows={4} />
+                                            ) : filteredUsers.length === 0 ? (
+                                                <p className="text-[11px] text-gray-400 text-center py-8">No users found</p>
                                             ) : (
-                                                classStudents.map(s => (
+                                                filteredUsers.map(u => (
                                                     <div
-                                                        key={s.id}
-                                                        onClick={() => toggleStudent(s.id)}
+                                                        key={u.id}
+                                                        onClick={() => toggleUser(u.id)}
                                                         className={cn(
                                                             "flex items-center gap-3 p-2.5 rounded-lg transition-all cursor-pointer border border-transparent",
-                                                            selectedStudents.has(s.id) ? "bg-indigo-50/50 border-indigo-100" : "hover:bg-gray-50/50 hover:border-gray-100"
+                                                            selectedUsers.has(u.id) ? "bg-indigo-50/50 border-indigo-100" : "hover:bg-gray-50/50 hover:border-gray-100"
                                                         )}
                                                     >
                                                         <Checkbox
-                                                            checked={selectedStudents.has(s.id)}
-                                                            onCheckedChange={() => toggleStudent(s.id)}
+                                                            checked={selectedUsers.has(u.id)}
+                                                            onCheckedChange={() => toggleUser(u.id)}
                                                             className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
                                                         />
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-xs font-bold text-gray-700 truncate">{s.name} {s.last_name || ''} {s.roll_no && <span className="text-gray-400 font-normal">(Roll: {s.roll_no})</span>}</p>
-                                                            <p className="text-[10px] text-gray-400 truncate">{s.phone || 'No phone'}</p>
+                                                            <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate">{u.phone || 'No phone'}</p>
                                                         </div>
                                                     </div>
                                                 ))
                                             )}
                                         </div>
-                                    )}
-                                </div>
-                            )}
+                                    </div>
+                                )}
 
-                            {/* Birthday Tab */}
-                            {activeTab === "Today's Birthday" && (
-                                <div className="space-y-3">
-                                    <Select value={birthdayClassId} onValueChange={setBirthdayClassId}>
-                                        <SelectTrigger className="h-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none">
-                                            <SelectValue placeholder="All Classes" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Classes</SelectItem>
-                                            {classes.map(c => (
-                                                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <div className="space-y-1">
-                                        {birthdayLoading ? (
-                                            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-indigo-500" /></div>
-                                        ) : birthdayUsers.length === 0 ? (
-                                            <div className="text-center py-12">
-                                                <Cake className="h-12 w-12 mx-auto text-gray-200 mb-3" />
-                                                <p className="text-[11px] text-gray-400 font-bold uppercase tracking-tight">No birthdays today</p>
+                                {/* Class Tab */}
+                                {activeTab === "Class" && (
+                                    <div className="space-y-3">
+                                        <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setSelectedStudents(new Set()); fetchStudentsByClass(v); }}>
+                                            <SelectTrigger className="h-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none">
+                                                <SelectValue placeholder="Select a class" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {classes.map(c => (
+                                                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+
+                                        {selectedClass && (
+                                            <div className="space-y-1 max-h-[320px] overflow-y-auto">
+                                                {classLoading ? (
+                                                    <RecipientSkeleton rows={4} />
+                                                ) : classStudents.length === 0 ? (
+                                                    <p className="text-[11px] text-gray-400 text-center py-8">No students in this class</p>
+                                                ) : (
+                                                    classStudents.map(s => (
+                                                        <div
+                                                            key={s.id}
+                                                            onClick={() => toggleStudent(s.id)}
+                                                            className={cn(
+                                                                "flex items-center gap-3 p-2.5 rounded-lg transition-all cursor-pointer border border-transparent",
+                                                                selectedStudents.has(s.id) ? "bg-indigo-50/50 border-indigo-100" : "hover:bg-gray-50/50 hover:border-gray-100"
+                                                            )}
+                                                        >
+                                                            <Checkbox
+                                                                checked={selectedStudents.has(s.id)}
+                                                                onCheckedChange={() => toggleStudent(s.id)}
+                                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
+                                                            />
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-xs font-bold text-gray-700 truncate">{s.name} {s.last_name || ''} {s.roll_no && <span className="text-gray-400 font-normal"> (Roll: {s.roll_no})</span>}</p>
+                                                                <p className="text-[10px] text-gray-400 truncate">{s.phone || 'No phone'}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
                                             </div>
-                                        ) : (
-                                            birthdayUsers.map(u => (
-                                                <div key={u.id} className="flex items-center gap-3 p-3 rounded-lg bg-orange-50/50 border border-orange-100">
-                                                    <Cake className="h-4 w-4 text-orange-500 shrink-0" />
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
-                                                        <p className="text-[10px] text-gray-400 truncate">{u.phone || 'No phone'} · {u.role}</p>
-                                                    </div>
-                                                </div>
-                                            ))
                                         )}
                                     </div>
-                                </div>
-                            )}
-                        </div>
+                                )}
 
-                        <div className="mt-8 p-4 bg-indigo-50/30 rounded-lg border border-indigo-50/50">
-                            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-indigo-400">
-                                <span>Targeting</span>
-                                <span className="text-indigo-600">{getRecipientCount()} Recipient(s)</span>
+                                {/* Birthday Tab */}
+                                {activeTab === "Today's Birthday" && (
+                                    <div className="space-y-3">
+                                        <Select value={birthdayClassId} onValueChange={setBirthdayClassId}>
+                                            <SelectTrigger className="h-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none">
+                                                <SelectValue placeholder="All Classes" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All Classes</SelectItem>
+                                                {classes.map(c => (
+                                                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <div className="space-y-1">
+                                            {birthdayLoading ? (
+                                                <RecipientSkeleton rows={4} />
+                                            ) : birthdayUsers.length === 0 ? (
+                                                <div className="text-center py-12">
+                                                    <Cake className="h-12 w-12 mx-auto text-gray-200 mb-3" />
+                                                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-tight">No birthdays today</p>
+                                                </div>
+                                            ) : (
+                                                birthdayUsers.map(u => (
+                                                    <div key={u.id} className="flex items-center gap-3 p-3 rounded-lg bg-orange-50/50 border border-orange-100">
+                                                        <Cake className="h-4 w-4 text-orange-500 shrink-0" />
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate">{u.phone || 'No phone'} · {u.role}</p>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    </div>
+
+                            <div className="mt-8 p-4 bg-indigo-50/30 rounded-lg border border-indigo-50/50">
+                                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-indigo-400">
+                                    <span>Targeting</span>
+                                    <span className="text-indigo-600">{getRecipientCount()} Recipient(s)</span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
 
+            {/* Sticky Bottom Action Bar */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white/80 backdrop-blur-md border border-gray-100 rounded-lg p-6 shadow-xl shadow-indigo-100/20 mt-4 sticky bottom-4 z-10">
                 <RadioGroup
                     value={formData.send_type}

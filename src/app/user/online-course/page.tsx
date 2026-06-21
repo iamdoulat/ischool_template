@@ -97,13 +97,13 @@ export default function UserOnlineCoursePage() {
         <div className="p-4 lg:p-6 space-y-5 min-h-screen font-sans text-xs animate-in fade-in duration-500">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] shadow-md">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/20 backdrop-blur-md border border-white/20 text-white shadow-sm">
                         <Monitor className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Online Courses</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">{totalEntries} course{totalEntries === 1 ? "" : "s"} available</p>
+                        <h1 className="text-[16px] font-bold text-white tracking-tight leading-none">Online Courses</h1>
+                        <p className="text-[11px] text-white/80 mt-1">{totalEntries} course{totalEntries === 1 ? "" : "s"} available</p>
                     </div>
                 </div>
 

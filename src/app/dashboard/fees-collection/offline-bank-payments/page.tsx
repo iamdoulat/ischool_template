@@ -15,9 +15,10 @@ import {
     Loader2,
     Check,
     X,
-    ExternalLink
+    ExternalLink,
+    Landmark
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -36,7 +37,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 interface OfflinePayment {
     id: number;
@@ -61,6 +62,23 @@ interface OfflinePayment {
             fee_type: { name: string };
         };
     };
+}
+
+function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+    return (
+        <>
+            {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b border-muted/30">
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
 }
 
 export default function OfflineBankPaymentsPage() {
@@ -96,7 +114,8 @@ export default function OfflineBankPaymentsPage() {
             });
             setPayments(res.data.data || []);
         } catch (error) {
-            toast("error", "Failed to fetch payments");
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast("error", err.response?.data?.message || "Failed to fetch payments");
         } finally {
             setLoading(false);
         }
@@ -111,7 +130,8 @@ export default function OfflineBankPaymentsPage() {
             setIsDetailsOpen(false);
             fetchPayments();
         } catch (error) {
-            toast("error", "Failed to approve payment");
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast("error", err.response?.data?.message || "Failed to approve payment");
         } finally {
             setProcessing(false);
         }
@@ -131,13 +151,14 @@ export default function OfflineBankPaymentsPage() {
             setIsDetailsOpen(false);
             fetchPayments();
         } catch (error) {
-            toast("error", "Failed to reject payment");
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            toast("error", err.response?.data?.message || "Failed to reject payment");
         } finally {
             setProcessing(false);
         }
     };
 
-    const filteredPayments = payments.filter(p => 
+    const filteredPayments = payments.filter(p =>
         p.student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.student.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.student.admission_no.includes(searchQuery) ||
@@ -205,7 +226,7 @@ export default function OfflineBankPaymentsPage() {
             `${symbol}${p.amount.toFixed(2)}`,
             p.status
         ]);
-        (doc as any).autoTable({ head: [tableColumn], body: tableRows, startY: 20 });
+        autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
         doc.save("offline_payments.pdf");
         toast("success", "Exported to PDF");
     };
@@ -230,36 +251,34 @@ export default function OfflineBankPaymentsPage() {
                 <p className="text-muted-foreground">Verify and manage fee payments submitted via bank transfer or offline deposits.</p>
             </div>
 
-            <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
-                <CardHeader className="border-b border-muted/20 bg-muted/5">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                                <Wallet className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-xl">Payment Requests</CardTitle>
-                                <CardDescription>Review receipts and reference numbers to approve student payments.</CardDescription>
-                            </div>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Landmark className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Payment Requests</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{filteredPayments.length} payment{filteredPayments.length === 1 ? '' : 's'}</p>
                         </div>
-                        <div className="flex items-center gap-2 bg-muted/20 p-1 rounded-lg border border-muted/50">
-                            {['all', 'pending', 'approved', 'rejected'].map((status) => (
-                                <Button
-                                    key={status}
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setFilterStatus(status)}
-                                    className={cn(
-                                        "rounded-lg px-4 h-8 text-[10px] font-black uppercase tracking-wider transition-all",
-                                        filterStatus === status 
-                                            ? "bg-primary text-primary-foreground shadow-md" 
-                                            : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
-                                    )}
-                                >
-                                    {status}
-                                </Button>
-                            ))}
-                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-muted/20 p-1 rounded-lg border border-muted/50">
+                        {['all', 'pending', 'approved', 'rejected'].map((status) => (
+                            <Button
+                                key={status}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFilterStatus(status)}
+                                className={cn(
+                                    "rounded-lg px-4 h-8 text-[10px] font-black uppercase tracking-wider transition-all",
+                                    filterStatus === status
+                                        ? "bg-primary text-primary-foreground shadow-md"
+                                        : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
+                                )}
+                            >
+                                {status}
+                            </Button>
+                        ))}
                     </div>
                 </CardHeader>
 
@@ -277,7 +296,7 @@ export default function OfflineBankPaymentsPage() {
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <select 
+                            <select
                                 value={pageSize === Number.MAX_SAFE_INTEGER ? "All" : pageSize}
                                 onChange={(e) => {
                                     const val = e.target.value;
@@ -292,36 +311,36 @@ export default function OfflineBankPaymentsPage() {
                             </select>
                             <div className="h-8 w-px bg-muted/50 mx-2" />
                             <div className="flex items-center gap-1">
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={handleExportExcel}
                                     className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
                                     title="Excel"
                                 >
                                     <FileSpreadsheet className="h-4 w-4" />
                                 </Button>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={handleExportCSV}
                                     className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
                                     title="CSV"
                                 >
                                     <FileText className="h-4 w-4" />
                                 </Button>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={handleExportPDF}
                                     className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
                                     title="PDF"
                                 >
                                     <FileCode className="h-4 w-4" />
                                 </Button>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={handlePrint}
                                     className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
                                     title="Print"
@@ -352,13 +371,7 @@ export default function OfflineBankPaymentsPage() {
                                 </thead>
                                 <tbody className="divide-y divide-muted/10">
                                     {loading ? (
-                                        Array.from({ length: 3 }).map((_, i) => (
-                                            <tr key={i} className="animate-pulse">
-                                                <td colSpan={6} className="px-6 py-8">
-                                                    <div className="h-12 bg-muted/20 rounded-lg" />
-                                                </td>
-                                            </tr>
-                                        ))
+                                        <TableSkeleton rows={5} cols={6} />
                                     ) : filteredPayments.length === 0 ? (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-20 text-center">
@@ -398,7 +411,7 @@ export default function OfflineBankPaymentsPage() {
                                                                 setRejectionReason("");
                                                                 setIsDetailsOpen(true);
                                                             }}
-                                                            className="h-9 w-9 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:scale-110 active:scale-95"
+                                                            className="h-9 w-9 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 transition-all hover:scale-110 active:scale-95"
                                                         >
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
@@ -419,24 +432,24 @@ export default function OfflineBankPaymentsPage() {
                                 Showing {Math.min((currentPage - 1) * pageSize + 1, filteredPayments.length)} to {Math.min(currentPage * pageSize, filteredPayments.length)} of {filteredPayments.length} entries
                             </p>
                             <div className="flex items-center gap-2">
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
+                                <Button
+                                    variant="outline"
+                                    size="icon"
                                     disabled={currentPage === 1}
                                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                    className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                    className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
                                 >
                                     <ChevronDown className="h-4 w-4 rotate-90" />
                                 </Button>
-                                <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-br from-[#FF9800] to-[#6366F1]">
+                                <Button className="h-8 w-8 rounded-[10px] border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
                                     {currentPage}
                                 </Button>
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
+                                <Button
+                                    variant="outline"
+                                    size="icon"
                                     disabled={currentPage >= totalPages}
                                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                    className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all"
+                                    className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
                                 >
                                     <ChevronDown className="h-4 w-4 -rotate-90" />
                                 </Button>
@@ -449,22 +462,22 @@ export default function OfflineBankPaymentsPage() {
             {/* Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
                 <DialogContent className="max-w-3xl border-none shadow-2xl rounded-lg overflow-hidden p-0 bg-background/95 backdrop-blur-xl">
-                    <DialogHeader className="p-8 border-b border-muted/20 bg-muted/5">
+                    <DialogHeader className="p-8 border-b border-muted/20 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-primary/10 rounded-lg text-primary">
-                                    <Wallet className="h-6 w-6" />
+                                <div className="p-3 bg-white/20 rounded-lg text-white">
+                                    <Landmark className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <DialogTitle className="text-2xl font-bold">Payment Details</DialogTitle>
-                                    <DialogDescription className="text-muted-foreground font-medium">
+                                    <DialogTitle className="text-2xl font-bold text-white">Payment Details</DialogTitle>
+                                    <DialogDescription className="text-white/80 font-medium">
                                         Review the submission from {selectedPayment?.student.name}
                                     </DialogDescription>
                                 </div>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className="text-2xl font-black text-primary">${selectedPayment?.amount.toFixed(2)}</span>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Request #{selectedPayment?.id}</span>
+                                <span className="text-2xl font-black text-white">{symbol}{selectedPayment?.amount.toFixed(2)}</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Request #{selectedPayment?.id}</span>
                             </div>
                         </div>
                     </DialogHeader>
@@ -493,7 +506,7 @@ export default function OfflineBankPaymentsPage() {
 
                             <div className="p-4 rounded-lg bg-muted/20 border border-muted/50 space-y-2">
                                 <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Rejection Reason (Required for rejection)</span>
-                                <Textarea 
+                                <Textarea
                                     placeholder="Provide a reason if rejecting this payment..."
                                     value={rejectionReason}
                                     onChange={(e) => setRejectionReason(e.target.value)}
@@ -510,9 +523,9 @@ export default function OfflineBankPaymentsPage() {
                             <div className="aspect-[4/3] rounded-lg bg-muted/10 border-2 border-dashed border-muted/50 flex items-center justify-center overflow-hidden group/img relative">
                                 {selectedPayment?.screenshot ? (
                                     <>
-                                        <img 
-                                            src={selectedPayment.screenshot} 
-                                            alt="Payment Proof" 
+                                        <img
+                                            src={selectedPayment.screenshot}
+                                            alt="Payment Proof"
                                             className="w-full h-full object-cover transition-transform group-hover/img:scale-110"
                                         />
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
@@ -565,4 +578,3 @@ export default function OfflineBankPaymentsPage() {
         </div>
     );
 }
-
