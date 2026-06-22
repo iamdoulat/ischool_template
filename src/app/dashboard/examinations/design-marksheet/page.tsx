@@ -25,11 +25,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-interface Marksheet {
+interface Marksheet extends MarksheetFormData {
     id: string;
-    name: string;
-    background_image: string;
-    is_active: boolean;
 }
 
 interface MarksheetFormData {

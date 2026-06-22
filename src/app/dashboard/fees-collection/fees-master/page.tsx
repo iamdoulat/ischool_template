@@ -304,11 +304,11 @@ export default function FeesMasterPage() {
         doc.text("Fees Master Report", 14, 15);
         const tableColumn = ["Fees Group", "Fees Type", "Amount", "Fine Type", "Due Date"];
         const tableRows = feeMasters.map(m => [
-            m.fee_group?.name,
-            m.fee_type?.name,
-            m.amount,
-            m.fine_type,
-            m.due_date
+            m.fee_group?.name ?? "",
+            m.fee_type?.name ?? "",
+            m.amount ?? "",
+            m.fine_type ?? "",
+            m.due_date ?? ""
         ]);
         autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
         doc.save("fees_master.pdf");

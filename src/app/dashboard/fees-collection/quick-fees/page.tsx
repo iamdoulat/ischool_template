@@ -1,11 +1,11 @@
 "use client";
 
 interface FeePayment { amount: number; [key: string]: unknown; }
-interface DueFee { id: number; fee_master: { amount: number; [key: string]: unknown }; payments: FeePayment[]; [key: string]: unknown; }
-interface StudentData { [key: string]: unknown; }
+interface DueFee { id: number; fee_master: { amount: number; fee_group?: { name?: string }; fee_type?: { name?: string; code?: string }; due_date?: string; fine_amount?: number; [key: string]: unknown }; payments: FeePayment[]; due_date?: string; [key: string]: unknown; }
+interface StudentData { name?: string; last_name?: string; admission_no?: string; [key: string]: unknown; }
 interface ClassItem { id: number; name: string; sections?: SectionItem[]; [key: string]: unknown; }
 interface SectionItem { id: number; name: string; [key: string]: unknown; }
-interface StudentItem { id: number; name: string; [key: string]: unknown; }
+interface StudentItem { id: number; name: string; last_name?: string; admission_no?: string; [key: string]: unknown; }
 
 import { Search, Zap, ChevronDown, UserCircle, CreditCard, Calendar, FileText, CheckCircle2, Loader2, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -144,6 +144,7 @@ export default function QuickFeesPage() {
 
     const handlePaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!selectedFee) return;
         setLoading(true);
         try {
             await api.post("/fee-collection/collect-fee", {

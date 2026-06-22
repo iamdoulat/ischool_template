@@ -319,7 +319,7 @@ export default function LessonPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {classes.map(c => (
-                                            <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                            <SelectItem key={c.id} value={c.name || ""}>{c.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -339,7 +339,7 @@ export default function LessonPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {sections.map(s => (
-                                            <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                            <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -355,7 +355,7 @@ export default function LessonPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {subjectGroups.map(g => (
-                                            <SelectItem key={g.id} value={g.name || g.group_name}>{g.name || g.group_name}</SelectItem>
+                                            <SelectItem key={g.id} value={g.name || g.group_name || ""}>{g.name || g.group_name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -371,7 +371,7 @@ export default function LessonPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {subjects.map(s => (
-                                            <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                            <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>

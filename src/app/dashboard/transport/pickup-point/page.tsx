@@ -50,6 +50,12 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+declare global {
+    interface Window {
+        L: any;
+    }
+}
+
 interface PickupPoint {
     id: number;
     name: string;

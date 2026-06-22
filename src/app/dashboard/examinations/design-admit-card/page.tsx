@@ -74,11 +74,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     );
 }
 
-interface AdmitCard {
+interface AdmitCard extends TemplateFormData {
     id: string;
-    name: string;
-    background_image: string;
-    is_active: boolean;
 }
 
 export default function DesignAdmitCardPage() {

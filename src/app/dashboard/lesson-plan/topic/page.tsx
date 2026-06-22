@@ -334,7 +334,7 @@ export default function TopicPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {classes.length > 0 ? classes.map(c => (
-                                            <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                            <SelectItem key={c.id} value={c.name || ""}>{c.name}</SelectItem>
                                         )) : (
                                             <>
                                                 <SelectItem value="Class 1">Class 1</SelectItem>
@@ -359,7 +359,7 @@ export default function TopicPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {sections.length > 0 ? sections.map(s => (
-                                            <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                            <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
                                         )) : (
                                             <>
                                                 <SelectItem value="A">A</SelectItem>
@@ -380,7 +380,7 @@ export default function TopicPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {subjectGroups.length > 0 ? subjectGroups.map(g => (
-                                            <SelectItem key={g.id} value={g.name || g.group_name}>{g.name || g.group_name}</SelectItem>
+                                            <SelectItem key={g.id} value={g.name || g.group_name || ""}>{g.name || g.group_name}</SelectItem>
                                         )) : (
                                             <>
                                                 <SelectItem value="Class 1st Subject Group">Class 1st Subject Group</SelectItem>
@@ -401,7 +401,7 @@ export default function TopicPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {subjects.length > 0 ? subjects.map(s => (
-                                            <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                            <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
                                         )) : (
                                             <>
                                                 <SelectItem value="English (210)">English (210)</SelectItem>

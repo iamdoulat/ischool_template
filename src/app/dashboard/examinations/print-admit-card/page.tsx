@@ -33,6 +33,7 @@ interface OptionItem {
     id: string | number;
     name?: string;
     year?: string;
+    exams?: OptionItem[];
 }
 
 interface Student {

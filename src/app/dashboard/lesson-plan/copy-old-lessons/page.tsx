@@ -235,7 +235,7 @@ export default function CopyOldLessonsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sessions.length > 0 ? sessions.map(s => (
-                                        <SelectItem key={s.id} value={s.session}>{s.session}</SelectItem>
+                                        <SelectItem key={s.id} value={s.session || ""}>{s.session}</SelectItem>
                                     )) : (
                                         <SelectItem value="2025-26">2025-26</SelectItem>
                                     )}
@@ -253,7 +253,7 @@ export default function CopyOldLessonsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => (
-                                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                        <SelectItem key={c.id} value={c.name || ""}>{c.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -269,7 +269,7 @@ export default function CopyOldLessonsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(s => (
-                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                        <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -285,7 +285,7 @@ export default function CopyOldLessonsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {subjectGroups.map(g => (
-                                        <SelectItem key={g.id} value={g.name || g.group_name}>{g.name || g.group_name}</SelectItem>
+                                        <SelectItem key={g.id} value={g.name || g.group_name || ""}>{g.name || g.group_name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -301,7 +301,7 @@ export default function CopyOldLessonsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {subjects.map(s => (
-                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                        <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -420,7 +420,7 @@ export default function CopyOldLessonsPage() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {classes.map(c => (
-                                                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                                    <SelectItem key={c.id} value={c.name || ""}>{c.name}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -436,7 +436,7 @@ export default function CopyOldLessonsPage() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {sections.map(s => (
-                                                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                                    <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -452,7 +452,7 @@ export default function CopyOldLessonsPage() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {subjectGroups.map(g => (
-                                                    <SelectItem key={g.id} value={g.name || g.group_name}>{g.name || g.group_name}</SelectItem>
+                                                    <SelectItem key={g.id} value={g.name || g.group_name || ""}>{g.name || g.group_name}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -468,7 +468,7 @@ export default function CopyOldLessonsPage() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {subjects.map(s => (
-                                                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                                    <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>

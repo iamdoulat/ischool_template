@@ -67,6 +67,7 @@ interface TeacherOption {
     id: string | number;
     role?: string;
     name?: string;
+    staff_id?: string | number;
 }
 
 interface LessonPlanItem {

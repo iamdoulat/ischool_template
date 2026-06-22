@@ -51,7 +51,16 @@ interface StudentAttendanceRecord {
     exit_time: string;
     note: string;
     isOnLeave?: boolean;
-    leaveDetails?: Record<string, unknown> | null;
+    leaveDetails?: LeaveDetails | null;
+}
+
+interface LeaveDetails {
+    reason?: string;
+    leave_from?: string;
+    leave_to?: string;
+    leaveType?: { name?: string };
+    leave_type?: { name?: string };
+    [key: string]: unknown;
 }
 
 interface RawStudent {
@@ -241,7 +250,7 @@ export default function StudentAttendancePage() {
     const getAutoEntryTime = () => {
         let entryTime = "";
         if (settings?.student_attendance_settings) {
-            const classSettings = (settings.student_attendance_settings as ClassAttendanceSetting[]).find(
+            const classSettings = (settings.student_attendance_settings as unknown as ClassAttendanceSetting[]).find(
                 (c) => String(c.class_id) === selectedClass
             );
             if (classSettings) {
