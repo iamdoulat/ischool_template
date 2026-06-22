@@ -57,7 +57,9 @@ import axios from "axios";
 import { useEffect } from "react";
 import { useSettings } from "@/components/providers/settings-provider";
 import api from "@/lib/api";
-import { CheckCircle2, AlertTriangle, Save } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Save, Settings } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const tabs = [
     "General Setting",
@@ -478,7 +480,7 @@ export default function GeneralSettingPage() {
                         variant="ghost"
                         asChild
                         disabled={uploading}
-                        className="w-full h-8 text-[11px] font-bold text-white bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 transition-all rounded-full shadow-sm"
+                        className="w-full h-8 text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-all rounded-full shadow-sm"
                     >
                         <label htmlFor={`upload-${field}`} className="cursor-pointer flex items-center justify-center gap-2">
                             {uploading ? (
@@ -497,9 +499,29 @@ export default function GeneralSettingPage() {
     const renderContent = () => {
         if (loading) {
             return (
-                <div className="flex flex-col items-center justify-center h-64 space-y-4">
-                    <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />
-                    <p className="text-sm font-medium text-gray-400 uppercase tracking-widest">Loading Settings...</p>
+                <div className="space-y-6 animate-pulse">
+                    <Skeleton className="h-5 w-32 rounded" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="space-y-2">
+                                <Skeleton className="h-3 w-24 rounded" />
+                                <Skeleton className="h-8 w-full rounded" />
+                            </div>
+                        ))}
+                    </div>
+                    <Skeleton className="h-3 w-16 rounded" />
+                    <Skeleton className="h-8 w-full rounded" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-20 rounded" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                                <div key={i} className="space-y-2">
+                                    <Skeleton className="h-3 w-20 rounded" />
+                                    <Skeleton className="h-8 w-full rounded" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )
         }
@@ -1000,7 +1022,7 @@ export default function GeneralSettingPage() {
                         <div className="flex items-center justify-between pb-2 border-b border-gray-100">
                             <h2 className="text-sm font-bold text-gray-700">Mobile App</h2>
                             <Button
-                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white text-[11px] font-bold h-8 rounded-full px-4 shadow-md transition-all border-none"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white text-[11px] font-bold h-8 rounded-full px-4 shadow-md transition-all border-none"
                             >
                                 Register Your Android App
                             </Button>
@@ -1057,7 +1079,7 @@ export default function GeneralSettingPage() {
                             <Button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-[11px] font-bold uppercase transition-all rounded-full shadow-md flex items-center gap-2 border-none"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-[11px] font-bold uppercase transition-all rounded-full shadow-md border-none"
                             >
                                 {saving ? (
                                     <>
@@ -1179,7 +1201,7 @@ export default function GeneralSettingPage() {
                             <Button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-[11px] font-bold uppercase transition-all rounded-full shadow-md flex items-center gap-2 border-none"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-[11px] font-bold uppercase transition-all rounded-full shadow-md border-none"
                             >
                                 {saving ? (
                                     <>
@@ -1260,7 +1282,7 @@ export default function GeneralSettingPage() {
                                 <Button
                                     onClick={handleSave}
                                     disabled={saving}
-                                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-6 h-8 text-[13px] font-bold uppercase transition-all rounded-full shadow-md border-none"
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-[13px] font-bold uppercase transition-all rounded-full shadow-md border-none"
                                 >
                                     {saving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
                                     Save
@@ -1307,7 +1329,7 @@ export default function GeneralSettingPage() {
                                                         <Button
                                                             onClick={handleSave}
                                                             disabled={saving}
-                                                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-md border-none"
+                                                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-md border-none"
                                                         >
                                                             {saving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
                                                             Update
@@ -1398,7 +1420,7 @@ export default function GeneralSettingPage() {
                                                 <Button
                                                     onClick={handleSave}
                                                     disabled={saving}
-                                                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-md border-none w-full md:w-auto"
+                                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-md border-none w-full md:w-auto"
                                                 >
                                                     {saving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
                                                     Update
@@ -2470,100 +2492,113 @@ export default function GeneralSettingPage() {
     };
 
     return (
-        <div className="p-4 bg-gray-50/10 min-h-screen font-sans">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-4">General Setting</h1>
-
-            <div className="flex flex-col md:flex-row gap-6">
-                {/* Left Sidebar Tabs */}
-                <div className="w-full md:w-64 space-y-0.5 bg-white border border-gray-100 rounded-lg shadow-sm overflow-hidden h-fit">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={cn(
-                                "w-full text-left px-4 py-3 text-[13px] font-medium transition-all relative border-b border-gray-50 last:border-b-0",
-                                activeTab === tab
-                                    ? "bg-indigo-50/30 text-indigo-600 font-bold"
-                                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                            )}
-                        >
-                            {activeTab === tab && (
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-r-full" />
-                            )}
-                            {tab}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Right Content Area */}
-                <div className="flex-1 bg-white border border-gray-100 rounded-lg shadow-sm p-6 flex flex-col min-h-[700px]">
-                    <div className="flex-1">
-                        {renderContent()}
-                    </div>
-
-                    {/* Save Button */}
-                    <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
-                        <Button
-                            onClick={() => setIsSaveDialogOpen(true)}
-                            disabled={saving}
-                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-[11px] font-bold uppercase transition-all rounded-full shadow-md flex items-center gap-2 border-none"
-                        >
-                            {saving ? (
-                                <>
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                    Saving...
-                                </>
-                            ) : (
-                                "Save"
-                            )}
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Save Confirmation Dialog */}
-            <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-                <DialogContent className="sm:max-w-[425px] border-none shadow-2xl p-0 overflow-hidden rounded-lg bg-white">
-                    <div className="bg-gradient-to-br from-indigo-50/50 to-white p-6 pt-8">
-                        <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-6 animate-in zoom-in duration-300">
-                            <Save className="h-8 w-8 text-indigo-600" />
+        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
+            <Card className="pt-0 overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] pt-4 pb-2 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] shadow-sm text-white">
+                            <Settings className="w-5 h-5" />
                         </div>
-                        <DialogHeader className="space-y-3">
-                            <DialogTitle className="text-center text-xl font-bold text-gray-800">
-                                Save Configuration?
-                            </DialogTitle>
-                            <DialogDescription className="text-center text-sm text-gray-500 leading-relaxed px-4">
-                                You are about to update the system settings. These changes will be applied across the entire platform immediately.
-                            </DialogDescription>
-                        </DialogHeader>
+                        <div>
+                            <CardTitle className="text-gray-800 text-sm font-bold">General Setting</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-0.5">Manage system general configurations</p>
+                        </div>
                     </div>
-                    
-                    <DialogFooter className="bg-gray-50/80 p-4 gap-3 sm:gap-0 flex flex-row">
-                        <Button
-                            variant="ghost"
-                            onClick={() => setIsSaveDialogOpen(false)}
-                            disabled={saving}
-                            className="flex-1 h-11 font-bold text-gray-500 hover:bg-gray-100 rounded-lg"
-                        >
-                            Review
-                        </Button>
-                        <Button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="flex-1 h-11 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-lg shadow-lg shadow-indigo-200 transition-all active:scale-95"
-                        >
-                            {saving ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    Applying...
-                                </>
-                            ) : (
-                                "Update Now"
-                            )}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                </CardHeader>
+                <CardContent className="p-6 pt-4">
+                    <div className="flex flex-col md:flex-row gap-6">
+                        {/* Left Sidebar Tabs */}
+                        <div className="w-full md:w-64 space-y-0.5 bg-white border border-gray-100 rounded-lg shadow-sm overflow-hidden h-fit">
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={cn(
+                                        "w-full text-left px-4 py-3 text-[13px] font-medium transition-all relative border-b border-gray-50 last:border-b-0",
+                                        activeTab === tab
+                                            ? "bg-indigo-50/30 text-indigo-600 font-bold"
+                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                                    )}
+                                >
+                                    {activeTab === tab && (
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-r-full" />
+                                    )}
+                                    {tab}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Right Content Area */}
+                        <div className="flex-1 bg-white border border-gray-100 rounded-lg shadow-sm p-6 flex flex-col min-h-[700px]">
+                            <div className="flex-1">
+                                {renderContent()}
+                            </div>
+
+                            {/* Save Button */}
+                            <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
+                                <Button
+                                    onClick={() => setIsSaveDialogOpen(true)}
+                                    disabled={saving}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-[11px] font-bold uppercase transition-all rounded-full shadow-md border-none"
+                                >
+                                    {saving ? (
+                                        <>
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        "Save"
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Save Confirmation Dialog */}
+                    <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+                        <DialogContent className="sm:max-w-[425px] border-none shadow-2xl p-0 overflow-hidden rounded-lg bg-white">
+                            <div className="bg-gradient-to-br from-indigo-50/50 to-white p-6 pt-8">
+                                <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-6 animate-in zoom-in duration-300">
+                                    <Save className="h-8 w-8 text-indigo-600" />
+                                </div>
+                                <DialogHeader className="space-y-3">
+                                    <DialogTitle className="text-center text-xl font-bold text-gray-800">
+                                        Save Configuration?
+                                    </DialogTitle>
+                                    <DialogDescription className="text-center text-sm text-gray-500 leading-relaxed px-4">
+                                        You are about to update the system settings. These changes will be applied across the entire platform immediately.
+                                    </DialogDescription>
+                                </DialogHeader>
+                            </div>
+
+                            <DialogFooter className="bg-gray-50/80 p-4 gap-3 sm:gap-0 flex flex-row">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setIsSaveDialogOpen(false)}
+                                    disabled={saving}
+                                    className="flex-1 h-11 font-bold text-gray-500 hover:bg-gray-100 rounded-lg"
+                                >
+                                    Review
+                                </Button>
+                                <Button
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                    className="flex-1 h-11 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-lg shadow-lg shadow-indigo-200 transition-all active:scale-95"
+                                >
+                                    {saving ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            Applying...
+                                        </>
+                                    ) : (
+                                        "Update Now"
+                                    )}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </CardContent>
+            </Card>
         </div>
     );
 }

@@ -1,20 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, ImageIcon, Trash2, Loader2, X } from "lucide-react";
-import { cn } from "@/lib/utils";
-import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+    Plus, Image as ImageIcon, Trash2, Loader2, X,
+} from "lucide-react";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
+import { useImageUrl } from "@/lib/image-url";
 
 interface Banner {
     id: number;
@@ -22,177 +26,178 @@ interface Banner {
     image_path: string;
 }
 
+function GridSkeleton() {
+    return (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="rounded-lg border border-gray-100 overflow-hidden">
+                    <Skeleton className="h-32 rounded-none" />
+                    <div className="p-2.5">
+                        <Skeleton className="h-3 w-2/3 rounded" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 export default function BannerImagesPage() {
     const { toast } = useToast();
+    const resolveImg = useImageUrl();
+
     const [banners, setBanners] = useState<Banner[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [saving, setSaving] = useState(false);
-    
-    const [formData, setFormData] = useState({
-        title: "",
-        image: null as File | null
-    });
+    const [deleteId, setDeleteId] = useState<number | null>(null);
 
-    useEffect(() => {
-        fetchBanners();
-    }, []);
+    const [open, setOpen] = useState(false);
+    const [form, setForm] = useState({ title: "", image: null as File | null });
 
-    const fetchBanners = async () => {
+    const getDisplayUrl = (path: string) => {
+        if (path.startsWith("http://") || path.startsWith("https://")) return path;
+        return resolveImg(path.replace(/^\/?storage\//, ""));
+    };
+
+    const fetchBanners = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.get("front-cms/banners");
-            if (res.data?.status === "Success") {
-                setBanners(res.data.data);
-            }
-        } catch (error) {
-            toast("error", "Failed to load banners");
-        } finally {
-            setLoading(false);
-        }
-    };
+            setBanners(res.data?.data ?? []);
+        } catch {
+            toast({ title: "Error", description: "Failed to load banners", variant: "destructive" });
+        } finally { setLoading(false); }
+    }, [toast]);
+
+    useEffect(() => { fetchBanners(); }, [fetchBanners]);
 
     const handleSave = async () => {
-        if (!formData.image) {
-            toast("error", "Please select an image");
-            return;
+        if (!form.image) {
+            toast({ title: "Validation", description: "Please select an image", variant: "destructive" }); return;
         }
-
         setSaving(true);
         try {
-            const data = new FormData();
-            data.append("title", formData.title);
-            data.append("image", formData.image);
-
-            const res = await api.post("front-cms/banners", data, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-
-            if (res.data?.status === "Success" || res.status === 201) {
-                toast("success", "Banner added successfully");
-                setIsDialogOpen(false);
-                setFormData({ title: "", image: null });
-                fetchBanners();
-            }
-        } catch (error) {
-            toast("error", "Failed to save banner");
-        } finally {
-            setSaving(false);
-        }
+            const fd = new FormData();
+            fd.append("title", form.title);
+            fd.append("image", form.image);
+            await api.post("front-cms/banners", fd, { headers: { "Content-Type": "multipart/form-data" } });
+            toast({ title: "Success", description: "Banner added" });
+            setOpen(false); setForm({ title: "", image: null }); fetchBanners();
+        } catch {
+            toast({ title: "Error", description: "Failed to upload banner", variant: "destructive" });
+        } finally { setSaving(false); }
     };
 
-    const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this banner?")) return;
+    const handleDelete = async () => {
+        if (!deleteId) return;
         try {
-            const res = await api.delete(`front-cms/banners/${id}`);
-            if (res.data?.status === "Success") {
-                toast("success", "Banner deleted successfully");
-                fetchBanners();
-            }
-        } catch (error) {
-            toast("error", "Failed to delete banner");
-        }
+            await api.delete(`front-cms/banners/${deleteId}`);
+            toast({ title: "Success", description: "Banner deleted" });
+            fetchBanners();
+        } catch {
+            toast({ title: "Error", description: "Failed to delete banner", variant: "destructive" });
+        } finally { setDeleteId(null); }
     };
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
-                {/* Header Section */}
-                <div className="flex justify-between items-center border-b border-gray-50 pb-4">
-                    <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Banner Images</h2>
-                    <Button 
-                        onClick={() => setIsDialogOpen(true)}
-                        className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-5 h-9 font-bold rounded-full shadow-md flex items-center gap-2 tracking-tight"
-                    >
-                        <Plus className="h-4 w-4 text-white font-bold stroke-[3px]" />
-                        Add Images
+        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <ImageIcon className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold text-slate-800 leading-none">Banner Images</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">Manage homepage banner slides (recommended: 1920×600px)</p>
+                        </div>
+                    </div>
+                    <Button onClick={() => { setForm({ title: "", image: null }); setOpen(true); }}
+                        className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all shrink-0">
+                        <Plus className="h-4 w-4" /> Add Banner
                     </Button>
-                </div>
+                </CardHeader>
 
-                {/* Banner Grid */}
-                {loading ? (
-                    <div className="flex justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-                    </div>
-                ) : banners.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400">
-                        No banners found.
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 py-2">
-                        {banners.map((banner) => (
-                            <div
-                                key={banner.id}
-                                className="bg-[#f8f9fa] rounded-lg border border-gray-100 overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300 relative"
-                            >
-                                {/* Delete Button on Hover */}
-                                <button
-                                    onClick={() => handleDelete(banner.id)}
-                                    className="absolute top-2 right-2 z-10 h-6 w-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600"
-                                >
-                                    <X className="h-3.5 w-3.5 stroke-[3px]" />
-                                </button>
+                <CardContent className="p-5">
+                    {loading ? <GridSkeleton /> : banners.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
+                            <ImageIcon className="h-10 w-10 opacity-30" />
+                            <p className="text-xs font-medium">No banners found. Upload your first banner image.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            {banners.map(banner => (
+                                <div key={banner.id}
+                                    className="group relative bg-white rounded-lg border border-gray-100 overflow-hidden flex flex-col hover:shadow-lg transition-all duration-300">
+                                    {/* Delete Overlay */}
+                                    <button
+                                        onClick={() => setDeleteId(banner.id)}
+                                        className="absolute top-2 right-2 z-10 h-7 w-7 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600 active:scale-95">
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
 
-                                {/* Image Preview Container */}
-                                <div className="h-32 bg-white flex items-center justify-center overflow-hidden relative">
-                                    <img 
-                                        src={banner.image_path} 
-                                        alt={banner.title || "Banner"} 
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    {/* Image */}
+                                    <div className="h-32 bg-gray-50 flex items-center justify-center overflow-hidden relative">
+                                        <img src={getDisplayUrl(banner.image_path)} alt={banner.title || "Banner"}
+                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                            onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                                        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+
+                                    {/* Label */}
+                                    <div className="bg-white p-2.5 border-t border-gray-50">
+                                        <p className="text-[10px] font-bold text-gray-700 uppercase tracking-tight truncate">
+                                            {banner.title || "Untitled Banner"}
+                                        </p>
+                                    </div>
                                 </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
-                                {/* Filename/Title Label */}
-                                <div className="bg-white p-2.5 border-t border-gray-50">
-                                    <p className="text-[10px] font-bold text-gray-700 uppercase tracking-tight truncate">
-                                        {banner.title || "Untitled Banner"}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Add Banner Image</DialogTitle>
+            {/* Add Dialog */}
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent className="sm:max-w-[440px] p-0 gap-0 overflow-hidden">
+                    <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b">
+                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm"><ImageIcon className="h-4 w-4" /></span>
+                            Add Banner Image
+                        </DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
+                    <div className="p-5 space-y-4">
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Title (Optional)</Label>
-                            <Input
-                                value={formData.title}
-                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                className="h-9 border-gray-200 text-[11px] focus-visible:ring-indigo-500 shadow-none bg-gray-50/50"
-                            />
+                            <Label className="text-xs font-semibold text-gray-600">Title (Optional)</Label>
+                            <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" placeholder="Banner title" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Image <span className="text-red-500">*</span></Label>
-                            <Input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => setFormData({ ...formData, image: e.target.files?.[0] || null })}
-                                className="h-9 border-gray-200 text-[11px] focus-visible:ring-indigo-500 shadow-none bg-gray-50/50 cursor-pointer"
-                            />
-                            <p className="text-[9px] text-gray-400 font-medium">Recommended: 1920x600px. Max 2MB.</p>
+                            <Label className="text-xs font-semibold text-gray-600">Image <span className="text-red-500">*</span></Label>
+                            <Input type="file" accept="image/*" onChange={e => setForm({ ...form, image: e.target.files?.[0] ?? null })} className="h-9 text-xs" />
+                            <p className="text-[10px] text-gray-400">Recommended: 1920×600px. Max 2MB.</p>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button 
-                            onClick={handleSave} 
-                            disabled={saving}
-                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-[11px] font-bold uppercase transition-all rounded-full shadow-md"
-                        >
+                    <DialogFooter className="px-5 py-4 border-t bg-gray-50">
+                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-9 px-5 text-xs font-bold">Cancel</Button>
+                        <Button onClick={handleSave} disabled={saving} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95">
                             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Upload Banner"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Delete Alert */}
+            <AlertDialog open={!!deleteId} onOpenChange={o => { if (!o) setDeleteId(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Banner</AlertDialogTitle>
+                        <AlertDialogDescription>This action cannot be undone. The banner will be permanently removed.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

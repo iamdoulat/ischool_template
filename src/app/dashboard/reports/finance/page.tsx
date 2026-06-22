@@ -34,11 +34,31 @@ import {
     PieChart,
     Eye,
     Copy,
-    File
+    File,
+    Monitor
 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function TableSkeleton({ cols }: { cols: number }) {
+    return (
+        <>
+            {Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <Skeleton className="h-4 rounded" style={{ width: `${55 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
 
 const financeReports = [
     { name: "Balance Fees Statement", icon: FileText, active: true },
@@ -550,12 +570,31 @@ export default function FinanceReportPage() {
     };
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Finance</h1>
-
-            {/* Report Links Grid */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
+            {/* Gradient header card with report-type tabs inside */}
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <DollarSign className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Finance Report</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">Fees, income, expense, and payroll reports</p>
+                            </div>
+                        </div>
+                        <Link
+                            href="/user/fees"
+                            className="flex items-center gap-1.5 h-8 px-3.5 rounded-[10px] text-white text-[11px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 shadow-sm"
+                        >
+                            <Monitor className="h-3.5 w-3.5" />
+                            Student Portal View
+                        </Link>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                     {financeReports.map((link) => (
                         <div
                             key={link.name}
@@ -584,28 +623,29 @@ export default function FinanceReportPage() {
                                 }
                             }}
                             className={cn(
-                                "flex items-center gap-3 p-2.5 px-4 rounded-lg border transition-all duration-300 cursor-pointer group relative overflow-hidden",
-                                activeTab === link.name 
-                                    ? "bg-white border-gray-300 shadow-[0_10px_25px_rgba(0,0,0,0.08)] ring-1 ring-gray-400/10 -translate-y-0.5" 
-                                    : "bg-white border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] hover:border-gray-200 hover:-translate-y-0.5"
+                                "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all group",
+                                activeTab === link.name
+                                    ? "border-indigo-200 bg-indigo-50/50 shadow-sm"
+                                    : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
                             )}
                         >
                             <div className={cn(
                                 "p-2 rounded-lg transition-all duration-300",
-                                activeTab === link.name ? "bg-gray-100 text-gray-900 shadow-inner" : "bg-gray-50 text-gray-400 group-hover:bg-gray-100 group-hover:text-gray-600"
+                                activeTab === link.name ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
                             )}>
                                 <link.icon className="h-4 w-4" />
                             </div>
                             <span className={cn(
                                 "text-[10px] font-bold tracking-tight uppercase transition-colors duration-300",
-                                activeTab === link.name ? "text-gray-900" : "text-gray-500 group-hover:text-gray-700"
+                                activeTab === link.name ? "text-indigo-700" : "text-gray-600"
                             )}>
                                 {link.name}
                             </span>
                         </div>
                     ))}
-                </div>
-            </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             {activeTab === "Balance Fees Statement" && (
                 <>

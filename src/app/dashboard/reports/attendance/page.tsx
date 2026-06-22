@@ -39,8 +39,28 @@ import {
     ChevronLeft,
     ChevronRight,
     ArrowUpDown,
+    Monitor,
 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function TableSkeleton({ cols }: { cols: number }) {
+    return (
+        <>
+            {Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <Skeleton className="h-4 rounded" style={{ width: `${55 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
 
 const reportLinks = [
     { name: "Attendance Report", icon: FileText },
@@ -365,43 +385,68 @@ export default function AttendanceReportPage() {
     const daysHeader = selectedMonth && selectedYear ? getDaysInMonth(selectedMonth, selectedYear) : [];
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Attendance Report</h1>
-
-            {/* Tabs */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-2">
-                    {reportLinks.map((link) => {
-                        const isActive = activeTab === link.name;
-                        return (
-                            <div 
-                                key={link.name}
-                                onClick={() => setActiveTab(link.name)}
-                                className={cn(
-                                    "flex items-center gap-3 p-2 px-3 rounded cursor-pointer group transition-colors",
-                                    isActive 
-                                        ? "bg-gray-100" 
-                                        : "hover:bg-gray-50"
-                                )}
-                            >
-                                <link.icon className="h-4 w-4 text-gray-500" />
-                                <span className={cn(
-                                    "text-[11px] font-bold text-gray-600",
-                                    isActive && "text-gray-900"
-                                )}>
-                                    {link.name}
-                                </span>
+        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
+            {/* Gradient header card with report-type tabs inside */}
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <CalendarCheck className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Attendance Report</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">Student and staff attendance reports</p>
                             </div>
-                        );
-                    })}
-                </div>
-            </div>
+                        </div>
+                        <Link
+                            href="/user/attendance"
+                            className="flex items-center gap-1.5 h-8 px-3.5 rounded-[10px] text-white text-[11px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 shadow-sm"
+                        >
+                            <Monitor className="h-3.5 w-3.5" />
+                            Student Portal View
+                        </Link>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {reportLinks.map((link) => {
+                            const isActive = activeTab === link.name;
+                            return (
+                                <div
+                                    key={link.name}
+                                    onClick={() => setActiveTab(link.name)}
+                                    className={cn(
+                                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all group",
+                                        isActive
+                                            ? "border-indigo-200 bg-indigo-50/50 shadow-sm"
+                                            : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "p-2 rounded-lg transition-all",
+                                        isActive ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
+                                    )}>
+                                        <link.icon className="h-4 w-4" />
+                                    </div>
+                                    <span className={cn(
+                                        "text-[10px] font-bold uppercase tracking-tight",
+                                        isActive ? "text-indigo-700" : "text-gray-600"
+                                    )}>
+                                        {link.name}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Attendance Report Tab */}
             {activeTab === "Attendance Report" && (
                 <div className="space-y-4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
@@ -452,9 +497,9 @@ export default function AttendanceReportPage() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden">
                         <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                            <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Student Attendance Report</h2>
+                            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Student Attendance Report</h2>
                             <div className="flex gap-2 text-[9px] font-bold text-gray-400">
                                 <span className="text-emerald-500">P</span> <span className="text-amber-500">L</span> <span className="text-red-500">A</span> <span className="text-blue-500">H</span> <span className="text-indigo-500">F</span>
                             </div>
@@ -520,8 +565,8 @@ export default function AttendanceReportPage() {
             {/* Day Wise Tab */}
             {activeTab === "Student Day Wise Attendance Report" && (
                 <div className="space-y-4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
@@ -572,8 +617,8 @@ export default function AttendanceReportPage() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Student Day Wise Attendance Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Student Day Wise Attendance Report</h2>
                         <div className="flex justify-between items-center gap-4">
                             <Input placeholder="Search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-8 text-[11px] w-64 rounded shadow-none" />
                             <div className="flex items-center gap-2">
@@ -658,8 +703,8 @@ export default function AttendanceReportPage() {
             {/* Student Attendance Type Report Tab */}
             {activeTab === "Student Attendance Type Report" && (
                 <div className="space-y-4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Search Type</Label>
@@ -714,8 +759,8 @@ export default function AttendanceReportPage() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Student Attendance Type Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Student Attendance Type Report</h2>
                         <div className="flex justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
                                 <Input placeholder="Search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-8 text-[11px] w-64 rounded shadow-none" />
@@ -777,8 +822,8 @@ export default function AttendanceReportPage() {
             {/* Staff Day Wise Attendance Report */}
             {activeTab === "Staff Day Wise Attendance Report" && (
                 <div className="space-y-4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Role</Label>
@@ -819,8 +864,8 @@ export default function AttendanceReportPage() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Staff Day Wise Attendance Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Staff Day Wise Attendance Report</h2>
                         <div className="flex justify-between items-center gap-4">
                             <Input placeholder="Search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-8 text-[11px] w-64 rounded shadow-none" />
                             <div className="flex items-center gap-1 text-gray-400">
@@ -892,8 +937,8 @@ export default function AttendanceReportPage() {
             {/* Daily Attendance Report Tab */}
             {activeTab === "Daily Attendance Report" && (
                 <div className="space-y-4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Date <span className="text-red-500">*</span></Label>
@@ -916,8 +961,8 @@ export default function AttendanceReportPage() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Daily Attendance Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Daily Attendance Report</h2>
                         <div className="flex justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
                                 <Input placeholder="Search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-8 text-[11px] w-64 rounded shadow-none" />
@@ -983,8 +1028,8 @@ export default function AttendanceReportPage() {
             {/* Staff Attendance Report */}
             {activeTab === "Staff Attendance Report" && (
                 <div className="space-y-4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Role <span className="text-red-500">*</span></Label>
@@ -1028,9 +1073,9 @@ export default function AttendanceReportPage() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden">
                         <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                            <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Staff Attendance Report</h2>
+                            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Staff Attendance Report</h2>
                             <div className="flex gap-2 text-[9px] font-bold text-gray-400">
                                 <span className="text-emerald-500">P</span> <span className="text-amber-500">L</span> <span className="text-red-500">A</span> <span className="text-blue-500">H</span> <span className="text-indigo-500">F</span>
                             </div>
@@ -1096,8 +1141,8 @@ export default function AttendanceReportPage() {
             {/* Biometric Attendance Log */}
             {activeTab === "Biometric Attendance Log" && (
                 <div className="space-y-4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Date</Label>
@@ -1120,8 +1165,8 @@ export default function AttendanceReportPage() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Biometric Attendance</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Biometric Attendance</h2>
                         <div className="flex justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
                                 <Input 

@@ -34,8 +34,28 @@ import {
     ChevronRight,
     ArrowUpDown,
     Plus,
+    Monitor,
 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function TableSkeleton({ cols }: { cols: number }) {
+    return (
+        <>
+            {Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <Skeleton className="h-4 rounded" style={{ width: `${55 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
 
 export default function ExaminationsReportPage() {
     const [searchTerm, setSearchTerm] = useState("");
@@ -132,26 +152,46 @@ export default function ExaminationsReportPage() {
     };
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Examinations Report</h1>
-
-            {/* Report Links Grid */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    <div className="flex items-center gap-3 p-3 px-4 rounded-lg border transition-all duration-300 cursor-pointer group relative overflow-hidden bg-white border-gray-300 shadow-[0_10px_25px_rgba(0,0,0,0.08)] ring-1 ring-gray-400/10 -translate-y-0.5">
-                        <div className="p-2 rounded-lg transition-all duration-300 bg-gray-100 text-gray-900 shadow-inner">
-                            <Trophy className="h-4 w-4" />
+        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
+            {/* Gradient header card with report-type tab */}
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Trophy className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Examinations Report</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">Exam rank and result reports</p>
+                            </div>
                         </div>
-                        <span className="text-[10px] font-bold tracking-tight uppercase transition-colors duration-300 text-gray-900">
-                            Rank Report
-                        </span>
+                        <Link
+                            href="/user/examinations"
+                            className="flex items-center gap-1.5 h-8 px-3.5 rounded-[10px] text-white text-[11px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 shadow-sm"
+                        >
+                            <Monitor className="h-3.5 w-3.5" />
+                            Student Portal View
+                        </Link>
                     </div>
-                </div>
-            </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                        <div className="flex items-center gap-3 p-3 rounded-lg border border-indigo-200 bg-indigo-50/50 shadow-sm cursor-pointer">
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white">
+                                <Trophy className="h-4 w-4" />
+                            </div>
+                            <span className="text-[10px] font-bold tracking-tight uppercase text-indigo-700">
+                                Rank Report
+                            </span>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Select Criteria Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+            <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                 <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-4 items-end">
                     <div className="space-y-1.5">
                         <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Exam Group <span className="text-red-500">*</span></Label>
@@ -227,8 +267,8 @@ export default function ExaminationsReportPage() {
             </div>
 
             {/* Student List Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Student List</h2>
+            <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student List</h2>
 
                 {/* Table Toolbar */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -268,7 +308,7 @@ export default function ExaminationsReportPage() {
                 {/* Results Table */}
                 <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
                     <Table className="min-w-[1500px]">
-                        <TableHeader className="bg-transparent border-b border-gray-100">
+                        <TableHeader className="bg-gray-50 text-xs uppercase">
                             <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                 <TableHead className="py-3 px-4">Rank</TableHead>
                                 <TableHead className="py-3 px-4">Admission No</TableHead>
@@ -285,8 +325,8 @@ export default function ExaminationsReportPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {reportData.length > 0 ? (
-                                reportData.filter(row => 
+                            {loading ? <TableSkeleton cols={11 + subjects.length} /> : reportData.length > 0 ? (
+                                reportData.filter(row =>
                                     row.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                     row.admission_no.toLowerCase().includes(searchTerm.toLowerCase())
                                 ).map((row, i) => (

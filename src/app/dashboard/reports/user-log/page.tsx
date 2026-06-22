@@ -21,16 +21,17 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import {
-    FileText,
     Copy,
     FileSpreadsheet,
     FileBox,
+    FileText,
     Printer,
-    Columns,
     ChevronLeft,
     ChevronRight,
     ArrowUpDown,
-    Eraser
+    Eraser,
+    Activity,
+    Monitor
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -43,8 +44,30 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const tabs = ["All Users", "Staff", "Students", "Parent", "Guest"];
+
+function TableSkeleton({ cols }: { cols: number }) {
+    return (
+        <>
+            {Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <Skeleton className="h-4 rounded" style={{ width: `${55 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
 
 export default function UserLogPage() {
     const [activeTab, setActiveTab] = useState("All Users");
@@ -114,27 +137,81 @@ export default function UserLogPage() {
     const startIndex = (safePage - 1) * sizeNum;
     const paginatedReportList = filteredReport.slice(startIndex, startIndex + sizeNum);
 
+    // ── Export helpers ────────────────────────────────────────────────────────
+    const exportToCopy = () => {
+        if (filteredReport.length === 0) { toast.error("No data to copy"); return; }
+        const text = [
+            "Users\tRole\tClass\tIP Address\tLogin Date Time\tUser Agent",
+            ...filteredReport.map((r: any) => `${r.user}\t${r.role}\t${r.class || "-"}\t${r.ipAddress}\t${r.loginTime}\t${r.userAgent}`)
+        ].join("\n");
+        navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard");
+    };
+
+    const exportToExcel = (isCsv = false) => {
+        if (filteredReport.length === 0) { toast.error("No data to export"); return; }
+        const mapped = filteredReport.map((r: any) => ({
+            "Users": r.user,
+            "Role": r.role,
+            "Class": r.class || "-",
+            "IP Address": r.ipAddress,
+            "Login Date Time": r.loginTime,
+            "User Agent": r.userAgent,
+        }));
+        const ws = XLSX.utils.json_to_sheet(mapped);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `User Log - ${activeTab}`);
+        if (isCsv) { XLSX.writeFile(wb, `user_log_${activeTab.toLowerCase().replace(/\s+/g, '_')}.csv`, { bookType: "csv" }); toast.success("CSV downloaded"); }
+        else { XLSX.writeFile(wb, `user_log_${activeTab.toLowerCase().replace(/\s+/g, '_')}.xlsx`); toast.success("Excel file downloaded"); }
+    };
+
+    const exportToPDF = () => {
+        if (filteredReport.length === 0) { toast.error("No data to export"); return; }
+        const doc = new jsPDF("landscape");
+        const head = [["Users", "Role", "Class", "IP Address", "Login Date Time", "User Agent"]];
+        const body = filteredReport.map((r: any) => [r.user, r.role, r.class || "-", r.ipAddress, r.loginTime, r.userAgent]);
+        autoTable(doc, { head, body, theme: "grid" });
+        doc.save(`user_log_${activeTab.toLowerCase().replace(/\s+/g, '_')}.pdf`);
+        toast.success("PDF downloaded");
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <div className="flex justify-between items-center mb-2">
-                <h1 className="text-sm font-medium text-gray-800 tracking-tight">User Log</h1>
-                <div className="flex bg-white border border-gray-100 rounded-md overflow-hidden shadow-sm">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={cn(
-                                "px-3 py-1.5 text-[10px] font-bold uppercase transition-colors border-r border-gray-50 last:border-0 cursor-pointer",
-                                activeTab === tab
-                                    ? "bg-indigo-50 text-indigo-600 shadow-inner"
-                                    : "text-gray-400 hover:bg-gray-50 bg-transparent"
-                            )}
-                        >
-                            {tab}
-                        </button>
-                    ))}
-                </div>
-            </div>
+        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20 text-xs">
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Activity className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold text-slate-800 leading-none">User Log</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">System user activity and login records</p>
+                            </div>
+                        </div>
+                        <div className="flex bg-white border border-gray-100 rounded-md overflow-hidden shadow-sm">
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={cn(
+                                        "px-3 py-1.5 text-[10px] font-bold uppercase transition-colors border-r border-gray-50 last:border-0 cursor-pointer",
+                                        activeTab === tab
+                                            ? "bg-indigo-50 text-indigo-600 shadow-inner"
+                                            : "text-gray-400 hover:bg-gray-50 bg-transparent"
+                                    )}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </CardHeader>
+            </Card>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[600px]">
 
@@ -177,11 +254,21 @@ export default function UserLogPage() {
                                 </Select>
                             </div>
                             <div className="flex items-center gap-1 text-gray-400">
-                                {[Copy, FileSpreadsheet, FileBox, FileText, Printer, Columns].map((Icon, i) => (
-                                    <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                        <Icon className="h-3.5 w-3.5" />
-                                    </Button>
-                                ))}
+                                <Button variant="ghost" size="icon" title="Copy" onClick={exportToCopy} className="h-7 w-7 hover:bg-gray-100 hover:text-indigo-600 rounded">
+                                    <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="Excel" onClick={() => exportToExcel(false)} className="h-7 w-7 hover:bg-gray-100 hover:text-emerald-600 rounded">
+                                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="CSV" onClick={() => exportToExcel(true)} className="h-7 w-7 hover:bg-gray-100 hover:text-amber-600 rounded">
+                                    <FileBox className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="PDF" onClick={exportToPDF} className="h-7 w-7 hover:bg-gray-100 hover:text-rose-600 rounded">
+                                    <FileText className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="Print" onClick={handlePrint} className="h-7 w-7 hover:bg-gray-100 hover:text-gray-900 rounded">
+                                    <Printer className="h-3.5 w-3.5" />
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -202,14 +289,7 @@ export default function UserLogPage() {
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12">
-                                        <div className="flex items-center justify-center gap-2 text-gray-400">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-                                            Loading...
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
+                                <TableSkeleton cols={6} />
                             ) : reportList.length === 0 ? (
                                 <TableRow className="hover:bg-transparent h-64">
                                     <TableCell colSpan={6} className="text-center py-12">

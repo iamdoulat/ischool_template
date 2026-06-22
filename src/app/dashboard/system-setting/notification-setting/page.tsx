@@ -12,13 +12,19 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
     Pencil,
     MessageSquare,
     Loader2,
     X,
     Info
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -57,24 +63,15 @@ function EditModal({
     const handleSave = async () => {
         setSaving(true);
         try {
-            const payload = {
-                settings: [{ id: item.id, ...form }],
-            };
+            const payload = { settings: [{ id: item.id, ...form }] };
             const res = await api.post('/system-setting/notification-settings/bulk-update', payload);
             if (res.data.status === "success") {
-                toast({
-                    title: "Success",
-                    description: "Template updated successfully",
-                });
+                toast({ title: "Success", description: "Template updated successfully" });
                 onSaved({ ...item, ...form });
                 onClose();
             }
         } catch {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to update template",
-            });
+            toast({ variant: "destructive", title: "Error", description: "Failed to update template" });
         } finally {
             setSaving(false);
         }
@@ -82,34 +79,21 @@ function EditModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Overlay */}
-            <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-                onClick={onClose}
-            />
-
-            {/* Modal card */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
             <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 bg-indigo-600">
-                    <h2 className="text-white font-semibold text-sm tracking-tight">Template</h2>
-                    <button
-                        onClick={onClose}
-                        className="text-white/80 hover:text-white transition-colors"
-                    >
+                <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <h2 className="text-gray-800 font-semibold text-sm tracking-tight">Template</h2>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 transition-colors">
                         <X className="h-4 w-4" />
                     </button>
                 </div>
 
-                {/* Body */}
                 <div className="px-5 py-5 space-y-4 text-xs">
                     <p className="font-semibold text-gray-700 text-[11px]">{item.event_name}</p>
 
-                    {/* SMS Template ID */}
                     <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                            SMS Template ID
-                            <span className="ml-1 text-gray-400 font-normal normal-case">(Required only for Indian SMS Gateway)</span>
+                            SMS Template ID <span className="ml-1 text-gray-400 font-normal normal-case">(Required only for Indian SMS Gateway)</span>
                         </label>
                         <input
                             type="text"
@@ -120,11 +104,8 @@ function EditModal({
                         />
                     </div>
 
-                    {/* WhatsApp Template ID */}
                     <div className="space-y-1">
-                        <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                            WhatsApp Template ID
-                        </label>
+                        <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">WhatsApp Template ID</label>
                         <input
                             type="text"
                             value={form.whatsapp_template_id}
@@ -134,7 +115,6 @@ function EditModal({
                         />
                     </div>
 
-                    {/* Sample Message / Template */}
                     <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
                             Template <span className="text-red-500">*</span>
@@ -148,11 +128,9 @@ function EditModal({
                         />
                     </div>
 
-                    {/* Variables hint */}
                     <div className="bg-indigo-50 rounded-lg px-3 py-2 space-y-1">
                         <p className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wide">You Can Use Variables</p>
                         <p className="text-[10px] text-indigo-500 leading-relaxed font-mono">
-                            {/* Extract placeholders from the existing message */}
                             {item.sample_message ? Array.from(item.sample_message.matchAll(/\{\{(\w+)\}\}/g))
                                 .map((m) => `{{${m[1]}}}`)
                                 .join("  ") : ""}
@@ -160,12 +138,11 @@ function EditModal({
                     </div>
                 </div>
 
-                {/* Footer */}
                 <div className="px-5 py-3 border-t border-gray-100 flex justify-end bg-gray-50/50">
                     <Button
                         onClick={handleSave}
                         disabled={saving}
-                        className="bg-gradient-to-r from-pink-500 via-rose-400 to-indigo-500 hover:opacity-90 text-white h-9 px-7 text-[11px] font-bold rounded-full shadow-md disabled:opacity-50 transition-opacity"
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white h-9 px-7 text-[11px] font-bold rounded-full shadow-md disabled:opacity-50 transition-opacity"
                     >
                         {saving ? <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Saving...</> : "Save"}
                     </Button>
@@ -176,44 +153,27 @@ function EditModal({
 }
 
 // ─── View Modal ─────────────────────────────────────────────────────────────────
-function ViewModal({
-    item,
-    onClose,
-}: {
-    item: NotificationEvent;
-    onClose: () => void;
-}) {
+function ViewModal({ item, onClose }: { item: NotificationEvent; onClose: () => void }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-                onClick={onClose}
-            />
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
             <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 bg-indigo-600">
-                    <h2 className="text-white font-semibold text-sm tracking-tight">Sample Message</h2>
-                    <button onClick={onClose} className="text-white/80 hover:text-white transition-colors">
+                <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <h2 className="text-gray-800 font-semibold text-sm tracking-tight">Sample Message</h2>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 transition-colors">
                         <X className="h-4 w-4" />
                     </button>
                 </div>
 
-                {/* Body */}
                 <div className="px-5 py-5 space-y-3 text-xs">
                     <p className="font-semibold text-gray-700 text-[11px]">{item.event_name}</p>
-
                     <div className="bg-gray-50 rounded-lg px-4 py-3 border border-gray-100">
-                        <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-wrap">
-                            {item.sample_message}
-                        </p>
+                        <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-wrap">{item.sample_message}</p>
                     </div>
-
                     {item.sms_template_id && (
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">SMS Template ID</p>
-                                <p className="font-mono text-[10px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{item.sms_template_id}</p>
-                            </div>
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">SMS Template ID</p>
+                            <p className="font-mono text-[10px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{item.sms_template_id}</p>
                         </div>
                     )}
                     {item.whatsapp_template_id && (
@@ -225,16 +185,29 @@ function ViewModal({
                 </div>
 
                 <div className="px-5 py-3 border-t border-gray-100 flex justify-end bg-gray-50/50">
-                    <Button
-                        onClick={onClose}
-                        variant="outline"
-                        className="h-8 px-6 text-[11px] font-semibold rounded-lg border-gray-200"
-                    >
+                    <Button onClick={onClose} variant="outline" className="h-8 px-6 text-[11px] font-semibold rounded-lg border-gray-200">
                         Close
                     </Button>
                 </div>
             </div>
         </div>
+    );
+}
+
+// ─── Table Skeleton ─────────────────────────────────────────────────────────────
+function TableSkeleton() {
+    return (
+        <>
+            {Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i} className="border-b border-gray-50">
+                    {Array.from({ length: 6 }).map((_, j) => (
+                        <TableCell key={j} className="py-4 px-4">
+                            <Skeleton className="h-4 rounded" style={{ width: `${60 + ((i * 3 + j * 7) % 30)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
     );
 }
 
@@ -256,29 +229,22 @@ export default function NotificationSettingPage() {
             const res = await api.get('/system-setting/notification-settings');
             if (res.data.status === "success") setEvents(res.data.data);
         } catch {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to load notification settings",
-            });
+            toast({ variant: "destructive", title: "Error", description: "Failed to load notification settings" });
         } finally {
             setLoading(false);
         }
     };
 
-    const handleCheckboxChange = (
-        idx: number,
-        field: "destinations" | "recipients",
-        value: string,
-        checked: boolean
-    ) => {
-        const newEvents = [...events];
-        const event = { ...newEvents[idx] };
-        event[field] = checked
-            ? [...(event[field] || []), value]
-            : (event[field] || []).filter((i) => i !== value);
-        newEvents[idx] = event;
-        setEvents(newEvents);
+    const handleCheckboxChange = (idx: number, field: "destinations" | "recipients", value: string, checked: boolean) => {
+        setEvents(prev => {
+            const updated = [...prev];
+            const event = { ...updated[idx] };
+            event[field] = checked
+                ? [...(event[field] || []), value]
+                : (event[field] || []).filter((i) => i !== value);
+            updated[idx] = event;
+            return updated;
+        });
     };
 
     const handleBulkSave = async () => {
@@ -286,17 +252,10 @@ export default function NotificationSettingPage() {
         try {
             const res = await api.post('/system-setting/notification-settings/bulk-update', { settings: events });
             if (res.data.status === "success") {
-                toast({
-                    title: "Success",
-                    description: "Notification settings saved successfully",
-                });
+                toast({ title: "Success", description: "Notification settings saved successfully" });
             }
         } catch {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to save notification settings",
-            });
+            toast({ variant: "destructive", title: "Error", description: "Failed to save notification settings" });
         } finally {
             setSaving(false);
         }
@@ -306,182 +265,144 @@ export default function NotificationSettingPage() {
         setEvents((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
     };
 
-    if (loading) {
-        return (
-            <div className="flex h-[400px] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-            </div>
-        );
-    }
-
     return (
         <>
-            {/* Modals */}
-            {editItem && (
-                <EditModal
-                    item={editItem}
-                    onClose={() => setEditItem(null)}
-                    onSaved={handleEditSaved}
-                />
-            )}
-            {viewItem && (
-                <ViewModal item={viewItem} onClose={() => setViewItem(null)} />
-            )}
+            {editItem && <EditModal item={editItem} onClose={() => setEditItem(null)} onSaved={handleEditSaved} />}
+            {viewItem && <ViewModal item={viewItem} onClose={() => setViewItem(null)} />}
 
-            <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-                <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">
-                    Notification Setting
-                </h1>
-
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden relative pb-20">
-                    <div className="overflow-x-auto custom-scrollbar">
-                        <Table className="min-w-[1500px]">
-                            <TableHeader className="bg-transparent border-b border-gray-100">
-                                <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/30">
-                                    <TableHead className="py-3 px-4 w-[200px]">Event</TableHead>
-                                    <TableHead className="py-3 px-4 w-[180px]">
-                                        <div className="flex items-center gap-1">
-                                            Destination
-                                            <div className="group/tooltip relative">
-                                                <Info className="h-3 w-3 text-muted-foreground hover:text-indigo-500 cursor-pointer" />
-                                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 hidden group-hover/tooltip:block w-48 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg normal-case font-medium z-50 text-center">
-                                                    "Mobile App" triggers in-app notifications (Bell icon).
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </TableHead>
-                                    <TableHead className="py-3 px-4 w-[150px]">Recipient</TableHead>
-                                    <TableHead className="py-3 px-4 w-[180px]">SMS Template ID</TableHead>
-                                    <TableHead className="py-3 px-4 w-[220px]">WhatsApp Template Id</TableHead>
-                                    <TableHead className="py-3 px-4">Sample Message</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {events.map((item, idx) => (
-                                    <TableRow
-                                        key={item.id}
-                                        className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors align-top"
-                                    >
-                                        {/* Event name */}
-                                        <TableCell className="py-4 px-4 font-medium text-gray-700 leading-relaxed">
-                                            {item.event_name}
-                                        </TableCell>
-
-                                        {/* Destinations */}
-                                        <TableCell className="py-4 px-4">
-                                            <div className="space-y-2">
-                                                {destinationOptions.map((opt) => (
-                                                    <div key={opt} className="flex items-center gap-2 group">
-                                                        <Checkbox
-                                                            id={`${idx}-dest-${opt}`}
-                                                            checked={item.destinations.includes(opt)}
-                                                            onCheckedChange={(c) =>
-                                                                handleCheckboxChange(idx, "destinations", opt, !!c)
-                                                            }
-                                                            className="h-3.5 w-3.5 border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm"
-                                                        />
-                                                        <label
-                                                            htmlFor={`${idx}-dest-${opt}`}
-                                                            className="text-[10px] text-gray-500 font-medium cursor-pointer group-hover:text-indigo-600 transition-colors"
-                                                        >
-                                                            {opt}
-                                                        </label>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </TableCell>
-
-                                        {/* Recipients */}
-                                        <TableCell className="py-4 px-4">
-                                            <div className="space-y-2">
-                                                {recipientOptions.map((opt) => {
-                                                    const active = item.recipients.includes(opt);
-                                                    return (
-                                                        <div key={opt} className="flex items-center gap-2 group">
-                                                            <Checkbox
-                                                                id={`${idx}-rec-${opt}`}
-                                                                checked={active}
-                                                                onCheckedChange={(c) =>
-                                                                    handleCheckboxChange(idx, "recipients", opt, !!c)
-                                                                }
-                                                                className="h-3.5 w-3.5 border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm"
-                                                            />
-                                                            <label
-                                                                htmlFor={`${idx}-rec-${opt}`}
-                                                                className="text-[10px] text-gray-500 font-medium cursor-pointer group-hover:text-indigo-600 transition-colors"
-                                                            >
-                                                                {opt}
-                                                            </label>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </TableCell>
-
-                                        {/* SMS Template ID */}
-                                        <TableCell className="py-4 px-4 text-gray-400 font-mono text-[10px] truncate max-w-[150px]">
-                                            {item.sms_template_id || "-"}
-                                        </TableCell>
-
-                                        {/* WhatsApp Template ID */}
-                                        <TableCell className="py-4 px-4 text-gray-400 font-mono text-[10px] truncate max-w-[200px]">
-                                            {item.whatsapp_template_id || "-"}
-                                        </TableCell>
-
-                                        {/* Sample Message + Actions */}
-                                        <TableCell className="py-4 px-4">
-                                            <div className="space-y-2">
-                                                <p className="text-[10px] text-gray-500 leading-normal line-clamp-3 italic opacity-80">
-                                                    {item.sample_message}
-                                                </p>
-                                                <div className="flex gap-1.5 pt-1">
-                                                    {/* Edit */}
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        title="Edit template"
-                                                        onClick={() => setEditItem(item)}
-                                                        className="h-6 w-6 border-transparent bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm"
-                                                    >
-                                                        <Pencil className="h-3 w-3" />
-                                                    </Button>
-                                                    {/* View */}
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        title="View sample message"
-                                                        onClick={() => setViewItem(item)}
-                                                        className="h-6 w-6 border-transparent bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm"
-                                                    >
-                                                        <MessageSquare className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    {/* Floating bulk Save */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-t border-gray-100 flex justify-end z-10 shadow-inner">
-                        <Button
-                            onClick={handleBulkSave}
-                            disabled={saving}
-                            className="bg-gradient-to-r from-pink-500 via-rose-400 to-indigo-500 hover:opacity-90 text-white px-8 h-9 text-[11px] font-bold uppercase rounded-full shadow-md disabled:opacity-50 transition-opacity"
-                        >
-                            {saving ? (
-                                <>
-                                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                                    Saving...
-                                </>
-                            ) : (
-                                "Save"
+            <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans text-xs">
+                <Card>
+                    <CardHeader className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] rounded-t-lg">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-gray-800 text-sm font-bold">Notification Setting</CardTitle>
+                            {!loading && (
+                                <Button
+                                    onClick={handleBulkSave}
+                                    disabled={saving}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-[11px] font-bold uppercase rounded-full shadow-md border-none transition-all"
+                                >
+                                    {saving ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
+                                    {saving ? "Saving..." : "Save Changes"}
+                                </Button>
                             )}
-                        </Button>
-                    </div>
-                </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto custom-scrollbar">
+                            <Table className="min-w-[1500px]">
+                                <TableHeader className="bg-gray-100 border-b border-gray-200">
+                                    <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500">
+                                        <TableHead className="py-3 px-4 w-[200px]">Event</TableHead>
+                                        <TableHead className="py-3 px-4 w-[180px]">
+                                            <div className="flex items-center gap-1">
+                                                Destination
+                                                <div className="group/tooltip relative">
+                                                    <Info className="h-3 w-3 text-muted-foreground hover:text-indigo-500 cursor-pointer" />
+                                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 hidden group-hover/tooltip:block w-48 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg normal-case font-medium z-50 text-center">
+                                                        "Mobile App" triggers in-app notifications (Bell icon).
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </TableHead>
+                                        <TableHead className="py-3 px-4 w-[150px]">Recipient</TableHead>
+                                        <TableHead className="py-3 px-4 w-[180px]">SMS Template ID</TableHead>
+                                        <TableHead className="py-3 px-4 w-[220px]">WhatsApp Template Id</TableHead>
+                                        <TableHead className="py-3 px-4">Sample Message</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        <TableSkeleton />
+                                    ) : events.length > 0 ? (
+                                        events.map((item, idx) => (
+                                            <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors align-top">
+                                                <TableCell className="py-4 px-4 font-medium text-gray-700 leading-relaxed">{item.event_name}</TableCell>
+
+                                                <TableCell className="py-4 px-4">
+                                                    <div className="space-y-2">
+                                                        {destinationOptions.map((opt) => (
+                                                            <div key={opt} className="flex items-center gap-2 group">
+                                                                <Checkbox
+                                                                    id={`${idx}-dest-${opt}`}
+                                                                    checked={item.destinations.includes(opt)}
+                                                                    onCheckedChange={(c) => handleCheckboxChange(idx, "destinations", opt, !!c)}
+                                                                    className="h-3.5 w-3.5 border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm"
+                                                                />
+                                                                <label htmlFor={`${idx}-dest-${opt}`} className="text-[10px] text-gray-500 font-medium cursor-pointer group-hover:text-indigo-600 transition-colors">
+                                                                    {opt}
+                                                                </label>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </TableCell>
+
+                                                <TableCell className="py-4 px-4">
+                                                    <div className="space-y-2">
+                                                        {recipientOptions.map((opt) => (
+                                                            <div key={opt} className="flex items-center gap-2 group">
+                                                                <Checkbox
+                                                                    id={`${idx}-rec-${opt}`}
+                                                                    checked={item.recipients.includes(opt)}
+                                                                    onCheckedChange={(c) => handleCheckboxChange(idx, "recipients", opt, !!c)}
+                                                                    className="h-3.5 w-3.5 border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm"
+                                                                />
+                                                                <label htmlFor={`${idx}-rec-${opt}`} className="text-[10px] text-gray-500 font-medium cursor-pointer group-hover:text-indigo-600 transition-colors">
+                                                                    {opt}
+                                                                </label>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </TableCell>
+
+                                                <TableCell className="py-4 px-4 text-gray-400 font-mono text-[10px] truncate max-w-[150px]">
+                                                    {item.sms_template_id || "-"}
+                                                </TableCell>
+
+                                                <TableCell className="py-4 px-4 text-gray-400 font-mono text-[10px] truncate max-w-[200px]">
+                                                    {item.whatsapp_template_id || "-"}
+                                                </TableCell>
+
+                                                <TableCell className="py-4 px-4">
+                                                    <div className="space-y-2">
+                                                        <p className="text-[10px] text-gray-500 leading-normal line-clamp-3 italic opacity-80">
+                                                            {item.sample_message}
+                                                        </p>
+                                                        <div className="flex gap-1.5 pt-1">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
+                                                                title="Edit template"
+                                                                onClick={() => setEditItem(item)}
+                                                                className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
+                                                            >
+                                                                <Pencil className="h-3 w-3" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
+                                                                title="View sample message"
+                                                                onClick={() => setViewItem(item)}
+                                                                className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
+                                                            >
+                                                                <MessageSquare className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-10 text-gray-400">
+                                                No notification events found
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </>
     );

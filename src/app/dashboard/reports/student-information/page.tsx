@@ -18,16 +18,35 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Search, FileText, PieChart, Users, UserPlus, ClipboardList, BookOpen, Key, CalendarCheck, Ghost, GraduationCap, ChevronLeft, ChevronRight, MenuIcon, Pencil, X, Eye } from "lucide-react";
+import { Search, FileText, PieChart, Users, UserPlus, ClipboardList, BookOpen, Key, GraduationCap, ChevronLeft, ChevronRight, MenuIcon, Pencil, Eye, Monitor } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+
+function TableSkeleton({ cols }: { cols: number }) {
+    return (
+        <>
+            {Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <Skeleton className="h-4 rounded" style={{ width: `${55 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
 
 const reportLinks = [
     {
@@ -612,49 +631,69 @@ export default function StudentInformationReportPage() {
     const startIndex = (currentPage - 1) * itemsPerPageNum;
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Student Information Report</h1>
-
-            {/* Report Links Grid */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {reportLinks.flatMap(col => col.group).map((link) => {
-                        const isActive = activeReportTab === link.name;
-                        return (
-                            <div 
-                                key={link.name}
-                                onClick={() => setActiveReportTab(link.name)}
-                                className={cn(
-                                    "flex items-center gap-3 p-3 px-4 rounded-lg border transition-all duration-300 cursor-pointer group relative overflow-hidden",
-                                    isActive 
-                                        ? "bg-white border-gray-300 shadow-[0_10px_25px_rgba(0,0,0,0.08)] ring-1 ring-gray-400/10 -translate-y-0.5" 
-                                        : "bg-white border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] hover:border-gray-200 hover:-translate-y-0.5"
-                                )}
-                            >
-                                <div className={cn(
-                                    "p-2 rounded-lg transition-all duration-300",
-                                    isActive ? "bg-gray-100 text-gray-900 shadow-inner" : "bg-gray-50 text-gray-400 group-hover:bg-gray-100 group-hover:text-gray-600"
-                                )}>
-                                    <link.icon className="h-4 w-4" />
-                                </div>
-                                <span className={cn(
-                                    "text-[10px] font-bold tracking-tight uppercase transition-colors duration-300",
-                                    isActive ? "text-gray-900" : "text-gray-500 group-hover:text-gray-700"
-                                )}>
-                                    {link.name}
-                                </span>
+        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
+            {/* Gradient header card with report-type tabs inside */}
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Users className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Student Information Report</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">Generate student, guardian, and class reports</p>
                             </div>
-                        );
-                    })}
-                </div>
-            </div>
+                        </div>
+                        <Link
+                            href="/user/profile"
+                            className="flex items-center gap-1.5 h-8 px-3.5 rounded-[10px] text-white text-[11px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 shadow-sm"
+                        >
+                            <Monitor className="h-3.5 w-3.5" />
+                            Student Portal View
+                        </Link>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                        {reportLinks.flatMap(col => col.group).map((link) => {
+                            const isActive = activeReportTab === link.name;
+                            return (
+                                <div
+                                    key={link.name}
+                                    onClick={() => setActiveReportTab(link.name)}
+                                    className={cn(
+                                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all group",
+                                        isActive
+                                            ? "border-indigo-200 bg-indigo-50/50 shadow-sm"
+                                            : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "p-2 rounded-lg transition-all duration-300",
+                                        isActive ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
+                                    )}>
+                                        <link.icon className="h-4 w-4" />
+                                    </div>
+                                    <span className={cn(
+                                        "text-[10px] font-bold tracking-tight uppercase transition-colors duration-300",
+                                        isActive ? "text-indigo-700" : "text-gray-600"
+                                    )}>
+                                        {link.name}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
 
 
             {activeReportTab === "Student Report" && (
                 <>
                     {/* Select Criteria Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
@@ -743,12 +782,12 @@ export default function StudentInformationReportPage() {
                     </div>
 
                     {/* Student Report Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Student Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student Report</h2>
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1500px]">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Section</TableHead>
                                         <TableHead className="py-3 px-4">Admission No</TableHead>
@@ -765,13 +804,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {loading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={12} className="text-center py-12 text-gray-400">
-                                                Searching records...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : students.length > 0 ? (
+                                    {loading ? <TableSkeleton cols={12} /> : students.length > 0 ? (
                                         students.map((student, idx) => (
                                             <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-gray-600">{student.section?.name || 'N/A'}</TableCell>
@@ -839,9 +872,9 @@ export default function StudentInformationReportPage() {
                                 {Array.from({ length: totalPages }).map((_, i) => (
                                     <Button
                                         key={i}
-                                        variant={currentPage === i + 1 ? "pagination-active" : "pagination-inactive"}
                                         onClick={() => handleSearch(i + 1)}
                                         disabled={loading}
+                                        className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold", currentPage === i + 1 ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}
                                     >
                                         {i + 1}
                                     </Button>
@@ -862,8 +895,8 @@ export default function StudentInformationReportPage() {
             )}
 
             {activeReportTab === "Class & Section Report" && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                    <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Class & Section Report</h2>
+                <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                    <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Class & Section Report</h2>
 
                     <div className="flex justify-between items-center mb-4">
                         <div className="relative w-64">
@@ -905,13 +938,7 @@ export default function StudentInformationReportPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {classSectionLoading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="text-center py-12 text-gray-400">
-                                            Loading report...
-                                        </TableCell>
-                                    </TableRow>
-                                ) : classSectionData.length > 0 ? (
+                                {classSectionLoading ? <TableSkeleton cols={4} /> : classSectionData.length > 0 ? (
                                     classSectionData.map((row, idx) => (
                                         <TableRow key={idx} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
                                             <TableCell className="py-3 px-4 text-gray-600">{row.s_no}</TableCell>
@@ -944,8 +971,8 @@ export default function StudentInformationReportPage() {
             {activeReportTab === "Guardian Report" && (
                 <>
                     {/* Select Criteria Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
@@ -991,8 +1018,8 @@ export default function StudentInformationReportPage() {
                     </div>
 
                     {/* Guardian Report Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Guardian Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Guardian Report</h2>
 
                         <div className="flex justify-between items-center mb-4">
                             <div className="relative w-64">
@@ -1025,7 +1052,7 @@ export default function StudentInformationReportPage() {
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1200px]">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Class (Section)</TableHead>
                                         <TableHead className="py-3 px-4">Admission No</TableHead>
@@ -1041,13 +1068,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {guardianLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={11} className="text-center py-12 text-gray-400">
-                                                Loading report...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : guardianStudents.length > 0 ? (
+                                    {guardianLoading ? <TableSkeleton cols={11} /> : guardianStudents.length > 0 ? (
                                         guardianStudents.map((student, idx) => (
                                             <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.school_class?.name || 'N/A'} ({student.section?.name || 'N/A'})</TableCell>
@@ -1102,9 +1123,9 @@ export default function StudentInformationReportPage() {
                                 {Array.from({ length: guardianTotalPages }).map((_, i) => (
                                     <Button
                                         key={i}
-                                        variant={guardianCurrentPage === i + 1 ? "pagination-active" : "pagination-inactive"}
                                         onClick={() => handleGuardianSearch(i + 1)}
                                         disabled={guardianLoading}
+                                        className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold", guardianCurrentPage === i + 1 ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}
                                     >
                                         {i + 1}
                                     </Button>
@@ -1127,8 +1148,8 @@ export default function StudentInformationReportPage() {
             {activeReportTab === "Student History" && (
                 <>
                     {/* Select Criteria Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
@@ -1174,12 +1195,12 @@ export default function StudentInformationReportPage() {
                     </div>
 
                     {/* Student History Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Student History</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student History</h2>
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1200px]">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Admission No</TableHead>
                                         <TableHead className="py-3 px-4">Student Name</TableHead>
@@ -1193,13 +1214,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {historyLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={9} className="text-center py-12 text-gray-400">
-                                                Loading history...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : historyStudents.length > 0 ? (
+                                    {historyLoading ? <TableSkeleton cols={9} /> : historyStudents.length > 0 ? (
                                         historyStudents.map((student, idx) => (
                                             <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
@@ -1239,8 +1254,8 @@ export default function StudentInformationReportPage() {
             {activeReportTab === "Student Login Credential" && (
                 <>
                     {/* Select Criteria Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
@@ -1286,12 +1301,12 @@ export default function StudentInformationReportPage() {
                     </div>
 
                     {/* Student Login Credential Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Student Login Credential Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student Login Credential Report</h2>
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-full">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Admission No</TableHead>
                                         <TableHead className="py-3 px-4">Student Name</TableHead>
@@ -1300,13 +1315,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {credentialLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-12 text-gray-400">
-                                                Loading credentials...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : credentialStudents.length > 0 ? (
+                                    {credentialLoading ? <TableSkeleton cols={4} /> : credentialStudents.length > 0 ? (
                                         credentialStudents.map((student, idx) => (
                                             <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
@@ -1339,8 +1348,8 @@ export default function StudentInformationReportPage() {
             {activeReportTab === "Parent Login Credential" && (
                 <>
                     {/* Select Criteria Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
@@ -1386,12 +1395,12 @@ export default function StudentInformationReportPage() {
                     </div>
 
                     {/* Parent Login Credential Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Parent Login Credential Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Parent Login Credential Report</h2>
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-full">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Admission No</TableHead>
                                         <TableHead className="py-3 px-4">Student Name</TableHead>
@@ -1400,13 +1409,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {parentCredentialLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-12 text-gray-400">
-                                                Loading credentials...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : parentCredentialStudents.length > 0 ? (
+                                    {parentCredentialLoading ? <TableSkeleton cols={4} /> : parentCredentialStudents.length > 0 ? (
                                         parentCredentialStudents.map((student, idx) => (
                                             <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
@@ -1439,8 +1442,8 @@ export default function StudentInformationReportPage() {
             {activeReportTab === "Class Subject Report" && (
                 <>
                     {/* Select Criteria Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
@@ -1486,8 +1489,8 @@ export default function StudentInformationReportPage() {
                     </div>
 
                     {/* Class Subject Report Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Class Subject Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Class Subject Report</h2>
 
                         <div className="flex justify-between items-center mb-4">
                             <div className="relative w-64">
@@ -1519,7 +1522,7 @@ export default function StudentInformationReportPage() {
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-full">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Class</TableHead>
                                         <TableHead className="py-3 px-4">Section</TableHead>
@@ -1530,13 +1533,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {classSubjectLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-12 text-gray-400">
-                                                Loading subjects...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : classSubjectData.length > 0 ? (
+                                    {classSubjectLoading ? <TableSkeleton cols={6} /> : classSubjectData.length > 0 ? (
                                         classSubjectData.filter(item => 
                                             item.subject?.toLowerCase().includes(classSubjectSearch.toLowerCase()) ||
                                             item.teacher?.toLowerCase().includes(classSubjectSearch.toLowerCase())
@@ -1574,8 +1571,8 @@ export default function StudentInformationReportPage() {
             {activeReportTab === "Admission Report" && (
                 <>
                     {/* Select Criteria Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Search Type <span className="text-red-500">*</span></Label>
@@ -1606,12 +1603,12 @@ export default function StudentInformationReportPage() {
                     </div>
 
                     {/* Admission Report Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Admission Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Admission Report</h2>
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1200px]">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Admission No</TableHead>
                                         <TableHead className="py-3 px-4">Student Name</TableHead>
@@ -1625,13 +1622,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {admissionLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={9} className="text-center py-12 text-gray-400">
-                                                Loading admission report...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : admissionData.length > 0 ? (
+                                    {admissionLoading ? <TableSkeleton cols={9} /> : admissionData.length > 0 ? (
                                         admissionData.map((student, idx) => (
                                             <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
@@ -1669,8 +1660,8 @@ export default function StudentInformationReportPage() {
             {activeReportTab === "Sibling Report" && (
                 <>
                     {/* Select Criteria Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
@@ -1716,8 +1707,8 @@ export default function StudentInformationReportPage() {
                     </div>
 
                     {/* Sibling Report Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Sibling Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Sibling Report</h2>
 
                         <div className="flex justify-between items-center mb-4">
                             <div className="relative w-64">
@@ -1749,7 +1740,7 @@ export default function StudentInformationReportPage() {
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1200px]">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Father Name</TableHead>
                                         <TableHead className="py-3 px-4">Mother Name</TableHead>
@@ -1762,13 +1753,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {siblingLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={8} className="text-center py-12 text-gray-400">
-                                                Loading sibling report...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : siblingData.length > 0 ? (
+                                    {siblingLoading ? <TableSkeleton cols={8} /> : siblingData.length > 0 ? (
                                         siblingData.filter(student => 
                                             student.name?.toLowerCase().includes(siblingSearch.toLowerCase()) ||
                                             student.guardian_name?.toLowerCase().includes(siblingSearch.toLowerCase())
@@ -1808,8 +1793,8 @@ export default function StudentInformationReportPage() {
             {activeReportTab === "Student Profile" && (
                 <>
                     {/* Select Criteria Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Search By Admission Date</Label>
@@ -1870,8 +1855,8 @@ export default function StudentInformationReportPage() {
                     </div>
 
                     {/* Student Profile Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Student Profile</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student Profile</h2>
 
                         <div className="flex justify-between items-center mb-4">
                             <div className="relative w-64">
@@ -1903,7 +1888,7 @@ export default function StudentInformationReportPage() {
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[2000px]">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Admission No</TableHead>
                                         <TableHead className="py-3 px-4">Roll Number</TableHead>
@@ -1927,13 +1912,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {profileLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={19} className="text-center py-12 text-gray-400">
-                                                Loading student profiles...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : profileData.length > 0 ? (
+                                    {profileLoading ? <TableSkeleton cols={19} /> : profileData.length > 0 ? (
                                         profileData.filter(student => 
                                             student.name?.toLowerCase().includes(profileSearch.toLowerCase()) ||
                                             student.admission_no?.toLowerCase().includes(profileSearch.toLowerCase())
@@ -1984,8 +1963,8 @@ export default function StudentInformationReportPage() {
             {activeReportTab === "Student Gender Ratio Report" && (
                 <>
                     {/* Student Gender Ratio Report Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Student Gender Ratio Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student Gender Ratio Report</h2>
 
                         <div className="flex justify-between items-center mb-4">
                             <div className="relative w-64">
@@ -2017,7 +1996,7 @@ export default function StudentInformationReportPage() {
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-full">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Class (Section)</TableHead>
                                         <TableHead className="py-3 px-4 text-center">Total Boys</TableHead>
@@ -2027,13 +2006,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {genderRatioLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="text-center py-12 text-gray-400">
-                                                Loading gender ratio report...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : genderRatioData.length > 0 ? (
+                                    {genderRatioLoading ? <TableSkeleton cols={5} /> : genderRatioData.length > 0 ? (
                                         genderRatioData.filter(item => 
                                             item.class_section?.toLowerCase().includes(genderRatioSearch.toLowerCase())
                                         ).map((row, idx) => (
@@ -2069,8 +2042,8 @@ export default function StudentInformationReportPage() {
             {activeReportTab === "Student Teacher Ratio Report" && (
                 <>
                     {/* Student Teacher Ratio Report Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Student Teacher Ratio Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student Teacher Ratio Report</h2>
 
                         <div className="flex justify-between items-center mb-4">
                             <div className="relative w-64">
@@ -2102,7 +2075,7 @@ export default function StudentInformationReportPage() {
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-full">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Class (Section)</TableHead>
                                         <TableHead className="py-3 px-4 text-center">Total Students</TableHead>
@@ -2111,13 +2084,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {teacherRatioLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-12 text-gray-400">
-                                                Loading teacher ratio report...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : teacherRatioData.length > 0 ? (
+                                    {teacherRatioLoading ? <TableSkeleton cols={4} /> : teacherRatioData.length > 0 ? (
                                         teacherRatioData.filter(item => 
                                             item.class_section?.toLowerCase().includes(teacherRatioSearch.toLowerCase())
                                         ).map((row, idx) => (
@@ -2152,8 +2119,8 @@ export default function StudentInformationReportPage() {
             {activeReportTab === "Online Admission Report" && (
                 <>
                     {/* Select Criteria Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class</Label>
@@ -2214,12 +2181,12 @@ export default function StudentInformationReportPage() {
                     </div>
 
                     {/* Online Admission Report Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                        <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Online Admission Report</h2>
+                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
+                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Online Admission Report</h2>
 
                         <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1500px]">
-                                <TableHeader className="bg-transparent">
+                                <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                         <TableHead className="py-3 px-4">Reference No</TableHead>
                                         <TableHead className="py-3 px-4">Admission No</TableHead>
@@ -2235,13 +2202,7 @@ export default function StudentInformationReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {onlineAdmissionLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={11} className="text-center py-12 text-gray-400">
-                                                Loading online admission report...
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : onlineAdmissionData.length > 0 ? (
+                                    {onlineAdmissionLoading ? <TableSkeleton cols={11} /> : onlineAdmissionData.length > 0 ? (
                                         onlineAdmissionData.map((row, idx) => (
                                             <TableRow key={row.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{row.reference_no}</TableCell>

@@ -39,7 +39,10 @@ import {
     MessageSquare,
     Download,
     X,
-    QrCode
+    QrCode,
+    Newspaper,
+    Images,
+    CalendarRange
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -143,6 +146,10 @@ const menuItems: { group: string; items: MenuItem[] }[] = [
             { name: "id_card", label: "ID Card", icon: CreditCard, href: "/user/id-card", submenus: [], color: "blue" },
             { name: "my_qr_pass", label: "My QR Pass", icon: QrCode, href: "/user/my-qr-pass", submenus: [], color: "orange" },
             { name: "branches", label: "Our Branches", icon: Globe, href: "/user/branches", submenus: [], color: "emerald" },
+            { name: "events", label: "Events", icon: CalendarDays, href: "/user/events", submenus: [], color: "amber" },
+            { name: "news", label: "News", icon: Newspaper, href: "/user/news", submenus: [], color: "blue" },
+            { name: "gallery", label: "Gallery", icon: Images, href: "/user/gallery", submenus: [], color: "violet" },
+            { name: "annual_calendar", label: "Annual Calendar", icon: CalendarRange, href: "/user/annual-calendar", submenus: [], color: "sky" },
         ]
     }
 ];

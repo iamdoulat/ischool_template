@@ -28,12 +28,37 @@ import {
     FileSpreadsheet,
     FileBox,
     Printer,
-    Columns,
     ChevronLeft,
     ChevronRight,
     ArrowUpDown,
+    Package,
+    Monitor,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import api from "@/lib/api";
+import { toast } from "sonner";
+import Link from "next/link";
+
+function TableSkeleton({ cols }: { cols: number }) {
+    return (
+        <>
+            {Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <Skeleton className="h-4 rounded" style={{ width: `${55 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
 
 const reportLinks = [
     { name: "Stack Report", icon: FileText, active: true },
@@ -71,25 +96,10 @@ interface IssueItemRow {
     quantity: number;
 }
 
-const mockStock: StockItem[] = [
-    { name: "Class Board", category: "Books Stationery", supplier: "Camlin Stationers", store: "Library Store", availableQty: 260, totalQty: 280, totalIssued: 27 },
-    { name: "Football", category: "Sports", supplier: "Camlin Stationers", store: "Science Store", availableQty: 104, totalQty: 112, totalIssued: 8 },
-    { name: "Cricket Bat", category: "Sports", supplier: "Camlin Stationers", store: "Library Store", availableQty: 221, totalQty: 250, totalIssued: 20 },
-    { name: "Uniform", category: "Staff Dress", supplier: "jhonson Uniform Dress", store: "Uniform Dress Store", availableQty: 28, totalQty: 48, totalIssued: 30 },
-    { name: "Benches", category: "Furniture", supplier: "David Furniture", store: "Furniture Store", availableQty: 27, totalQty: 50, totalIssued: 23 },
-    { name: "Table chair", category: "Furniture", supplier: "David Furniture", store: "Furniture Store", availableQty: 4, totalQty: 12, totalIssued: 18 },
-    { name: "Desk", category: "Furniture", supplier: "David Furniture", store: "Furniture Store", availableQty: 233, totalQty: 234, totalIssued: 1 },
-    { name: "Lab Equipment", category: "Chemistry Lab Apparatus", supplier: "Jhon smith Supplier", store: "Chemistry Equipment", availableQty: 40, totalQty: 50, totalIssued: 20 },
-    { name: "Projectors", category: "Chemistry Lab Apparatus", supplier: "Jhon smith Supplier", store: "Chemistry Equipment", availableQty: 39, totalQty: 45, totalIssued: 6 },
-];
-
-import api from "@/lib/api";
-import { toast } from "sonner";
-
 export default function InventoryReportPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState("Stack Report");
-    
+
     // Stack Report State
     const [stackList, setStackList] = useState<StockItem[]>([]);
     const [stackIsSearched, setStackIsSearched] = useState(false);
@@ -203,7 +213,7 @@ export default function InventoryReportPage() {
     });
 
     const sizeNum = parseInt(itemsPerPage, 10) || 10;
-    
+
     // Stack pagination variables
     const totalStackEntries = filteredStack.length;
     const totalStackPages = Math.ceil(totalStackEntries / sizeNum) || 1;
@@ -225,51 +235,224 @@ export default function InventoryReportPage() {
     const startIssueIndex = (safeIssuePage - 1) * sizeNum;
     const paginatedIssueList = filteredIssue.slice(startIssueIndex, startIssueIndex + sizeNum);
 
-    return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Inventory Report</h1>
+    // ── Export helpers ────────────────────────────────────────────────────────
+    const getActiveData = () => {
+        if (activeTab === "Stack Report") return filteredStack;
+        if (activeTab === "Add Item Report") return filteredAdd;
+        return filteredIssue;
+    };
 
-            {/* Report Links Grid */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {reportLinks.map((link) => {
-                        const isActive = activeTab === link.name;
-                        return (
-                            <div 
-                                key={link.name}
-                                onClick={() => {
-                                    setActiveTab(link.name);
-                                    setSearchTerm("");
-                                    setCurrentPage(1);
-                                }}
-                                className={cn(
-                                    "flex items-center gap-3 p-3 px-4 rounded-lg border transition-all duration-300 cursor-pointer group relative overflow-hidden",
-                                    isActive 
-                                        ? "bg-white border-gray-300 shadow-[0_10px_25px_rgba(0,0,0,0.08)] ring-1 ring-gray-400/10 -translate-y-0.5" 
-                                        : "bg-white border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] hover:border-gray-200 hover:-translate-y-0.5"
-                                )}
-                            >
-                                <div className={cn(
-                                    "p-2 rounded-lg transition-all duration-300",
-                                    isActive ? "bg-gray-100 text-gray-900 shadow-inner" : "bg-gray-50 text-gray-400 group-hover:bg-gray-100 group-hover:text-gray-600"
-                                )}>
-                                    <link.icon className="h-4 w-4" />
-                                </div>
-                                <span className={cn(
-                                    "text-[10px] font-bold tracking-tight uppercase transition-colors duration-300",
-                                    isActive ? "text-gray-900" : "text-gray-500 group-hover:text-gray-700"
-                                )}>
-                                    {link.name}
-                                </span>
-                            </div>
-                        );
-                    })}
+    const exportToCopy = () => {
+        const data = getActiveData();
+        if (data.length === 0) { toast.error("No data to copy"); return; }
+        let text = "";
+        if (activeTab === "Stack Report") {
+            text = ["Name\tCategory\tSupplier\tStore\tAvailable Qty\tTotal Qty\tTotal Issued",
+                ...(data as StockItem[]).map(r => `${r.name}\t${r.category}\t${r.supplier}\t${r.store}\t${r.availableQty}\t${r.totalQty}\t${r.totalIssued}`)].join("\n");
+        } else if (activeTab === "Add Item Report") {
+            text = ["Name\tCategory\tSupplier\tStore\tQuantity\tPurchase Price\tDate",
+                ...(data as AddItemRow[]).map(r => `${r.name}\t${r.category}\t${r.supplier}\t${r.store}\t${r.quantity}\t$${r.purchase_price}\t${r.date}`)].join("\n");
+        } else {
+            text = ["Item\tNote\tCategory\tIssue - Return\tIssue To\tIssued By\tQuantity",
+                ...(data as IssueItemRow[]).map(r => `${r.item}\t${r.note}\t${r.category}\t${r.dateRange}\t${r.issue_to}\t${r.issue_by}\t${r.quantity}`)].join("\n");
+        }
+        navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard");
+    };
+
+    const exportToExcel = (isCsv = false) => {
+        const data = getActiveData();
+        if (data.length === 0) { toast.error("No data to export"); return; }
+        let mapped: Record<string, unknown>[];
+        let fileName = "";
+        if (activeTab === "Stack Report") {
+            mapped = (data as StockItem[]).map(r => ({ "Name": r.name, "Category": r.category, "Supplier": r.supplier, "Store": r.store, "Available Qty": r.availableQty, "Total Qty": r.totalQty, "Total Issued": r.totalIssued }));
+            fileName = "stack_report";
+        } else if (activeTab === "Add Item Report") {
+            mapped = (data as AddItemRow[]).map(r => ({ "Name": r.name, "Category": r.category, "Supplier": r.supplier, "Store": r.store, "Quantity": r.quantity, "Purchase Price": `$${r.purchase_price}`, "Date": r.date }));
+            fileName = "add_item_report";
+        } else {
+            mapped = (data as IssueItemRow[]).map(r => ({ "Item": r.item, "Note": r.note, "Category": r.category, "Issue - Return": r.dateRange, "Issue To": r.issue_to, "Issued By": r.issue_by, "Quantity": r.quantity }));
+            fileName = "issue_item_report";
+        }
+        const ws = XLSX.utils.json_to_sheet(mapped);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, activeTab);
+        if (isCsv) { XLSX.writeFile(wb, `${fileName}.csv`, { bookType: "csv" }); toast.success("CSV downloaded"); }
+        else { XLSX.writeFile(wb, `${fileName}.xlsx`); toast.success("Excel file downloaded"); }
+    };
+
+    const exportToPDF = () => {
+        const data = getActiveData();
+        if (data.length === 0) { toast.error("No data to export"); return; }
+        const doc = new jsPDF("landscape");
+        if (activeTab === "Stack Report") {
+            const rows = data as StockItem[];
+            autoTable(doc, { head: [["Name", "Category", "Supplier", "Store", "Available", "Total", "Issued"]], body: rows.map(r => [r.name, r.category, r.supplier, r.store, r.availableQty, r.totalQty, r.totalIssued]), theme: "grid" });
+            doc.save("stack_report.pdf");
+        } else if (activeTab === "Add Item Report") {
+            const rows = data as AddItemRow[];
+            autoTable(doc, { head: [["Name", "Category", "Supplier", "Store", "Qty", "Price", "Date"]], body: rows.map(r => [r.name, r.category, r.supplier, r.store, r.quantity, `$${r.purchase_price}`, r.date]), theme: "grid" });
+            doc.save("add_item_report.pdf");
+        } else {
+            const rows = data as IssueItemRow[];
+            autoTable(doc, { head: [["Item", "Note", "Category", "Issue - Return", "Issue To", "Issued By", "Qty"]], body: rows.map(r => [r.item, r.note, r.category, r.dateRange, r.issue_to, r.issue_by, r.quantity]), theme: "grid" });
+            doc.save("issue_item_report.pdf");
+        }
+        toast.success("PDF downloaded");
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const renderPagination = (total: number, listLen: number, safePg: number, totalPg: number, startIdx: number) => (
+        <div className="flex items-center justify-between text-[10px] text-gray-500 font-semibold pt-4 border-t border-t-gray-50/50 mt-2">
+            <div>
+                Showing {total > 0 ? startIdx + 1 : 0} to{" "}
+                {Math.min(startIdx + sizeNum, total)} of {total} entries
+                {searchTerm && ` (filtered from ${listLen} total entries)`}
+            </div>
+            {listLen > 0 && (
+                <div className="flex items-center gap-1.5">
+                    <button
+                        disabled={safePg === 1}
+                        onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                        className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none"
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    {Array.from({ length: totalPg }, (_, i) => i + 1).map(page => (
+                        <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={cn(
+                                "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer border-none font-bold",
+                                safePg === page
+                                    ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white font-extrabold shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95"
+                                    : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
+                            )}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    <button
+                        disabled={safePg === totalPg}
+                        onClick={() => setCurrentPage(p => Math.min(p + 1, totalPg))}
+                        className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none"
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+
+    const renderToolbar = () => (
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="relative w-full md:w-64">
+                <Input
+                    placeholder="Search"
+                    value={searchTerm}
+                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                    className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                />
+            </div>
+            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 mr-2">
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Show</span>
+                    <Select value={itemsPerPage} onValueChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}>
+                        <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none rounded outline-none">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex items-center gap-1 text-gray-400">
+                    <Button variant="ghost" size="icon" title="Copy" onClick={exportToCopy} className="h-7 w-7 hover:bg-gray-100 hover:text-indigo-600 rounded">
+                        <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" title="Excel" onClick={() => exportToExcel(false)} className="h-7 w-7 hover:bg-gray-100 hover:text-emerald-600 rounded">
+                        <FileSpreadsheet className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" title="CSV" onClick={() => exportToExcel(true)} className="h-7 w-7 hover:bg-gray-100 hover:text-amber-600 rounded">
+                        <FileBox className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" title="PDF" onClick={exportToPDF} className="h-7 w-7 hover:bg-gray-100 hover:text-rose-600 rounded">
+                        <FileText className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" title="Print" onClick={handlePrint} className="h-7 w-7 hover:bg-gray-100 hover:text-gray-900 rounded">
+                        <Printer className="h-3.5 w-3.5" />
+                    </Button>
                 </div>
             </div>
+        </div>
+    );
 
-            {/* Select Criteria Section */}
+    return (
+        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20 text-xs">
+            {/* Gradient header card */}
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Package className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Inventory Report</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">Stock, item addition, and issue reports</p>
+                            </div>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                        {reportLinks.map((link) => {
+                            const isActive = activeTab === link.name;
+                            return (
+                                <div
+                                    key={link.name}
+                                    onClick={() => {
+                                        setActiveTab(link.name);
+                                        setSearchTerm("");
+                                        setCurrentPage(1);
+                                    }}
+                                    className={cn(
+                                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all group",
+                                        isActive
+                                            ? "border-indigo-200 bg-indigo-50/50 shadow-sm"
+                                            : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "p-2 rounded-lg transition-all duration-300",
+                                        isActive ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
+                                    )}>
+                                        <link.icon className="h-4 w-4" />
+                                    </div>
+                                    <span className={cn(
+                                        "text-[10px] font-bold tracking-tight uppercase transition-colors duration-300",
+                                        isActive ? "text-indigo-700" : "text-gray-600"
+                                    )}>
+                                        {link.name}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Select Criteria Sections */}
             {activeTab === "Stack Report" && (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
+                    <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Search Type</Label>
@@ -287,12 +470,12 @@ export default function InventoryReportPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-
                         <div className="flex justify-end">
-                            <Button 
+                            <Button
                                 onClick={handleStackSearch}
                                 disabled={loading}
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2"
+                                variant="gradient"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition-all duration-300 font-bold px-6 h-9 flex items-center justify-center gap-2 rounded-full shadow-[0_4px_14px_rgba(99,102,241,0.3)]"
                             >
                                 <Search className="h-4 w-4" />
                                 {loading ? "Searching..." : "Search"}
@@ -304,6 +487,7 @@ export default function InventoryReportPage() {
 
             {activeTab === "Add Item Report" && (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
+                    <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Search Type</Label>
@@ -321,12 +505,12 @@ export default function InventoryReportPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-
                         <div className="flex justify-end">
-                            <Button 
+                            <Button
                                 onClick={handleAddSearch}
                                 disabled={loading}
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2"
+                                variant="gradient"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition-all duration-300 font-bold px-6 h-9 flex items-center justify-center gap-2 rounded-full shadow-[0_4px_14px_rgba(99,102,241,0.3)]"
                             >
                                 <Search className="h-4 w-4" />
                                 {loading ? "Searching..." : "Search"}
@@ -338,6 +522,7 @@ export default function InventoryReportPage() {
 
             {activeTab === "Issue Item Report" && (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
+                    <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">Select Criteria</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Search Type</Label>
@@ -355,12 +540,12 @@ export default function InventoryReportPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-
                         <div className="flex justify-end">
-                            <Button 
+                            <Button
                                 onClick={handleIssueSearch}
                                 disabled={loading}
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2"
+                                variant="gradient"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition-all duration-300 font-bold px-6 h-9 flex items-center justify-center gap-2 rounded-full shadow-[0_4px_14px_rgba(99,102,241,0.3)]"
                             >
                                 <Search className="h-4 w-4" />
                                 {loading ? "Searching..." : "Search"}
@@ -374,44 +559,7 @@ export default function InventoryReportPage() {
             {activeTab === "Stack Report" && (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
                     <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Stock Report</h2>
-
-                    {/* Table Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
-                            <Input
-                                placeholder="Search"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 mr-2">
-                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Show</span>
-                                <Select value={itemsPerPage} onValueChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}>
-                                    <SelectTrigger className="h-7 w-14 text-[10px] border-gray-200 bg-transparent shadow-none rounded outline-none ring-0">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                {[Copy, FileSpreadsheet, FileBox, FileText, Printer, Columns].map((Icon, i) => (
-                                    <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                        <Icon className="h-3.5 w-3.5" />
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Results Table */}
+                    {renderToolbar()}
                     <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                         <Table className="min-w-[1200px]">
                             <TableHeader className="bg-transparent border-b border-gray-100">
@@ -427,19 +575,23 @@ export default function InventoryReportPage() {
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-12">
-                                            <div className="flex items-center justify-center gap-2 text-gray-400">
-                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-                                                Loading...
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
+                                    <TableSkeleton cols={7} />
                                 ) : !stackIsSearched ? (
                                     <TableRow className="hover:bg-transparent h-64">
                                         <TableCell colSpan={7} className="text-center py-12">
                                             <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
                                                 <p className="text-red-400 font-bold mb-4 uppercase text-[10px] tracking-widest">No data available in table</p>
+                                                <div className="relative">
+                                                    <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
+                                                        <Package className="h-8 w-8 text-gray-200" />
+                                                    </div>
+                                                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full border border-indigo-50 flex items-center justify-center">
+                                                        <PlusSquare className="h-3 w-3 text-indigo-300" />
+                                                    </div>
+                                                </div>
+                                                <p className="text-emerald-500 font-bold text-[10px] flex items-center gap-1">
+                                                    <span className="text-lg">←</span> Search with criteria to retrieve stock details.
+                                                </p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -465,50 +617,7 @@ export default function InventoryReportPage() {
                             </TableBody>
                         </Table>
                     </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
-                        <div>
-                            Showing {totalStackEntries > 0 ? startStackIndex + 1 : 0} to{" "}
-                            {Math.min(startStackIndex + sizeNum, totalStackEntries)} of {totalStackEntries} entries
-                            {searchTerm && ` (filtered from ${stackList.length} total entries)`}
-                        </div>
-
-                        {stackList.length > 0 && (
-                            <div className="flex items-center gap-1.5">
-                                <button
-                                    disabled={safeStackPage === 1}
-                                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                    className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </button>
-
-                                {Array.from({ length: totalStackPages }, (_, i) => i + 1).map(page => (
-                                    <button
-                                        key={page}
-                                        onClick={() => setCurrentPage(page)}
-                                        className={cn(
-                                            "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer font-bold",
-                                            safeStackPage === page
-                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95"
-                                                : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
-                                        )}
-                                    >
-                                        {page}
-                                    </button>
-                                ))}
-
-                                <button
-                                    disabled={safeStackPage === totalStackPages}
-                                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalStackPages))}
-                                    className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    {renderPagination(totalStackEntries, stackList.length, safeStackPage, totalStackPages, startStackIndex)}
                 </div>
             )}
 
@@ -516,44 +625,7 @@ export default function InventoryReportPage() {
             {activeTab === "Add Item Report" && (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
                     <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Add Item Report</h2>
-
-                    {/* Table Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
-                            <Input
-                                placeholder="Search"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 mr-2">
-                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Show</span>
-                                <Select value={itemsPerPage} onValueChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}>
-                                    <SelectTrigger className="h-7 w-14 text-[10px] border-gray-200 bg-transparent shadow-none rounded outline-none ring-0">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                {[Copy, FileSpreadsheet, FileBox, FileText, Printer, Columns].map((Icon, i) => (
-                                    <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                        <Icon className="h-3.5 w-3.5" />
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Results Table */}
+                    {renderToolbar()}
                     <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                         <Table className="min-w-[1200px]">
                             <TableHeader className="bg-transparent border-b border-gray-100">
@@ -569,19 +641,23 @@ export default function InventoryReportPage() {
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-12">
-                                            <div className="flex items-center justify-center gap-2 text-gray-400">
-                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-                                                Loading...
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
+                                    <TableSkeleton cols={7} />
                                 ) : !addIsSearched ? (
                                     <TableRow className="hover:bg-transparent h-64">
                                         <TableCell colSpan={7} className="text-center py-12">
                                             <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
                                                 <p className="text-red-400 font-bold mb-4 uppercase text-[10px] tracking-widest">No data available in table</p>
+                                                <div className="relative">
+                                                    <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
+                                                        <Package className="h-8 w-8 text-gray-200" />
+                                                    </div>
+                                                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full border border-indigo-50 flex items-center justify-center">
+                                                        <PlusSquare className="h-3 w-3 text-indigo-300" />
+                                                    </div>
+                                                </div>
+                                                <p className="text-emerald-500 font-bold text-[10px] flex items-center gap-1">
+                                                    <span className="text-lg">←</span> Search with criteria to retrieve add item records.
+                                                </p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -607,50 +683,7 @@ export default function InventoryReportPage() {
                             </TableBody>
                         </Table>
                     </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
-                        <div>
-                            Showing {totalAddEntries > 0 ? startAddIndex + 1 : 0} to{" "}
-                            {Math.min(startAddIndex + sizeNum, totalAddEntries)} of {totalAddEntries} entries
-                            {searchTerm && ` (filtered from ${addItemList.length} total entries)`}
-                        </div>
-
-                        {addItemList.length > 0 && (
-                            <div className="flex items-center gap-1.5">
-                                <button
-                                    disabled={safeAddPage === 1}
-                                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                    className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </button>
-
-                                {Array.from({ length: totalAddPages }, (_, i) => i + 1).map(page => (
-                                    <button
-                                        key={page}
-                                        onClick={() => setCurrentPage(page)}
-                                        className={cn(
-                                            "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer font-bold",
-                                            safeAddPage === page
-                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95"
-                                                : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
-                                        )}
-                                    >
-                                        {page}
-                                    </button>
-                                ))}
-
-                                <button
-                                    disabled={safeAddPage === totalAddPages}
-                                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalAddPages))}
-                                    className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    {renderPagination(totalAddEntries, addItemList.length, safeAddPage, totalAddPages, startAddIndex)}
                 </div>
             )}
 
@@ -658,44 +691,7 @@ export default function InventoryReportPage() {
             {activeTab === "Issue Item Report" && (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
                     <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Issue Item Report</h2>
-
-                    {/* Table Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
-                            <Input
-                                placeholder="Search"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 mr-2">
-                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Show</span>
-                                <Select value={itemsPerPage} onValueChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}>
-                                    <SelectTrigger className="h-7 w-14 text-[10px] border-gray-200 bg-transparent shadow-none rounded outline-none ring-0">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                {[Copy, FileSpreadsheet, FileBox, FileText, Printer, Columns].map((Icon, i) => (
-                                    <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                        <Icon className="h-3.5 w-3.5" />
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Results Table */}
+                    {renderToolbar()}
                     <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
                         <Table className="min-w-[1200px]">
                             <TableHeader className="bg-transparent border-b border-gray-100">
@@ -711,19 +707,23 @@ export default function InventoryReportPage() {
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-12">
-                                            <div className="flex items-center justify-center gap-2 text-gray-400">
-                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-                                                Loading...
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
+                                    <TableSkeleton cols={7} />
                                 ) : !issueIsSearched ? (
                                     <TableRow className="hover:bg-transparent h-64">
                                         <TableCell colSpan={7} className="text-center py-12">
                                             <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
                                                 <p className="text-red-400 font-bold mb-4 uppercase text-[10px] tracking-widest">No data available in table</p>
+                                                <div className="relative">
+                                                    <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
+                                                        <Package className="h-8 w-8 text-gray-200" />
+                                                    </div>
+                                                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full border border-indigo-50 flex items-center justify-center">
+                                                        <PlusSquare className="h-3 w-3 text-indigo-300" />
+                                                    </div>
+                                                </div>
+                                                <p className="text-emerald-500 font-bold text-[10px] flex items-center gap-1">
+                                                    <span className="text-lg">←</span> Search with criteria to retrieve issue item records.
+                                                </p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -749,50 +749,7 @@ export default function InventoryReportPage() {
                             </TableBody>
                         </Table>
                     </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
-                        <div>
-                            Showing {totalIssueEntries > 0 ? startIssueIndex + 1 : 0} to{" "}
-                            {Math.min(startIssueIndex + sizeNum, totalIssueEntries)} of {totalIssueEntries} entries
-                            {searchTerm && ` (filtered from ${issueItemList.length} total entries)`}
-                        </div>
-
-                        {issueItemList.length > 0 && (
-                            <div className="flex items-center gap-1.5">
-                                <button
-                                    disabled={safeIssuePage === 1}
-                                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                    className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </button>
-
-                                {Array.from({ length: totalIssuePages }, (_, i) => i + 1).map(page => (
-                                    <button
-                                        key={page}
-                                        onClick={() => setCurrentPage(page)}
-                                        className={cn(
-                                            "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer font-bold",
-                                            safeIssuePage === page
-                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95"
-                                                : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
-                                        )}
-                                    >
-                                        {page}
-                                    </button>
-                                ))}
-
-                                <button
-                                    disabled={safeIssuePage === totalIssuePages}
-                                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalIssuePages))}
-                                    className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    {renderPagination(totalIssueEntries, issueItemList.length, safeIssuePage, totalIssuePages, startIssueIndex)}
                 </div>
             )}
         </div>

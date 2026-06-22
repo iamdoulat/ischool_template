@@ -27,11 +27,14 @@ import {
     Copy,
     FileSpreadsheet,
     FileBox,
+    FileText,
     Printer,
     ChevronLeft,
     ChevronRight,
     ArrowUpDown,
-    Trash2
+    Trash2,
+    Shield,
+    Monitor
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,6 +47,28 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+function TableSkeleton({ cols }: { cols: number }) {
+    return (
+        <>
+            {Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <Skeleton className="h-4 rounded" style={{ width: `${55 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
 
 export default function AuditTrailReportPage() {
     const [searchTerm, setSearchTerm] = useState("");
@@ -110,18 +135,73 @@ export default function AuditTrailReportPage() {
     const startIndex = (safePage - 1) * sizeNum;
     const paginatedReportList = filteredReport.slice(startIndex, startIndex + sizeNum);
 
+    // ── Export helpers ────────────────────────────────────────────────────────
+    const exportToCopy = () => {
+        if (filteredReport.length === 0) { toast.error("No data to copy"); return; }
+        const text = [
+            "Message\tUsers\tIP Address\tAction\tPlatform\tAgent\tDate Time",
+            ...filteredReport.map((r: any) => `${r.message}\t${r.users}\t${r.ip_address}\t${r.action}\t${r.platform}\t${r.agent}\t${r.date_time}`)
+        ].join("\n");
+        navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard");
+    };
+
+    const exportToExcel = (isCsv = false) => {
+        if (filteredReport.length === 0) { toast.error("No data to export"); return; }
+        const mapped = filteredReport.map((r: any) => ({
+            "Message": r.message,
+            "Users": r.users,
+            "IP Address": r.ip_address,
+            "Action": r.action,
+            "Platform": r.platform,
+            "Agent": r.agent,
+            "Date Time": r.date_time,
+        }));
+        const ws = XLSX.utils.json_to_sheet(mapped);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Audit Trail");
+        if (isCsv) { XLSX.writeFile(wb, "audit_trail_report.csv", { bookType: "csv" }); toast.success("CSV downloaded"); }
+        else { XLSX.writeFile(wb, "audit_trail_report.xlsx"); toast.success("Excel file downloaded"); }
+    };
+
+    const exportToPDF = () => {
+        if (filteredReport.length === 0) { toast.error("No data to export"); return; }
+        const doc = new jsPDF("landscape");
+        const head = [["Message", "Users", "IP Address", "Action", "Platform", "Agent", "Date Time"]];
+        const body = filteredReport.map((r: any) => [r.message, r.users, r.ip_address, r.action, r.platform, r.agent, r.date_time]);
+        autoTable(doc, { head, body, theme: "grid" });
+        doc.save("audit_trail_report.pdf");
+        toast.success("PDF downloaded");
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <div className="flex justify-between items-center mb-2">
-                <h1 className="text-sm font-medium text-gray-800 tracking-tight">Audit Trail Report List</h1>
-                <Button 
-                    onClick={() => setIsClearDialogOpen(true)}
-                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-3 h-7 text-[10px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5"
-                >
-                    <Trash2 className="h-3 w-3" />
-                    Clear Audit Trail Record
-                </Button>
-            </div>
+        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20 text-xs">
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Shield className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Audit Trail Report</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">System-level data change audit records</p>
+                            </div>
+                        </div>
+                        <Button
+                            onClick={() => setIsClearDialogOpen(true)}
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-3 h-7 text-[10px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5"
+                        >
+                            <Trash2 className="h-3 w-3" />
+                            Clear Audit Trail Record
+                        </Button>
+                    </div>
+                </CardHeader>
+            </Card>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[500px]">
 
@@ -155,11 +235,21 @@ export default function AuditTrailReportPage() {
                             </Select>
                         </div>
                         <div className="flex items-center gap-1 text-gray-400">
-                            {[Copy, FileSpreadsheet, FileBox, Printer].map((Icon, i) => (
-                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                    <Icon className="h-3.5 w-3.5" />
-                                </Button>
-                            ))}
+                            <Button variant="ghost" size="icon" title="Copy" onClick={exportToCopy} className="h-7 w-7 hover:bg-gray-100 hover:text-indigo-600 rounded">
+                                <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Excel" onClick={() => exportToExcel(false)} className="h-7 w-7 hover:bg-gray-100 hover:text-emerald-600 rounded">
+                                <FileSpreadsheet className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="CSV" onClick={() => exportToExcel(true)} className="h-7 w-7 hover:bg-gray-100 hover:text-amber-600 rounded">
+                                <FileBox className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="PDF" onClick={exportToPDF} className="h-7 w-7 hover:bg-gray-100 hover:text-rose-600 rounded">
+                                <FileText className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Print" onClick={handlePrint} className="h-7 w-7 hover:bg-gray-100 hover:text-gray-900 rounded">
+                                <Printer className="h-3.5 w-3.5" />
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -180,14 +270,7 @@ export default function AuditTrailReportPage() {
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-12">
-                                        <div className="flex items-center justify-center gap-2 text-gray-400">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-                                            Loading...
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
+                                <TableSkeleton cols={7} />
                             ) : reportList.length === 0 ? (
                                 <TableRow className="hover:bg-transparent h-64">
                                     <TableCell colSpan={7} className="text-center py-12">

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -10,13 +11,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { 
-    Copy, FileSpreadsheet, FileBox, Printer, Columns, 
-    ChevronLeft, ChevronRight, Search, ArrowUpDown, X, Plus, Pencil, Trash2
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+    ChevronLeft, ChevronRight, Search, Plus, Pencil, Trash2,
+    CalendarRange, Calendar, Loader2, FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
+interface HolidayTypeOption { id: string | number; name: string; }
 
 interface CalendarEntry {
     id: string;
@@ -29,52 +33,54 @@ interface CalendarEntry {
     is_front_site: boolean;
 }
 
+const PAGE_SIZES = ["10", "25", "50", "100"];
+
+function TableSkeleton({ cols }: { cols: number }) {
+    return (
+        <>
+            {Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <Skeleton className="h-4 rounded" style={{ width: `${55 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
+
 export default function AnnualCalendarPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterType, setFilterType] = useState<string>("all");
-    const [holidayTypes, setHolidayTypes] = useState<any[]>([]);
+    const [holidayTypes, setHolidayTypes] = useState<HolidayTypeOption[]>([]);
     const [calendarData, setCalendarData] = useState<CalendarEntry[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    
-    // Pagination
+
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState("50");
     const [totalEntries, setTotalEntries] = useState(0);
 
-    // Form Modal state
     const [open, setOpen] = useState(false);
     const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
-        start_date: "",
-        end_date: "",
-        holiday_type_id: "",
-        description: "",
-        is_front_site: true
+        start_date: "", end_date: "", holiday_type_id: "", description: "", is_front_site: true,
     });
-
-    // Delete dialog state
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchHolidayTypes();
-    }, []);
-
-    useEffect(() => {
-        fetchCalendarData();
-    }, [currentPage, itemsPerPage, searchTerm, filterType]);
-
-    const fetchHolidayTypes = async () => {
+    const fetchHolidayTypes = useCallback(async () => {
         try {
             const response = await api.get('/annual-calendar/holiday-types?no_paginate=true');
             setHolidayTypes(response.data || []);
-        } catch (error) {
-            console.error("Failed to fetch holiday types", error);
+        } catch {
+            console.error("Failed to fetch holiday types");
         }
-    };
+    }, []);
 
-    const fetchCalendarData = async () => {
+    const fetchCalendarData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get('/annual-calendar/annual-calendars', {
@@ -82,8 +88,8 @@ export default function AnnualCalendarPage() {
                     page: currentPage,
                     per_page: itemsPerPage,
                     search: searchTerm,
-                    holiday_type_id: filterType !== "all" ? filterType : undefined
-                }
+                    holiday_type_id: filterType !== "all" ? filterType : undefined,
+                },
             });
             if (response.data && response.data.data) {
                 setCalendarData(response.data.data || []);
@@ -92,34 +98,31 @@ export default function AnnualCalendarPage() {
                 setCalendarData(response.data || []);
                 setTotalEntries(response.data.length || 0);
             }
-        } catch (error) {
-            console.error("Failed to fetch calendar data", error);
+        } catch {
             toast.error("Failed to load calendar entries");
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPage, itemsPerPage, searchTerm, filterType]);
+
+    useEffect(() => { fetchHolidayTypes(); }, [fetchHolidayTypes]);
+    useEffect(() => { fetchCalendarData(); }, [fetchCalendarData]);
 
     const handleSave = async () => {
         if (!formData.start_date || !formData.end_date || !formData.holiday_type_id || !formData.description) {
-            toast.error("Required fields missing");
-            return;
+            toast.error("All fields are required"); return;
         }
-
         setSubmitting(true);
         try {
             if (dialogMode === "edit" && selectedId) {
                 await api.put(`/annual-calendar/annual-calendars/${selectedId}`, formData);
-                toast.success("Calendar entry updated successfully");
+                toast.success("Calendar entry updated");
             } else {
                 await api.post('/annual-calendar/annual-calendars', formData);
-                toast.success("Calendar entry scheduled successfully");
+                toast.success("Calendar entry created");
             }
-            setOpen(false);
-            resetForm();
-            fetchCalendarData();
-        } catch (error) {
-            console.error("Failed to save calendar entry", error);
+            setOpen(false); resetForm(); fetchCalendarData();
+        } catch {
             toast.error("Failed to save calendar entry");
         } finally {
             setSubmitting(false);
@@ -134,7 +137,7 @@ export default function AnnualCalendarPage() {
             end_date: entry.end_date,
             holiday_type_id: entry.holiday_type_id.toString(),
             description: entry.description,
-            is_front_site: !!entry.is_front_site
+            is_front_site: !!entry.is_front_site,
         });
         setOpen(true);
     };
@@ -143,11 +146,10 @@ export default function AnnualCalendarPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/annual-calendar/annual-calendars/${deleteId}`);
-            toast.success("Calendar entry expunged successfully");
+            toast.success("Calendar entry deleted");
             fetchCalendarData();
-        } catch (error) {
-            console.error("Failed to delete calendar entry", error);
-            toast.error("Failed to expunge calendar entry");
+        } catch {
+            toast.error("Failed to delete calendar entry");
         } finally {
             setDeleteId(null);
         }
@@ -156,354 +158,199 @@ export default function AnnualCalendarPage() {
     const resetForm = () => {
         setDialogMode("add");
         setSelectedId(null);
-        setFormData({
-            start_date: "",
-            end_date: "",
-            holiday_type_id: "",
-            description: "",
-            is_front_site: true
-        });
+        setFormData({ start_date: "", end_date: "", holiday_type_id: "", description: "", is_front_site: true });
     };
 
-    // Date parser helper to format as MM/DD/YYYY
     const formatDate = (dateStr: string) => {
-        try {
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr;
-            const pad = (n: number) => n.toString().padStart(2, '0');
-            return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
-        } catch {
-            return dateStr;
-        }
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
     };
 
-    // Calculate pagination variables
     const sizeNum = parseInt(itemsPerPage, 10) || 50;
     const totalPages = Math.ceil(totalEntries / sizeNum) || 1;
     const safePage = Math.min(currentPage, totalPages);
     const startIndex = (safePage - 1) * sizeNum;
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            
-            {/* Header */}
-            <div className="bg-white border border-gray-100 rounded shadow-sm p-4 flex items-center justify-between">
-                <h1 className="text-sm font-semibold tracking-tight text-gray-800">Annual Calendar</h1>
-                <Button 
-                    onClick={() => { resetForm(); setOpen(true); }}
-                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
-                >
-                    <Plus className="h-3.5 w-3.5" />
-                    Add
-                </Button>
-            </div>
-
-            {/* Criteria Filter Selection Section */}
-            <div className="bg-white rounded border border-gray-100 p-4 shadow-sm space-y-2">
-                <Label className="text-[11px] font-medium text-gray-700">Type <span className="text-red-500">*</span></Label>
-                <div className="flex items-center gap-3">
-                    <Select value={filterType} onValueChange={setFilterType}>
-                        <SelectTrigger className="w-full md:w-[250px] h-9 border-gray-200 text-xs rounded text-gray-700 bg-white">
-                            <SelectValue placeholder="Select Type" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded shadow-xl">
-                            <SelectItem value="all">All Types</SelectItem>
-                            {holidayTypes.map(t => (
-                                <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Button 
-                        onClick={fetchCalendarData} 
-                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-5 h-9 text-xs font-bold rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
-                    >
-                        <Search className="h-3.5 w-3.5" /> Search
-                    </Button>
-                </div>
-            </div>
-
-            {/* List Header label */}
-            <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider pl-1 pt-2">Calendar List</div>
-
-            {/* Table Card Panel */}
-            <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[500px]">
-
-                {/* Table Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-3">
-                    <div className="relative w-full md:w-64">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                        <Input
-                            placeholder="Search"
-                            value={searchTerm}
-                            onChange={(e) => {
-                                setSearchTerm(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="pl-8 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
-                        />
+        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <CalendarRange className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold text-slate-800 leading-none">Annual Calendar</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">Manage holidays, events, and vacation schedules</p>
+                        </div>
                     </div>
+                    <Button onClick={() => { resetForm(); setOpen(true); }}
+                        className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all shrink-0">
+                        <Plus className="h-4 w-4" /> Add Entry
+                    </Button>
+                </CardHeader>
 
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
-                            <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 shadow-none rounded font-semibold text-gray-700 bg-white">
-                                    <SelectValue placeholder="50" />
-                                </SelectTrigger>
+                <CardContent className="p-5 space-y-4">
+                    {/* Filters */}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                            <div className="space-y-1.5 w-full sm:w-56">
+                                <Label className="text-xs font-semibold text-gray-600">Holiday Type</Label>
+                                <Select value={filterType} onValueChange={v => { setFilterType(v); setCurrentPage(1); }}>
+                                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="All Types" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Types</SelectItem>
+                                        {holidayTypes.map(t => (
+                                            <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1.5 w-full sm:w-64">
+                                <Label className="text-xs font-semibold text-gray-600">Search</Label>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <Input placeholder="Search description..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="pl-9 h-9 text-xs" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">Show</span>
+                            <Select value={itemsPerPage} onValueChange={v => { setItemsPerPage(v); setCurrentPage(1); }}>
+                                <SelectTrigger className="h-9 w-[70px] text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    {PAGE_SIZES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="flex items-center gap-1 text-gray-400">
-                            {[Copy, FileSpreadsheet, FileBox, Printer, Columns].map((Icon, i) => (
-                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                    <Icon className="h-3.5 w-3.5" />
-                                </Button>
-                            ))}
-                        </div>
                     </div>
-                </div>
 
-                {/* Table Area */}
-                <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
-                    <Table className="min-w-[1000px]">
-                        <TableHeader className="bg-transparent border-b border-gray-100">
-                            <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                <TableHead className="py-3 px-4">Date <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Type <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Description <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Created By <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4 text-center">Front Site <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4 text-right">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12">
-                                        <div className="flex items-center justify-center gap-2 text-gray-400">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-                                            Auditing Annual Calendar...
-                                        </div>
-                                    </TableCell>
+                    {/* Table */}
+                    <div className="rounded-md border overflow-x-auto">
+                        <Table className="min-w-[900px]">
+                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                                <TableRow className="hover:bg-transparent whitespace-nowrap">
+                                    <TableHead className="font-semibold text-gray-600">Date</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Type</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Description</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">Created By</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center">Front Site</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right w-[100px]">Action</TableHead>
                                 </TableRow>
-                            ) : calendarData.length === 0 ? (
-                                <TableRow className="hover:bg-transparent h-64">
-                                    <TableCell colSpan={6} className="text-center py-12 text-gray-400 font-bold uppercase text-[10px] tracking-widest">
-                                        No annual calendar events scheduled.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                calendarData.map((item, idx) => (
-                                    <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap">
-                                        <TableCell className="py-3 px-4 text-gray-700 font-medium">
-                                            {formatDate(item.start_date)} To {formatDate(item.end_date)}
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? <TableSkeleton cols={6} /> : calendarData.length === 0 ? (
+                                    <TableRow><TableCell colSpan={6} className="py-14 text-center"><div className="flex flex-col items-center gap-2 text-gray-400"><FolderOpen className="h-8 w-8 opacity-40" /><span className="text-xs">No calendar entries found.</span></div></TableCell></TableRow>
+                                ) : calendarData.map((item, idx) => (
+                                    <TableRow key={item.id || idx} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                        <TableCell className="py-3 font-medium text-gray-800">
+                                            <span className="flex items-center gap-1.5 whitespace-nowrap"><Calendar className="h-3 w-3 text-indigo-400" />{formatDate(item.start_date)} – {formatDate(item.end_date)}</span>
                                         </TableCell>
-                                        <TableCell className="py-3 px-4 text-gray-600 font-medium">{item.holiday_type?.name || "-"}</TableCell>
-                                        <TableCell className="py-3 px-4 text-gray-600 max-w-[300px] truncate" title={item.description}>{item.description}</TableCell>
-                                        <TableCell className="py-3 px-4 text-gray-600 font-medium">
-                                            {item.creator ? `${item.creator.name} ${item.creator.last_name || ""} (${item.creator.staff_id || "9000"})` : "Joe Black (9000)"}
+                                        <TableCell className="py-3">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 text-[10px] font-semibold">{item.holiday_type?.name || "—"}</span>
                                         </TableCell>
-                                        <TableCell className="py-3 px-4 text-center text-gray-700 font-semibold">{item.is_front_site ? "Yes" : "No"}</TableCell>
-                                        <TableCell className="py-3 px-4 text-right">
-                                            <div className="flex items-center justify-end gap-1.5 ml-auto">
-                                                <Button 
-                                                    onClick={() => handleEdit(item)}
-                                                    className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                                                    title="Edit Entry"
-                                                >
-                                                    <Pencil className="h-3 w-3" />
-                                                </Button>
-                                                <Button 
-                                                    onClick={() => setDeleteId(item.id)}
-                                                    className="bg-[#6366f1] hover:bg-[#5558e6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                                                    title="Delete Entry"
-                                                >
-                                                    <Trash2 className="h-3 w-3" />
-                                                </Button>
+                                        <TableCell className="py-3 text-gray-600 max-w-[280px] truncate" title={item.description}>{item.description}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">
+                                            {item.creator ? `${item.creator.name} ${item.creator.last_name || ""}`.trim() : "—"}
+                                        </TableCell>
+                                        <TableCell className="py-3 text-center">
+                                            <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold", item.is_front_site ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500")}>{item.is_front_site ? "Yes" : "No"}</span>
+                                        </TableCell>
+                                        <TableCell className="py-3 text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button onClick={() => handleEdit(item)} size="sm" className="h-7 w-7 p-0 rounded bg-amber-500 hover:bg-amber-600 text-white shadow-sm active:scale-95"><Pencil className="h-4 w-4" /></Button>
+                                                <Button onClick={() => setDeleteId(item.id)} size="sm" className="h-7 w-7 p-0 rounded bg-red-500 hover:bg-red-600 text-white shadow-sm active:scale-95"><Trash2 className="h-4 w-4" /></Button>
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-
-                {/* Footer Controls */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
-                    <div>
-                        Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                        {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                                ))}
+                            </TableBody>
+                        </Table>
                     </div>
 
-                    {totalEntries > 0 && (
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                disabled={safePage === 1}
-                                onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </button>
+                    {/* Pagination */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium">
+                        <div>Showing {totalEntries > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries</div>
+                        {totalPages > 1 && (
+                            <div className="flex gap-1">
+                                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, safePage - 3), safePage + 2).map(page => (
+                                    <Button key={page} size="sm" onClick={() => setCurrentPage(page)} className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold", safePage === page ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}>{page}</Button>
+                                ))}
+                                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 disabled:opacity-40"><ChevronRight className="h-4 w-4" /></Button>
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
 
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                <button
-                                    key={page}
-                                    onClick={() => setCurrentPage(page)}
-                                    className={cn(
-                                        "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer font-bold",
-                                        safePage === page
-                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95"
-                                            : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
-                                    )}
-                                >
-                                    {page}
-                                </button>
-                            ))}
-
-                            <button
-                                disabled={safePage === totalPages}
-                                onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-            </div>
-
-            {/* Add / Edit Dialog Modal */}
+            {/* Add/Edit Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="max-w-[650px] p-0 overflow-hidden bg-white border border-gray-200 shadow-2xl rounded text-gray-700">
-                    
-                    {/* Header */}
-                    <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
-                        <DialogHeader>
-                            <DialogTitle className="text-white text-sm font-semibold tracking-tight">
-                                {dialogMode === "edit" ? "Edit Calendar Entry" : "Add Calendar Entry"}
-                            </DialogTitle>
-                        </DialogHeader>
-                        <button 
-                            onClick={() => setOpen(false)} 
-                            className="text-white/80 hover:text-white transition-colors cursor-pointer"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
-                    </div>
-
-                    {/* Form Fields */}
-                    <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar text-xs">
-                        
+                <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden">
+                    <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b">
+                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm"><CalendarRange className="h-4 w-4" /></span>
+                            {dialogMode === "edit" ? "Edit Calendar Entry" : "Add Calendar Entry"}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
                         <div className="grid grid-cols-2 gap-4">
-                            {/* Start Date */}
-                            <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">Start Date <span className="text-red-500">*</span></Label>
-                                <Input
-                                    type="date"
-                                    value={formData.start_date}
-                                    onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                                    className="h-9 border-gray-200 focus-visible:ring-indigo-500 rounded text-xs shadow-none w-full"
-                                />
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-gray-600">Start Date <span className="text-red-500">*</span></Label>
+                                <Input type="date" value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} className="h-9 text-xs" />
                             </div>
-
-                            {/* End Date */}
-                            <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">End Date <span className="text-red-500">*</span></Label>
-                                <Input
-                                    type="date"
-                                    value={formData.end_date}
-                                    onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-                                    className="h-9 border-gray-200 focus-visible:ring-indigo-500 rounded text-xs shadow-none w-full"
-                                />
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-gray-600">End Date <span className="text-red-500">*</span></Label>
+                                <Input type="date" value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} className="h-9 text-xs" />
                             </div>
                         </div>
-
-                        {/* Holiday Type */}
-                        <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Holiday Type <span className="text-red-500">*</span></Label>
-                            <Select value={formData.holiday_type_id} onValueChange={(val) => setFormData({...formData, holiday_type_id: val})}>
-                                <SelectTrigger className="h-9 border-gray-200 text-xs rounded text-gray-700 bg-white">
-                                    <SelectValue placeholder="Select Type" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded shadow-xl">
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-gray-600">Holiday Type <span className="text-red-500">*</span></Label>
+                            <Select value={formData.holiday_type_id} onValueChange={v => setFormData({ ...formData, holiday_type_id: v })}>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select type" /></SelectTrigger>
+                                <SelectContent>
                                     {holidayTypes.map(t => (
                                         <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
-
-                        {/* Description / Agenda */}
-                        <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Description <span className="text-red-500">*</span></Label>
-                            <Textarea
-                                value={formData.description}
-                                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                placeholder="Session Details"
-                                className="min-h-[100px] border-gray-200 focus-visible:ring-indigo-500 rounded text-xs shadow-none resize-none w-full p-2"
-                            />
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-gray-600">Description <span className="text-red-500">*</span></Label>
+                            <Textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={3} className="text-xs resize-none" placeholder="Event details" />
                         </div>
-
-                        {/* Publish toggle */}
                         <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg">
                             <div className="space-y-0.5">
-                                <Label className="text-[11px] font-medium text-gray-700">Publish on front site</Label>
-                                <p className="text-[10px] text-gray-400">Makes this calendar entry visible to public users</p>
+                                <Label className="text-xs font-semibold text-gray-700">Publish on front site</Label>
+                                <p className="text-[10px] text-gray-400">Visible to students and public users</p>
                             </div>
-                            <Switch 
-                                checked={formData.is_front_site}
-                                onCheckedChange={(val) => setFormData({...formData, is_front_site: val})}
-                                className="data-[state=checked]:bg-emerald-500"
-                            />
+                            <Switch checked={formData.is_front_site} onCheckedChange={v => setFormData({ ...formData, is_front_site: v })} className="data-[state=checked]:bg-emerald-500" />
                         </div>
-
                     </div>
-
-                    {/* Footer Actions */}
-                    <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2 text-xs">
-                        <Button 
-                            variant="outline" 
-                            onClick={() => setOpen(false)}
-                            className="h-8.5 px-4 font-semibold text-gray-500 border-gray-200 hover:bg-gray-100 rounded cursor-pointer"
-                        >
-                            Cancel
+                    <DialogFooter className="px-5 py-4 border-t bg-gray-50">
+                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-9 px-5 text-xs font-bold">Cancel</Button>
+                        <Button onClick={handleSave} disabled={submitting} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95">
+                            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Entry"}
                         </Button>
-                        <Button 
-                            onClick={handleSave}
-                            disabled={submitting}
-                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-5 h-8.5 font-bold rounded shadow transition-all active:scale-95 border-0 cursor-pointer"
-                        >
-                            Save
-                        </Button>
-                    </div>
-
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation Dialog */}
-            <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="max-w-[450px] p-6 bg-white border border-gray-200 shadow-2xl rounded text-gray-700 text-xs">
+            {/* Delete Alert */}
+            <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
+                <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-gray-800 text-sm font-semibold tracking-tight">Expunge Calendar Entry</AlertDialogTitle>
-                        <AlertDialogDescription className="text-gray-500 text-xs leading-relaxed mt-2">
-                            Are you sure you want to permanently delete this calendar entry? This action will immediately remove the holiday, event, or vacation schedule from all public and internal dashboards.
-                        </AlertDialogDescription>
+                        <AlertDialogTitle>Delete Calendar Entry</AlertDialogTitle>
+                        <AlertDialogDescription>This action cannot be undone. The calendar entry will be permanently removed from all dashboards.</AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-6 gap-2">
-                        <AlertDialogCancel className="h-8.5 px-4 font-semibold text-gray-500 border-gray-200 hover:bg-gray-100 rounded cursor-pointer">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 text-white h-8.5 px-4 font-bold rounded shadow transition-all active:scale-95 border-0 cursor-pointer">
-                            Confirm Expunge
-                        </AlertDialogAction>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
         </div>
     );
 }

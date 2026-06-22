@@ -31,13 +31,35 @@ import {
     FileBox,
     FileText,
     Printer,
-    Columns,
     ChevronLeft,
     ChevronRight,
     ArrowUpDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Monitor } from "lucide-react";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+function TableSkeleton({ cols }: { cols: number }) {
+    return (
+        <>
+            {Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                    {Array.from({ length: cols }).map((_, j) => (
+                        <TableCell key={j} className="py-3">
+                            <Skeleton className="h-4 rounded" style={{ width: `${55 + ((i * 3 + j * 7) % 35)}%` }} />
+                        </TableCell>
+                    ))}
+                </TableRow>
+            ))}
+        </>
+    );
+}
 
 export default function TransportReportPage() {
     const { symbol } = useCurrencyFormatter();
@@ -141,44 +163,111 @@ export default function TransportReportPage() {
     const startIndex = (safePage - 1) * sizeNum;
     const paginatedReportList = filteredReport.slice(startIndex, startIndex + sizeNum);
 
-    return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Transport Report</h1>
+    // ── Export helpers ────────────────────────────────────────────────────────
+    const exportToCopy = () => {
+        if (filteredReport.length === 0) { toast.error("No data to copy"); return; }
+        const text = [
+            "Class\tAdmission No\tStudent Name\tMobile Number\tFather Name\tRoute Title\tVehicle Number\tPickup Point\tDriver Name\tDriver Contact\tFare",
+            ...filteredReport.map((r: any) => `${r.class}\t${r.admission_no}\t${r.student_name}\t${r.mobile_number}\t${r.father_name}\t${r.route_title}\t${r.vehicle_number}\t${r.pickup_point}\t${r.driver_name}\t${r.driver_contact}\t${symbol}${r.fare}`)
+        ].join("\n");
+        navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard");
+    };
 
-            {/* Report Links Grid */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {[
-                        { name: "Transport Report", icon: Bus, active: true }
-                    ].map((link) => {
-                        const isActive = link.active;
-                        return (
-                            <div 
-                                key={link.name}
-                                className={cn(
-                                    "flex items-center gap-3 p-3 px-4 rounded-lg border transition-all duration-300 cursor-pointer group relative overflow-hidden",
-                                    isActive 
-                                        ? "bg-white border-gray-300 shadow-[0_10px_25px_rgba(0,0,0,0.08)] ring-1 ring-gray-400/10 -translate-y-0.5" 
-                                        : "bg-white border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] hover:border-gray-200 hover:-translate-y-0.5"
-                                )}
-                            >
-                                <div className={cn(
-                                    "p-2 rounded-lg transition-all duration-300",
-                                    isActive ? "bg-gray-100 text-gray-900 shadow-inner" : "bg-gray-50 text-gray-400 group-hover:bg-gray-100 group-hover:text-gray-600"
-                                )}>
-                                    <link.icon className="h-4 w-4" />
-                                </div>
-                                <span className={cn(
-                                    "text-[10px] font-bold tracking-tight uppercase transition-colors duration-300",
-                                    isActive ? "text-gray-900" : "text-gray-500 group-hover:text-gray-700"
-                                )}>
-                                    {link.name}
-                                </span>
+    const exportToExcel = (isCsv = false) => {
+        if (filteredReport.length === 0) { toast.error("No data to export"); return; }
+        const mapped = filteredReport.map((r: any) => ({
+            "Class": r.class,
+            "Admission No": r.admission_no,
+            "Student Name": r.student_name,
+            "Mobile Number": r.mobile_number,
+            "Father Name": r.father_name,
+            "Route Title": r.route_title,
+            "Vehicle Number": r.vehicle_number,
+            "Pickup Point": r.pickup_point,
+            "Driver Name": r.driver_name,
+            "Driver Contact": r.driver_contact,
+            "Fare": `${symbol}${r.fare}`,
+        }));
+        const ws = XLSX.utils.json_to_sheet(mapped);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Transport Report");
+        if (isCsv) { XLSX.writeFile(wb, "transport_report.csv", { bookType: "csv" }); toast.success("CSV downloaded"); }
+        else { XLSX.writeFile(wb, "transport_report.xlsx"); toast.success("Excel file downloaded"); }
+    };
+
+    const exportToPDF = () => {
+        if (filteredReport.length === 0) { toast.error("No data to export"); return; }
+        const doc = new jsPDF("landscape");
+        const head = [["Class", "Admission No", "Student Name", "Mobile", "Father Name", "Route", "Vehicle", "Pickup Point", "Driver", "Driver Contact", "Fare"]];
+        const body = filteredReport.map((r: any) => [r.class, r.admission_no, r.student_name, r.mobile_number, r.father_name, r.route_title, r.vehicle_number, r.pickup_point, r.driver_name, r.driver_contact, `${symbol}${r.fare}`]);
+        autoTable(doc, { head, body, theme: "grid" });
+        doc.save("transport_report.pdf");
+        toast.success("PDF downloaded");
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    return (
+        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20 text-xs">
+            {/* Gradient header card with report-type tabs inside */}
+            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Bus className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Transport Report</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">Student transport route and vehicle assignments</p>
                             </div>
-                        );
-                    })}
-                </div>
-            </div>
+                        </div>
+                        <Link
+                            href="/user/transport-routes"
+                            className="flex items-center gap-1.5 h-8 px-3.5 rounded-[10px] text-white text-[11px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 shadow-sm"
+                        >
+                            <Monitor className="h-3.5 w-3.5" />
+                            Student Portal View
+                        </Link>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                        {[
+                            { name: "Transport Report", icon: Bus, active: true }
+                        ].map((link) => {
+                            const isActive = link.active;
+                            return (
+                                <div
+                                    key={link.name}
+                                    className={cn(
+                                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all group",
+                                        isActive
+                                            ? "border-indigo-200 bg-indigo-50/50 shadow-sm"
+                                            : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "p-2 rounded-lg transition-all duration-300",
+                                        isActive ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
+                                    )}>
+                                        <link.icon className="h-4 w-4" />
+                                    </div>
+                                    <span className={cn(
+                                        "text-[10px] font-bold tracking-tight uppercase transition-colors duration-300",
+                                        isActive ? "text-indigo-700" : "text-gray-600"
+                                    )}>
+                                        {link.name}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Select Criteria Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
@@ -306,11 +395,21 @@ export default function TransportReportPage() {
                             </Select>
                         </div>
                         <div className="flex items-center gap-1 text-gray-400">
-                            {[Copy, FileSpreadsheet, FileBox, FileText, Printer, Columns].map((Icon, i) => (
-                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                    <Icon className="h-3.5 w-3.5" />
-                                </Button>
-                            ))}
+                            <Button variant="ghost" size="icon" title="Copy" onClick={exportToCopy} className="h-7 w-7 hover:bg-gray-100 hover:text-indigo-600 rounded">
+                                <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Excel" onClick={() => exportToExcel(false)} className="h-7 w-7 hover:bg-gray-100 hover:text-emerald-600 rounded">
+                                <FileSpreadsheet className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="CSV" onClick={() => exportToExcel(true)} className="h-7 w-7 hover:bg-gray-100 hover:text-amber-600 rounded">
+                                <FileBox className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="PDF" onClick={exportToPDF} className="h-7 w-7 hover:bg-gray-100 hover:text-rose-600 rounded">
+                                <FileText className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Print" onClick={handlePrint} className="h-7 w-7 hover:bg-gray-100 hover:text-gray-900 rounded">
+                                <Printer className="h-3.5 w-3.5" />
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -335,14 +434,7 @@ export default function TransportReportPage() {
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={11} className="text-center py-12">
-                                        <div className="flex items-center justify-center gap-2 text-gray-400">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-                                            Loading...
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
+                                <TableSkeleton cols={11} />
                             ) : !isSearched ? (
                                 <TableRow className="hover:bg-transparent h-64">
                                     <TableCell colSpan={11} className="text-center py-12">

@@ -3,34 +3,22 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-    Menu,
-    Pencil,
-    Trash2,
-    Loader2,
-    X,
-    ChevronLeft,
-    ChevronRight
+    Menu, Pencil, Trash2, Loader2, Link,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/use-toast";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 interface MenuItem {
@@ -47,6 +35,23 @@ interface MenuItem {
     sub_items?: MenuItem[];
 }
 
+function MenuSkeleton() {
+    return (
+        <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100">
+                    <Skeleton className="h-4 w-4 rounded" />
+                    <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-3 w-1/3 rounded" />
+                        <Skeleton className="h-2.5 w-1/2 rounded" />
+                    </div>
+                    <Skeleton className="h-6 w-12 rounded" />
+                </div>
+            ))}
+        </div>
+    );
+}
+
 export default function MenusPage() {
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState<"main" | "bottom">("main");
@@ -56,18 +61,12 @@ export default function MenusPage() {
     const [pages, setPages] = useState<{ id: number, title: string, url: string }[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-    
-    const [formData, setFormData] = useState({
-        title: "",
-        is_external: false,
-        open_new_tab: false,
-        url: "",
-        page: "",
-        column: 1,
+
+    const [form, setForm] = useState({
+        title: "", is_external: false, open_new_tab: false,
+        url: "", page: "", column: 1,
     });
 
-    // Delete confirmation state
-    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [deleting, setDeleting] = useState(false);
 
@@ -79,137 +78,79 @@ export default function MenusPage() {
     const fetchPages = async () => {
         try {
             const res = await api.get("front-cms/pages");
-            if (res.data?.status === "Success") {
-                setPages(res.data.data);
-            }
-        } catch (error) {
-            console.error("Failed to load pages", error);
-        }
+            if (res.data?.status === "Success") setPages(res.data.data);
+        } catch { console.error("Failed to load pages"); }
     };
 
     const fetchMenus = async () => {
         setLoading(true);
         try {
             const res = await api.get("front-cms/menus");
-            if (res.data?.status === "Success") {
-                setMenus(res.data.data);
-            }
-        } catch (error) {
-            toast("error", "Failed to load menus");
-        } finally {
-            setLoading(false);
-        }
+            if (res.data?.status === "Success") setMenus(res.data.data);
+        } catch { toast({ title: "Error", description: "Failed to load menus", variant: "destructive" }); }
+        finally { setLoading(false); }
     };
 
     const handleSave = async () => {
-        if (!formData.title) {
-            toast("error", "Title is required");
-            return;
+        if (!form.title) {
+            toast({ title: "Validation", description: "Title is required", variant: "destructive" }); return;
         }
-
         setSaving(true);
         try {
-            const payload = {
-                ...formData,
-                type: activeTab
-            };
-
-            let res;
-            if (editingId) {
-                res = await api.put(`front-cms/menus/${editingId}`, payload);
-            } else {
-                res = await api.post("front-cms/menus", payload);
-            }
-
-            if (res.data?.status === "Success" || res.status === 201 || res.status === 200) {
-                toast("success", editingId ? "Menu item updated successfully" : "Menu item added successfully");
-                handleCancelEdit();
-                fetchMenus();
-            }
-        } catch (error) {
-            toast("error", "Failed to save menu");
-        } finally {
-            setSaving(false);
-        }
+            const payload = { ...form, type: activeTab };
+            if (editingId) await api.put(`front-cms/menus/${editingId}`, payload);
+            else await api.post("front-cms/menus", payload);
+            toast({ title: "Success", description: editingId ? "Menu item updated" : "Menu item added" });
+            handleCancel(); fetchMenus();
+        } catch { toast({ title: "Error", description: "Failed to save menu", variant: "destructive" }); }
+        finally { setSaving(false); }
     };
 
     const handleEdit = (item: MenuItem) => {
         setEditingId(item.id);
         setActiveTab(item.type as "main" | "bottom");
-        setFormData({
-            title: item.title,
-            is_external: item.is_external,
-            open_new_tab: item.open_new_tab,
-            url: item.url || "",
-            page: item.page || "",
-            column: item.column || 1,
+        setForm({
+            title: item.title, is_external: item.is_external, open_new_tab: item.open_new_tab,
+            url: item.url || "", page: item.page || "", column: item.column || 1,
         });
     };
 
-    const handleCancelEdit = () => {
+    const handleCancel = () => {
         setEditingId(null);
-        setFormData({
-            title: "",
-            is_external: false,
-            open_new_tab: false,
-            url: "",
-            page: "",
-            column: 1,
-        });
-    };
-
-    const handleDelete = (id: number) => {
-        setDeleteId(id);
-        setIsDeleteOpen(true);
+        setForm({ title: "", is_external: false, open_new_tab: false, url: "", page: "", column: 1 });
     };
 
     const confirmDelete = async () => {
         if (!deleteId) return;
-        
         setDeleting(true);
         try {
-            const res = await api.delete(`front-cms/menus/${deleteId}`);
-            if (res.data?.status === "Success") {
-                toast("success", "Menu item deleted successfully");
-                setIsDeleteOpen(false);
-                setDeleteId(null);
-                fetchMenus();
-            }
-        } catch (error: any) {
-            toast("error", error.response?.data?.message || "Failed to delete menu item");
-        } finally {
-            setDeleting(false);
-        }
+            await api.delete(`front-cms/menus/${deleteId}`);
+            toast({ title: "Success", description: "Menu item deleted" });
+            setDeleteId(null); fetchMenus();
+        } catch (err) {
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+            toast({ title: "Error", description: msg || "Failed to delete", variant: "destructive" });
+        } finally { setDeleting(false); }
     };
 
     const handleDragEnd = async (result: DropResult) => {
         if (!result.destination) return;
+        const sIdx = result.source.index, dIdx = result.destination.index;
+        if (sIdx === dIdx) return;
 
-        const sourceIndex = result.source.index;
-        const destinationIndex = result.destination.index;
+        const current = [...menus.filter(m => m.type === activeTab)];
+        const [moved] = current.splice(sIdx, 1);
+        current.splice(dIdx, 0, moved);
+        const updated = current.map((item, i) => ({ ...item, order: i }));
 
-        if (sourceIndex === destinationIndex) return;
-
-        const currentActiveMenus = [...menus.filter(m => m.type === activeTab)];
-        const [reorderedItem] = currentActiveMenus.splice(sourceIndex, 1);
-        currentActiveMenus.splice(destinationIndex, 0, reorderedItem);
-
-        const updatedMenus = currentActiveMenus.map((item, index) => ({
-            ...item,
-            order: index
-        }));
-
-        setMenus(prev => {
-            const others = prev.filter(m => m.type !== activeTab);
-            return [...others, ...updatedMenus];
-        });
+        setMenus(prev => [...prev.filter(m => m.type !== activeTab), ...updated]);
 
         try {
             await api.post('front-cms/menus/reorder', {
-                items: updatedMenus.map(item => ({ id: item.id, order: item.order }))
+                items: updated.map(item => ({ id: item.id, order: item.order }))
             });
-        } catch (error) {
-            toast("error", "Failed to save menu order");
+        } catch {
+            toast({ title: "Error", description: "Failed to save order", variant: "destructive" });
             fetchMenus();
         }
     };
@@ -217,68 +158,51 @@ export default function MenusPage() {
     const currentMenus = menus.filter(m => m.type === activeTab).sort((a, b) => a.order - b.order);
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            <div className="flex flex-col lg:flex-row gap-6">
-                {/* Left Section: Add Menu Item Form */}
-                <div className="w-full lg:w-[450px]">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-4 border-b border-gray-100">
-                            <h2 className="text-sm font-medium text-gray-800 tracking-tight">{editingId ? "Edit Menu Item" : "Add Menu Item"}</h2>
-                        </div>
-                        <div className="p-4 space-y-5">
+        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
+            <div className="flex flex-col lg:flex-row gap-5">
+                {/* Left Panel: Form */}
+                <div className="w-full lg:w-[420px] shrink-0">
+                    <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                        <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <div className="flex items-center gap-2.5">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                    <Link className="h-5 w-5" />
+                                </span>
+                                <CardTitle className="text-base font-bold text-slate-800 leading-none">
+                                    {editingId ? "Edit Menu Item" : "Add Menu Item"}
+                                </CardTitle>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-5 space-y-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Menu Item <span className="text-red-500 font-bold">*</span>
-                                </Label>
-                                <Input
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="h-9 border-gray-200 text-[11px] focus-visible:ring-indigo-500 rounded shadow-none"
-                                    placeholder=""
-                                />
+                                <Label className="text-xs font-semibold text-gray-600">Menu Item <span className="text-red-500">*</span></Label>
+                                <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" placeholder="Menu label" />
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 <div className="flex items-center justify-between py-1">
-                                    <Label className="text-[11px] font-medium text-gray-600">External URL</Label>
-                                    <Switch 
-                                        checked={formData.is_external}
-                                        onCheckedChange={(v) => setFormData({ ...formData, is_external: v })}
-                                        className="data-[state=checked]:bg-indigo-500 scale-75" 
-                                    />
+                                    <Label className="text-xs font-medium text-gray-600">External URL</Label>
+                                    <Switch checked={form.is_external} onCheckedChange={v => setForm({ ...form, is_external: v })} className="data-[state=checked]:bg-indigo-500" />
                                 </div>
                                 <div className="flex items-center justify-between py-1">
-                                    <Label className="text-[11px] font-medium text-gray-600">Open in New Tab</Label>
-                                    <Switch 
-                                        checked={formData.open_new_tab}
-                                        onCheckedChange={(v) => setFormData({ ...formData, open_new_tab: v })}
-                                        className="data-[state=checked]:bg-indigo-500 scale-75" 
-                                    />
+                                    <Label className="text-xs font-medium text-gray-600">Open in New Tab</Label>
+                                    <Switch checked={form.open_new_tab} onCheckedChange={v => setForm({ ...form, open_new_tab: v })} className="data-[state=checked]:bg-indigo-500" />
                                 </div>
                             </div>
 
-                            {formData.is_external ? (
+                            {form.is_external ? (
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">External URL Address</Label>
-                                    <Input
-                                        value={formData.url}
-                                        onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                                        className="h-9 border-gray-200 text-[11px] focus-visible:ring-indigo-500 rounded shadow-none"
-                                        placeholder="https://"
-                                    />
+                                    <Label className="text-xs font-semibold text-gray-600">External URL</Label>
+                                    <Input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} className="h-9 text-xs" placeholder="https://" />
                                 </div>
                             ) : (
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Pages</Label>
-                                    <Select value={formData.page} onValueChange={(v) => setFormData({ ...formData, page: v })}>
-                                        <SelectTrigger className="h-9 border-gray-200 text-[11px] shadow-none rounded">
-                                            <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
+                                    <Label className="text-xs font-semibold text-gray-600">Page</Label>
+                                    <Select value={form.page} onValueChange={v => setForm({ ...form, page: v })}>
+                                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a page" /></SelectTrigger>
                                         <SelectContent>
-                                            {pages.map((p) => (
-                                                <SelectItem key={p.id} value={p.url || p.title.toLowerCase().replace(/\s+/g, '-')}>
-                                                    {p.title}
-                                                </SelectItem>
+                                            {pages.map(p => (
+                                                <SelectItem key={p.id} value={p.url || p.title.toLowerCase().replace(/\s+/g, '-')}>{p.title}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -286,15 +210,10 @@ export default function MenusPage() {
                             )}
 
                             {activeTab === "bottom" && (
-                                <div className="space-y-1.5 pt-2 border-t border-gray-50 mt-2">
-                                    <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Footer Column</Label>
-                                    <Select 
-                                        value={formData.column.toString()} 
-                                        onValueChange={(v) => setFormData({ ...formData, column: parseInt(v) })}
-                                    >
-                                        <SelectTrigger className="h-9 border-gray-200 text-[11px] shadow-none rounded">
-                                            <SelectValue placeholder="Select Column" />
-                                        </SelectTrigger>
+                                <div className="space-y-1.5 pt-2 border-t border-gray-100">
+                                    <Label className="text-xs font-semibold text-gray-600">Footer Column</Label>
+                                    <Select value={form.column.toString()} onValueChange={v => setForm({ ...form, column: parseInt(v) })}>
+                                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="1">Column 1 (Logo & Bio)</SelectItem>
                                             <SelectItem value="2">Column 2 (Quick Links)</SelectItem>
@@ -307,100 +226,76 @@ export default function MenusPage() {
 
                             <div className="flex justify-end gap-2 pt-2">
                                 {editingId && (
-                                    <Button 
-                                        onClick={handleCancelEdit}
-                                        variant="outline"
-                                        className="h-9 px-4 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
-                                    >
-                                        Cancel
-                                    </Button>
+                                    <Button onClick={handleCancel} variant="outline" className="h-9 px-4 text-xs font-bold">Cancel</Button>
                                 )}
-                                <Button 
-                                    onClick={handleSave}
-                                    disabled={saving}
-                                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-[11px] font-bold uppercase transition-all rounded-full shadow-md"
-                                >
+                                <Button onClick={handleSave} disabled={saving} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95">
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : (editingId ? "Update" : "Save")}
                                 </Button>
                             </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
                 </div>
 
-                {/* Right Section: Menu Item List */}
+                {/* Right Panel: Menu List */}
                 <div className="flex-1 min-w-0">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden">
-                        <div className="flex justify-between items-center border-b border-gray-50 pb-4">
-                            <h1 className="text-sm font-medium text-gray-800 tracking-tight">Menu Item List</h1>
-                            <div className="flex bg-gray-50/50 p-1 rounded-lg border border-gray-100">
-                                <Button
-                                    onClick={() => setActiveTab("main")}
-                                    className={cn(
-                                        "h-7 px-4 text-[9px] font-bold uppercase rounded-md transition-all shadow-none",
-                                        activeTab === "main" ? "bg-gradient-to-r from-orange-400 to-indigo-500 text-white shadow-sm" : "bg-transparent text-gray-400 hover:text-gray-600"
-                                    )}
-                                >
+                    <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
+                        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <div className="flex items-center gap-2.5">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                    <Menu className="h-5 w-5" />
+                                </span>
+                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Menu Items</CardTitle>
+                            </div>
+                            <div className="flex bg-gray-100/80 p-0.5 rounded-lg border border-gray-200">
+                                <Button onClick={() => setActiveTab("main")} className={cn("h-7 px-4 text-[10px] font-bold uppercase rounded-md transition-all shadow-none", activeTab === "main" ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm" : "bg-transparent text-gray-400 hover:text-gray-600")}>
                                     Main Menu
                                 </Button>
-                                <Button
-                                    onClick={() => setActiveTab("bottom")}
-                                    className={cn(
-                                        "h-7 px-4 text-[9px] font-bold uppercase rounded-md transition-all shadow-none",
-                                        activeTab === "bottom" ? "bg-gradient-to-r from-orange-400 to-indigo-500 text-white shadow-sm" : "bg-transparent text-gray-400 hover:text-gray-600"
-                                    )}
-                                >
+                                <Button onClick={() => setActiveTab("bottom")} className={cn("h-7 px-4 text-[10px] font-bold uppercase rounded-md transition-all shadow-none", activeTab === "bottom" ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm" : "bg-transparent text-gray-400 hover:text-gray-600")}>
                                     Bottom Menu
                                 </Button>
                             </div>
-                        </div>
+                        </CardHeader>
 
-                        {loading ? (
-                            <div className="flex justify-center py-8">
-                                <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
-                            </div>
-                        ) : (
-                            <DragDropContext onDragEnd={handleDragEnd}>
-                                <Droppable droppableId="menu-list">
-                                    {(provided) => (
-                                        <div
-                                            {...provided.droppableProps}
-                                            ref={provided.innerRef}
-                                            className="space-y-1.5 pt-2"
-                                        >
-                                            {currentMenus.length === 0 ? (
-                                                <div className="text-center text-sm text-gray-400 py-4">No menu items found.</div>
-                                            ) : (
-                                                currentMenus.map((item: MenuItem, index) => (
+                        <CardContent className="p-5">
+                            {loading ? (
+                                <MenuSkeleton />
+                            ) : currentMenus.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
+                                    <Menu className="h-8 w-8 opacity-30" />
+                                    <p className="text-xs font-medium">No menu items found.</p>
+                                </div>
+                            ) : (
+                                <DragDropContext onDragEnd={handleDragEnd}>
+                                    <Droppable droppableId="menu-list">
+                                        {(provided) => (
+                                            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-1.5">
+                                                {currentMenus.map((item, index) => (
                                                     <Draggable key={item.id.toString()} draggableId={item.id.toString()} index={index}>
                                                         {(provided) => (
-                                                            <div
-                                                                ref={provided.innerRef}
-                                                                {...provided.draggableProps}
-                                                                className="space-y-1.5"
-                                                            >
-                                                                <div className="flex items-center justify-between p-2 bg-white border border-gray-100 rounded group hover:border-indigo-100 transition-colors">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div {...provided.dragHandleProps}>
-                                                                            <Menu className="h-4 w-4 text-gray-400 group-hover:text-indigo-400 transition-colors cursor-move" />
+                                                            <div ref={provided.innerRef} {...provided.draggableProps} className="space-y-1">
+                                                                <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-lg group hover:border-indigo-200 hover:shadow-sm transition-all">
+                                                                    <div className="flex items-center gap-3 min-w-0">
+                                                                        <div {...provided.dragHandleProps} className="shrink-0">
+                                                                            <Menu className="h-4 w-4 text-gray-300 group-hover:text-indigo-400 transition-colors cursor-grab active:cursor-grabbing" />
                                                                         </div>
-                                                                        <div className="flex flex-col">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">{item.title}</span>
+                                                                        <div className="min-w-0">
+                                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                                <span className="text-xs font-bold text-gray-700">{item.title}</span>
                                                                                 {activeTab === "bottom" && (
-                                                                                    <span className="text-[7px] font-extrabold text-white bg-indigo-500 px-1.5 py-0.5 rounded uppercase">Col {item.column}</span>
+                                                                                    <span className="text-[8px] font-bold text-white bg-indigo-500 px-1.5 py-0.5 rounded uppercase">Col {item.column}</span>
                                                                                 )}
+                                                                                {!!item.is_external && <span className="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-semibold">External</span>}
                                                                             </div>
-                                                                             <span className="text-[8px] text-indigo-400 font-medium lowercase truncate max-w-[200px]">
-                                                                                 {item.is_external ? item.url : `${frontendUrl.replace(/\/$/, '')}/${(item.page || '').replace(/^\//, '')}`}
-                                                                             </span>
+                                                                            <span className="text-[9px] text-indigo-400 font-medium truncate block max-w-[250px]">
+                                                                                {item.is_external ? item.url : `${frontendUrl.replace(/\/$/, '')}/${(item.page || '').replace(/^\//, '')}`}
+                                                                            </span>
                                                                         </div>
-                                                                        {!!item.is_external && <span className="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">External</span>}
                                                                     </div>
-                                                                    <div className="flex items-center gap-1 transition-opacity">
-                                                                        <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="h-7 w-7 bg-[#6366f1] hover:bg-[#4f46e5] text-white rounded-[10px] shadow-md border-0">
+                                                                    <div className="flex items-center gap-1 shrink-0">
+                                                                        <Button size="sm" variant="ghost" onClick={() => handleEdit(item)} className="h-7 w-7 p-0 rounded bg-amber-500 hover:bg-amber-600 text-white shadow-sm active:scale-95">
                                                                             <Pencil className="h-3.5 w-3.5" />
                                                                         </Button>
-                                                                        <Button size="icon" variant="ghost" onClick={() => handleDelete(item.id)} className="h-7 w-7 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-[10px] shadow-md border-0">
+                                                                        <Button size="sm" variant="ghost" onClick={() => setDeleteId(item.id)} className="h-7 w-7 p-0 rounded bg-red-500 hover:bg-red-600 text-white shadow-sm active:scale-95">
                                                                             <Trash2 className="h-3.5 w-3.5" />
                                                                         </Button>
                                                                     </div>
@@ -408,24 +303,24 @@ export default function MenusPage() {
 
                                                                 {/* Sub Items */}
                                                                 {item.sub_items && item.sub_items.length > 0 && (
-                                                                    <div className="pl-8 space-y-1.5 border-l-2 border-indigo-50 ml-2">
-                                                                        {item.sub_items.map((sub) => (
-                                                                            <div key={sub.id} className="flex items-center justify-between p-2 bg-gray-50/50 border border-gray-100 rounded group hover:border-indigo-100 hover:bg-white transition-all">
-                                                                                 <div className="flex items-center gap-3">
-                                                                                     <Menu className="h-3.5 w-3.5 text-gray-300 group-hover:text-indigo-300 transition-colors cursor-move" />
-                                                                                     <div className="flex flex-col">
-                                                                                         <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tight">{sub.title}</span>
-                                                                                         <span className="text-[7px] text-indigo-400 font-medium lowercase truncate max-w-[150px]">
-                                                                                             {sub.is_external ? sub.url : `${frontendUrl.replace(/\/$/, '')}/${(sub.page || '').replace(/^\//, '')}`}
-                                                                                         </span>
-                                                                                     </div>
-                                                                                 </div>
-                                                                                <div className="flex items-center gap-1.5">
-                                                                                    <Button size="icon" variant="ghost" onClick={() => handleEdit(sub)} className="h-6 w-6 bg-[#6366f1] text-white rounded-[8px] shadow-sm">
-                                                                                        <Pencil className="h-2.5 w-2.5" />
+                                                                    <div className="pl-8 space-y-1 border-l-2 border-indigo-100 ml-3">
+                                                                        {item.sub_items.map(sub => (
+                                                                            <div key={sub.id} className="flex items-center justify-between p-2 bg-gray-50/50 border border-gray-100 rounded-lg group hover:border-indigo-200 hover:bg-white transition-all">
+                                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                                    <Menu className="h-3.5 w-3.5 text-gray-300 shrink-0" />
+                                                                                    <div className="min-w-0">
+                                                                                        <span className="text-[11px] font-semibold text-gray-600">{sub.title}</span>
+                                                                                        <span className="text-[8px] text-indigo-400 font-medium truncate block max-w-[180px]">
+                                                                                            {sub.is_external ? sub.url : `${frontendUrl.replace(/\/$/, '')}/${(sub.page || '').replace(/^\//, '')}`}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-1 shrink-0">
+                                                                                    <Button size="sm" variant="ghost" onClick={() => handleEdit(sub)} className="h-6 w-6 p-0 rounded bg-amber-500 hover:bg-amber-600 text-white shadow-sm">
+                                                                                        <Pencil className="h-3 w-3" />
                                                                                     </Button>
-                                                                                    <Button size="icon" variant="ghost" onClick={() => handleDelete(sub.id)} className="h-6 w-6 bg-[#ef4444] text-white rounded-[8px] shadow-sm">
-                                                                                        <Trash2 className="h-2.5 w-2.5" />
+                                                                                    <Button size="sm" variant="ghost" onClick={() => setDeleteId(sub.id)} className="h-6 w-6 p-0 rounded bg-red-500 hover:bg-red-600 text-white shadow-sm">
+                                                                                        <Trash2 className="h-3 w-3" />
                                                                                     </Button>
                                                                                 </div>
                                                                             </div>
@@ -435,99 +330,43 @@ export default function MenusPage() {
                                                             </div>
                                                         )}
                                                     </Draggable>
-                                                ))
-                                            )}
-                                            {provided.placeholder}
-                                        </div>
-                                    )}
-                                </Droppable>
-                            </DragDropContext>
-                        )}
+                                                ))}
+                                                {provided.placeholder}
+                                            </div>
+                                        )}
+                                    </Droppable>
+                                </DragDropContext>
+                            )}
 
-                        {/* Footer / Pagination Placeholder */}
-                        <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50">
-                            <div>
-                                Showing {currentMenus.length} entries
+                            <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-4 mt-4 border-t border-gray-100">
+                                <div>Showing {currentMenus.length} entries</div>
                             </div>
-                            <div className="flex gap-2 items-center">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-[12px] bg-gray-50/50 border border-gray-100 hover:bg-gray-100 text-gray-500">
-                                    <ChevronLeft className="h-3.5 w-3.5 stroke-[3px]" />
-                                </Button>
-                                <Button variant="default" size="icon" className="h-8 w-8 p-0 bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white border-0 font-bold text-[12px] rounded-[12px] shadow-md">
-                                    1
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-[12px] bg-gray-50/50 border border-gray-100 hover:bg-gray-100 text-gray-500">
-                                    <ChevronRight className="h-3.5 w-3.5 stroke-[3px]" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
-            
-            <DeleteConfirmationDialog 
-                isOpen={isDeleteOpen} 
-                onClose={() => setIsDeleteOpen(false)} 
-                onConfirm={confirmDelete}
-                loading={deleting}
-            />
-        </div>
-    );
-}
 
-function DeleteConfirmationDialog({ 
-    isOpen, 
-    onClose, 
-    onConfirm, 
-    loading 
-}: { 
-    isOpen: boolean, 
-    onClose: () => void, 
-    onConfirm: () => void, 
-    loading: boolean 
-}) {
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[400px] border-none shadow-2xl p-0 overflow-hidden rounded-lg">
-                <div className="bg-gradient-to-br from-red-50 to-white p-6">
-                    <DialogHeader className="space-y-3">
-                        <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-2">
-                            <Trash2 className="h-6 w-6 text-red-600" />
-                        </div>
-                        <DialogTitle className="text-center text-lg font-bold text-gray-800">
-                            Confirm Deletion
-                        </DialogTitle>
-                        <p className="text-center text-sm text-gray-500 leading-relaxed">
-                            Are you sure you want to delete this menu item? This action cannot be undone.
-                        </p>
+            {/* Delete Dialog */}
+            <Dialog open={!!deleteId} onOpenChange={o => { if (!o) setDeleteId(null); }}>
+                <DialogContent className="sm:max-w-[400px] p-0 gap-0 overflow-hidden">
+                    <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b">
+                        <DialogTitle className="text-base font-bold text-slate-800">Delete Menu Item</DialogTitle>
                     </DialogHeader>
-                </div>
-                
-                <DialogFooter className="bg-gray-50/80 p-4 gap-3 sm:gap-0">
-                    <Button
-                        variant="ghost"
-                        onClick={onClose}
-                        disabled={loading}
-                        className="flex-1 h-10 font-bold text-gray-500 hover:bg-gray-100 rounded-lg"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={onConfirm}
-                        disabled={loading}
-                        className="flex-1 h-10 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg shadow-red-200 transition-all active:scale-95"
-                    >
-                        {loading ? (
-                            <>
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                Deleting...
-                            </>
-                        ) : (
-                            "Delete Now"
-                        )}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                    <div className="p-5 text-center space-y-3">
+                        <div className="mx-auto w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <Trash2 className="h-5 w-5 text-red-600" />
+                        </div>
+                        <p className="text-sm text-gray-500">Are you sure you want to delete this menu item? This action cannot be undone.</p>
+                    </div>
+                    <DialogFooter className="px-5 py-4 border-t bg-gray-50 gap-2">
+                        <Button variant="ghost" onClick={() => setDeleteId(null)} disabled={deleting} className="flex-1 h-9 text-xs font-bold">Cancel</Button>
+                        <Button onClick={confirmDelete} disabled={deleting} className="flex-1 h-9 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg shadow-sm">
+                            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Delete Now
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
     );
 }

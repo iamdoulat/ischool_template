@@ -5,12 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Loader2, CreditCard } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 
-// List of payment gateways
 const gateways = [
     "Paypal", "Stripe", "PayU", "CCAvenue", "InstaMojo", "Paystack",
     "Razorpay", "Paytm", "Midtrans", "Pesapal", "Flutter Wave",
@@ -56,8 +62,6 @@ function getProviderConfig(gateway: string) {
     if (specificConfigs[gateway]) {
         return { providerName, ...specificConfigs[gateway] };
     }
-
-    // Default generic config
     return {
         providerName,
         fields: [
@@ -65,6 +69,21 @@ function getProviderConfig(gateway: string) {
             { key: "api_secret", label: "API Secret", type: "password" },
         ]
     };
+}
+
+function FormSkeleton() {
+    return (
+        <div className="space-y-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
+                    <Skeleton className="h-3 w-28 rounded ml-auto" />
+                    <div className="md:col-span-2">
+                        <Skeleton className="h-8 w-full rounded" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
 }
 
 export default function PaymentMethodsPage() {
@@ -75,7 +94,6 @@ export default function PaymentMethodsPage() {
     const [savingTab, setSavingTab] = useState(false);
     const [savingSelected, setSavingSelected] = useState(false);
 
-    // State to hold settings for all providers: { "paypal": { config: {...}, status: "enabled" }, "active_gateway": { config: { selected: "Stripe" } } }
     const [settingsData, setSettingsData] = useState<Record<string, { config: any, status: string }>>({});
 
     useEffect(() => {
@@ -95,7 +113,6 @@ export default function PaymentMethodsPage() {
                         config: setting.config || {},
                         status: setting.status ? "enabled" : "disabled"
                     };
-
                     if (setting.provider === 'active_gateway' && setting.config?.selected) {
                         setSelectedGateway(setting.config.selected);
                     }
@@ -115,10 +132,7 @@ export default function PaymentMethodsPage() {
             ...prev,
             [providerKey]: {
                 ...prev[providerKey],
-                config: {
-                    ...(prev[providerKey]?.config || {}),
-                    [fieldKey]: value
-                },
+                config: { ...(prev[providerKey]?.config || {}), [fieldKey]: value },
                 status: prev[providerKey]?.status || "enabled"
             }
         }));
@@ -131,12 +145,7 @@ export default function PaymentMethodsPage() {
             const providerKey = activeConfig.providerName;
             const currentData = settingsData[providerKey] || { config: {}, status: 'enabled' };
 
-            const payload = {
-                provider: providerKey,
-                config: currentData.config,
-                status: true
-            };
-
+            const payload = { provider: providerKey, config: currentData.config, status: true };
             const res = await api.post('/system-setting/payment-settings', payload);
             if (res.data?.status === 'success') {
                 toast("success", `${activeTab} Configuration Saved`);
@@ -151,12 +160,7 @@ export default function PaymentMethodsPage() {
     const handleSaveSelected = async () => {
         setSavingSelected(true);
         try {
-            const payload = {
-                provider: 'active_gateway',
-                config: { selected: selectedGateway },
-                status: true
-            };
-
+            const payload = { provider: 'active_gateway', config: { selected: selectedGateway }, status: true };
             const res = await api.post('/system-setting/payment-settings', payload);
             if (res.data?.status === 'success') {
                 toast("success", `Active Gateway Saved As ${selectedGateway}`);
@@ -168,163 +172,155 @@ export default function PaymentMethodsPage() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center py-20 min-h-screen">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-            </div>
-        );
-    }
-
     const currentActiveConfig = getProviderConfig(activeTab);
     const providerKey = currentActiveConfig.providerName;
     const currentData = settingsData[providerKey] || { config: {}, status: "enabled" };
 
     return (
-        <div className="p-4 bg-gray-50/10 min-h-screen font-sans flex flex-col md:flex-row gap-6">
-
-            {/* Left Column: Configuration Area (Tabs & Form) */}
+        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans flex flex-col md:flex-row gap-6">
+            {/* Left Column: Configuration Area */}
             <div className="flex-1 space-y-4">
-                <h1 className="text-sm font-medium text-gray-800 tracking-tight">Payment Methods</h1>
-
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col min-h-[600px]">
-
-                    {/* Top Tabs */}
-                    <div className="border-b border-gray-100 bg-white sticky top-0 z-10 transition-all">
-                        <div className="flex overflow-x-auto no-scrollbar pb-1 pt-1 px-1">
-                            {gateways.map((gateway) => (
-                                <button
-                                    key={gateway}
-                                    onClick={() => setActiveTab(gateway)}
-                                    className={cn(
-                                        "px-4 py-3 text-[11px] font-bold uppercase transition-all whitespace-nowrap border-b-2 mx-1",
-                                        activeTab === gateway
-                                            ? "text-indigo-600 border-indigo-500 bg-indigo-50/10"
-                                            : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50"
-                                    )}
-                                >
-                                    {gateway}
-                                </button>
-                            ))}
+                <Card>
+                    <CardHeader className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] rounded-t-lg">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-gray-800 text-sm font-bold">Payment Methods</CardTitle>
                         </div>
-                    </div>
+                    </CardHeader>
+                    <CardContent className="p-0 min-h-[500px]">
+                        {/* Top Tabs */}
+                        <div className="border-b border-gray-100 bg-white overflow-x-auto">
+                            <div className="flex no-scrollbar pb-1 pt-1 px-1">
+                                {gateways.map((gateway) => (
+                                    <button
+                                        key={gateway}
+                                        onClick={() => setActiveTab(gateway)}
+                                        className={cn(
+                                            "px-4 py-3 text-[11px] font-bold uppercase transition-all whitespace-nowrap border-b-2 mx-1",
+                                            activeTab === gateway
+                                                ? "text-indigo-600 border-indigo-500 bg-indigo-50/10"
+                                                : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50"
+                                        )}
+                                    >
+                                        {gateway}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
-                    {/* Configuration Form */}
-                    <div className="flex-1 p-8">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 animate-in fade-in duration-300">
+                        {/* Configuration Form */}
+                        <div className="p-6">
+                            {loading ? (
+                                <FormSkeleton />
+                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 animate-in fade-in duration-300">
+                                    <div className="lg:col-span-2 space-y-6">
+                                        {currentActiveConfig.fields.map((field) => {
+                                            if (field.type === 'radio') {
+                                                return (
+                                                    <div key={field.key} className="grid grid-cols-1 md:grid-cols-3 items-start gap-4 pt-4">
+                                                        <Label className="text-[11px] font-bold text-gray-500 text-right uppercase mt-1">{field.label}</Label>
+                                                        <div className="md:col-span-2 space-y-2">
+                                                            <RadioGroup
+                                                                value={currentData.config[field.key] || (field.options?.[0]?.value || "none")}
+                                                                onValueChange={(val) => handleFieldChange(providerKey, field.key, val)}
+                                                            >
+                                                                {field.options?.map(opt => (
+                                                                    <div key={opt.value} className="flex items-center space-x-2">
+                                                                        <RadioGroupItem value={opt.value} id={`r-${field.key}-${opt.value}`} className="text-indigo-600 border-gray-300" />
+                                                                        <Label htmlFor={`r-${field.key}-${opt.value}`} className="text-[11px] text-gray-600">{opt.label}</Label>
+                                                                    </div>
+                                                                ))}
+                                                            </RadioGroup>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
 
-                            {/* Form Fields */}
-                            <div className="lg:col-span-2 space-y-6">
-                                {currentActiveConfig.fields.map((field) => {
-                                    if (field.type === 'radio') {
-                                        return (
-                                            <div key={field.key} className="grid grid-cols-1 md:grid-cols-3 items-start gap-4 pt-4">
-                                                <Label className="text-[11px] font-bold text-gray-500 text-right uppercase mt-1">{field.label}</Label>
-                                                <div className="md:col-span-2 space-y-2">
-                                                    <RadioGroup
-                                                        value={currentData.config[field.key] || (field.options?.[0]?.value || "none")}
-                                                        onValueChange={(val) => handleFieldChange(providerKey, field.key, val)}
-                                                    >
-                                                        {field.options?.map(opt => (
-                                                            <div key={opt.value} className="flex items-center space-x-2">
-                                                                <RadioGroupItem value={opt.value} id={`r-${field.key}-${opt.value}`} className="text-indigo-600 border-gray-300" />
-                                                                <Label htmlFor={`r-${field.key}-${opt.value}`} className="text-[11px] text-gray-600">{opt.label}</Label>
-                                                            </div>
-                                                        ))}
-                                                    </RadioGroup>
+                                            return (
+                                                <div key={field.key} className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
+                                                    <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">{field.label} <span className="text-red-500">*</span></Label>
+                                                    <div className="md:col-span-2 relative">
+                                                        <Input
+                                                            type={field.type}
+                                                            value={currentData.config[field.key] || ""}
+                                                            onChange={(e) => handleFieldChange(providerKey, field.key, e.target.value)}
+                                                            className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    }
+                                            );
+                                        })}
+                                    </div>
 
-                                    return (
-                                        <div key={field.key} className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                                            <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">{field.label} <span className="text-red-500">*</span></Label>
-                                            <div className="md:col-span-2 relative">
-                                                <Input
-                                                    type={field.type}
-                                                    value={currentData.config[field.key] || ""}
-                                                    onChange={(e) => handleFieldChange(providerKey, field.key, e.target.value)}
-                                                    className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                                />
-                                            </div>
+                                    <div className="flex flex-col items-center justify-center space-y-6 pt-4 lg:pt-0 lg:border-l border-gray-100 lg:pl-8 min-h-[200px]">
+                                        <div className="h-24 w-24 bg-gray-50 border border-gray-100 rounded-full flex items-center justify-center shadow-sm">
+                                            <CreditCard className="h-10 w-10 text-indigo-400" />
                                         </div>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Brand Showcase */}
-                            <div className="flex flex-col items-center justify-center space-y-6 pt-4 lg:pt-0 lg:border-l border-gray-100 lg:pl-8 min-h-[200px]">
-                                <div className="h-24 w-24 bg-gray-50 border border-gray-100 rounded-full flex items-center justify-center shadow-sm">
-                                    <CreditCard className="h-10 w-10 text-indigo-400" />
+                                        <p className="text-xs text-center text-gray-400 font-bold uppercase tracking-wider leading-relaxed">
+                                            Configure {activeTab}
+                                        </p>
+                                    </div>
                                 </div>
-                                <p className="text-xs text-center text-gray-400 font-bold uppercase tracking-wider leading-relaxed">
-                                    Configure {activeTab}
-                                </p>
-                            </div>
-
+                            )}
                         </div>
-                    </div>
 
-                    {/* Footer Save Action */}
-                    <div className="border-t border-gray-50 p-6 bg-white flex justify-center mt-auto">
-                        <Button
-                            onClick={handleSaveTab}
-                            disabled={savingTab}
-                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-10 h-10 text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5"
-                        >
-                            {savingTab ? (
-                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
-                            ) : "Save"}
-                        </Button>
-                    </div>
-                </div>
+                        {/* Footer Save Action */}
+                        <div className="border-t border-gray-50 p-6 bg-white flex justify-center">
+                            <Button
+                                onClick={handleSaveTab}
+                                disabled={savingTab}
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-10 h-10 text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5"
+                            >
+                                {savingTab ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : "Save"}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Right Column: Gateway Selection Sidebar */}
             <div className="w-full md:w-64 space-y-2">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 h-full max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar sticky top-4 flex flex-col">
-                    <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight mb-4 border-b border-gray-50 pb-2">
-                        Select Payment Gateway
-                    </h2>
+                <Card>
+                    <CardHeader className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] rounded-t-lg">
+                        <CardTitle className="text-gray-800 text-[12px] font-bold uppercase">Select Gateway</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                        <div className="flex-1 overflow-y-auto max-h-[60vh]">
+                            <RadioGroup value={selectedGateway} onValueChange={setSelectedGateway} className="space-y-3">
+                                {activeGateways.map((gateway) => (
+                                    <div key={`sel-${gateway}`} className="flex items-center space-x-2.5 group">
+                                        <RadioGroupItem
+                                            value={gateway}
+                                            id={`sel-${gateway}`}
+                                            className="h-3.5 w-3.5 text-indigo-600 border-gray-300 data-[state=checked]:border-indigo-600"
+                                        />
+                                        <Label
+                                            htmlFor={`sel-${gateway}`}
+                                            className={cn(
+                                                "text-[11px] font-medium cursor-pointer transition-colors",
+                                                selectedGateway === gateway ? "text-indigo-600 font-bold" : "text-gray-500 hover:text-gray-700"
+                                            )}
+                                        >
+                                            {gateway}
+                                        </Label>
+                                    </div>
+                                ))}
+                            </RadioGroup>
+                        </div>
 
-                    <div className="flex-1 overflow-y-auto">
-                        <RadioGroup value={selectedGateway} onValueChange={setSelectedGateway} className="space-y-3 pb-8">
-                            {activeGateways.map((gateway) => (
-                                <div key={`sel-${gateway}`} className="flex items-center space-x-2.5 group">
-                                    <RadioGroupItem
-                                        value={gateway}
-                                        id={`sel-${gateway}`}
-                                        className="h-3.5 w-3.5 text-indigo-600 border-gray-300 data-[state=checked]:border-indigo-600"
-                                    />
-                                    <Label
-                                        htmlFor={`sel-${gateway}`}
-                                        className={cn(
-                                            "text-[11px] font-medium cursor-pointer transition-colors",
-                                            selectedGateway === gateway ? "text-indigo-600 font-bold" : "text-gray-500 hover:text-gray-700"
-                                        )}
-                                    >
-                                        {gateway}
-                                    </Label>
-                                </div>
-                            ))}
-                        </RadioGroup>
-                    </div>
-
-                    <div className="mt-auto pt-4 border-t border-gray-50 flex justify-end">
-                        <Button
-                            onClick={handleSaveSelected}
-                            disabled={savingSelected}
-                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-md w-full"
-                        >
-                            {savingSelected ? (
-                                <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> ...</>
-                            ) : "Save Option"}
-                        </Button>
-                    </div>
-                </div>
+                        <div className="mt-4 pt-4 border-t border-gray-50">
+                            <Button
+                                onClick={handleSaveSelected}
+                                disabled={savingSelected}
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-md w-full"
+                            >
+                                {savingSelected ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : null}
+                                {savingSelected ? "..." : "Save Option"}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
-
         </div>
     );
 }
