@@ -31,7 +31,17 @@ api.interceptors.response.use(
         if (error.response?.status === 401) {
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('auth_token');
-                window.location.href = '/login';
+                // Avoid an infinite reload loop: only redirect to /login when we
+                // are NOT already on a public auth page. The login page itself
+                // calls public endpoints on mount that can legitimately 401.
+                const path = window.location.pathname;
+                const publicAuthPaths = ['/login', '/forgot-password', '/reset-password'];
+                const onPublicAuthPage = publicAuthPaths.some(
+                    (p) => path === p || path.startsWith(`${p}/`)
+                );
+                if (!onPublicAuthPage) {
+                    window.location.href = '/login';
+                }
             }
         } else if (error.response?.status !== 422) {
             // Show toast for non-validation errors (422 is usually handled per-form)
