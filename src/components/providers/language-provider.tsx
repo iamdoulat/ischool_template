@@ -103,11 +103,24 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
 
         if (overrides[key]) return overrides[key];
 
-        // 1. API-loaded translations take top priority
-        if (translations[key]) return translations[key];
+        const langCode = selectedLanguage?.short_code;
+
+        // 1. API-loaded translations take priority
+        if (translations[key]) {
+            // If the API translation equals the English fallback (i.e. the backend
+            // returned English because it has no real translation for this locale),
+            // skip it and use the locale-specific fallback instead.
+            const engFallback = i18nFallbacks[key];
+            const looksEnglish =
+                langCode &&
+                langCode !== "en" &&
+                engFallback &&
+                translations[key] === engFallback;
+
+            if (!looksEnglish) return translations[key];
+        }
 
         // 2. Locale-specific fallbacks (Bengali, etc.)
-        const langCode = selectedLanguage?.short_code;
         if (langCode !== "en" && langCode) {
             const localeFallbacks = getLocaleFallbacks(langCode);
             if (localeFallbacks && localeFallbacks[key]) return localeFallbacks[key];
