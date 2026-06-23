@@ -588,7 +588,7 @@ export default function CreateStaffPage() {
                                     Creating Staff...
                                 </>
                             ) : (
-                                + {t("insert_staff")}
+                                <>+ {t("insert_staff")}</>
                             )}
                         </Button>
                     </div>

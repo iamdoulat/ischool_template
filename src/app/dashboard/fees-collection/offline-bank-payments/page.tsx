@@ -473,7 +473,7 @@ export default function OfflineBankPaymentsPage() {
                                 <div>
                                     <DialogTitle className="text-2xl font-bold text-white">{t("payment_details")}</DialogTitle>
                                     <DialogDescription className="text-white/80 font-medium">
-                                        {t("review_the_submission_from", { name: selectedPayment?.student.name })}
+                                        {t("review_the_submission_from", { name: selectedPayment?.student.name ?? "" })}
                                     </DialogDescription>
                                 </div>
                             </div>

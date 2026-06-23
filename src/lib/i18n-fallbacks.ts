@@ -470,7 +470,6 @@ export const i18nFallbacks: Record<string, string> = {
     session_settings: "Session Settings",
 
     // ===== ATTENDANCE MODULE =====
-    no: "No",
     total_entry: "1 total entry",
     total_entries: "total entries",
     record: "record",
@@ -514,7 +513,6 @@ export const i18nFallbacks: Record<string, string> = {
     // Attendance report page
     choose_class_section_date: "Choose class, section & date",
     student_attendance_report: "Student Attendance Report",
-    attendance: "Attendance",
     no_student_records_for_parameters: "We couldn't find any student records for the selected parameters.",
     please_select_class_section_date: "Please select class, section and date",
     failed_to_load_attendance_report: "Failed to load attendance report",
@@ -621,7 +619,6 @@ export const i18nFallbacks: Record<string, string> = {
     confirm_expunge_live_class: "Are you sure you want to permanently delete this virtual session? This action will invalidate all join protocols and analytical records associated with this curriculum link.",
     confirm_expunge: "Confirm Expunge",
     search_placeholder: "Search…",
-    live_classes: "Live Classes",
     required_fields_missing: "Please fill all required fields",
     global: "Global",
     self: "Self",

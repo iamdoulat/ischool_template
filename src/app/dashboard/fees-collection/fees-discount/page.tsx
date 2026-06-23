@@ -499,7 +499,8 @@ export default function FeesDiscountPage() {
                                                 )}>
                                                     {t(key)}
                                                 </th>
-                                            )))();}}
+                                                ));
+                                            })()}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-muted/10">

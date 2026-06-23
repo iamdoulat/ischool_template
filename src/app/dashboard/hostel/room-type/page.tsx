@@ -155,9 +155,9 @@ export default function RoomTypePage() {
     const paginatedTypes = filteredTypes.slice(startIndex, startIndex + itemsPerPage);
 
     const exportToExcel = () => {
-        const data = filteredTypes.map(t => ({
-            [t("room_type")]: t.name,
-            [t("description")]: t.description
+        const data = filteredTypes.map(rt => ({
+            [t("room_type")]: rt.name,
+            [t("description")]: rt.description
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();

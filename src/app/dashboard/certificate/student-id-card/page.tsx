@@ -383,22 +383,22 @@ export default function StudentIDCardPage() {
                                             <SkeletonRows />
                                         ) : templates.length === 0 ? (
                                             <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_id_cards_found")}</TableCell></TableRow>
-                                        ) : templates.map((t) => (
-                                            <TableRow key={t.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
-                                                <TableCell className="py-3 text-[#6366f1] font-medium">{t.title}</TableCell>
+                                        ) : templates.map((template) => (
+                                            <TableRow key={template.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                                <TableCell className="py-3 text-[#6366f1] font-medium">{template.title}</TableCell>
                                                 <TableCell className="py-3">
-                                                    {t.background_image ? (
-                                                        <img src={t.background_image} alt="bg" className="h-10 w-14 object-cover rounded border border-gray-200" />
+                                                    {template.background_image ? (
+                                                        <img src={template.background_image} alt="bg" className="h-10 w-14 object-cover rounded border border-gray-200" />
                                                     ) : (
                                                         <div className="h-10 w-14 bg-gray-100 rounded border border-gray-200 flex items-center justify-center"><ImageIcon className="h-5 w-5 text-gray-400" /></div>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="py-3 text-gray-500 font-medium">{t.design_type || "-"}</TableCell>
+                                                <TableCell className="py-3 text-gray-500 font-medium">{template.design_type || "-"}</TableCell>
                                                 <TableCell className="py-3 text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        <Button size="icon" onClick={() => handlePreview(t)} title={t("preview")} className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Eye className="h-3.5 w-3.5" /></Button>
-                                                        <Button size="icon" onClick={() => startEdit(t)} title={t("edit")} className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-3.5 w-3.5" /></Button>
-                                                        <Button size="icon" onClick={() => setDeleteId(t.id)} title={t("delete")} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                                        <Button size="icon" onClick={() => handlePreview(template)} title={t("preview")} className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Eye className="h-3.5 w-3.5" /></Button>
+                                                        <Button size="icon" onClick={() => startEdit(template)} title={t("edit")} className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-3.5 w-3.5" /></Button>
+                                                        <Button size="icon" onClick={() => setDeleteId(template.id)} title={t("delete")} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-3.5 w-3.5" /></Button>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>

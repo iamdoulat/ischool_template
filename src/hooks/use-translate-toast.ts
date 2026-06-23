@@ -24,5 +24,7 @@ export function useTranslateToast() {
             toast("error", t(key, params)),
         toast: (type: "success" | "error", key: string, params?: Record<string, string | number>) =>
             toast(type, t(key, params)),
+        info: (key: string, params?: Record<string, string | number>) =>
+            toast({ title: t("info"), description: t(key, params), duration: 4000 }),
     };
 }

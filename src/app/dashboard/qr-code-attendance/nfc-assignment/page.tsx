@@ -353,7 +353,7 @@ export default function NfcAssignmentPage() {
               {assigningId !== null ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("assigning")}</>
               ) : (
-                {t("assign_tag")}
+                <>{t("assign_tag")}</>
               )}
             </Button>
           </DialogFooter>

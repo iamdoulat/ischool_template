@@ -323,7 +323,7 @@ export default function QrCodeGenerationPage() {
                                       {processingId === user.id ? (
                                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("deleting")}</>
                                       ) : (
-                                        {t("delete")}
+                                        <>{t("delete")}</>
                                       )}
                                     </AlertDialogAction>
                                   </AlertDialogFooter>

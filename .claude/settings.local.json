@@ -30,7 +30,8 @@
       "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan route:list)",
       "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan migrate --force)",
       "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan config:clear)",
-      "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan test)"
+      "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan test)",
+      "Bash(echo \"=== exit code: $? ===\")"
     ]
   }
 }

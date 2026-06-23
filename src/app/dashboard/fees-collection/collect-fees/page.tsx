@@ -85,7 +85,7 @@ export default function CollectFeesPage() {
         } catch (error) {
             tt.error("failed_to_fetch_initial_data");
         }
-    }, [toast]);
+    }, []);
 
     useEffect(() => {
         fetchInitialData();
