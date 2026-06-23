@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
 import { i18nFallbacks } from "@/lib/i18n-fallbacks";
+import { i18nFallbacksBn } from "@/lib/i18n-fallbacks-bn";
 
 interface Language {
     id: number;
@@ -29,6 +30,18 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export const useLanguage = () => useContext(LanguageContext);
+
+/** Maps language short-codes to their locale-specific fallback dictionaries. */
+function getLocaleFallbacks(code: string): Record<string, string> | null {
+    switch (code) {
+        case "bn":
+            return i18nFallbacksBn;
+        // Add more locales here as needed, e.g.:
+        // case "hi": return i18nFallbacksHi;
+        default:
+            return null;
+    }
+}
 
 export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
     const [selectedLanguage, setSelectedLanguageState] = useState<Language | null>(null);
@@ -93,10 +106,17 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
         // 1. API-loaded translations take top priority
         if (translations[key]) return translations[key];
 
-        // 2. Built-in English fallbacks
+        // 2. Locale-specific fallbacks (Bengali, etc.)
+        const langCode = selectedLanguage?.short_code;
+        if (langCode !== "en" && langCode) {
+            const localeFallbacks = getLocaleFallbacks(langCode);
+            if (localeFallbacks && localeFallbacks[key]) return localeFallbacks[key];
+        }
+
+        // 3. Built-in English fallbacks
         let result = i18nFallbacks[key];
 
-        // 3. Ultimate fallback: humanize the key itself
+        // 4. Ultimate fallback: humanize the key itself
         if (!result) {
             result = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
         }
