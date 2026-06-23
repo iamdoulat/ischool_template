@@ -8,6 +8,34 @@
 // keys that should be documented for the Laravel backend translation files.
 
 export const i18nFallbacks: Record<string, string> = {
+    // ===== DASHBOARD =====
+    key_metrics: "Key Metrics",
+    finance_distribution: "Finance Distribution",
+    todays_overview: "Today's Overview",
+    headcount_roles: "Headcount & Roles",
+    fees_awaiting_payment: "Fees Awaiting Payment",
+    staff_approved_leave: "Staff Approved Leave",
+    student_approved_leave: "Student Approved Leave",
+    converted_leads: "Converted Leads",
+    staff_present_today: "Staff Present Today",
+    student_present_today: "Student Present Today",
+    fees_collection_expenses_for_month: "Fees Collection & Expenses for {month_year}",
+    income_for_month: "Income for {month_year}",
+    fees_collection_expenses_for_session: "Fees Collection & Expenses for Session",
+    expense_for_month: "Expense for {month_year}",
+    fees_overview: "Fees Overview",
+    enquiry_overview: "Enquiry Overview",
+    library_overview: "Library Overview",
+    student_today_attendance: "Student Today's Attendance",
+    monthly_income: "Monthly Income",
+    monthly_expenses: "Monthly Expenses",
+    student_head_count: "Student Head Count",
+    accountant: "Accountant",
+    librarian: "Librarian",
+    receptionist: "Receptionist",
+    super_admin: "Super Admin",
+    driver: "Driver",
+
     // ===== GENERAL ACTIONS =====
     save: "Save",
     saving: "Saving…",

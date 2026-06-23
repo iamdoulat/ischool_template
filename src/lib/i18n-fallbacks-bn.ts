@@ -10,6 +10,52 @@ export const i18nFallbacksBn: Record<string, string> = {
   // ─── TOP-LEVEL MODULES ─────────────────────────────────────────
   dashboard: "ড্যাশবোর্ড",
 
+  // ─── DASHBOARD: HEADER ─────────────────────────────────────────
+  good_morning: "শুভ সকাল",
+  good_afternoon: "শুভ অপরাহ্ণ",
+  good_evening: "শুভ সন্ধ্যা",
+  session_x: "সেশন {session}",
+  updated_at: "আপডেট {time}",
+  refreshing: "রিফ্রেশ হচ্ছে",
+
+  // ─── DASHBOARD: SECTION LABELS ─────────────────────────────────
+  key_metrics: "মূল পরিসংখ্যান",
+  finance_distribution: "আর্থিক বণ্টন",
+  todays_overview: "আজকের সংক্ষিপ্ত বিবরণ",
+  headcount_roles: "জনবল ও ভূমিকা",
+
+  // ─── DASHBOARD: STAT CARDS ─────────────────────────────────────
+  fees_awaiting_payment: "পেমেন্টের অপেক্ষায় ফি",
+  staff_approved_leave: "অনুমোদিত স্টাফ ছুটি",
+  student_approved_leave: "অনুমোদিত শিক্ষার্থী ছুটি",
+  converted_leads: "রূপান্তরিত লিড",
+  staff_present_today: "আজ উপস্থিত স্টাফ",
+  student_present_today: "আজ উপস্থিত শিক্ষার্থী",
+
+  // ─── DASHBOARD: CHARTS ─────────────────────────────────────────
+  fees_collection_expenses_for_month: "{month_year} মাসের ফি সংগ্রহ ও ব্যয়",
+  income_for_month: "{month_year} মাসের আয়",
+  fees_collection_expenses_for_session: "সেশনের ফি সংগ্রহ ও ব্যয়",
+  expense_for_month: "{month_year} মাসের ব্যয়",
+
+  // ─── DASHBOARD: OVERVIEW CARDS ─────────────────────────────────
+  todays_overview_label: "আজকের সংক্ষিপ্ত বিবরণ",
+  fees_overview: "ফি সংক্ষিপ্ত বিবরণ",
+  enquiry_overview: "অনুসন্ধান সংক্ষিপ্ত বিবরণ",
+  library_overview: "লাইব্রেরি সংক্ষিপ্ত বিবরণ",
+  student_today_attendance: "শিক্ষার্থীর আজকের উপস্থিতি",
+
+  // ─── DASHBOARD: SUMMARY CARDS ──────────────────────────────────
+  monthly_income: "মাসিক আয়",
+  monthly_expenses: "মাসিক ব্যয়",
+  student_head_count: "শিক্ষার্থী সংখ্যা",
+  admin: "অ্যাডমিন",
+  accountant: "হিসাবরক্ষক",
+  librarian: "গ্রন্থাগারিক",
+  receptionist: "রিসেপশনিস্ট",
+  super_admin: "সুপার অ্যাডমিন",
+  driver: "চালক",
+
   // ─── FRONT OFFICE ──────────────────────────────────────────────
   front_office: "ফ্রন্ট অফিস",
   admission_enquiry: "ভর্তি অনুসন্ধান",
@@ -564,7 +610,6 @@ export const i18nFallbacksBn: Record<string, string> = {
   assign_to: "বরাদ্দ করুন",
   assigned_to: "এতে বরাদ্দকৃত",
   created_at: "তৈরির তারিখ",
-  updated_at: "আপডেটের তারিখ",
   created_by: "তৈরি করেছেন",
   updated_by: "আপডেট করেছেন",
   ip_address: "আইপি অ্যাড্রেস",

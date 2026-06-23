@@ -623,7 +623,8 @@ export function Sidebar({
     const pathname = usePathname();
     const { settings, loading: settingsLoading } = useSettings();
     const getImageUrl = useImageUrl();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const isNonEnglish = language?.short_code !== "en";
 
     const [mounted, setMounted] = useState(false);
     const [sessions, setSessions] = useState<any[]>([]);
@@ -858,7 +859,7 @@ export function Sidebar({
                                                 {!collapsed && (
                                                     <>
                                                         <span className="flex-1 text-left">
-                                                            {item.label || (t(item.name) !== item.name ? t(item.name) : formatLabel(item.name))}
+                                                            {isNonEnglish ? t(item.name) : (item.label || (t(item.name) !== item.name ? t(item.name) : formatLabel(item.name)))}
                                                         </span>
                                                         {item.submenus && item.submenus.length > 0 ? (
                                                             <ChevronRight className={cn(
@@ -891,7 +892,7 @@ export function Sidebar({
                                                         <div className="space-y-1">
                                                             <div className="px-3 py-2 border-b border-muted/20 mb-1">
                                                                 <p className={cn("text-xs font-bold uppercase tracking-widest", colors.icon)}>
-                                                                    {item.label || (t(item.name) !== item.name ? t(item.name) : formatLabel(item.name))}
+                                                                    {isNonEnglish ? t(item.name) : (item.label || (t(item.name) !== item.name ? t(item.name) : formatLabel(item.name)))}
                                                                 </p>
                                                             </div>
                                                             <Link
@@ -958,7 +959,7 @@ export function Sidebar({
                                                                     )} />
                                                                 </div>
                                                                 <span className="flex-1 text-left">
-                                                            {item.label || (t(item.name) !== item.name ? t(item.name) : formatLabel(item.name))}
+                                                            {isNonEnglish ? t(item.name) : (item.label || (t(item.name) !== item.name ? t(item.name) : formatLabel(item.name)))}
                                                         </span>
                                                             </div>
                                                         </AccordionTrigger>

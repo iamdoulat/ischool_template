@@ -105,6 +105,11 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
 
         const langCode = selectedLanguage?.short_code;
 
+        // Resolve the raw template string from the highest-priority source, then
+        // interpolate once at the end so {paramName} placeholders are always
+        // replaced regardless of which source the string came from.
+        let result: string | undefined;
+
         // 1. API-loaded translations take priority
         if (translations[key]) {
             // If the API translation equals the English fallback (i.e. the backend
@@ -117,17 +122,19 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
                 engFallback &&
                 translations[key] === engFallback;
 
-            if (!looksEnglish) return translations[key];
+            if (!looksEnglish) result = translations[key];
         }
 
         // 2. Locale-specific fallbacks (Bengali, etc.)
-        if (langCode !== "en" && langCode) {
+        if (result === undefined && langCode !== "en" && langCode) {
             const localeFallbacks = getLocaleFallbacks(langCode);
-            if (localeFallbacks && localeFallbacks[key]) return localeFallbacks[key];
+            if (localeFallbacks && localeFallbacks[key]) result = localeFallbacks[key];
         }
 
         // 3. Built-in English fallbacks
-        let result = i18nFallbacks[key];
+        if (result === undefined) {
+            result = i18nFallbacks[key];
+        }
 
         // 4. Ultimate fallback: humanize the key itself
         if (!result) {
