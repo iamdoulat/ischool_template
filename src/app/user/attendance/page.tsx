@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Loader2, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { toast } from "sonner";
 
 const statusColors: Record<string, string> = {
@@ -32,6 +33,7 @@ const monthNames = [
 ];
 
 export default function UserAttendancePage() {
+    const { t } = useTranslation();
     const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const now = new Date();
     const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1);
@@ -55,7 +57,7 @@ export default function UserAttendancePage() {
             setStartDayOfWeek(data.startDayOfWeek || 1);
         } catch (error) {
             console.error("Error fetching attendance:", error);
-            toast.error("Failed to load attendance");
+            toast.error(t("failed_to_load_attendance"));
         } finally {
             setLoading(false);
         }
@@ -116,13 +118,13 @@ export default function UserAttendancePage() {
                             <CalendarDays className="h-5 w-5" />
                         </span>
                         <div>
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Attendance</h1>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("attendance")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">{monthNames[currentMonth - 1]} {currentYear}</p>
                         </div>
                     </div>
                     {!loading && (
                         <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[11px] text-gray-500 hidden sm:inline">Overall</span>
+                            <span className="text-[11px] text-gray-500 hidden sm:inline">{t("overall")}</span>
                             <span className={cn(
                                 "inline-flex items-center rounded-full px-3 py-1 text-[13px] font-bold text-white shadow-sm bg-gradient-to-r",
                                 isAbove ? "from-green-500 to-emerald-400" : "from-red-500 to-rose-400"
@@ -178,7 +180,7 @@ export default function UserAttendancePage() {
                         <div className="text-center py-16 text-gray-400 text-sm">
                             <div className="flex items-center justify-center gap-2">
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Loading attendance...
+                                {t("loading")}
                             </div>
                         </div>
                     ) : (
@@ -214,7 +216,7 @@ export default function UserAttendancePage() {
                                                         "p-1.5 text-[11px] font-semibold flex items-center justify-end gap-1",
                                                         isToday ? "text-indigo-600" : "text-gray-500"
                                                     )}>
-                                                        {isToday && <span className="text-[8px] font-bold uppercase bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-1 py-px rounded">Today</span>}
+                                                        {isToday && <span className="text-[8px] font-bold uppercase bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-1 py-px rounded">{t("today")}</span>}
                                                         {day}
                                                     </div>
                                                     {status && (

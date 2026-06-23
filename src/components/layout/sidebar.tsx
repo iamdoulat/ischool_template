@@ -43,7 +43,7 @@ import {
     QrCode
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatLabel } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Popover,
@@ -60,22 +60,6 @@ import { useSettings } from "@/components/providers/settings-provider";
 import { useImageUrl } from "@/lib/image-url";
 import { useTranslation } from "@/hooks/use-translation";
 import { ThemeToggle } from "./theme-toggle";
- 
-const formatLabel = (name: string) => {
-    return name
-        .split('_')
-        .map(word => {
-            const lowerWord = word.toLowerCase();
-            if (lowerWord === 'sms') return 'SMS';
-            if (lowerWord === 'wa') return 'WA';
-            if (lowerWord === 'cv') return 'CV';
-            if (lowerWord === 'qr') return 'QR';
-            if (lowerWord === 'cms') return 'CMS';
-            return word.charAt(0).toUpperCase() + word.slice(1);
-        })
-        .join(' ')
-        .replace(/\bSetting\b/g, 'Settings');
-};
 
 const menuItems = [
     {
@@ -808,7 +792,7 @@ export function Sidebar({
                                         <img src={getImageUrl(settings.admin_logo)} alt={settings.school_name} className="h-6 object-contain" />
                                     ) : (
                                         <span className="font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300">
-                                            {settings?.school_name || "Smart School"}
+                                                {settings?.school_name || t("smart_school")}
                                         </span>
                                     )}
                                 </div>
@@ -938,7 +922,7 @@ export function Sidebar({
                                                                                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                                                                             )}
                                                                         >
-                                                                            {submenu.name === "period_attendance" ? "Attendance by Subject" : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name))}
+                                                                            {submenu.name === "period_attendance" ? t("period_attendance") : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name))}
                                                                         </Link>
                                                                     ))}
                                                                 </div>
@@ -996,7 +980,7 @@ export function Sidebar({
                                                                                     : "text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
                                                                             )}
                                                                         >
-                                                                            <span className="flex-1">{submenu.name === "period_attendance" ? "Attendance by Subject" : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name))}</span>
+                                                                            <span className="flex-1">{submenu.name === "period_attendance" ? t("period_attendance") : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name))}</span>
                                                                             {isSubActive && (
                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-in fade-in zoom-in duration-300 ml-2" />
                                                                             )}

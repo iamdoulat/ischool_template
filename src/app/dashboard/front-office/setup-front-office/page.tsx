@@ -23,7 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -57,7 +58,8 @@ interface TabItem {
 }
 
 export default function SetupFrontOfficePage() {
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
     const [activeTabId, setActiveTabId] = useState("purpose");
     const [items, setItems] = useState<TabItem[]>([]);
     const [loading, setLoading] = useState(false);
@@ -109,11 +111,11 @@ export default function SetupFrontOfficePage() {
             setSelectedIds([]);
         } catch (error) {
             console.error("Error fetching items:", error);
-            toast("error", `Failed to load ${currentTabLabel} list`);
+            tt.error("failed_to_load_x_list", { label: currentTabLabel });
         } finally {
             setLoading(false);
         }
-    }, [activeTab.endpoint, searchQuery, page, limit, toast, currentTabLabel]);
+    }, [activeTab.endpoint, searchQuery, page, limit, tt, currentTabLabel]);
 
     useEffect(() => {
         fetchItems();
@@ -124,10 +126,10 @@ export default function SetupFrontOfficePage() {
         try {
             if (isEdit && editId) {
                 await api.put(`${activeTab.endpoint}/${editId}`, formData);
-                toast("success", `${currentTabLabel} updated successfully`);
+                tt.success("x_updated_successfully", { label: currentTabLabel });
             } else {
                 await api.post(activeTab.endpoint, formData);
-                toast("success", `${currentTabLabel} added successfully`);
+                tt.success("x_added_successfully", { label: currentTabLabel });
             }
             fetchItems();
             resetForm();
@@ -135,7 +137,7 @@ export default function SetupFrontOfficePage() {
             console.error("Error saving item:", error);
             const err = error as { response?: { data?: { message?: string } } };
             const message = err.response?.data?.message || `Failed to save ${currentTabLabel}`;
-            toast("error", message);
+            tt.error(message);
         }
     };
 
@@ -143,26 +145,26 @@ export default function SetupFrontOfficePage() {
         if (!deleteId) return;
         try {
             await api.delete(`${activeTab.endpoint}/${deleteId}`);
-            toast("success", `${currentTabLabel} deleted successfully`);
+            tt.success("x_deleted_successfully", { label: currentTabLabel });
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
             fetchItems();
         } catch (error) {
             console.error("Error deleting item:", error);
-            toast("error", `Failed to delete ${currentTabLabel}`);
+            tt.error("failed_to_delete_x", { label: currentTabLabel });
         }
     };
 
     const handleBulkDelete = async () => {
         try {
             await api.post(`${activeTab.endpoint}/bulk-delete`, { ids: selectedIds });
-            toast("success", `${selectedIds.length} items deleted successfully`);
+            tt.success("items_deleted_successfully", { count: selectedIds.length });
             setIsBulkDeleteDialogOpen(false);
             setSelectedIds([]);
             fetchItems();
         } catch (error) {
             console.error("Error bulk deleting items:", error);
-            toast("error", `Failed to delete selected ${currentTabLabel} list`);
+            tt.error("failed_to_delete_selected_x_list", { label: currentTabLabel });
         }
     };
 
@@ -213,7 +215,7 @@ export default function SetupFrontOfficePage() {
     const handleCopy = () => {
         const text = items.map(p => `${p.name}\t${p.description}`).join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     return (
@@ -240,7 +242,7 @@ export default function SetupFrontOfficePage() {
                                             : "text-muted-foreground hover:bg-muted/20 hover:text-slate-900 border-l-4 border-l-transparent"
                                     )}
                                 >
-                                    {tab.label}
+                                    {currentTabLabel}
                                 </button>
                             ))}
                         </div>
@@ -256,9 +258,9 @@ export default function SetupFrontOfficePage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {isEdit ? `Edit ${currentTabLabel}` : `Add ${currentTabLabel}`}
+                                    {isEdit ? t("edit_x", { label: currentTabLabel }) : t("add_x", { label: currentTabLabel })}
                                 </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{isEdit ? "Update entry" : "Create a new entry"}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{isEdit ? t("update_entry") : t("create_a_new_entry")}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
@@ -276,7 +278,7 @@ export default function SetupFrontOfficePage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Description</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("description")}</label>
                                     <Textarea
                                         className="min-h-[120px] rounded-lg bg-muted/30 border-muted/50 resize-none font-medium text-slate-700"
                                         value={formData.description}
@@ -287,11 +289,11 @@ export default function SetupFrontOfficePage() {
                                 <div className="flex justify-end gap-2 pt-2">
                                     {isEdit && (
                                         <Button type="button" variant="outline" className="h-10 px-6" onClick={resetForm}>
-                                            Cancel
+                                            {t("cancel")}
                                         </Button>
                                     )}
                                     <Button type="submit" variant="gradient" className="h-10 px-8">
-                                        Save
+                                        {t("save")}
                                     </Button>
                                 </div>
                             </form>
@@ -307,8 +309,8 @@ export default function SetupFrontOfficePage() {
                                 <List className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{currentTabLabel} List</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{total} total entr{total === 1 ? "y" : "ies"}</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("x_list", { label: currentTabLabel })}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { total })}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
@@ -317,7 +319,7 @@ export default function SetupFrontOfficePage() {
                                 <div className="relative w-full md:w-64">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search"
+                                        placeholder={t("search")}
                                         className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={searchQuery}
                                         onChange={(e) => {
@@ -350,9 +352,9 @@ export default function SetupFrontOfficePage() {
                                     <div className="flex gap-1">
                                         <IconButton icon={Printer} onClick={() => window.print()} />
                                         <IconButton icon={Copy} onClick={handleCopy} />
-                                        <IconButton icon={FileSpreadsheet} onClick={() => toast("success", "Exporting to Excel...")} />
-                                        <IconButton icon={FileText} onClick={() => toast("success", "Exporting to PDF...")} />
-                                        <IconButton icon={Download} onClick={() => toast("success", "Downloading...")} />
+                                        <IconButton icon={FileSpreadsheet} onClick={() => tt.success("exporting_to_excel")} />
+                                        <IconButton icon={FileText} onClick={() => tt.success("exporting_to_pdf")} />
+                                        <IconButton icon={Download} onClick={() => tt.success("downloading")} />
                                         <IconButton icon={Columns} />
                                     </div>
                                 </div>
@@ -370,7 +372,7 @@ export default function SetupFrontOfficePage() {
                                                 />
                                             </th>
                                             <Th>{currentTabLabel}</Th>
-                                            <Th>Description</Th>
+                                            <Th>{t("description")}</Th>
                                             <th className="px-4 py-4 border-b border-muted/50 text-right">
                                                 <div className="flex justify-end pr-1 text-slate-700">
                                                     {selectedIds.length > 0 ? (
@@ -381,7 +383,7 @@ export default function SetupFrontOfficePage() {
                                                             <Trash2 className="h-3.5 w-3.5 text-white" />
                                                         </button>
                                                     ) : (
-                                                        "ACTION"
+                                                        t("action")
                                                     )}
                                                 </div>
                                             </th>
@@ -390,11 +392,11 @@ export default function SetupFrontOfficePage() {
                                     <tbody className="divide-y divide-muted/30">
                                         {loading ? (
                                             <tr>
-                                                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Loading...</td>
+                                                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">{t("loading")}</td>
                                             </tr>
                                         ) : displayedItems.length === 0 ? (
                                             <tr>
-                                                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No data found</td>
+                                                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">{t("no_data_found")}</td>
                                             </tr>
                                         ) : (
                                             displayedItems.map((item) => (
@@ -425,7 +427,7 @@ export default function SetupFrontOfficePage() {
 
                             <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                    Showing {total > 0 ? (page - 1) * limit + 1 : 0} to {Math.min(page * limit, total)} of {total} entries
+                                    {t("showing_x_to_y_of_z", { from: total > 0 ? (page - 1) * limit + 1 : 0, to: Math.min(page * limit, total), total })}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -486,14 +488,14 @@ export default function SetupFrontOfficePage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete this {currentTabLabel} entry.
+                            {t("permanently_delete_x_entry", { label: currentTabLabel })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -501,14 +503,14 @@ export default function SetupFrontOfficePage() {
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Bulk Delete Entries</AlertDialogTitle>
+                        <AlertDialogTitle>{t("bulk_delete_entries")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete {selectedIds.length} selected items? This action cannot be undone.
+                            {t("confirm_bulk_delete_items", { count: selectedIds.length })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">Delete Selected</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">{t("delete_selected")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

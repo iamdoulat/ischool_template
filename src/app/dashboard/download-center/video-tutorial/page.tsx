@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -54,6 +55,7 @@ interface PaginationData {
 
 export default function VideoTutorialPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
     const [tutorials, setTutorials] = useState<Tutorial[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
     const [loading, setLoading] = useState(false);
@@ -142,10 +144,18 @@ export default function VideoTutorialPage() {
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
              {/* Header */}
-            <div className="flex justify-between items-center mb-2">
-                <h1 className="text-sm font-medium text-gray-800">Video Tutorial List</h1>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Video className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("video_tutorial_list")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("manage_class_video_tutorials")}</p>
+                    </div>
+                </div>
                 <Button onClick={() => setIsDialogOpen(true)} className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
-                    <Plus className="h-3.5 w-3.5" /> Add Video
+                    <Plus className="h-3.5 w-3.5" /> {t("add_video")}
                 </Button>
             </div>
 
@@ -153,10 +163,10 @@ export default function VideoTutorialPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
                 <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase">Class</Label>
+                        <Label className="text-[10px] font-bold text-gray-500 uppercase">{t("class")}</Label>
                         <Select value={filters.class_id} onValueChange={(v) => setFilters({ ...filters, class_id: v })}>
                             <SelectTrigger className="h-8 border-gray-200 text-xs focus:ring-indigo-500 rounded shadow-none">
-                                <SelectValue placeholder="Select Class" />
+                                <SelectValue placeholder={t("select_class")} />
                             </SelectTrigger>
                             <SelectContent>
                                 {classes.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
@@ -165,10 +175,10 @@ export default function VideoTutorialPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase">Section</Label>
+                        <Label className="text-[10px] font-bold text-gray-500 uppercase">{t("section")}</Label>
                         <Select value={filters.section_id} onValueChange={(v) => setFilters({ ...filters, section_id: v })}>
                             <SelectTrigger className="h-8 border-gray-200 text-xs focus:ring-indigo-500 rounded shadow-none">
-                                <SelectValue placeholder="Select Section" />
+                                <SelectValue placeholder={t("select_section")} />
                             </SelectTrigger>
                             <SelectContent>
                                 {sections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
@@ -177,9 +187,9 @@ export default function VideoTutorialPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase">Search By Title</Label>
+                        <Label className="text-[10px] font-bold text-gray-500 uppercase">{t("search_by_title")}</Label>
                         <Input
-                            placeholder="Title..."
+                            placeholder={t("title_placeholder")}
                             value={filters.search}
                             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                             className="h-8 border-gray-200 text-xs focus-visible:ring-indigo-500 rounded shadow-none"
@@ -188,7 +198,7 @@ export default function VideoTutorialPage() {
 
                     <div className="flex justify-end">
                         <Button type="submit" className="btn-gradient gap-2 h-8 px-6 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
-                            <Search className="h-3.5 w-3.5" /> Search
+                            <Search className="h-3.5 w-3.5" /> {t("search")}
                         </Button>
                     </div>
                 </form>
@@ -199,7 +209,7 @@ export default function VideoTutorialPage() {
                     {tutorials.length === 0 ? (
                         <div className="col-span-full py-12 flex flex-col items-center justify-center text-gray-400">
                             <Video className="h-12 w-12 mb-2 opacity-20" />
-                            <p className="text-xs">No video tutorials found.</p>
+                            <p className="text-xs">{t("no_video_tutorials_found")}</p>
                         </div>
                     ) : (
                         tutorials.map((video) => (

@@ -15,6 +15,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate } from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { useImageUrl, useBaseUrl } from "@/lib/image-url";
+import { useTranslation } from "@/hooks/use-translation";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -53,6 +54,7 @@ interface ExpenseHead {
 }
 
 export default function AddExpensePage() {
+    const { t } = useTranslation();
     const { formatCurrency } = useCurrencyFormatter();
     const getImageUrl = useImageUrl();
     const baseApiUrl = useBaseUrl();
@@ -82,9 +84,7 @@ export default function AddExpensePage() {
             if (res.data?.status === "Success" && res.data.data?.invoice_number) {
                 setFormData(prev => ({ ...prev, invoice_number: res.data.data.invoice_number }));
             }
-        } catch {
-            // silently fail
-        }
+        } catch { /* silently fail */ }
     };
 
     const fetchInvoicePrintSettings = async () => {
@@ -99,9 +99,7 @@ export default function AddExpensePage() {
                     });
                 }
             }
-        } catch {
-            // silently fail
-        }
+        } catch { /* silently fail */ }
     };
 
     const fetchData = async () => {
@@ -111,29 +109,16 @@ export default function AddExpensePage() {
                 api.get("expense/expenses"),
                 api.get("expense/expense-heads")
             ]);
-
-            if (expenseRes.data?.status === "Success") {
-                setExpenses(expenseRes.data.data);
-            }
-            if (headRes.data?.status === "Success") {
-                setExpenseHeads(headRes.data.data);
-            }
-
-            await Promise.all([
-                fetchNextExpenseNumber(),
-                fetchInvoicePrintSettings(),
-            ]);
+            if (expenseRes.data?.status === "Success") setExpenses(expenseRes.data.data);
+            if (headRes.data?.status === "Success") setExpenseHeads(headRes.data.data);
+            await Promise.all([fetchNextExpenseNumber(), fetchInvoicePrintSettings()]);
         } catch (error) {
             console.error("Error fetching data:", error);
-            toast.error("Failed to load records");
-        } finally {
-            setLoading(false);
-        }
+            toast.error(t("failed_to_load_records"));
+        } finally { setLoading(false); }
     };
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    useEffect(() => { fetchData(); }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -144,10 +129,9 @@ export default function AddExpensePage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.expense_head_id || !formData.name || !formData.date || !formData.amount) {
-            toast.error("Please fill in all required fields");
+            toast.error(t("please_fill_all_required_fields"));
             return;
         }
-
         const data = new FormData();
         data.append("expense_head_id", formData.expense_head_id);
         data.append("name", formData.name);
@@ -155,36 +139,26 @@ export default function AddExpensePage() {
         data.append("date", formData.date);
         data.append("amount", formData.amount);
         data.append("description", formData.description);
-        if (formData.document) {
-            data.append("document", formData.document);
-        }
+        if (formData.document) data.append("document", formData.document);
 
         try {
             setSaving(true);
             let res;
             if (editingId) {
-                // Laravel handles PUT with FormData differently, often requires _method spoofing
                 data.append("_method", "PUT");
-                res = await api.post(`expense/expenses/${editingId}`, data, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                res = await api.post('expense/expenses/' + editingId, data, { headers: { 'Content-Type': 'multipart/form-data' } });
             } else {
-                res = await api.post("expense/expenses", data, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                res = await api.post("expense/expenses", data, { headers: { 'Content-Type': 'multipart/form-data' } });
             }
-
             if (res.data?.status === "Success") {
-                toast.success(editingId ? "Expense updated successfully" : "Expense saved successfully");
+                toast.success(editingId ? t("expense_updated_successfully") : t("expense_saved_successfully"));
                 resetForm();
                 fetchData();
             }
         } catch (error) {
             console.error("Error saving expense:", error);
-            toast.error("Failed to save expense");
-        } finally {
-            setSaving(false);
-        }
+            toast.error(t("failed_to_save_expense"));
+        } finally { setSaving(false); }
     };
 
     const resetForm = () => {
@@ -215,16 +189,16 @@ export default function AddExpensePage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this expense?")) return;
+        if (!confirm(t("are_you_sure_delete_expense"))) return;
         try {
-            const res = await api.delete(`expense/expenses/${id}`);
+            const res = await api.delete('expense/expenses/' + id);
             if (res.data?.status === "Success") {
-                toast.success("Expense deleted successfully");
+                toast.success(t("expense_deleted_successfully"));
                 fetchData();
             }
         } catch (error) {
             console.error("Error deleting expense:", error);
-            toast.error("Failed to delete expense");
+            toast.error(t("failed_to_delete_expense"));
         }
     };
 
@@ -235,20 +209,20 @@ export default function AddExpensePage() {
     );
 
     const exportData = filteredData.map(item => ({
-        'Name': item.name,
-        'Description': item.description,
-        'Expense Number': item.invoice_number,
-        'Date': item.date,
-        'Expense Head': item.expense_head.expense_head,
-        'Amount': item.amount
+        [t("name")]: item.name,
+        [t("description")]: item.description,
+        [t("expense_number")]: item.invoice_number,
+        [t("date")]: item.date,
+        [t("expense_head")]: item.expense_head.expense_head,
+        [t("amount")]: item.amount
     }));
 
     const exportToExcel = () => {
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Expenses");
+        XLSX.utils.book_append_sheet(wb, ws, t("expenses"));
         XLSX.writeFile(wb, "expenses.xlsx");
-        toast.success("Exported to Excel");
+        toast.success(t("exported_to_excel"));
     };
 
     const exportToCSV = () => {
@@ -263,19 +237,19 @@ export default function AddExpensePage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success("Exported to CSV");
+        toast.success(t("exported_to_csv"));
     };
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Expense List", 14, 15);
+        doc.text(t("expense_list"), 14, 15);
         autoTable(doc, {
-            head: [['Name', 'Expense No.', 'Date', 'Head', 'Amount']],
+            head: [[t('name'), t('expense_number'), t('date'), t('expense_head'), t('amount')]],
             body: filteredData.map(item => [item.name, item.invoice_number, item.date, item.expense_head.expense_head, item.amount]),
             startY: 20,
         });
         doc.save("expenses.pdf");
-        toast.success("Exported to PDF");
+        toast.success(t("exported_to_pdf"));
     };
 
     const loadImage = (url: string): Promise<HTMLImageElement> =>
@@ -300,60 +274,47 @@ export default function AddExpensePage() {
             str = str.replace(/[^\x00-\x7F]/g, "").trim();
             return str;
         };
-
         const { header_image_url, footer_content } = invoicePrintSettings;
-
         if (header_image_url) {
             try {
                 let imgUrl = header_image_url;
-                if (imgUrl.startsWith('/')) {
-                    imgUrl = baseApiUrl + imgUrl;
-                }
+                if (imgUrl.startsWith('/')) imgUrl = baseApiUrl + imgUrl;
                 imgUrl = imgUrl.replace('localhost', '127.0.0.1');
-
                 const img = await loadImage(imgUrl);
                 const imgWidth = 190;
                 const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
                 doc.addImage(img, 'PNG', 10, startY, imgWidth, imgHeight);
                 startY += imgHeight + 10;
-            } catch {
-                // silently continue without header image
-            }
+            } catch { /* silently continue */ }
         }
-
         doc.setFontSize(16);
-        doc.text("EXPENSE INVOICE", 14, startY);
+        doc.text(t("expense_invoice"), 14, startY);
         startY += 10;
         doc.setFontSize(10);
-        doc.text(`Expense No: ${item.invoice_number || 'N/A'}`, 14, startY);
+        doc.text(t("expense_no_x", { number: item.invoice_number || 'N/A' }), 14, startY);
         startY += 6;
-        doc.text(`Date: ${formatDate(item.date)}`, 14, startY);
+        doc.text(t("date_x", { date: formatDate(item.date) }), 14, startY);
         startY += 6;
-        doc.text(`Expense Head: ${item.expense_head.expense_head}`, 14, startY);
+        doc.text(t("expense_head_x", { head: item.expense_head.expense_head }), 14, startY);
         startY += 6;
         doc.line(14, startY, 196, startY);
         startY += 4;
-
         autoTable(doc, {
-            head: [['Description', 'Amount']],
-            body: [
-                [item.name, formatPdfCurrency(item.amount)],
-            ],
+            head: [[t('description'), t('amount')]],
+            body: [[item.name, formatPdfCurrency(item.amount)]],
             startY,
         });
         let finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
         doc.setFontSize(12);
-        doc.text(`Total: ${formatPdfCurrency(item.amount)}`, 14, finalY);
-
+        doc.text(t("total_x", { amount: formatPdfCurrency(item.amount) }), 14, finalY);
         if (footer_content) {
             finalY += 10;
             doc.setFontSize(9);
             const lines = doc.splitTextToSize(footer_content, 180);
             doc.text(lines, 14, finalY);
         }
-
-        doc.save(`expense-${item.invoice_number || item.id}.pdf`);
-        toast.success("Invoice downloaded");
+        doc.save('expense-' + (item.invoice_number || item.id) + '.pdf');
+        toast.success(t("invoice_downloaded"));
     };
 
     const copyToClipboard = () => {
@@ -361,7 +322,7 @@ export default function AddExpensePage() {
         const text = exportData.map(d => Object.values(d).join('\t')).join('\n');
         const header = Object.keys(exportData[0] || {}).join('\t');
         navigator.clipboard.writeText(header + '\n' + text);
-        toast.success("Copied to clipboard");
+        toast.success(t("copied_to_clipboard"));
     };
 
     return (
@@ -376,23 +337,20 @@ export default function AddExpensePage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {editingId ? "Edit Expense" : "Add Expense"}
+                                {editingId ? t("edit_expense") : t("add_expense")}
                             </CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Record a new expense entry</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("record_new_expense")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-4">
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="expense-head" className="text-xs font-semibold text-gray-600">
-                                    Expense Head <span className="text-red-500">*</span>
+                                    {t("expense_head")} <span className="text-red-500">*</span>
                                 </Label>
-                                <Select
-                                    value={formData.expense_head_id}
-                                    onValueChange={(val) => setFormData({ ...formData, expense_head_id: val })}
-                                >
+                                <Select value={formData.expense_head_id} onValueChange={(val) => setFormData({ ...formData, expense_head_id: val })}>
                                     <SelectTrigger id="expense-head">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {expenseHeads.map((head) => (
@@ -401,107 +359,51 @@ export default function AddExpensePage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-
                             <div className="space-y-2">
                                 <Label htmlFor="name" className="text-xs font-semibold text-gray-600">
-                                    Name <span className="text-red-500">*</span>
+                                    {t("name")} <span className="text-red-500">*</span>
                                 </Label>
-                                <Input
-                                    id="name"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                />
+                                <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
                             </div>
-
                             <div className="space-y-2">
-                                <Label htmlFor="invoice-number" className="text-xs font-semibold text-gray-600">
-                                    Expense Number
-                                </Label>
-                                <Input
-                                    id="invoice-number"
-                                    value={formData.invoice_number}
-                                    onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                                    placeholder="Auto-generated"
-                                />
+                                <Label htmlFor="invoice-number" className="text-xs font-semibold text-gray-600">{t("expense_number")}</Label>
+                                <Input id="invoice-number" value={formData.invoice_number} onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })} placeholder={t("auto_generated")} />
                             </div>
-
                             <div className="space-y-2">
                                 <Label htmlFor="date" className="text-xs font-semibold text-gray-600">
-                                    Date <span className="text-red-500">*</span>
+                                    {t("date")} <span className="text-red-500">*</span>
                                 </Label>
-                                <DatePicker
-                                    value={formData.date}
-                                    onChange={(val) => setFormData({ ...formData, date: val })}
-                                    className="h-11 border-gray-200"
-                                />
+                                <DatePicker value={formData.date} onChange={(val) => setFormData({ ...formData, date: val })} className="h-11 border-gray-200" />
                             </div>
-
                             <div className="space-y-2">
                                 <Label htmlFor="amount" className="text-xs font-semibold text-gray-600">
-                                    Amount <span className="text-red-500">*</span>
+                                    {t("amount")} <span className="text-red-500">*</span>
                                 </Label>
-                                <Input
-                                    id="amount"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.amount}
-                                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                                />
+                                <Input id="amount" type="number" step="0.01" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} />
                             </div>
-
                             <div className="space-y-2">
-                                <Label className="text-xs font-semibold text-gray-600">
-                                    Attach Document
-                                </Label>
-                                <div
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer group"
-                                >
+                                <Label className="text-xs font-semibold text-gray-600">{t("attach_document")}</Label>
+                                <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer group">
                                     <Upload className="h-6 w-6 mb-2 group-hover:text-indigo-500 transition-colors" />
                                     <span className="text-xs font-medium">
-                                        {formData.document ? formData.document.name : "Drag and drop a file here or click"}
+                                        {formData.document ? formData.document.name : t("drag_drop_or_click")}
                                     </span>
-                                    <Input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        className="hidden"
-                                        onChange={handleFileChange}
-                                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-                                    />
+                                    <Input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" />
                                 </div>
                             </div>
-
                             <div className="space-y-2">
-                                <Label htmlFor="description" className="text-xs font-semibold text-gray-600">
-                                    Description
-                                </Label>
-                                <Textarea
-                                    id="description"
-                                    className="resize-none"
-                                    rows={3}
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                />
+                                <Label htmlFor="description" className="text-xs font-semibold text-gray-600">{t("description")}</Label>
+                                <Textarea id="description" className="resize-none" rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
                             </div>
-
                             <div className="flex justify-end pt-2 gap-2">
                                 {editingId && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={resetForm}
-                                        className="h-9 px-6 rounded-full text-xs font-bold"
-                                    >
-                                        Cancel
+                                    <Button type="button" variant="outline" onClick={resetForm} className="h-9 px-6 rounded-full text-xs font-bold">
+                                        {t("cancel")}
                                     </Button>
                                 )}
-                                <Button
-                                    type="submit"
-                                    disabled={saving}
-                                    className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
-                                >
+                                <Button type="submit" disabled={saving} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                    {editingId ? "Update" : "Save"}
+                                    {editingId ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </form>
@@ -515,69 +417,31 @@ export default function AddExpensePage() {
                             <ClipboardList className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Expense List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{expenses.length} expense{expenses.length === 1 ? "" : "s"} recorded</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("expense_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_expenses_recorded", { count: expenses.length })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex w-full md:w-auto items-center gap-2">
                                 <div className="relative w-full md:w-64">
-                                    <Input
-                                        placeholder="Search..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-3 pr-10"
-                                    />
+                                    <Input placeholder={t("search") + "..."} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 pr-10" />
                                 </div>
                             </div>
-
                             <div className="flex items-center gap-2">
                                 <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                                    <SelectTrigger className="w-[70px]">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
+                                    <SelectTrigger className="w-[70px]"><SelectValue placeholder="50" /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
+                                        <SelectItem value="10">10</SelectItem><SelectItem value="25">25</SelectItem><SelectItem value="50">50</SelectItem><SelectItem value="100">100</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
-                                    <Button
-                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                        onClick={copyToClipboard}
-                                    >
-                                        <Copy className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                        onClick={exportToExcel}
-                                    >
-                                        <FileSpreadsheet className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                        onClick={exportToCSV}
-                                    >
-                                        <FileText className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                        onClick={exportToPDF}
-                                    >
-                                        <FileCode className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                                        onClick={() => window.print()}
-                                    >
-                                        <Printer className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200">
-                                        <Columns className="h-4 w-4" />
-                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200" onClick={copyToClipboard}><Copy className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200" onClick={exportToExcel}><FileSpreadsheet className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200" onClick={exportToCSV}><FileText className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200" onClick={exportToPDF}><FileCode className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200" onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"><Columns className="h-4 w-4" /></Button>
                                 </div>
                             </div>
                         </div>
@@ -586,14 +450,14 @@ export default function AddExpensePage() {
                             <Table>
                                 <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Name</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 min-w-[300px]">Description</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Expense Number</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Date</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Expense Head</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Attachment</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Amount ($)</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Action</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("name")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 min-w-[300px]">{t("description")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("expense_number")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("date")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("expense_head")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("attachment")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">{t("amount")} ($)</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -602,7 +466,7 @@ export default function AddExpensePage() {
                                     ) : filteredData.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                                No data found
+                                                {t("no_data_found")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -615,44 +479,17 @@ export default function AddExpensePage() {
                                                 <TableCell className="text-gray-600">{item.expense_head.expense_head}</TableCell>
                                                 <TableCell>
                                                     {item.document ? (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => {
-                                                                window.open(getImageUrl(item.document), '_blank');
-                                                            }}
-                                                            className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded p-0"
-                                                        >
+                                                        <Button size="sm" variant="ghost" onClick={() => { window.open(getImageUrl(item.document), '_blank'); }} className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded p-0">
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
-                                                    ) : (
-                                                        <span className="text-gray-300 text-xs">—</span>
-                                                    )}
+                                                    ) : (<span className="text-gray-300 text-xs">—</span>)}
                                                 </TableCell>
                                                 <TableCell className="text-gray-600 text-right font-semibold">${item.amount}</TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        <Button
-                                                            size="sm"
-                                                            onClick={() => downloadInvoicePDF(item)}
-                                                            className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                        >
-                                                            <Download className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            onClick={() => handleEdit(item)}
-                                                            className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            onClick={() => handleDelete(item.id)}
-                                                            className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
+                                                        <Button size="sm" onClick={() => downloadInvoicePDF(item)} className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Download className="h-4 w-4" /></Button>
+                                                        <Button size="sm" onClick={() => handleEdit(item)} className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-4 w-4" /></Button>
+                                                        <Button size="sm" onClick={() => handleDelete(item.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-4 w-4" /></Button>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -664,7 +501,7 @@ export default function AddExpensePage() {
 
                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
                             <div>
-                                Showing 1 to {filteredData.length} of {expenses.length} entries
+                                {t("showing_x_to_y_of_z", { from: 1, to: filteredData.length, total: expenses.length })}
                             </div>
                             <div className="flex gap-1">
                                 <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronLeft className="h-4 w-4" /></Button>

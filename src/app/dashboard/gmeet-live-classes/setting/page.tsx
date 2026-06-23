@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Settings, Loader2, Save } from "lucide-react";
 
 export default function SettingPage() {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [formData, setFormData] = useState({
@@ -35,7 +37,7 @@ export default function SettingPage() {
             }
         } catch (error) {
             console.error("Failed to load settings", error);
-            toast.error("Failed to load Google Meet settings");
+            toast.error(t("failed_to_load_google_meet_settings"));
         } finally {
             setLoading(false);
         }
@@ -45,10 +47,10 @@ export default function SettingPage() {
         setSubmitting(true);
         try {
             await api.post('/conference/gmeet-settings', formData);
-            toast.success("Settings updated successfully");
+            toast.success(t("settings_updated_successfully"));
         } catch (error) {
             console.error("Failed to save settings", error);
-            toast.error("Failed to update Google Meet settings");
+            toast.error(t("failed_to_update_google_meet_settings"));
         } finally {
             setSubmitting(false);
         }
@@ -89,8 +91,8 @@ export default function SettingPage() {
                             <Settings className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Google Meet Settings</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">Configure API credentials &amp; live class behaviour</p>
+                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("google_meet_settings")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("configure_api_credentials_and_live_class_behaviour")}</p>
                         </div>
                     </div>
                     <Button
@@ -98,7 +100,7 @@ export default function SettingPage() {
                         disabled={submitting}
                         className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
                     >
-                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("save")}
                     </Button>
                 </div>
             </div>
@@ -112,7 +114,7 @@ export default function SettingPage() {
                     {/* API Key */}
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
                         <Label className="w-full md:w-[28%] text-left md:text-right font-medium text-gray-600 text-xs pr-4 md:mb-0 mb-1">
-                            API Key
+                            {t("api_key")}
                         </Label>
                         <div className="w-full md:w-[70%] max-w-lg">
                             <Input
@@ -127,7 +129,7 @@ export default function SettingPage() {
                     {/* API Secret */}
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
                         <Label className="w-full md:w-[28%] text-left md:text-right font-medium text-gray-600 text-xs pr-4 md:mb-0 mb-1">
-                            API Secret
+                            {t("api_secret")}
                         </Label>
                         <div className="w-full md:w-[70%] max-w-lg">
                             <Input
@@ -142,28 +144,28 @@ export default function SettingPage() {
                     {/* Use Google Calendar Api */}
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
                         <Label className="w-full md:w-[28%] text-left md:text-right font-medium text-gray-600 text-xs pr-4 md:mb-0 mb-1">
-                            Use Google Calendar Api <span className="text-red-500">*</span>
+                            {t("use_google_calendar_api")} <span className="text-red-500">*</span>
                         </Label>
                         <div className="w-full md:w-[70%] max-w-lg flex items-center gap-6 text-xs text-gray-700 font-medium">
                             <label className="flex items-center gap-1.5 cursor-pointer">
-                                <input 
-                                    type="radio" 
-                                    name="use_calendar_api" 
-                                    checked={!formData.use_calendar_api} 
+                                <input
+                                    type="radio"
+                                    name="use_calendar_api"
+                                    checked={!formData.use_calendar_api}
                                     onChange={() => setFormData({...formData, use_calendar_api: false})}
-                                    className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer" 
+                                    className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                 />
-                                <span>Disabled</span>
+                                <span>{t("disabled")}</span>
                             </label>
                             <label className="flex items-center gap-1.5 cursor-pointer">
-                                <input 
-                                    type="radio" 
-                                    name="use_calendar_api" 
-                                    checked={formData.use_calendar_api} 
+                                <input
+                                    type="radio"
+                                    name="use_calendar_api"
+                                    checked={formData.use_calendar_api}
                                     onChange={() => setFormData({...formData, use_calendar_api: true})}
-                                    className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer" 
+                                    className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                 />
-                                <span>Enabled</span>
+                                <span>{t("enabled")}</span>
                             </label>
                         </div>
                     </div>
@@ -171,28 +173,28 @@ export default function SettingPage() {
                     {/* Parent Live Class */}
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
                         <Label className="w-full md:w-[28%] text-left md:text-right font-medium text-gray-600 text-xs pr-4 md:mb-0 mb-1">
-                            Parent Live Class <span className="text-red-500">*</span>
+                            {t("parent_live_class")} <span className="text-red-500">*</span>
                         </Label>
                         <div className="w-full md:w-[70%] max-w-lg flex items-center gap-6 text-xs text-gray-700 font-medium">
                             <label className="flex items-center gap-1.5 cursor-pointer">
-                                <input 
-                                    type="radio" 
-                                    name="forgot_live_class" 
-                                    checked={!formData.forgot_live_class} 
+                                <input
+                                    type="radio"
+                                    name="forgot_live_class"
+                                    checked={!formData.forgot_live_class}
                                     onChange={() => setFormData({...formData, forgot_live_class: false})}
-                                    className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer" 
+                                    className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                 />
-                                <span>Disabled</span>
+                                <span>{t("disabled")}</span>
                             </label>
                             <label className="flex items-center gap-1.5 cursor-pointer">
-                                <input 
-                                    type="radio" 
-                                    name="forgot_live_class" 
-                                    checked={formData.forgot_live_class} 
+                                <input
+                                    type="radio"
+                                    name="forgot_live_class"
+                                    checked={formData.forgot_live_class}
                                     onChange={() => setFormData({...formData, forgot_live_class: true})}
-                                    className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer" 
+                                    className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                 />
-                                <span>Enabled</span>
+                                <span>{t("enabled")}</span>
                             </label>
                         </div>
                     </div>
@@ -206,7 +208,7 @@ export default function SettingPage() {
                         disabled={submitting}
                         className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-5 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
                     >
-                        {submitting ? "Saving..." : "Save"}
+                        {submitting ? t("saving") : t("save")}
                     </Button>
                 </div>
 

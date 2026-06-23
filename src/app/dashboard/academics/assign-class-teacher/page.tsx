@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -77,6 +79,8 @@ interface Staff {
 
 export default function AssignClassTeacherPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
 
     // Data states
@@ -118,7 +122,7 @@ export default function AssignClassTeacherPage() {
             setAssignments(assignRes.data.data || []);
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
-            toast("error", "Failed to load prerequisite data");
+            tt.error("failed_to_load");
         } finally {
             setLoading(false);
         }
@@ -143,7 +147,7 @@ export default function AssignClassTeacherPage() {
 
     const handleSave = async () => {
         if (!selectedClassId || !selectedSectionId || selectedStaffIds.length === 0) {
-            toast("error", "Please fill all required fields");
+            tt.error("please_fill_required_fields");
             return;
         }
 
@@ -154,7 +158,7 @@ export default function AssignClassTeacherPage() {
                 section_id: parseInt(selectedSectionId),
                 teacher_ids: selectedStaffIds
             });
-            toast("success", "Class teachers assigned successfully");
+            tt.success("class_teachers_assigned_successfully");
 
             // Refresh list
             const assignRes = await api.get("/academics/class-teachers");
@@ -166,7 +170,7 @@ export default function AssignClassTeacherPage() {
             setSelectedStaffIds([]);
         } catch (error) {
             console.error("Error saving assignment:", error);
-            toast("error", "Failed to save assignment");
+            tt.error("failed_to_save");
         } finally {
             setSaving(false);
         }
@@ -210,12 +214,12 @@ export default function AssignClassTeacherPage() {
         setDeleting(true);
         try {
             await api.delete(`/academics/class-teachers/${idToDelete}`);
-            toast("success", "Assignment removed successfully");
+            tt.success("assignment_removed_successfully");
             setAssignments(prev => prev.filter(a => a.id !== idToDelete));
             setSelectedKeys(prev => prev.filter(k => k !== idToDelete));
         } catch (error) {
             console.error("Error deleting assignment:", error);
-            toast("error", "Failed to delete assignment");
+            tt.error("failed_to_delete");
         } finally {
             setDeleting(false);
             setIsDeleteDialogOpen(false);
@@ -228,12 +232,12 @@ export default function AssignClassTeacherPage() {
         setDeleting(true);
         try {
             await api.post("/academics/class-teachers/bulk-delete", { keys: selectedKeys });
-            toast("success", `${selectedKeys.length} assignments removed successfully`);
+            tt.success("assignments_removed_successfully", { count: selectedKeys.length });
             setAssignments(prev => prev.filter(a => !selectedKeys.includes(a.id)));
             setSelectedKeys([]);
         } catch (error) {
             console.error("Error in bulk delete:", error);
-            toast("error", "Failed to delete selected assignments");
+            tt.error("failed_to_delete_selected_assignments");
         } finally {
             setDeleting(false);
             setIsBulkDeleteDialogOpen(false);
@@ -245,15 +249,15 @@ export default function AssignClassTeacherPage() {
         const text = filteredAssignments.map(a =>
             `${a.class_name}\t${a.section_name}\t${a.teachers.map(t => t.name).join(', ')}`
         ).join("\n");
-        navigator.clipboard.writeText("Class\tSection\tClass Teacher\n" + text);
-        toast("success", "Copied to clipboard");
+        navigator.clipboard.writeText(t("class") + "\t" + t("section") + "\t" + t("class_teacher") + "\n" + text);
+        tt.success("copied_to_clipboard");
     };
 
     const handleExportExcel = () => {
         const data = filteredAssignments.map(a => ({
-            Class: a.class_name,
-            Section: a.section_name,
-            'Class Teacher': a.teachers.map(t => t.name).join(', ')
+            [t("class")]: a.class_name,
+            [t("section")]: a.section_name,
+            [t("class_teacher")]: a.teachers.map(t => t.name).join(', ')
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
@@ -264,7 +268,7 @@ export default function AssignClassTeacherPage() {
     const handleExportPDF = () => {
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [["Class", "Section", "Class Teacher"]],
+            head: [[t("class"), t("section"), t("class_teacher")]],
             body: filteredAssignments.map(a => [
                 a.class_name,
                 a.section_name,
@@ -294,15 +298,15 @@ export default function AssignClassTeacherPage() {
                             <UserCheck className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Assign Class Teacher</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Assign teachers to a class section</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("assign_class_teacher")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("assign_teachers_to_class_section")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-5">
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium text-gray-700">
-                                    Class <span className="text-red-500">*</span>
+                                    {t("class")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select
                                     value={selectedClassId}
@@ -313,7 +317,7 @@ export default function AssignClassTeacherPage() {
                                     }}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {classes.map(c => (
@@ -325,7 +329,7 @@ export default function AssignClassTeacherPage() {
 
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium text-gray-700">
-                                    Section <span className="text-red-500">*</span>
+                                    {t("section")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select
                                     value={selectedSectionId}
@@ -333,7 +337,7 @@ export default function AssignClassTeacherPage() {
                                     disabled={!selectedClassId}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder={!selectedClassId ? 'Select class first' : 'Select'} />
+                                        <SelectValue placeholder={!selectedClassId ? t("select_class_first") : t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {sections.map(s => (
@@ -345,7 +349,7 @@ export default function AssignClassTeacherPage() {
 
                             <div className="space-y-3">
                                 <Label className="text-sm font-medium text-gray-700">
-                                    Class Teacher <span className="text-red-500">*</span>
+                                    {t("class_teacher")} <span className="text-red-500">*</span>
                                 </Label>
                                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 border rounded p-2">
                                     {staffList.map((staff) => (
@@ -364,7 +368,7 @@ export default function AssignClassTeacherPage() {
                                         </div>
                                     ))}
                                     {staffList.length === 0 && (
-                                        <p className="text-xs text-center text-gray-400 py-4">No staff found</p>
+                                        <p className="text-xs text-center text-gray-400 py-4">{t("no_staff_found")}</p>
                                     )}
                                 </div>
                             </div>
@@ -378,10 +382,10 @@ export default function AssignClassTeacherPage() {
                                     {saving ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Saving...
+                                            {t("saving")}
                                         </>
                                     ) : (
-                                        "Save"
+                                        t("save")
                                     )}
                                 </Button>
                             </div>
@@ -398,8 +402,8 @@ export default function AssignClassTeacherPage() {
                             <UserCheck className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Class Teacher List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{filteredAssignments.length} total entr{filteredAssignments.length === 1 ? 'y' : 'ies'}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("class_teacher_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: filteredAssignments.length })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-5">
@@ -409,7 +413,7 @@ export default function AssignClassTeacherPage() {
                                     <Search className="h-4 w-4 text-gray-400" />
                                 </div>
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-10 h-9 border-gray-200 focus-visible:ring-indigo-500"
@@ -421,21 +425,21 @@ export default function AssignClassTeacherPage() {
                                     {selectedKeys.length > 0 && (
                                         <Button
                                             onClick={() => setIsBulkDeleteDialogOpen(true)}
-                                            variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-50" title="Delete Selected"
+                                            variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-50" title={t("delete_selected")}
                                         >
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     )}
-                                    <Button onClick={handleCopy} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" title="Copy">
+                                    <Button onClick={handleCopy} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" title={t("copy")}>
                                         <Copy className="h-4 w-4" />
                                     </Button>
-                                    <Button onClick={handleExportExcel} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" title="Excel">
+                                    <Button onClick={handleExportExcel} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" title={t("excel")}>
                                         <FileSpreadsheet className="h-4 w-4" />
                                     </Button>
-                                    <Button onClick={handleExportPDF} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" title="PDF">
+                                    <Button onClick={handleExportPDF} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" title={t("pdf")}>
                                         <FileText className="h-4 w-4" />
                                     </Button>
-                                    <Button onClick={handlePrint} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" title="Print">
+                                    <Button onClick={handlePrint} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100" title={t("print")}>
                                         <Printer className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -452,10 +456,10 @@ export default function AssignClassTeacherPage() {
                                                 onCheckedChange={toggleSelectAll}
                                             />
                                         </TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Class</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Section</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Class Teacher</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 text-right pr-4">Action</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("class")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("section")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("class_teacher")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 text-right pr-4">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -464,7 +468,7 @@ export default function AssignClassTeacherPage() {
                                     ) : filteredAssignments.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                                No data found
+                                                {t("no_data_found")}
                                             </TableCell>
                                         </TableRow>
                                     ) : filteredAssignments.map((assignment) => (
@@ -504,7 +508,7 @@ export default function AssignClassTeacherPage() {
 
                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
                             <div>
-                                Showing 1 to {filteredAssignments.length} of {filteredAssignments.length} entries
+                                {t("showing_x_to_y_of_z", { from: 1, to: filteredAssignments.length, total: filteredAssignments.length })}
                             </div>
                             <div className="flex gap-1">
                                 <Button variant="outline" size="sm" className="h-7 w-7 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px]" disabled>
@@ -530,13 +534,13 @@ export default function AssignClassTeacherPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Assignment?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("delete_assignment")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete this class teacher assignment? This action cannot be undone.
+                            {t("delete_assignment_confirm_message")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={deleting}>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={(e) => {
                                 e.preventDefault();
@@ -546,7 +550,7 @@ export default function AssignClassTeacherPage() {
                             disabled={deleting}
                         >
                             {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Delete
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -555,13 +559,13 @@ export default function AssignClassTeacherPage() {
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Selected Assignments?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("delete_selected_assignments")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete {selectedKeys.length} selected assignments? This action cannot be undone.
+                            {t("delete_selected_assignments_confirm_message", { count: selectedKeys.length })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={deleting}>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={(e) => {
                                 e.preventDefault();
@@ -571,7 +575,7 @@ export default function AssignClassTeacherPage() {
                             disabled={deleting}
                         >
                             {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Delete Selected
+                            {t("delete_selected")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

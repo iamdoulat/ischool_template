@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,9 +17,7 @@ import {
 } from "@/components/ui/table";
 import {
     Card,
-    CardContent,
-    CardHeader,
-    CardTitle
+    CardContent
 } from "@/components/ui/card";
 import {
     Dialog,
@@ -47,7 +46,8 @@ import {
     X,
     FileJson,
     Menu as MenuIcon,
-    ArrowUpDown
+    ArrowUpDown,
+    CalendarDays
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, addMonths, subMonths } from "date-fns";
@@ -69,29 +69,30 @@ interface AlumniEvent {
 }
 
 export default function AlumniEventsPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [events, setEvents] = useState<AlumniEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [mounted, setMounted] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    
+
     // Form State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<AlumniEvent | null>(null);
     const [formLoading, setFormLoading] = useState(false);
-    
+
     // Criteria Data
     const [classes, setClasses] = useState<any[]>([]);
     const [sections, setSections] = useState<any[]>([]);
     const [sessions, setSessions] = useState<any[]>([]);
-    
+
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState("50");
-    
+
     // Calendar State
     const [currentMonth, setCurrentMonth] = useState(new Date(2026, 4)); // Default to May 2026 as per screenshot if we wanted, but let's just use current date usually. Actually, let's use current month.
-    
+
     const [formState, setFormState] = useState({
         event_title: "",
         school_class_id: "all",
@@ -115,7 +116,7 @@ export default function AlumniEventsPage() {
             const response = await api.get("/alumni/events");
             setEvents(response.data.data || []);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to load events.", variant: "destructive" });
+            tt.error("failed_to_load_events");
         } finally {
             setLoading(false);
         }
@@ -127,7 +128,7 @@ export default function AlumniEventsPage() {
                 api.get("/academics/classes?no_paginate=true"),
                 api.get("/system-setting/sessions")
             ]);
-            
+
             setClasses(classesData.data.data || []);
             setSessions(sessionsData.data.data || []);
         } catch (error) {
@@ -179,7 +180,7 @@ export default function AlumniEventsPage() {
 
     const handleSubmit = async () => {
         if (!formState.event_title || !formState.from_date || !formState.to_date) {
-            toast({ title: "Error", description: "Please fill in all required fields.", variant: "destructive" });
+            tt.error("fill_all_required_fields");
             return;
         }
 
@@ -194,28 +195,28 @@ export default function AlumniEventsPage() {
 
             if (editingEvent) {
                 await api.put(`/alumni/events/${editingEvent.id}`, payload);
-                toast({ title: "Success", description: "Event updated successfully." });
+                tt.success("event_updated_successfully");
             } else {
                 await api.post("/alumni/events", payload);
-                toast({ title: "Success", description: "Event created successfully." });
+                tt.success("event_created_successfully");
             }
             setIsDialogOpen(false);
             fetchEvents();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to save event.", variant: "destructive" });
+            tt.error("failed_to_save_event");
         } finally {
             setFormLoading(false);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!window.confirm("Are you sure you want to delete this event?")) return;
+        if (!window.confirm(t("confirm_delete_event"))) return;
         try {
             await api.delete(`/alumni/events/${id}`);
-            toast({ title: "Success", description: "Event deleted successfully." });
+            tt.success("event_deleted_successfully");
             fetchEvents();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to delete event.", variant: "destructive" });
+            tt.error("failed_to_delete_event");
         }
     };
 
@@ -235,13 +236,13 @@ export default function AlumniEventsPage() {
         return (
             <div className="flex items-center justify-between mb-4 relative">
                 <div className="flex bg-gradient-to-r from-[#FF9800] to-[#6366F1] rounded overflow-hidden shadow-sm absolute left-0">
-                    <button 
+                    <button
                         className="px-3 py-1.5 text-white hover:bg-white/20 border-r border-white/20 transition-colors"
                         onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
                     >
                         <ChevronLeft className="h-4 w-4" />
                     </button>
-                    <button 
+                    <button
                         className="px-3 py-1.5 text-white hover:bg-white/20 transition-colors"
                         onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
                     >
@@ -256,7 +257,7 @@ export default function AlumniEventsPage() {
     };
 
     const renderDays = () => {
-        const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        const days = [t("mon"), t("tue"), t("wed"), t("thu"), t("fri"), t("sat"), t("sun")];
         return (
             <div className="grid grid-cols-7 border-t border-l border-gray-200">
                 {days.map(day => (
@@ -328,22 +329,30 @@ export default function AlumniEventsPage() {
 
             {/* Right Section: Event List */}
             <div className="flex-1">
-                <Card className="rounded-sm shadow-sm border border-gray-200 bg-white">
-                    <CardHeader className="px-6 py-4 border-b border-gray-200 flex flex-row items-center justify-between space-y-0">
-                        <CardTitle className="text-xl font-normal text-slate-700">Event List</CardTitle>
-                        <Button 
+                <Card className="rounded-sm shadow-sm border border-gray-200 bg-white pt-0 overflow-hidden">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <CalendarDays className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("event_list")}</h1>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("alumni_events_description")}</p>
+                            </div>
+                        </div>
+                        <Button
                             onClick={() => handleOpenDialog()}
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white rounded-full shadow-lg shadow-indigo-500/30 px-6 h-10 font-bold text-sm transition-all"
                         >
-                            + Add
+                            + {t("add")}
                         </Button>
-                    </CardHeader>
+                    </div>
                     <CardContent className="p-4">
                         {/* Toolbar */}
                         <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
                             <div className="relative w-full sm:w-64">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="h-9 rounded-sm border border-gray-300 focus-visible:ring-0 text-sm w-full"
@@ -378,25 +387,25 @@ export default function AlumniEventsPage() {
                             <Table className="border-b border-gray-200">
                                 <TableHeader>
                                     <TableRow className="hover:bg-transparent">
-                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto whitespace-nowrap">Event Title <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" /></TableHead>
-                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto whitespace-nowrap">Class Section <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" /></TableHead>
-                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto whitespace-nowrap">Pass Out Session <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" /></TableHead>
-                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto whitespace-nowrap">From <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" /></TableHead>
-                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto whitespace-nowrap">To <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" /></TableHead>
-                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto text-right whitespace-nowrap pr-4">Action</TableHead>
+                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto whitespace-nowrap">{t("event_title")} <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" /></TableHead>
+                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto whitespace-nowrap">{t("class_section")} <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" /></TableHead>
+                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto whitespace-nowrap">{t("pass_out_session")} <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" /></TableHead>
+                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto whitespace-nowrap">{t("from")} <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" /></TableHead>
+                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto whitespace-nowrap">{t("to")} <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" /></TableHead>
+                                        <TableHead className="text-sm font-bold text-slate-700 py-3 h-auto text-right whitespace-nowrap pr-4">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {loading ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="h-32 text-center text-gray-500">
-                                                Loading events...
+                                                {t("loading_events")}
                                             </TableCell>
                                         </TableRow>
                                     ) : paginatedEvents.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="h-32 text-center text-gray-500">
-                                                No events found.
+                                                {t("no_events_found")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -406,7 +415,7 @@ export default function AlumniEventsPage() {
                                                     {event.event_title}
                                                 </TableCell>
                                                 <TableCell className="py-4 text-sm text-slate-600">
-                                                    {event.school_class_id ? `${event.school_class?.name || ''} ${event.section?.name || ''}` : 'All'}
+                                                    {event.school_class_id ? `${event.school_class?.name || ''} ${event.section?.name || ''}` : t("all")}
                                                 </TableCell>
                                                 <TableCell className="py-4 text-sm text-slate-600">
                                                     {event.session?.session || ""}
@@ -419,22 +428,22 @@ export default function AlumniEventsPage() {
                                                 </TableCell>
                                                 <TableCell className="py-4 pr-4 text-right">
                                                     <div className="flex items-center justify-end gap-1.5">
-                                                        <Button 
-                                                            size="icon" 
+                                                        <Button
+                                                            size="icon"
                                                             className="h-8 w-8 rounded-md bg-[#10b981] hover:bg-[#059669] text-white shadow-sm"
                                                         >
                                                             <MenuIcon className="h-4 w-4" />
                                                         </Button>
-                                                        <Button 
+                                                        <Button
                                                             onClick={() => handleOpenDialog(event)}
-                                                            size="icon" 
+                                                            size="icon"
                                                             className="h-8 w-8 rounded-md bg-[#6366f1] hover:bg-[#4f46e5] text-white shadow-sm"
                                                         >
                                                             <Pencil className="h-4 w-4" />
                                                         </Button>
-                                                        <Button 
+                                                        <Button
                                                             onClick={() => handleDelete(event.id)}
-                                                            size="icon" 
+                                                            size="icon"
                                                             className="h-8 w-8 rounded-md bg-[#ef4444] hover:bg-[#dc2626] text-white shadow-sm"
                                                         >
                                                             <X className="h-4 w-4" />
@@ -447,20 +456,20 @@ export default function AlumniEventsPage() {
                                 </TableBody>
                             </Table>
                         </div>
-                        
+
                         {/* Pagination Footer */}
                         <div className="flex items-center justify-between mt-4 text-xs text-gray-500">
                             <div>
                                 {totalEntries > 0 ? (
-                                    `Showing ${startIndex + 1} to ${Math.min(startIndex + itemsPerPageNum, totalEntries)} of ${totalEntries} entries`
+                                    t("showing_x_to_y_of_z", { from: startIndex + 1, to: Math.min(startIndex + itemsPerPageNum, totalEntries), total: totalEntries })
                                 ) : (
-                                    "Showing 0 to 0 of 0 entries"
+                                    t("showing_0_to_0_of_0_entries")
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
+                                <Button
+                                    variant="outline"
+                                    size="icon"
                                     className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
                                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                     disabled={currentPage === 1}
@@ -473,8 +482,8 @@ export default function AlumniEventsPage() {
                                         variant={currentPage === i + 1 ? "default" : "outline"}
                                         className={cn(
                                             "h-8 min-w-[32px] rounded-lg text-xs font-bold transition-all shadow-sm",
-                                            currentPage === i + 1 
-                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-indigo-500/30 border-0" 
+                                            currentPage === i + 1
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-indigo-500/30 border-0"
                                                 : "bg-white border-gray-100 text-gray-500 hover:text-gray-700"
                                         )}
                                         onClick={() => setCurrentPage(i + 1)}
@@ -482,9 +491,9 @@ export default function AlumniEventsPage() {
                                         {i + 1}
                                     </Button>
                                 ))}
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
+                                <Button
+                                    variant="outline"
+                                    size="icon"
                                     className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
                                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                     disabled={currentPage === totalPages || totalPages === 0}
@@ -501,12 +510,12 @@ export default function AlumniEventsPage() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-[600px] p-0 rounded bg-white">
                     <DialogHeader className="px-6 py-4 border-b">
-                        <DialogTitle className="text-lg font-normal text-slate-800">{editingEvent ? "Edit Event" : "Add Event"}</DialogTitle>
+                        <DialogTitle className="text-lg font-normal text-slate-800">{editingEvent ? t("edit_event") : t("add_event")}</DialogTitle>
                     </DialogHeader>
                     <div className="p-6 space-y-4">
                         <div className="space-y-2">
-                            <Label className="text-sm font-normal text-slate-700">Event Title *</Label>
-                            <Input 
+                            <Label className="text-sm font-normal text-slate-700">{t("event_title_label")} *</Label>
+                            <Input
                                 value={formState.event_title}
                                 onChange={(e) => setFormState({...formState, event_title: e.target.value})}
                                 className="h-9 rounded-sm border-gray-300"
@@ -514,56 +523,56 @@ export default function AlumniEventsPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-sm font-normal text-slate-700">Class</Label>
+                                <Label className="text-sm font-normal text-slate-700">{t("class")}</Label>
                                 <Select value={formState.school_class_id} onValueChange={handleClassChange}>
                                     <SelectTrigger className="h-9 rounded-sm border-gray-300">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All</SelectItem>
+                                        <SelectItem value="all">{t("all")}</SelectItem>
                                         {classes.map(cls => <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-sm font-normal text-slate-700">Section</Label>
+                                <Label className="text-sm font-normal text-slate-700">{t("section")}</Label>
                                 <Select value={formState.section_id} onValueChange={(val) => setFormState({...formState, section_id: val})}>
                                     <SelectTrigger className="h-9 rounded-sm border-gray-300">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All</SelectItem>
+                                        <SelectItem value="all">{t("all")}</SelectItem>
                                         {sections.map(sec => <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-sm font-normal text-slate-700">Pass Out Session</Label>
+                                <Label className="text-sm font-normal text-slate-700">{t("pass_out_session")}</Label>
                                 <Select value={formState.session_id} onValueChange={(val) => setFormState({...formState, session_id: val})}>
                                     <SelectTrigger className="h-9 rounded-sm border-gray-300">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All</SelectItem>
+                                        <SelectItem value="all">{t("all")}</SelectItem>
                                         {sessions.map(sess => <SelectItem key={sess.id} value={sess.id.toString()}>{sess.session}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-sm font-normal text-slate-700">Show on App</Label>
+                                <Label className="text-sm font-normal text-slate-700">{t("show_on_app")}</Label>
                                 <Select value={formState.show_on_app ? "yes" : "no"} onValueChange={(val) => setFormState({...formState, show_on_app: val === "yes"})}>
                                     <SelectTrigger className="h-9 rounded-sm border-gray-300">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="yes">Yes</SelectItem>
-                                        <SelectItem value="no">No</SelectItem>
+                                        <SelectItem value="yes">{t("yes")}</SelectItem>
+                                        <SelectItem value="no">{t("no")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-sm font-normal text-slate-700">From Date *</Label>
-                                <Input 
+                                <Label className="text-sm font-normal text-slate-700">{t("from_date_label")} *</Label>
+                                <Input
                                     type="date"
                                     value={formState.from_date}
                                     onChange={(e) => setFormState({...formState, from_date: e.target.value})}
@@ -571,8 +580,8 @@ export default function AlumniEventsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-sm font-normal text-slate-700">To Date *</Label>
-                                <Input 
+                                <Label className="text-sm font-normal text-slate-700">{t("to_date_label")} *</Label>
+                                <Input
                                     type="date"
                                     value={formState.to_date}
                                     onChange={(e) => setFormState({...formState, to_date: e.target.value})}
@@ -582,12 +591,12 @@ export default function AlumniEventsPage() {
                         </div>
                     </div>
                     <DialogFooter className="px-6 py-4 border-t">
-                        <Button 
+                        <Button
                             onClick={handleSubmit}
                             disabled={formLoading}
                             className="bg-[#6c5ce7] hover:bg-[#5b4cc4] text-white rounded shadow-sm px-6 h-9 font-normal text-sm"
                         >
-                            Save
+                            {t("save")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

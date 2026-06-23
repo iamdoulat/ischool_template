@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Card,
     CardContent,
@@ -50,6 +51,7 @@ interface ReportData {
 
 export default function OnlineCourseReportPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
     const [selectedReport, setSelectedReport] = useState(reportTypes[0]);
     const [loading, setLoading] = useState(false);
     const [criteria, setCriteria] = useState<{
@@ -93,16 +95,39 @@ export default function OnlineCourseReportPage() {
             });
             setReports(response.data.data || []);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch analytical report", variant: "destructive" });
+            toast({ title: t("error"), description: t("failed_to_fetch_analytical_report"), variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
 
+    const getTranslatedReportName = (report: typeof reportTypes[number]) => {
+        const keyMap: Record<string, string> = {
+            "Student Course Purchase Report": t("student_course_purchase_report"),
+            "Course Sell Count Report": t("course_sell_count_report"),
+            "Course Trending Report": t("course_trending_report"),
+            "Course Complete Report": t("course_complete_report"),
+            "Course Assignment Report": t("course_assignment_report"),
+            "Course Exam Result Report": t("course_exam_result_report"),
+            "Course Exam Attempt Report": t("course_exam_attempt_report"),
+        };
+        return keyMap[report.name] || report.name;
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 font-sans">
             {/* Title */}
-            <h1 className="text-2xl font-bold tracking-tight text-slate-800">Online Course Report</h1>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <BarChart3 className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("online_course_report")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("analyze_course_sales_and_performance")}</p>
+                    </div>
+                </div>
+            </div>
 
             {/* Report Selection Grid */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
@@ -123,7 +148,7 @@ export default function OnlineCourseReportPage() {
                                     "h-4 w-4 transition-colors",
                                     selectedReport.id === report.id ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                                 )} />
-                                <span className="truncate">{report.name}</span>
+                                <span className="truncate">{getTranslatedReportName(report)}</span>
                             </button>
                         ))}
                     </div>
@@ -133,45 +158,45 @@ export default function OnlineCourseReportPage() {
             {/* Filter Section */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
                 <CardHeader className="px-6 py-4 border-b border-muted/50">
-                    <CardTitle className="text-lg font-bold tracking-tight">{selectedReport.name}</CardTitle>
+                    <CardTitle className="text-lg font-bold tracking-tight">{getTranslatedReportName(selectedReport)}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
-                        <FilterSelect 
-                            label="Search Type" 
-                            required 
-                            options={criteria.search_types} 
-                            value={filters.search_type} 
-                            onChange={(val) => setFilters({...filters, search_type: val})} 
+                        <FilterSelect
+                            label={t("search_type")}
+                            required
+                            options={criteria.search_types}
+                            value={filters.search_type}
+                            onChange={(val) => setFilters({...filters, search_type: val})}
                         />
-                        <FilterSelect 
-                            label="Payment Type" 
-                            required 
-                            options={criteria.payment_types} 
-                            value={filters.payment_type} 
-                            onChange={(val) => setFilters({...filters, payment_type: val})} 
+                        <FilterSelect
+                            label={t("payment_type")}
+                            required
+                            options={criteria.payment_types}
+                            value={filters.payment_type}
+                            onChange={(val) => setFilters({...filters, payment_type: val})}
                         />
-                        <FilterSelect 
-                            label="Payment Status" 
-                            options={criteria.payment_status} 
-                            value={filters.payment_status} 
-                            onChange={(val) => setFilters({...filters, payment_status: val})} 
+                        <FilterSelect
+                            label={t("payment_status")}
+                            options={criteria.payment_status}
+                            value={filters.payment_status}
+                            onChange={(val) => setFilters({...filters, payment_status: val})}
                         />
-                        <FilterSelect 
-                            label="Users Type" 
-                            options={criteria.user_types} 
-                            value={filters.user_type} 
-                            onChange={(val) => setFilters({...filters, user_type: val})} 
+                        <FilterSelect
+                            label={t("users_type")}
+                            options={criteria.user_types}
+                            value={filters.user_type}
+                            onChange={(val) => setFilters({...filters, user_type: val})}
                         />
 
                         <div className="lg:col-start-4 flex justify-end">
-                            <Button 
+                            <Button
                                 onClick={fetchReports}
                                 disabled={loading}
                                 className="h-10 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all group"
                             >
                                 {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />}
-                                Search
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
@@ -185,13 +210,13 @@ export default function OnlineCourseReportPage() {
                         <table className="w-full text-sm text-left">
                             <thead className="bg-muted/30 text-muted-foreground text-[10px] font-black uppercase tracking-widest border-y border-muted/50">
                                 <tr>
-                                    <th className="px-6 py-4">Student / Guest</th>
-                                    <th className="px-6 py-4 text-center">Date</th>
-                                    <th className="px-6 py-4">Course</th>
-                                    <th className="px-6 py-4">Course Provider</th>
-                                    <th className="px-6 py-4 text-center">Payment Type</th>
-                                    <th className="px-6 py-4 text-center">Payment Method</th>
-                                    <th className="px-6 py-4 text-right">Price ($)</th>
+                                    <th className="px-6 py-4">{t("student_guest")}</th>
+                                    <th className="px-6 py-4 text-center">{t("date")}</th>
+                                    <th className="px-6 py-4">{t("course")}</th>
+                                    <th className="px-6 py-4">{t("course_provider")}</th>
+                                    <th className="px-6 py-4 text-center">{t("payment_type")}</th>
+                                    <th className="px-6 py-4 text-center">{t("payment_method")}</th>
+                                    <th className="px-6 py-4 text-right">{t("price_with_symbol", { symbol: "$" })}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -200,7 +225,7 @@ export default function OnlineCourseReportPage() {
                                         <td colSpan={7} className="px-6 py-20 text-center">
                                             <div className="flex flex-col items-center justify-center space-y-3">
                                                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Executing course analytical audit...</p>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t("executing_course_analytical_audit")}</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -208,7 +233,7 @@ export default function OnlineCourseReportPage() {
                                     <tr className="group transition-colors">
                                         <td colSpan={7} className="px-6 py-20 text-center">
                                             <div className="flex flex-col items-center justify-center space-y-4">
-                                                <p className="text-destructive/60 font-medium text-xs">No data available in table</p>
+                                                <p className="text-destructive/60 font-medium text-xs">{t("no_data_available_in_table")}</p>
 
                                                 <div className="relative group/folder cursor-help mb-4">
                                                     <div className="absolute -inset-4 bg-primary/5 rounded-full scale-0 group-hover/folder:scale-100 transition-transform duration-500" />
@@ -219,7 +244,7 @@ export default function OnlineCourseReportPage() {
 
                                                 <button onClick={fetchReports} className="flex items-center gap-2 group/btn px-4 py-2 hover:bg-primary/5 rounded-full transition-all">
                                                     <ArrowRight className="h-4 w-4 text-emerald-500 group-hover/btn:translate-x-1 transition-transform" />
-                                                    <span className="text-[11px] font-black text-emerald-600 uppercase tracking-widest">Add new record or search with different criteria.</span>
+                                                    <span className="text-[11px] font-black text-emerald-600 uppercase tracking-widest">{t("add_new_record_or_search_different_criteria")}</span>
                                                 </button>
                                             </div>
                                         </td>
@@ -256,7 +281,7 @@ export default function OnlineCourseReportPage() {
                     {/* Pagination Footer */}
                     <div className="px-6 py-4 bg-muted/10 border-t border-muted/50 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                            Showing {reports.length > 0 ? 1 : 0} to {reports.length} of {reports.length} entries
+                            {t("showing_x_to_y_of_z", { from: reports.length > 0 ? 1 : 0, to: reports.length, total: reports.length })}
                         </p>
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all" disabled>
@@ -283,8 +308,8 @@ function FilterSelect({ label, required, value, onChange, options }: { label: st
                 {label} {required && <span className="text-destructive">*</span>}
             </label>
             <div className="relative">
-                <select 
-                    value={value} 
+                <select
+                    value={value}
                     onChange={(e) => onChange(e.target.value)}
                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer font-bold"
                 >

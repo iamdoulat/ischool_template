@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Upload, Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, Trash2, Loader2, Save, FileCode, ChevronLeft, ChevronRight, FileDown, Eye, PlusCircle, Receipt } from "lucide-react";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+import { useTranslation } from "@/hooks/use-translation";
 import { useImageUrl, useBaseUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -57,6 +58,7 @@ interface IncomeRecord {
 export default function AddIncomePage() {
     const { settings } = useSettings();
     const { symbol, formatCurrency } = useCurrencyFormatter();
+    const { t } = useTranslation();
     const getImageUrl = useImageUrl();
     const baseApiUrl = useBaseUrl();
     const [searchTerm, setSearchTerm] = useState("");
@@ -150,7 +152,7 @@ export default function AddIncomePage() {
             ]);
         } catch (error) {
             console.error("Error fetching data:", error);
-            toast.error("Failed to load data");
+            toast.error(t("failed_to_load_data"));
         } finally {
             setLoading(false);
         }
@@ -163,7 +165,7 @@ export default function AddIncomePage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name || !formData.income_head_id || !formData.date || !formData.amount) {
-            toast.error("Please fill all required fields");
+            toast.error(t("please_fill_all_required_fields"));
             return;
         }
 
@@ -194,13 +196,13 @@ export default function AddIncomePage() {
             }
 
             if (res.data?.status === "Success") {
-                toast.success(editingId ? "Income updated successfully" : "Income saved successfully");
+                toast.success(editingId ? t("income_updated_successfully") : t("income_saved_successfully"));
                 resetForm();
                 fetchData();
             }
         } catch (error) {
             console.error("Error saving income:", error);
-            toast.error("Failed to save income");
+            toast.error(t("failed_to_save_income"));
         } finally {
             setSaving(false);
         }
@@ -235,17 +237,17 @@ export default function AddIncomePage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this record?")) return;
+        if (!confirm(t("are_you_sure_delete_record"))) return;
 
         try {
             const res = await api.delete(`income/incomes/${id}`);
             if (res.data?.status === "Success") {
-                toast.success("Income deleted successfully");
+                toast.success(t("income_deleted_successfully"));
                 fetchData();
             }
         } catch (error) {
             console.error("Error deleting income:", error);
-            toast.error("Failed to delete income");
+            toast.error(t("failed_to_delete_income"));
         }
     };
 
@@ -263,7 +265,7 @@ export default function AddIncomePage() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Incomes");
         XLSX.writeFile(wb, "incomes.xlsx");
-        toast.success("Exported to Excel");
+        toast.success(t("exported_to_excel"));
     };
 
     const exportToCSV = () => {
@@ -278,19 +280,19 @@ export default function AddIncomePage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success("Exported to CSV");
+        toast.success(t("exported_to_csv"));
     };
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Income List", 14, 15);
+        doc.text(t("income_list"), 14, 15);
         autoTable(doc, {
-            head: [['Name', 'Invoice', 'Date', 'Income Head', 'Amount']],
+            head: [[t("name"), t("invoice"), t("date"), t("income_head"), t("amount")]],
             body: incomes.map(item => [item.name, item.invoice_number, item.date, item.income_head_name, formatCurrency(item.amount)]),
             startY: 20,
         });
         doc.save("incomes.pdf");
-        toast.success("Exported to PDF");
+        toast.success(t("exported_to_pdf"));
     };
 
     const loadImage = (url: string): Promise<HTMLImageElement> =>
@@ -364,28 +366,28 @@ export default function AddIncomePage() {
         doc.setFont("helvetica", "normal");
 
         let leftY = startY;
-        doc.text(`Name: ${item.name}`, 14, leftY);
+        doc.text(`${t("name")}: ${item.name}`, 14, leftY);
 
         leftY += 6;
-        doc.text(`Roll No:`, 14, leftY);
-        doc.text(`Class:`, 60, leftY);
+        doc.text(`${t("roll_no")}:`, 14, leftY);
+        doc.text(`${t("class")}:`, 60, leftY);
 
         leftY += 6;
-        doc.text(`Section:`, 14, leftY);
-        doc.text(`Session:`, 60, leftY);
+        doc.text(`${t("section")}:`, 14, leftY);
+        doc.text(`${t("session")}:`, 60, leftY);
 
         // Top Section Center
         doc.setFontSize(16);
-        doc.text("INVOICE", pageWidth / 2, startY + 5, { align: "center" });
+        doc.text(t("invoice_uppercase"), pageWidth / 2, startY + 5, { align: "center" });
 
         // Top Section Right
         doc.setFontSize(10);
         let rightY = startY;
-        doc.text(`Invoice No: ${item.invoice_number || 'N/A'}`, pageWidth - 14, rightY, { align: "right" });
+        doc.text(`${t("invoice_no")}: ${item.invoice_number || 'N/A'}`, pageWidth - 14, rightY, { align: "right" });
         rightY += 6;
-        doc.text(`Date: ${formatDate(item.date)}`, pageWidth - 14, rightY, { align: "right" });
+        doc.text(`${t("date")}: ${formatDate(item.date)}`, pageWidth - 14, rightY, { align: "right" });
         rightY += 6;
-        doc.text(`Income Head: ${item.income_head_name}`, pageWidth - 14, rightY, { align: "right" });
+        doc.text(`${t("income_head")}: ${item.income_head_name}`, pageWidth - 14, rightY, { align: "right" });
 
         startY = Math.max(leftY, rightY) + 10;
 
@@ -397,13 +399,13 @@ export default function AddIncomePage() {
         // Table
         autoTable(doc, {
             head: [[
-                'NO',
-                'Description',
-                { content: 'QTY', styles: { halign: 'right' } },
-                { content: 'Amount', styles: { halign: 'right' } }
+                t("no"),
+                t("description"),
+                { content: t("qty"), styles: { halign: 'right' } },
+                { content: t("amount"), styles: { halign: 'right' } }
             ]],
             body: [
-                ['1', item.description || item.name || 'Income', '1', formatPdfCurrency(item.amount)],
+                ['1', item.description || item.name || t("income"), '1', formatPdfCurrency(item.amount)],
             ],
             startY: startY,
             headStyles: {
@@ -429,16 +431,16 @@ export default function AddIncomePage() {
 
         // Totals
         doc.setFontSize(9);
-        doc.text(`Discount:`, pageWidth - 40, finalY, { align: "right" });
+        doc.text(`${t("discount")}:`, pageWidth - 40, finalY, { align: "right" });
         doc.text(formatPdfCurrency(0), pageWidth - 14, finalY, { align: "right" });
 
         finalY += 5;
-        doc.text(`Sub Total:`, pageWidth - 40, finalY, { align: "right" });
+        doc.text(`${t("sub_total")}:`, pageWidth - 40, finalY, { align: "right" });
         doc.text(formatPdfCurrency(item.amount), pageWidth - 14, finalY, { align: "right" });
 
         finalY += 6;
         doc.setFontSize(11);
-        doc.text(`Total:`, pageWidth - 40, finalY, { align: "right" });
+        doc.text(`${t("total")}:`, pageWidth - 40, finalY, { align: "right" });
         doc.text(formatPdfCurrency(item.amount), pageWidth - 14, finalY, { align: "right" });
 
         // Footer Text
@@ -452,14 +454,14 @@ export default function AddIncomePage() {
         }
 
         doc.save(`invoice-${item.invoice_number || item.id}.pdf`);
-        toast.success("Invoice downloaded");
+        toast.success(t("invoice_downloaded"));
     };
 
     const copyToClipboard = () => {
         const text = exportData.map(d => Object.values(d).join('\t')).join('\n');
         const header = Object.keys(exportData[0] || {}).join('\t');
         navigator.clipboard.writeText(header + '\n' + text);
-        toast.success("Copied to clipboard");
+        toast.success(t("copied_to_clipboard"));
     };
 
     const filteredData = incomes.filter((item) =>
@@ -479,23 +481,23 @@ export default function AddIncomePage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {editingId ? "Edit Income" : "Add Income"}
+                                {editingId ? t("edit_income") : t("add_income")}
                             </CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Record a new income entry</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("record_new_income_entry")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="income-head" className="text-xs font-semibold text-gray-600">
-                                    Income Head <span className="text-red-500">*</span>
+                                    {t("income_head")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select
                                     value={formData.income_head_id}
                                     onValueChange={(val) => setFormData({ ...formData, income_head_id: val })}
                                 >
                                     <SelectTrigger id="income-head">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {incomeHeads.map((head) => (
@@ -509,7 +511,7 @@ export default function AddIncomePage() {
 
                             <div className="space-y-2">
                                 <Label htmlFor="name" className="text-xs font-semibold text-gray-600">
-                                    Name <span className="text-red-500">*</span>
+                                    {t("name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     id="name"
@@ -520,7 +522,7 @@ export default function AddIncomePage() {
 
                             <div className="space-y-2">
                                 <Label htmlFor="invoice-number" className="text-xs font-semibold text-gray-600">
-                                    Invoice Number
+                                    {t("invoice_number")}
                                 </Label>
                                 <Input
                                     id="invoice-number"
@@ -531,7 +533,7 @@ export default function AddIncomePage() {
 
                             <div className="space-y-2">
                                 <Label htmlFor="date" className="text-xs font-semibold text-gray-600">
-                                    Date <span className="text-red-500">*</span>
+                                    {t("date")} <span className="text-red-500">*</span>
                                 </Label>
                                 <DatePicker
                                     value={formData.date}
@@ -542,7 +544,7 @@ export default function AddIncomePage() {
 
                             <div className="space-y-2">
                                 <Label htmlFor="amount" className="text-xs font-semibold text-gray-600">
-                                    Amount ({symbol}) <span className="text-red-500">*</span>
+                                    {t("amount")} ({symbol}) <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     id="amount"
@@ -555,7 +557,7 @@ export default function AddIncomePage() {
 
                             <div className="space-y-2">
                                 <Label className="text-xs font-semibold text-gray-600">
-                                    Attach Document
+                                    {t("attach_document")}
                                 </Label>
                                 <input
                                     type="file"
@@ -569,14 +571,14 @@ export default function AddIncomePage() {
                                 >
                                     <Upload className="h-6 w-6 mb-2" />
                                     <span className="text-xs">
-                                        {selectedFile ? selectedFile.name : "Drag and drop a file here or click"}
+                                        {selectedFile ? selectedFile.name : t("drag_and_drop_file_here_or_click")}
                                     </span>
                                 </div>
                             </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="description" className="text-xs font-semibold text-gray-600">
-                                    Description
+                                    {t("description")}
                                 </Label>
                                 <Textarea
                                     id="description"
@@ -595,7 +597,7 @@ export default function AddIncomePage() {
                                         onClick={resetForm}
                                         className="h-9 px-6 rounded-full text-xs font-bold"
                                     >
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button
@@ -604,7 +606,7 @@ export default function AddIncomePage() {
                                     className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                                 >
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                    {editingId ? "Update" : "Save"}
+                                    {editingId ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </form>
@@ -618,8 +620,8 @@ export default function AddIncomePage() {
                             <Receipt className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Income List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{incomes.length} income {incomes.length === 1 ? "entry" : "entries"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("income_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{incomes.length} {t("income")} {incomes.length === 1 ? t("entry") : t("entries")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -627,7 +629,7 @@ export default function AddIncomePage() {
                             <div className="flex w-full md:w-auto items-center gap-2">
                                 <div className="relative w-full md:w-64">
                                     <Input
-                                        placeholder="Search..."
+                                        placeholder={t("search") + "..."}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-3 pr-10"
@@ -689,14 +691,14 @@ export default function AddIncomePage() {
                             <Table>
                                 <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Name</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 min-w-[300px]">Description</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Invoice Number</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Date</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Income Head</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Attachment</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Amount ({symbol})</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">Action</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("name")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 min-w-[300px]">{t("description")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("invoice_number")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("date")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("income_head")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("attachment")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">{t("amount")} ({symbol})</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -705,7 +707,7 @@ export default function AddIncomePage() {
                                     ) : filteredData.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                                No data found
+                                                {t("no_data_found")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -746,7 +748,7 @@ export default function AddIncomePage() {
                                                             size="sm"
                                                             onClick={() => downloadInvoicePDF(item)}
                                                             className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                            title="Download Invoice PDF"
+                                                            title={t("download_invoice_pdf")}
                                                         >
                                                             <FileDown className="h-4 w-4" />
                                                         </Button>
@@ -767,7 +769,7 @@ export default function AddIncomePage() {
                         </div>
                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
                             <div>
-                                Showing 1 to {filteredData.length} of {incomes.length} entries
+                                {t("showing_x_to_y_of_z", { from: 1, to: filteredData.length, total: incomes.length })}
                             </div>
                             <div className="flex gap-1">
                                 <Button variant="outline" size="sm" className="h-7 w-7 rounded-[10px] p-0 bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronLeft className="h-4 w-4" /></Button>

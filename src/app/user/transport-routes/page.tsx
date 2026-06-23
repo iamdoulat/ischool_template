@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 type PickupPoint = {
     name: string;
@@ -32,6 +33,7 @@ type TransportData = {
 };
 
 export default function TransportRoutesPage() {
+    const { t } = useTranslation();
     const [data, setData] = useState<TransportData | null>(null);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
@@ -45,13 +47,13 @@ export default function TransportRoutesPage() {
                 } else {
                     toast({
                         variant: "destructive",
-                        title: "Error",
-                        description: response.data.message || "Failed to fetch transport route",
+                        title: t("error"),
+                        description: response.data.message || t("failed_to_fetch_transport_route"),
                     });
                 }
             } catch (error) {
-                const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "An error occurred while fetching data";
-                toast({ variant: "destructive", title: "Error", description: message });
+                const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || t("an_error_occurred_while_fetching_data");
+                toast({ variant: "destructive", title: t("error"), description: message });
             } finally {
                 setLoading(false);
             }
@@ -66,7 +68,7 @@ export default function TransportRoutesPage() {
             <div className="p-4 lg:p-6">
                 <div className="flex h-[400px] items-center justify-center gap-2 text-gray-400">
                     <Loader2 className="h-6 w-6 animate-spin" />
-                    <span>Loading transport route...</span>
+                    <span>{t("loading_transport_route")}</span>
                 </div>
             </div>
         );
@@ -81,15 +83,15 @@ export default function TransportRoutesPage() {
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Bus className="h-5 w-5" />
                         </span>
-                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight">Transport Route</h1>
+                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight">{t("transport_route")}</h1>
                     </div>
                     <CardContent className="p-0">
                         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                             <div className="p-5 rounded-full bg-gray-50 mb-4">
                                 <Bus className="h-12 w-12 opacity-30" />
                             </div>
-                            <p className="text-base font-semibold text-gray-500">No transport route assigned</p>
-                            <p className="text-sm mt-1">Contact the administration office for transport allocation.</p>
+                            <p className="text-base font-semibold text-gray-500">{t("no_transport_route_assigned")}</p>
+                            <p className="text-sm mt-1">{t("contact_the_administration_office_for_transport_allocation")}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -99,12 +101,12 @@ export default function TransportRoutesPage() {
 
     const vehicleFields = data.vehicle
         ? [
-              { label: "Vehicle Number", value: data.vehicle.vehicle_number, icon: Bus },
-              { label: "Vehicle Model", value: data.vehicle.vehicle_model, icon: Bus },
-              { label: "Made / Year", value: data.vehicle.made || "N/A", icon: BadgeCheck },
-              { label: "Driver Name", value: data.vehicle.driver_name, icon: User },
-              { label: "Driver Licence", value: data.vehicle.driver_licence, icon: IdCard },
-              { label: "Driver Contact", value: data.vehicle.driver_contact, icon: Phone },
+              { label: t("vehicle_number"), value: data.vehicle.vehicle_number, icon: Bus },
+              { label: t("vehicle_model"), value: data.vehicle.vehicle_model, icon: Bus },
+              { label: t("made_year"), value: data.vehicle.made || "N/A", icon: BadgeCheck },
+              { label: t("driver_name"), value: data.vehicle.driver_name, icon: User },
+              { label: t("driver_licence"), value: data.vehicle.driver_licence, icon: IdCard },
+              { label: t("driver_contact"), value: data.vehicle.driver_contact, icon: Phone },
           ]
         : [];
 
@@ -120,9 +122,9 @@ export default function TransportRoutesPage() {
                             <Bus className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Transport Route</h1>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("transport_route")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {points.length} pickup point{points.length === 1 ? "" : "s"} on your route
+                                {points.length} {t("pickup_point")}{points.length === 1 ? "" : "s"} {t("on_your_route")}
                             </p>
                         </div>
                     </div>
@@ -135,7 +137,7 @@ export default function TransportRoutesPage() {
                         <div className="w-full md:w-56 shrink-0 rounded-xl relative overflow-hidden bg-gradient-to-br from-[#FF9800] to-[#6366F1] p-5 flex flex-col justify-between min-h-[140px] shadow-sm">
                             <Bus className="h-12 w-12 text-white/90" />
                             <div>
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/70">Route Title</p>
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/70">{t("route_title")}</p>
                                 <h2 className="text-lg font-bold text-white leading-tight">{data.route.title}</h2>
                             </div>
                             <div className="absolute -right-4 -top-4 opacity-10">
@@ -163,7 +165,7 @@ export default function TransportRoutesPage() {
                             </div>
                         ) : (
                             <div className="flex-1 flex items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50/40 text-gray-400 text-sm py-8">
-                                No vehicle assigned to this route yet.
+                                {t("no_vehicle_assigned_to_this_route_yet")}
                             </div>
                         )}
                     </div>
@@ -172,14 +174,14 @@ export default function TransportRoutesPage() {
                     <div>
                         <div className="flex items-center gap-2 mb-4">
                             <MapPin className="h-4 w-4 text-[#6366F1]" />
-                            <h3 className="text-[14px] font-bold text-gray-800">Pickup Point List</h3>
-                            <span className="ml-auto text-[11px] text-gray-400">ordered by pickup time</span>
+                            <h3 className="text-[14px] font-bold text-gray-800">{t("pickup_point_list")}</h3>
+                            <span className="ml-auto text-[11px] text-gray-400">{t("ordered_by_pickup_time")}</span>
                         </div>
 
                         {points.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-gray-400 border border-dashed border-gray-200 rounded-xl">
                                 <MapPin className="h-10 w-10 mb-3 opacity-30" />
-                                <p className="text-sm font-medium">No pickup points added for this route.</p>
+                                <p className="text-sm font-medium">{t("no_pickup_points_added_for_this_route")}</p>
                             </div>
                         ) : (
                             <div className="relative pl-2">
@@ -220,18 +222,18 @@ export default function TransportRoutesPage() {
                                                         <h4 className="font-bold text-[14px] text-gray-800 truncate">{point.name}</h4>
                                                         {isAssigned && (
                                                             <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500 text-white">
-                                                                <CheckCircle2 className="h-3 w-3" /> Your Stop
+                                                                <CheckCircle2 className="h-3 w-3" /> {t("your_stop")}
                                                             </span>
                                                         )}
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[12px] font-medium text-gray-600">
                                                         <span className="flex items-center gap-1.5">
                                                             <Navigation className="h-3.5 w-3.5 text-[#6366F1]" />
-                                                            Distance: <span className="text-gray-800">{point.distance || "0.0"} km</span>
+                                                            {t("distance")}: <span className="text-gray-800">{point.distance || "0.0"} km</span>
                                                         </span>
                                                         <span className="flex items-center gap-1.5">
                                                             <Clock className="h-3.5 w-3.5 text-[#FF9800]" />
-                                                            Pickup: <span className="text-gray-800">{point.pickup_time || "N/A"}</span>
+                                                            {t("pickup")}: <span className="text-gray-800">{point.pickup_time || "N/A"}</span>
                                                         </span>
                                                     </div>
                                                 </div>

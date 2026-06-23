@@ -13,11 +13,12 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, RefreshCw, UserPlus } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
 import api from "@/lib/api";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface Role {
     name: string;
@@ -31,6 +32,7 @@ interface CommonData {
 export default function CreateStaffPage() {
     const router = useRouter();
     const { toast } = useToast();
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
     const [roles, setRoles] = useState<Role[]>([]);
@@ -77,8 +79,8 @@ export default function CreateStaffPage() {
                 ]);
             } else if (user) {
                 toast({
-                    title: "Unauthorized",
-                    description: "You do not have permission to create staff.",
+                    title: t("unauthorized"),
+                    description: t("no_permission_create_staff"),
                     variant: "destructive",
                 });
                 router.push("/dashboard/hr/staff-directory");
@@ -166,15 +168,15 @@ export default function CreateStaffPage() {
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
 
-        if (!formData.staff_id.trim()) newErrors.staff_id = "Staff ID is required";
-        if (!formData.role) newErrors.role = "Role is required";
-        if (!formData.first_name.trim()) newErrors.first_name = "First Name is required";
+        if (!formData.staff_id.trim()) newErrors.staff_id = t("staff_id_required");
+        if (!formData.role) newErrors.role = t("role_required");
+        if (!formData.first_name.trim()) newErrors.first_name = t("first_name_required");
         if (!formData.email.trim()) {
-            newErrors.email = "Email is required";
+            newErrors.email = t("email_required");
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = "Invalid email format";
+            newErrors.email = t("invalid_email_format");
         }
-        if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
+        if (!formData.phone.trim()) newErrors.phone = t("phone_required");
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -193,8 +195,8 @@ export default function CreateStaffPage() {
 
             if (response.data.status === "Success") {
                 toast({
-                    title: "Success",
-                    description: "Staff created successfully.",
+                    title: t("success"),
+                    description: t("staff_created_successfully"),
                 });
                 router.push("/dashboard/hr/staff-directory");
             }
@@ -203,8 +205,8 @@ export default function CreateStaffPage() {
                 setErrors(error.response.data.errors);
             } else {
                 toast({
-                    title: "Error",
-                    description: error.response?.data?.message || "Failed to create staff member. Please try again.",
+                    title: t("error"),
+                    description: error.response?.data?.message || t("failed_to_create_staff"),
                     variant: "destructive",
                 });
             }
@@ -219,7 +221,7 @@ export default function CreateStaffPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen space-y-4 bg-gray-50/10">
                 <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
-                <p className="text-sm text-gray-400 font-medium">Verifying access...</p>
+                <p className="text-sm text-gray-400 font-medium">{t("verifying_access")}</p>
             </div>
         );
     }
@@ -227,22 +229,28 @@ export default function CreateStaffPage() {
     return (
         <div className="p-6 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
                     <Button
                         variant="ghost"
                         onClick={() => router.back()}
-                        className="hover:bg-gray-100 rounded-lg"
+                        className="h-9 w-9 p-0 hover:bg-white/60 rounded-lg shrink-0"
                     >
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-2xl font-bold text-gray-800">Add New Staff</h1>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <UserPlus className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("add_new_staff")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("create_new_staff_record")}</p>
+                    </div>
                 </div>
                 <Button
                     onClick={() => router.push('/dashboard/hr/staff-directory/import')}
                     className={`${gradientBtn} gap-2 h-10 px-6 text-sm font-semibold`}
                 >
-                    + Import Staff
+                    + {t("import_staff")}
                 </Button>
             </div>
 
@@ -250,7 +258,7 @@ export default function CreateStaffPage() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
                 <p className="text-sm text-blue-800">
-                    Staff email is their login username. Password is generated automatically and sent to staff email. Superadmin can change staff password on their staff profile page.
+                    {t("staff_email_login_info")}
                 </p>
             </div>
 
@@ -259,18 +267,18 @@ export default function CreateStaffPage() {
                 <form onSubmit={handleSubmit} className="p-8 space-y-8">
                     {/* Basic Information Section */}
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">Basic Information</h2>
+                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">{t("basic_information")}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* Staff ID */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">
-                                    Staff ID <span className="text-red-500">*</span>
+                                    {t("staff_id")} <span className="text-red-500">*</span>
                                 </Label>
                                 <div className="relative">
                                     <Input
                                         value={formData.staff_id}
                                         onChange={(e) => handleInputChange("staff_id", e.target.value)}
-                                        placeholder="Enter Staff ID"
+                                        placeholder={t("enter_staff_id")}
                                         disabled={isAutoStaffId}
                                         className={`h-11 border-gray-200 pr-12 ${errors.staff_id ? "border-red-500" : ""} ${isAutoStaffId ? "bg-gray-50 cursor-not-allowed" : ""}`}
                                     />
@@ -291,11 +299,11 @@ export default function CreateStaffPage() {
                             {/* Role */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">
-                                    Role <span className="text-red-500">*</span>
+                                    {t("role")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select value={formData.role} onValueChange={(value) => handleInputChange("role", value)}>
                                     <SelectTrigger className={`h-11 border-gray-200 ${errors.role ? "border-red-500" : ""}`}>
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {roles.map((role) => (
@@ -308,10 +316,10 @@ export default function CreateStaffPage() {
 
                             {/* Designation */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Designation</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("designation")}</Label>
                                 <Select value={formData.designation} onValueChange={(value) => handleInputChange("designation", value)}>
                                     <SelectTrigger className="h-11 border-gray-200">
-                                        <SelectValue placeholder="Select Designation" />
+                                        <SelectValue placeholder={t("select_designation")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {designations.map((d) => (
@@ -323,10 +331,10 @@ export default function CreateStaffPage() {
 
                             {/* Department */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Department</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("department")}</Label>
                                 <Select value={formData.department} onValueChange={(value) => handleInputChange("department", value)}>
                                     <SelectTrigger className="h-11 border-gray-200">
-                                        <SelectValue placeholder="Select Department" />
+                                        <SelectValue placeholder={t("select_department")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {departments.map((d) => (
@@ -339,12 +347,12 @@ export default function CreateStaffPage() {
                             {/* First Name */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">
-                                    First Name <span className="text-red-500">*</span>
+                                    {t("first_name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     value={formData.first_name}
                                     onChange={(e) => handleInputChange("first_name", e.target.value)}
-                                    placeholder="Enter First Name"
+                                    placeholder={t("enter_first_name")}
                                     className={`h-11 border-gray-200 ${errors.first_name ? "border-red-500" : ""}`}
                                 />
                                 {errors.first_name && <p className="text-xs text-red-500">{errors.first_name}</p>}
@@ -352,11 +360,11 @@ export default function CreateStaffPage() {
 
                             {/* Last Name */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Last Name</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("last_name")}</Label>
                                 <Input
                                     value={formData.last_name}
                                     onChange={(e) => handleInputChange("last_name", e.target.value)}
-                                    placeholder="Enter Last Name"
+                                    placeholder={t("enter_last_name")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
@@ -367,7 +375,7 @@ export default function CreateStaffPage() {
                                 <Input
                                     value={formData.father_name}
                                     onChange={(e) => handleInputChange("father_name", e.target.value)}
-                                    placeholder="Enter Father Name"
+                                    placeholder={t("enter_father_name")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
@@ -378,7 +386,7 @@ export default function CreateStaffPage() {
                                 <Input
                                     value={formData.mother_name}
                                     onChange={(e) => handleInputChange("mother_name", e.target.value)}
-                                    placeholder="Enter Mother Name"
+                                    placeholder={t("enter_mother_name")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
@@ -392,7 +400,7 @@ export default function CreateStaffPage() {
                                     type="email"
                                     value={formData.email}
                                     onChange={(e) => handleInputChange("email", e.target.value)}
-                                    placeholder="Enter Email Address"
+                                    placeholder={t("enter_email_address")}
                                     className={`h-11 border-gray-200 ${errors.email ? "border-red-500" : ""}`}
                                 />
                                 {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
@@ -403,12 +411,12 @@ export default function CreateStaffPage() {
                                 <Label className="text-xs font-bold text-gray-500 uppercase">Gender</Label>
                                 <Select value={formData.gender} onValueChange={(value) => handleInputChange("gender", value)}>
                                     <SelectTrigger className="h-11 border-gray-200">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Male">Male</SelectItem>
-                                        <SelectItem value="Female">Female</SelectItem>
-                                        <SelectItem value="Other">Other</SelectItem>
+                                        <SelectItem value="Male">{t("male")}</SelectItem>
+                                        <SelectItem value="Female">{t("female")}</SelectItem>
+                                        <SelectItem value="Other">{t("other")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -441,7 +449,7 @@ export default function CreateStaffPage() {
                                 <Input
                                     value={formData.phone}
                                     onChange={(e) => handleInputChange("phone", e.target.value)}
-                                    placeholder="Enter Phone Number"
+                                    placeholder={t("enter_phone_number")}
                                     className={`h-11 border-gray-200 ${errors.phone ? "border-red-500" : ""}`}
                                 />
                                 {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
@@ -453,7 +461,7 @@ export default function CreateStaffPage() {
                                 <Input
                                     value={formData.emergency_contact}
                                     onChange={(e) => handleInputChange("emergency_contact", e.target.value)}
-                                    placeholder="Enter Emergency Contact"
+                                    placeholder={t("enter_emergency_contact")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
@@ -463,13 +471,13 @@ export default function CreateStaffPage() {
                                 <Label className="text-xs font-bold text-gray-500 uppercase">Marital Status</Label>
                                 <Select value={formData.marital_status} onValueChange={(value) => handleInputChange("marital_status", value)}>
                                     <SelectTrigger className="h-11 border-gray-200">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Single">Single</SelectItem>
-                                        <SelectItem value="Married">Married</SelectItem>
-                                        <SelectItem value="Divorced">Divorced</SelectItem>
-                                        <SelectItem value="Widowed">Widowed</SelectItem>
+                                        <SelectItem value="Single">{t("single")}</SelectItem>
+                                        <SelectItem value="Married">{t("married")}</SelectItem>
+                                        <SelectItem value="Divorced">{t("divorced")}</SelectItem>
+                                        <SelectItem value="Widowed">{t("widowed")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -491,14 +499,14 @@ export default function CreateStaffPage() {
 
                     {/* Address Section */}
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">Address</h2>
+                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">{t("address")}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">Address</Label>
                                 <Textarea
                                     value={formData.address}
                                     onChange={(e) => handleInputChange("address", e.target.value)}
-                                    placeholder="Enter Current Address"
+                                    placeholder={t("enter_current_address")}
                                     className="border-gray-200 min-h-[80px]"
                                 />
                             </div>
@@ -507,7 +515,7 @@ export default function CreateStaffPage() {
                                 <Textarea
                                     value={formData.permanent_address}
                                     onChange={(e) => handleInputChange("permanent_address", e.target.value)}
-                                    placeholder="Enter Permanent Address"
+                                    placeholder={t("enter_permanent_address")}
                                     className="border-gray-200 min-h-[80px]"
                                 />
                             </div>
@@ -516,14 +524,14 @@ export default function CreateStaffPage() {
 
                     {/* Professional Details Section */}
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">Professional Details</h2>
+                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">{t("professional_details")}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">Qualification</Label>
                                 <Input
                                     value={formData.qualification}
                                     onChange={(e) => handleInputChange("qualification", e.target.value)}
-                                    placeholder="Enter Qualification"
+                                    placeholder={t("enter_qualification")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
@@ -532,7 +540,7 @@ export default function CreateStaffPage() {
                                 <Input
                                     value={formData.work_experience}
                                     onChange={(e) => handleInputChange("work_experience", e.target.value)}
-                                    placeholder="Enter Work Experience"
+                                    placeholder={t("enter_work_experience")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
@@ -543,7 +551,7 @@ export default function CreateStaffPage() {
                                 <Input
                                     value={formData.pan_number}
                                     onChange={(e) => handleInputChange("pan_number", e.target.value)}
-                                    placeholder="Enter PAN / NID Number"
+                                    placeholder={t("enter_pan_nid_number")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
@@ -552,7 +560,7 @@ export default function CreateStaffPage() {
                                 <Textarea
                                     value={formData.note}
                                     onChange={(e) => handleInputChange("note", e.target.value)}
-                                    placeholder="Enter Additional Notes"
+                                    placeholder={t("enter_additional_notes")}
                                     className="border-gray-200 min-h-[80px]"
                                 />
                             </div>
@@ -580,7 +588,7 @@ export default function CreateStaffPage() {
                                     Creating Staff...
                                 </>
                             ) : (
-                                "+ Insert Staff"
+                                + {t("insert_staff")}
                             )}
                         </Button>
                     </div>

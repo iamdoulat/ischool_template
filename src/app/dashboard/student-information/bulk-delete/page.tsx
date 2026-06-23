@@ -24,7 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -86,7 +87,8 @@ export default function BulkDeletePage() {
     const [totalStudents, setTotalStudents] = useState(0);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [searched, setSearched] = useState(false);
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
 
     const fetchDropdowns = useCallback(async () => {
         try {
@@ -131,11 +133,11 @@ export default function BulkDeletePage() {
             setSearched(true);
         } catch (error) {
             console.error("Error fetching students:", error);
-            toast("error", "Failed to fetch students.");
+            tt.error("failed_to_fetch_students");
         } finally {
             setLoading(false);
         }
-    }, [selectedClass, selectedSection, toast]);
+    }, [selectedClass, selectedSection, tt]);
 
     useEffect(() => {
         fetchDropdowns();
@@ -161,7 +163,7 @@ export default function BulkDeletePage() {
 
     const handleBulkDelete = async () => {
         if (selectedIds.size === 0) {
-            toast("error", "Please select at least one student.");
+            tt.error("please_select_at_least_one_student");
             return;
         }
         setIsDeleteDialogOpen(true);
@@ -172,11 +174,11 @@ export default function BulkDeletePage() {
         setIsDeleteDialogOpen(false);
         try {
             await api.post("/students/bulk-delete", { ids: Array.from(selectedIds) });
-            toast("success", "Students deleted successfully.");
+            tt.success("students_deleted_successfully");
             fetchStudents(currentPage, searchTerm);
         } catch (error) {
             console.error("Error deleting students:", error);
-            toast("error", "Failed to delete students.");
+            tt.error("failed_to_delete_students");
         } finally {
             setLoading(false);
         }
@@ -185,7 +187,7 @@ export default function BulkDeletePage() {
     // Export functions
     const exportToCopy = () => {
         if (students.length === 0) return;
-        const headers = ["Admission No", "Student Name", "Class", "Section", "DOB", "Gender", "Category", "Mobile Number"];
+        const headers = [t("admission_no"), t("student_name"), t("class"), t("section"), t("dob"), t("gender"), t("category"), t("mobile_number")];
         const rows = students.map(s => [
             s.admission_no,
             `${s.name} ${s.last_name}`,
@@ -198,33 +200,33 @@ export default function BulkDeletePage() {
         ]);
         const text = [headers.join("\t"), ...rows.map(row => row.join("\t"))].join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
         if (students.length === 0) return;
         const data = students.map(s => ({
-            "Admission No": s.admission_no,
-            "Student Name": `${s.name} ${s.last_name}`,
-            "Class": s.school_class?.name || "",
-            "Section": s.section?.name || "",
-            "Date Of Birth": s.dob,
-            "Gender": s.gender,
-            "Category": s.category,
-            "Mobile Number": s.phone
+            [t("admission_no")]: s.admission_no,
+            [t("student_name")]: `${s.name} ${s.last_name}`,
+            [t("class")]: s.school_class?.name || "",
+            [t("section")]: s.section?.name || "",
+            [t("date_of_birth")]: s.dob,
+            [t("gender")]: s.gender,
+            [t("category")]: s.category,
+            [t("mobile_number")]: s.phone
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+        XLSX.utils.book_append_sheet(workbook, worksheet, t("students"));
         XLSX.writeFile(workbook, "students_list.xlsx");
-        toast("success", "Excel file downloaded");
+        tt.success("excel_file_downloaded");
     };
 
     const exportToPDF = () => {
         if (students.length === 0) return;
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [["Adm No", "Name", "Class", "Sec", "DOB", "Gender", "Cat", "Mobile"]],
+            head: [[t("adm_no"), t("name"), t("class"), t("sec"), t("dob"), t("gender"), t("cat"), t("mobile")]],
             body: students.map(s => [
                 s.admission_no,
                 `${s.name} ${s.last_name}`,
@@ -237,7 +239,7 @@ export default function BulkDeletePage() {
             ]),
         });
         doc.save("students_list.pdf");
-        toast("success", "PDF file downloaded");
+        tt.success("pdf_file_downloaded");
     };
 
     return (
@@ -249,8 +251,8 @@ export default function BulkDeletePage() {
                         <Trash2 className="h-6 w-6 text-destructive" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-800">Bulk Delete</h1>
-                        <p className="text-sm text-muted-foreground font-medium">Search and remove multiple students from the system</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-800">{t("bulk_delete")}</h1>
+                        <p className="text-sm text-muted-foreground font-medium">{t("search_and_remove_multiple_students")}</p>
                     </div>
                 </div>
             </div>
@@ -262,15 +264,15 @@ export default function BulkDeletePage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Choose class and section to find students</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("choose_class_and_section_to_find_students")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                         <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                Class
+                                {t("class")}
                             </label>
                             <div className="relative">
                                 <select
@@ -283,7 +285,7 @@ export default function BulkDeletePage() {
                                         fetchSections(val);
                                     }}
                                 >
-                                    <option value="">Select</option>
+                                    <option value="">{t("select")}</option>
                                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
@@ -292,7 +294,7 @@ export default function BulkDeletePage() {
 
                         <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                Section
+                                {t("section")}
                             </label>
                             <div className="relative">
                                 <select
@@ -300,7 +302,7 @@ export default function BulkDeletePage() {
                                     value={selectedSection}
                                     onChange={(e) => setSelectedSection(e.target.value)}
                                 >
-                                    <option value="">Select</option>
+                                    <option value="">{t("select")}</option>
                                     {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
@@ -311,13 +313,13 @@ export default function BulkDeletePage() {
                     <div className="flex justify-end mt-6">
                         <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => {
                             if (!selectedClass || !selectedSection) {
-                                toast("error", "Please select Class and Section first.");
+                                tt.error("please_select_class_and_section_first");
                                 return;
                             }
                             setCurrentPage(1);
                             fetchStudents(1, searchTerm);
                         }} disabled={loading}>
-                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} {t("search")}
                         </Button>
                     </div>
                 </CardContent>
@@ -334,12 +336,12 @@ export default function BulkDeletePage() {
                                 checked={students.length > 0 && selectedIds.size === students.length}
                                 onChange={handleSelectAll}
                             />
-                            <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Select All</span>
+                            <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">{t("select_all")}</span>
                         </div>
                         <div className="relative flex-1 md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search..."
+                                placeholder={t("search")}
                                 className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -355,15 +357,15 @@ export default function BulkDeletePage() {
                             disabled={selectedIds.size === 0 || loading}
                             onClick={handleBulkDelete}
                         >
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                            <Trash2 className="h-4 w-4 mr-2" /> {t("delete")}
                         </Button>
                         <div className="h-8 w-px bg-muted mx-1" />
-                        <IconButton icon={Printer} onClick={() => window.print()} title="Print" />
-                        <IconButton icon={Copy} onClick={exportToCopy} title="Copy" />
-                        <IconButton icon={TableIcon} onClick={exportToExcel} title="Excel" />
-                        <IconButton icon={FileText} onClick={exportToPDF} title="PDF" />
-                        <IconButton icon={Download} onClick={exportToExcel} title="Download" />
-                        <IconButton icon={Columns} title="Columns" />
+                        <IconButton icon={Printer} onClick={() => window.print()} title={t("print")} />
+                        <IconButton icon={Copy} onClick={exportToCopy} title={t("copy")} />
+                        <IconButton icon={TableIcon} onClick={exportToExcel} title={t("excel")} />
+                        <IconButton icon={FileText} onClick={exportToPDF} title={t("pdf")} />
+                        <IconButton icon={Download} onClick={exportToExcel} title={t("download")} />
+                        <IconButton icon={Columns} title={t("columns")} />
                     </div>
                 </div>
 
@@ -374,8 +376,8 @@ export default function BulkDeletePage() {
                                 <Trash2 className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{totalStudents} students found</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("students_found", { count: totalStudents })}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -383,22 +385,22 @@ export default function BulkDeletePage() {
                                 <table className="w-full text-left border-collapse">
                                     <thead className="bg-muted/50 text-[13px] font-bold uppercase tracking-wider text-muted-foreground">
                                         <tr>
-                                            <Th className="w-10">#</Th>
-                                            <Th className="w-12">Avatar</Th>
-                                            <Th>Admission No</Th>
-                                            <Th>Student Name</Th>
-                                            <Th>Class</Th>
-                                            <Th>Date Of Birth</Th>
-                                            <Th>Gender</Th>
-                                            <Th>Category</Th>
-                                            <Th>Mobile Number</Th>
+                                            <Th className="w-10">{t("hash")}</Th>
+                                            <Th className="w-12">{t("avatar")}</Th>
+                                            <Th>{t("admission_no")}</Th>
+                                            <Th>{t("student_name")}</Th>
+                                            <Th>{t("class")}</Th>
+                                            <Th>{t("date_of_birth")}</Th>
+                                            <Th>{t("gender")}</Th>
+                                            <Th>{t("category")}</Th>
+                                            <Th>{t("mobile_number")}</Th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-muted/30">
                                         {loading ? (
                                             <TableSkeleton rows={5} cols={9} />
                                         ) : students.length === 0 ? (
-                                            <tr><td colSpan={9} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
+                                            <tr><td colSpan={9} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td></tr>
                                         ) : (
                                             students.map((student) => (
                                             <tr key={student.id} className="hover:bg-muted/10 transition-colors">
@@ -415,7 +417,7 @@ export default function BulkDeletePage() {
                                                     {student.avatar ? (
                                                         <img
                                                             src={getImageUrl(student.avatar)}
-                                                            alt="Avatar"
+                                                            alt={t("avatar")}
                                                             className="h-full w-full object-cover"
                                                         />
                                                     ) : (
@@ -432,7 +434,7 @@ export default function BulkDeletePage() {
                                                 <Td>{student.gender}</Td>
                                             <Td>
                                                 <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
-                                                    {student.student_category?.category_name || student.category || "General"}
+                                                    {student.student_category?.category_name || student.category || t("general")}
                                                 </span>
                                             </Td>
                                                 <Td>{student.phone}</Td>
@@ -447,7 +449,7 @@ export default function BulkDeletePage() {
                             {!loading && students.length > 0 && (
                             <div className="px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/10 border-t border-muted/50">
                                 <p className="text-xs text-muted-foreground font-medium">
-                                    Showing {(currentPage - 1) * 50 + 1} to {Math.min(currentPage * 50, totalStudents)} of {totalStudents} entries
+                                    {t("showing_x_to_y_of_z", { from: (currentPage - 1) * 50 + 1, to: Math.min(currentPage * 50, totalStudents), total: totalStudents })}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -518,15 +520,15 @@ export default function BulkDeletePage() {
                 ) : searched && !loading && (
                     <div className="px-6 py-4 bg-red-100/80 border border-red-200 rounded-lg text-red-600 font-bold text-sm shadow-sm flex items-center gap-3 animate-in slide-in-from-top-2">
                         <AlertCircle className="h-5 w-5 opacity-80" />
-                        No Record Found
+                        {t("no_record_found")}
                     </div>
                 )}
 
                 {!searched && !loading && (
                     <div className="flex flex-col items-center justify-center py-20 text-gray-300 bg-white rounded-lg border border-dashed border-gray-200 shadow-sm print:hidden">
                         <User className="h-16 w-16 mb-4 opacity-10" />
-                        <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">No Data Selected</p>
-                        <p className="text-[11px] text-gray-400 mt-2 italic">Select class and section, then click search.</p>
+                        <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">{t("no_data_selected")}</p>
+                        <p className="text-[11px] text-gray-400 mt-2 italic">{t("select_class_and_section_then_click_search")}</p>
                     </div>
                 )}
             </div>
@@ -541,23 +543,23 @@ export default function BulkDeletePage() {
                             </div>
                             <div>
                                 <AlertDialogTitle className="text-2xl font-bold text-slate-800 tracking-tight">
-                                    Confirm Bulk Deletion
+                                    {t("confirm_bulk_deletion")}
                                 </AlertDialogTitle>
                                 <AlertDialogDescription className="text-muted-foreground font-medium mt-1">
-                                    Are you sure you want to delete <span className="text-destructive font-bold">{selectedIds.size}</span> selected students? This action is permanent and cannot be undone.
+                                    {t("are_you_sure_delete_selected_students", { count: selectedIds.size })}
                                 </AlertDialogDescription>
                             </div>
                         </div>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="p-8 bg-muted/20 flex gap-4">
                         <AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-muted/50 mt-0">
-                            Cancel, Keep Records
+                            {t("cancel_keep_records")}
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={confirmDelete}
                             className="flex-1 h-12 rounded-lg font-bold bg-destructive hover:bg-destructive/90 text-white shadow-lg shadow-destructive/20 border-none"
                         >
-                            Yes, Delete Permanently
+                            {t("yes_delete_permanently")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

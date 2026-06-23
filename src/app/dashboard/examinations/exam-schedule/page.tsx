@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,7 +58,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function ExamSchedulePage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
 
@@ -86,7 +88,7 @@ export default function ExamSchedulePage() {
             setExamGroups(response.data.exam_groups || []);
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast({ title: "Error", description: err.response?.data?.message || "Failed to load criteria data", variant: "destructive" });
+            tt.error("failed_to_load_criteria_data");
         } finally {
             setLoading(false);
         }
@@ -103,7 +105,7 @@ export default function ExamSchedulePage() {
 
     const handleSearch = async () => {
         if (!selectedCriteria.exam_id) {
-            toast({ title: "Validation Error", description: "Please select an exam", variant: "destructive" });
+            tt.error("please_select_an_exam");
             return;
         }
 
@@ -115,7 +117,7 @@ export default function ExamSchedulePage() {
             setSchedule(response.data || []);
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast({ title: "Error", description: err.response?.data?.message || "Failed to fetch schedule", variant: "destructive" });
+            tt.error("failed_to_fetch_schedule");
         } finally {
             setSearching(false);
         }
@@ -132,9 +134,9 @@ export default function ExamSchedulePage() {
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <CalendarClock className="h-6 w-6 text-indigo-500" />
-                        Exam Schedule
+                        {t("exam_schedule")}
                     </h1>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Official institutional examination schedule repository</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{t("exam_schedule_subtitle")}</p>
                 </div>
             </div>
 
@@ -145,19 +147,19 @@ export default function ExamSchedulePage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Choose exam group and exam to retrieve the timetable</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("choose_exam_group_and_exam")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                Exam Group <span className="text-red-500">*</span>
+                                {t("exam_group")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedCriteria.exam_group_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_group_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Group" />
+                                    <SelectValue placeholder={t("select_group")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {examGroups.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
@@ -167,11 +169,11 @@ export default function ExamSchedulePage() {
 
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                Exam <span className="text-red-500">*</span>
+                                {t("exam")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedCriteria.exam_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Exam" />
+                                    <SelectValue placeholder={t("select_exam")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {exams.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.name}</SelectItem>)}
@@ -187,7 +189,7 @@ export default function ExamSchedulePage() {
                             className="btn-gradient text-white px-10 h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex gap-2"
                         >
                             {searching ? <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" /> : <Search className="h-4 w-4" />}
-                            Retrieve Schedule
+                            {t("retrieve_schedule")}
                         </Button>
                     </div>
                 </CardContent>
@@ -201,8 +203,8 @@ export default function ExamSchedulePage() {
                             <Clock className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Timetable Registry</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{schedule.length} subject{schedule.length === 1 ? "" : "s"} scheduled</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("timetable_registry")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_subjects_scheduled", { count: schedule.length })}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-1 text-gray-400">
@@ -217,7 +219,7 @@ export default function ExamSchedulePage() {
                         <div className="relative w-full md:w-72">
                             <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Search by subject..."
+                                placeholder={t("search_by_subject")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
@@ -229,11 +231,11 @@ export default function ExamSchedulePage() {
                         <Table>
                             <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-500">
                                 <TableRow className="hover:bg-transparent border-gray-50">
-                                    <TableHead className="py-4 px-6 min-w-[200px]">Subject</TableHead>
-                                    <TableHead className="py-4 px-6 min-w-[150px]">Date & Time</TableHead>
-                                    <TableHead className="py-4 px-6 min-w-[100px]">Duration</TableHead>
-                                    <TableHead className="py-4 px-6 min-w-[100px]">Venue</TableHead>
-                                    <TableHead className="py-4 px-6 text-right min-w-[120px]">Thresholds</TableHead>
+                                    <TableHead className="py-4 px-6 min-w-[200px]">{t("subject")}</TableHead>
+                                    <TableHead className="py-4 px-6 min-w-[150px]">{t("date_and_time")}</TableHead>
+                                    <TableHead className="py-4 px-6 min-w-[100px]">{t("duration")}</TableHead>
+                                    <TableHead className="py-4 px-6 min-w-[100px]">{t("venue")}</TableHead>
+                                    <TableHead className="py-4 px-6 text-right min-w-[120px]">{t("thresholds")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -242,7 +244,7 @@ export default function ExamSchedulePage() {
                                 ) : schedule.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                            Please select an exam to view the schedule.
+                                            {t("please_select_an_exam_to_view_schedule")}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -251,7 +253,7 @@ export default function ExamSchedulePage() {
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex flex-col">
                                                     <span className="font-bold text-indigo-600 uppercase tracking-tight">{item.subject.name}</span>
-                                                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">Code: {item.subject.code}</span>
+                                                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{t("code")}: {item.subject.code}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
@@ -266,21 +268,21 @@ export default function ExamSchedulePage() {
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-bold text-[10px]">
-                                                    {item.duration} MINS
+                                                    {item.duration} {t("mins")}
                                                 </span>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <span className="flex items-center gap-2 font-bold text-gray-500">
-                                                    <MapPin className="h-3 w-3" /> {item.room_no || "TBA"}
+                                                    <MapPin className="h-3 w-3" /> {item.room_no || t("tba")}
                                                 </span>
                                             </TableCell>
                                             <TableCell className="py-4 px-6 text-right">
                                                 <div className="flex flex-col items-end gap-1">
                                                     <span className="flex items-center gap-2 font-bold text-emerald-600 text-[11px]">
-                                                        <Target className="h-3 w-3" /> MAX: {parseFloat(item.max_marks).toFixed(2)}
+                                                        <Target className="h-3 w-3" /> {t("max")}: {parseFloat(item.max_marks).toFixed(2)}
                                                     </span>
                                                     <span className="flex items-center gap-2 font-bold text-rose-500 text-[10px]">
-                                                        <ShieldCheck className="h-3 w-3" /> MIN: {parseFloat(item.min_marks).toFixed(2)}
+                                                        <ShieldCheck className="h-3 w-3" /> {t("min")}: {parseFloat(item.min_marks).toFixed(2)}
                                                     </span>
                                                 </div>
                                             </TableCell>

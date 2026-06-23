@@ -9,7 +9,8 @@ import {
     Loader2,
     ChevronRight,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    Menu
 } from "lucide-react";
 import {
     DragDropContext,
@@ -21,6 +22,7 @@ import {
 } from "@hello-pangea/dnd";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
     dashboard: [],
@@ -309,6 +311,7 @@ interface MenuItem {
 
 export default function SidebarMenuPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
     const [availableItems, setAvailableItems] = useState<MenuItem[]>([]);
     const [selectedItems, setSelectedItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -356,7 +359,7 @@ export default function SidebarMenuPage() {
             }
         } catch (error) {
             console.error("Error fetching sidebar menus:", error);
-            toast("error", "Failed to load sidebar menus.");
+            toast("error", t("failed_to_load"));
         } finally {
             setLoading(false);
         }
@@ -389,11 +392,11 @@ export default function SidebarMenuPage() {
             });
 
             if (response.data.success) {
-                toast("success", "Sidebar menu updated successfully.");
+                toast("success", t("updated_successfully"));
             }
         } catch (error) {
             console.error("Error updating sidebar menus:", error);
-            toast("error", "Failed to update sidebar menu.");
+            toast("error", t("failed_to_save"));
         } finally {
             setSaving(false);
         }
@@ -546,8 +549,16 @@ export default function SidebarMenuPage() {
     return (
         <div className="p-4 bg-gray-50/10 font-sans space-y-4">
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
-                <div className="px-6 py-4 border-b border-gray-50 flex justify-between items-center">
-                    <h1 className="text-[16px] font-medium text-gray-700">Sidebar Menu</h1>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Menu className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("sidebar_menu")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("organize_sidebar_menu_items")}</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="p-6">
@@ -555,12 +566,14 @@ export default function SidebarMenuPage() {
                         {/* Left Column: Menu List (Available) */}
                         <div className="flex flex-col h-full border border-gray-200 rounded-md bg-white">
                             <div className="p-3 border-b border-gray-200 bg-gray-50/50">
-                                <h2 className="text-[13px] font-semibold text-gray-600">Menu List</h2>
+                                <h2 className="text-[13px] font-semibold text-gray-600">{t("menu_list")}</h2>
                             </div>
                             <div className="p-4 flex-1 space-y-2 overflow-y-auto max-h-[700px]">
                                 {loading ? (
-                                    <div className="flex justify-center py-8">
-                                        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                                    <div className="space-y-2">
+                                        {Array.from({ length: 8 }).map((_, i) => (
+                                            <div key={i} className="h-9 rounded-md bg-gray-200/50 animate-pulse" />
+                                        ))}
                                     </div>
                                 ) : (
                                     <>
@@ -571,7 +584,7 @@ export default function SidebarMenuPage() {
                                         ))}
                                         {availableItems.length === 0 && (
                                             <div className="text-center py-8 text-gray-400 text-[12px]">
-                                                No items available
+                                                {t("no_items_available")}
                                             </div>
                                         )}
                                     </>
@@ -589,12 +602,14 @@ export default function SidebarMenuPage() {
                                         {...provided.droppableProps}
                                     >
                                         <div className="p-3 border-b border-gray-200 bg-gray-50/50">
-                                            <h2 className="text-[13px] font-semibold text-gray-600">Selected Sidebar Menus</h2>
+                                            <h2 className="text-[13px] font-semibold text-gray-600">{t("selected_sidebar_menus")}</h2>
                                         </div>
                                         <div className="p-4 flex-1 space-y-3 overflow-y-auto max-h-[700px]">
                                             {loading ? (
-                                                <div className="flex justify-center py-8">
-                                                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                                                <div className="space-y-3">
+                                                    {Array.from({ length: 8 }).map((_, i) => (
+                                                        <div key={i} className="h-10 rounded-md bg-gray-200/50 animate-pulse" />
+                                                    ))}
                                                 </div>
                                             ) : (
                                                 <>
@@ -697,7 +712,7 @@ export default function SidebarMenuPage() {
                                                     {provided.placeholder}
                                                     {selectedItems.length === 0 && (
                                                         <div className="text-center py-8 text-gray-400 text-[12px]">
-                                                            No items selected
+                                                            {t("no_items_selected")}
                                                         </div>
                                                     )}
                                                 </>
@@ -716,7 +731,7 @@ export default function SidebarMenuPage() {
                             className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:opacity-90 text-white px-8 h-9 text-[12px] font-bold uppercase transition-all rounded-full shadow-lg border-none min-w-[120px]"
                         >
                             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Save
+                            {t("save")}
                         </Button>
                     </div>
                 </div>

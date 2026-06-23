@@ -38,6 +38,8 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -68,6 +70,8 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 
 export default function RoutePage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [routes, setRoutes] = useState<Route[]>([]);
     const [loading, setLoading] = useState(true);
@@ -100,22 +104,22 @@ export default function RoutePage() {
 
     const handleSubmit = async () => {
         if (!formState.title.trim()) {
-            toast("error", "Route title is required");
+            toast("error", t("route_title_required"));
             return;
         }
         setSaving(true);
         try {
             if (isEditing && currentRoute) {
                 await api.put(`/transport/routes/${currentRoute.id}`, formState);
-                toast("success", "Route updated successfully");
+                tt.success("route_updated_successfully");
             } else {
                 await api.post("/transport/routes", formState);
-                toast("success", "Route created successfully");
+                tt.success("route_created_successfully");
             }
             resetForm();
             fetchData();
         } catch (error: any) {
-            toast("error", error.response?.data?.message || "Failed to save route");
+            tt.error("failed_to_save_route");
         } finally {
             setSaving(false);
         }
@@ -128,13 +132,13 @@ export default function RoutePage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this route?")) return;
+        if (!confirm(t("delete_route_confirmation"))) return;
         try {
             await api.delete(`/transport/routes/${id}`);
-            toast("success", "Route deleted successfully");
+            tt.success("route_deleted_successfully");
             fetchData();
         } catch (error) {
-            toast("error", "Failed to delete route");
+            tt.error("failed_to_delete_route");
         }
     };
 
@@ -159,15 +163,15 @@ export default function RoutePage() {
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(routes.map(r => r.title).join('\n'));
-        toast("success", "Data copied to clipboard");
+        tt.success("data_copied_to_clipboard");
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: copyToClipboard, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: exportToExcel, title: "Excel" },
-        { Icon: FileText, onClick: exportToPDF, title: "PDF" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: copyToClipboard, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: exportToExcel, title: t("excel") },
+        { Icon: FileText, onClick: exportToPDF, title: t("pdf") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     return (
@@ -180,19 +184,19 @@ export default function RoutePage() {
                             <RouteIcon className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{isEditing ? "Edit Route" : "Create Route"}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Configure your transport routes</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{isEditing ? t("edit_route") : t("create_route")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("configure_transport_routes")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Route Title <span className="text-red-500">*</span></Label>
-                            <Input value={formState.title} onChange={(e) => setFormState({ title: e.target.value })} placeholder="Enter route title" />
+                            <Label className="text-xs font-semibold text-gray-600">{t("route_title")} <span className="text-red-500">*</span></Label>
+                            <Input value={formState.title} onChange={(e) => setFormState({ title: e.target.value })} placeholder={t("enter_route_title")} />
                         </div>
                         <div className="flex justify-end pt-2 gap-2">
-                            {isEditing && <Button variant="outline" onClick={resetForm} className="h-9 px-6 rounded-full text-xs font-bold">Cancel</Button>}
+                            {isEditing && <Button variant="outline" onClick={resetForm} className="h-9 px-6 rounded-full text-xs font-bold">{t("cancel")}</Button>}
                             <Button onClick={handleSubmit} disabled={saving} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
-                                <Save className="h-4 w-4" /> {isEditing ? "Update" : "Save"}
+                                <Save className="h-4 w-4" /> {isEditing ? t("update") : t("save")}
                             </Button>
                         </div>
                     </CardContent>
@@ -205,13 +209,13 @@ export default function RoutePage() {
                             <RouteIcon className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Route List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{filteredRoutes.length} route{filteredRoutes.length === 1 ? "" : "s"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("route_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{filteredRoutes.length} {filteredRoutes.length === 1 ? t("route").toLowerCase() : t("routes").toLowerCase()}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                            <Input placeholder="Search routes..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="h-9 text-xs w-full md:w-64" />
+                            <Input placeholder={t("search_routes")} value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="h-9 text-xs w-full md:w-64" />
                             <div className="flex items-center gap-2">
                                 <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
                                     <SelectTrigger className="w-[70px] h-9 text-xs"><SelectValue /></SelectTrigger>
@@ -235,15 +239,15 @@ export default function RoutePage() {
                             <Table className="min-w-[500px]">
                                 <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Route Title <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                        <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("route_title")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                        <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {loading ? (
                                         <SkeletonRows rows={6} cols={TABLE_COLS} />
                                     ) : paginatedData.length === 0 ? (
-                                        <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No routes found</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_routes_found")}</TableCell></TableRow>
                                     ) : paginatedData.map((route) => (
                                         <TableRow key={route.id} className="text-xs hover:bg-gray-50/60 transition-colors">
                                             <TableCell className="py-3 text-gray-700 font-medium">{route.title}</TableCell>
@@ -260,7 +264,7 @@ export default function RoutePage() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                            <div>Showing {filteredRoutes.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredRoutes.length)} of {filteredRoutes.length} entries</div>
+                            <div>{t("showing_x_to_y_of_z", { from: filteredRoutes.length === 0 ? 0 : startIndex + 1, to: Math.min(startIndex + itemsPerPage, filteredRoutes.length), total: filteredRoutes.length })}</div>
                             <div className="flex gap-1 items-center">
                                 <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (

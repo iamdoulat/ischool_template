@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, Download, Upload, AlertCircle, Settings } from "lucide-react";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface Role {
     name: string;
@@ -28,6 +29,7 @@ interface Role {
 
 export default function ImportStaffPage() {
     const router = useRouter();
+    const { t } = useTranslation();
     const [roles, setRoles] = useState<Role[]>([]);
     const [selectedRole, setSelectedRole] = useState("");
     const [selectedDesignation, setSelectedDesignation] = useState("");
@@ -75,7 +77,7 @@ export default function ImportStaffPage() {
                 setCsvFile(file);
                 parseCSV(file);
             } else {
-                alert("Please upload a CSV file");
+                alert(t("please_upload_csv"));
             }
         }
     };
@@ -87,7 +89,7 @@ export default function ImportStaffPage() {
                 setCsvFile(file);
                 parseCSV(file);
             } else {
-                alert("Please upload a CSV file");
+                alert(t("please_upload_csv"));
             }
         }
     };
@@ -214,7 +216,7 @@ export default function ImportStaffPage() {
 
     const handleImport = async () => {
         if (!csvFile) {
-            alert("Please select a CSV file to import");
+            alert(t("please_select_csv_to_import"));
             return;
         }
 
@@ -227,12 +229,12 @@ export default function ImportStaffPage() {
             formData.append("designation", selectedDesignation);
             formData.append("department", selectedDepartment);
 
-            alert("Bulk import will be implemented soon");
+            alert(t("bulk_import_to_be_implemented"));
             // After successful import, redirect to staff directory
             // router.push("/dashboard/hr/staff-directory");
         } catch (error) {
             console.error("Import error:", error);
-            alert("Failed to import staff. Please try again.");
+            alert(t("bulk_import_failed"));
         } finally {
             setLoading(false);
         }
@@ -243,23 +245,29 @@ export default function ImportStaffPage() {
     return (
         <div className="p-6 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
                     <Button
                         variant="ghost"
                         onClick={() => router.back()}
-                        className="hover:bg-gray-100 rounded-lg"
+                        className="h-9 w-9 p-0 hover:bg-white/60 rounded-lg shrink-0"
                     >
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-2xl font-bold text-gray-800">Staff Import</h1>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Upload className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("staff_import")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("bulk_import_csv")}</p>
+                    </div>
                 </div>
                 <Button
                     onClick={handleDownloadSample}
                     className="bg-purple-600 hover:bg-purple-700 text-white gap-2 h-10 px-6 text-sm font-semibold rounded-full"
                 >
                     <Download className="h-4 w-4" />
-                    Download Sample Import File
+                    {t("download_sample_import_file")}
                 </Button>
             </div>
 
@@ -268,8 +276,8 @@ export default function ImportStaffPage() {
                 <div className="flex items-start gap-3">
                     <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
                     <div className="text-sm text-yellow-800 space-y-1">
-                        <p>1. Your CSV data should be in the format below. The first line of your CSV file should be the column headers as in the table example. Also make sure that your file is <strong>UTF-8</strong> to avoid unnecessary encoding problems.</p>
-                        <p>2. If the column you are trying to import is date make sure that is formatted in format Y-m-d (2018-06-06).</p>
+                        <p>{`${t("csv_instructions_line1_prefix")} `}<strong>UTF-8</strong>{` ${t("to_avoid_encoding_problems")}`}</p>
+                        <p>{t("csv_instructions_line2")}</p>
                     </div>
                 </div>
             </div>
@@ -282,23 +290,23 @@ export default function ImportStaffPage() {
                         <table className="w-full text-xs">
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Staff ID</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">First Name</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Last Name</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Father Name</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Mother Name</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Email</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Gender</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Date Of Birth</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Date Of Joining</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Phone</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Emergency Contact Number</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Marital Status</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Current Address</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Permanent Address</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Qualification</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Work Experience</th>
-                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">Note</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("staff_id")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("first_name")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("last_name")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("father_name")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("mother_name")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("email")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("gender")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("date_of_birth")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("date_of_joining")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("phone")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("emergency_contact_number")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("marital_status")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("current_address")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("permanent_address")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("qualification")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("work_experience")}</th>
+                                    <th className="px-3 py-3 text-left font-semibold text-gray-700">{t("note")}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -328,7 +336,7 @@ export default function ImportStaffPage() {
                         <>
                             <div className="bg-purple-50 border-b border-purple-200 px-4 py-2 flex items-center justify-between">
                                 <p className="text-xs font-bold text-purple-700 uppercase">
-                                    Preview ({csvData.length - 1} record{csvData.length - 1 !== 1 ? 's' : ''} detected)
+                                    {t("preview_n_records_detected", { count: csvData.length - 1 })}
                                 </p>
                                 <Button
                                     onClick={handleOpenMapping}
@@ -337,7 +345,7 @@ export default function ImportStaffPage() {
                                     className="h-8 text-xs gap-2 border-purple-300 text-purple-700 hover:bg-purple-100"
                                 >
                                     <Settings className="h-3 w-3" />
-                                    Map Columns
+                                    {t("map_columns")}
                                 </Button>
                             </div>
                             <div className="max-h-96 overflow-auto">
@@ -374,10 +382,10 @@ export default function ImportStaffPage() {
                 {/* Role, Designation, Department */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold text-gray-500 uppercase">Role</Label>
+                        <Label className="text-xs font-bold text-gray-500 uppercase">{t("role")}</Label>
                         <Select value={selectedRole} onValueChange={setSelectedRole}>
                             <SelectTrigger className="h-11 border-gray-200">
-                                <SelectValue placeholder="Select" />
+                                <SelectValue placeholder={t("select")} />
                             </SelectTrigger>
                             <SelectContent>
                                 {roles.map((role) => (
@@ -388,10 +396,10 @@ export default function ImportStaffPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold text-gray-500 uppercase">Designation</Label>
+                        <Label className="text-xs font-bold text-gray-500 uppercase">{t("designation")}</Label>
                         <Select value={selectedDesignation} onValueChange={setSelectedDesignation}>
                             <SelectTrigger className="h-11 border-gray-200">
-                                <SelectValue placeholder="Select" />
+                                <SelectValue placeholder={t("select")} />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Teacher">Teacher</SelectItem>
@@ -402,10 +410,10 @@ export default function ImportStaffPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold text-gray-500 uppercase">Department</Label>
+                        <Label className="text-xs font-bold text-gray-500 uppercase">{t("department")}</Label>
                         <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
                             <SelectTrigger className="h-11 border-gray-200">
-                                <SelectValue placeholder="Select" />
+                                <SelectValue placeholder={t("select")} />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Science">Science</SelectItem>
@@ -418,7 +426,7 @@ export default function ImportStaffPage() {
 
                 {/* File Upload */}
                 <div className="space-y-2">
-                    <Label className="text-xs font-bold text-gray-500 uppercase">Select CSV File *</Label>
+                    <Label className="text-xs font-bold text-gray-500 uppercase">{t("select_csv_file")} *</Label>
                     <div
                         className={`relative border-2 border-dashed rounded-lg p-12 text-center transition-colors ${dragActive ? "border-purple-400 bg-purple-50" : "border-gray-300 hover:border-purple-300"
                             }`}
@@ -435,14 +443,14 @@ export default function ImportStaffPage() {
                         />
                         <Upload className="h-10 w-10 text-gray-400 mx-auto mb-3" />
                         <p className="text-sm text-gray-600 mb-1">
-                            <span className="text-purple-600 font-semibold">Drag and drop a file here or click</span>
+                            <span className="text-purple-600 font-semibold">{t("drag_drop_or_click")}</span>
                         </p>
                         {csvFile ? (
                             <p className="text-xs text-green-600 font-medium mt-2">
-                                Selected: {csvFile.name}
+                                {t("selected")}: {csvFile.name}
                             </p>
                         ) : (
-                            <p className="text-xs text-gray-400">No file chosen</p>
+                            <p className="text-xs text-gray-400">{t("no_file_chosen")}</p>
                         )}
                     </div>
                 </div>
@@ -454,7 +462,7 @@ export default function ImportStaffPage() {
                         disabled={loading || !csvFile}
                         className={`${gradientBtn} px-10 h-12 text-sm font-semibold shadow-lg`}
                     >
-                        {loading ? "Importing..." : "Staff Import"}
+                        {loading ? t("importing_dotdotdot") : t("staff_import_button")}
                     </Button>
                 </div>
             </div>
@@ -463,16 +471,16 @@ export default function ImportStaffPage() {
             <Dialog open={mappingDialogOpen} onOpenChange={setMappingDialogOpen}>
                 <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Map CSV Columns</DialogTitle>
+                        <DialogTitle>{t("map_csv_columns")}</DialogTitle>
                         <DialogDescription>
-                            Match your CSV columns with the expected fields. Auto-matched fields are already selected.
+                            {t("auto_match_instructions")}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 mt-4">
                         <div className="grid grid-cols-2 gap-4 font-semibold text-xs text-gray-600 border-b pb-2">
-                            <div>Expected Field</div>
-                            <div>CSV Column</div>
+                            <div>{t("expected_field")}</div>
+                            <div>{t("csv_column")}</div>
                         </div>
 
                         {expectedFields.map((expectedField) => (
@@ -488,10 +496,10 @@ export default function ImportStaffPage() {
                                     }}
                                 >
                                     <SelectTrigger className="h-9">
-                                        <SelectValue placeholder="Select column..." />
+                                        <SelectValue placeholder={t("select_column_dotdotdot")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="unmapped">-- Not Mapped --</SelectItem>
+                                        <SelectItem value="unmapped">{t("not_mapped")}</SelectItem>
                                         {csvData[0]?.map((header, index) => (
                                             <SelectItem key={index} value={header}>
                                                 {header}
@@ -508,7 +516,7 @@ export default function ImportStaffPage() {
                             variant="outline"
                             onClick={() => setMappingDialogOpen(false)}
                         >
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button
                             onClick={() => {
@@ -517,7 +525,7 @@ export default function ImportStaffPage() {
                             }}
                             className="bg-purple-600 hover:bg-purple-700 text-white"
                         >
-                            Apply Mapping
+                            {t("apply_mapping")}
                         </Button>
                     </div>
                 </DialogContent>

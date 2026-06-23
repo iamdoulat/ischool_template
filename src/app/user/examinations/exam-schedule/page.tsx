@@ -34,6 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface ScheduleItem {
     id: number;
@@ -55,6 +56,7 @@ interface Exam {
 }
 
 export default function UserExaminationsSchedulePage() {
+    const { t } = useTranslation();
     const [exams, setExams] = useState<Exam[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -72,7 +74,7 @@ export default function UserExaminationsSchedulePage() {
             setExams(response.data?.data || []);
         } catch (error) {
             console.error("Error fetching exam schedule:", error);
-            toast.error("Failed to load exam schedule");
+            toast.error(t("failed_to_load_exam_schedule"));
         } finally {
             setLoading(false);
         }
@@ -110,9 +112,9 @@ export default function UserExaminationsSchedulePage() {
                         <CalendarClock className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Exam Schedule</h1>
+                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("exam_schedule")}</h1>
                         <p className="text-[11px] text-gray-500 mt-1">
-                            {loading ? "Loading schedule…" : `${totalEntries} exam${totalEntries === 1 ? "" : "s"} scheduled`}
+                            {loading ? t("loading_schedule") : `${totalEntries} exam${totalEntries === 1 ? "" : "s"} scheduled`}
                         </p>
                     </div>
                 </div>
@@ -124,7 +126,7 @@ export default function UserExaminationsSchedulePage() {
                         <div className="relative w-full md:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Search exams..."
+                                placeholder={t("search_exams")}
                                 value={searchTerm}
                                 onChange={(e) => {
                                     setSearchTerm(e.target.value);
@@ -166,10 +168,10 @@ export default function UserExaminationsSchedulePage() {
                         <Table className="min-w-[700px]">
                             <TableHeader className="bg-gray-50/80 border-b border-gray-100">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                    <TableHead className="py-3 px-4 h-auto w-20">S.No.</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto w-1/3">Exam <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Description</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-right">Action</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto w-20">{t("s_no")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto w-1/3">{t("exam")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("description")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -178,7 +180,7 @@ export default function UserExaminationsSchedulePage() {
                                         <TableCell colSpan={4} className="text-center py-12">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                                Loading exam schedule...
+                                                {t("loading_exam_schedule")}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -187,7 +189,7 @@ export default function UserExaminationsSchedulePage() {
                                         <TableCell colSpan={4} className="py-14 text-center">
                                             <div className="flex flex-col items-center text-gray-400">
                                                 <CalendarClock className="h-10 w-10 opacity-30 mb-2" />
-                                                <p className="text-[11px] font-bold uppercase tracking-widest">No exams scheduled</p>
+                                                <p className="text-[11px] font-bold uppercase tracking-widest">{t("no_exams_scheduled")}</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -207,7 +209,7 @@ export default function UserExaminationsSchedulePage() {
                                                     onClick={() => openScheduleDialog(item)}
                                                     className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-7 px-2.5 rounded-lg text-[11px] font-bold shadow-sm transition-all active:scale-95 border-0 inline-flex items-center gap-1.5"
                                                 >
-                                                    <Eye className="h-3.5 w-3.5" /> View
+                                                    <Eye className="h-3.5 w-3.5" /> {t("view")}
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -221,7 +223,7 @@ export default function UserExaminationsSchedulePage() {
                     <div className="md:hidden">
                         {loading ? (
                             <div className="flex items-center justify-center gap-2 text-gray-400 py-12">
-                                <Loader2 className="h-4 w-4 animate-spin" /> Loading exam schedule...
+                                <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_exam_schedule")}
                             </div>
                         ) : paginatedData.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
@@ -245,7 +247,7 @@ export default function UserExaminationsSchedulePage() {
                                             onClick={() => openScheduleDialog(item)}
                                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-8 text-[11px] font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 border-0 w-full mt-1"
                                         >
-                                            <Eye className="h-3.5 w-3.5" /> View Schedule
+                                            <Eye className="h-3.5 w-3.5" /> {t("view_schedule")}
                                         </Button>
                                     </div>
                                 ))}
@@ -256,8 +258,8 @@ export default function UserExaminationsSchedulePage() {
                     {/* ── Pagination ── */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
-                            Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
+                            {Math.min(startIndex + sizeNum, totalEntries)} {t("of")} {totalEntries} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (
@@ -307,7 +309,7 @@ export default function UserExaminationsSchedulePage() {
                             {selectedExam?.exam}
                         </DialogTitle>
                         <DialogDescription className="text-gray-500 text-xs">
-                            {selectedExam?.description || "Exam schedule details"}
+                            {selectedExam?.description || t("exam_schedule_details")}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -318,12 +320,12 @@ export default function UserExaminationsSchedulePage() {
                                 <Table>
                                     <TableHeader className="bg-gray-50/80">
                                         <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] uppercase font-bold text-gray-600">
-                                            <TableHead className="py-2.5 px-3">Subject</TableHead>
-                                            <TableHead className="py-2.5 px-3">Date</TableHead>
-                                            <TableHead className="py-2.5 px-3">Time</TableHead>
-                                            <TableHead className="py-2.5 px-3">Duration</TableHead>
-                                            <TableHead className="py-2.5 px-3">Room</TableHead>
-                                            <TableHead className="py-2.5 px-3 text-right">Max/Min</TableHead>
+                                            <TableHead className="py-2.5 px-3">{t("subject")}</TableHead>
+                                            <TableHead className="py-2.5 px-3">{t("date")}</TableHead>
+                                            <TableHead className="py-2.5 px-3">{t("time")}</TableHead>
+                                            <TableHead className="py-2.5 px-3">{t("duration")}</TableHead>
+                                            <TableHead className="py-2.5 px-3">{t("room")}</TableHead>
+                                            <TableHead className="py-2.5 px-3 text-right">{t("max_min")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -347,8 +349,8 @@ export default function UserExaminationsSchedulePage() {
                                                 </TableCell>
                                                 <TableCell className="py-2.5 px-3 text-right">
                                                     <div className="flex flex-col items-end gap-0.5">
-                                                        <span className="flex items-center gap-1 text-emerald-600 font-medium text-[10px]"><Target className="h-2.5 w-2.5" /> Max: {s.max_marks.toFixed(2)}</span>
-                                                        <span className="flex items-center gap-1 text-rose-500 font-medium text-[10px]"><ShieldCheck className="h-2.5 w-2.5" /> Min: {s.min_marks.toFixed(2)}</span>
+                                                        <span className="flex items-center gap-1 text-emerald-600 font-medium text-[10px]"><Target className="h-2.5 w-2.5" /> {t("max")}: {s.max_marks.toFixed(2)}</span>
+                                                        <span className="flex items-center gap-1 text-rose-500 font-medium text-[10px]"><ShieldCheck className="h-2.5 w-2.5" /> {t("min")}: {s.min_marks.toFixed(2)}</span>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -372,8 +374,8 @@ export default function UserExaminationsSchedulePage() {
                                             <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{s.date_from}</span>
                                             <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{s.start_time}</span>
                                             <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{s.room_no || "TBA"}</span>
-                                            <span className="flex items-center gap-1.5 text-emerald-600"><Target className="h-3.5 w-3.5 shrink-0" />Max {s.max_marks.toFixed(0)}</span>
-                                            <span className="flex items-center gap-1.5 text-rose-500"><ShieldCheck className="h-3.5 w-3.5 shrink-0" />Min {s.min_marks.toFixed(0)}</span>
+                                            <span className="flex items-center gap-1.5 text-emerald-600"><Target className="h-3.5 w-3.5 shrink-0" />{t("max")} {s.max_marks.toFixed(0)}</span>
+                                            <span className="flex items-center gap-1.5 text-rose-500"><ShieldCheck className="h-3.5 w-3.5 shrink-0" />{t("min")} {s.min_marks.toFixed(0)}</span>
                                         </div>
                                     </div>
                                 ))}
@@ -381,7 +383,7 @@ export default function UserExaminationsSchedulePage() {
                         </>
                     ) : (
                         <div className="text-center py-10 text-gray-400 text-sm italic">
-                            No schedule entries found for this exam.
+                            {t("no_schedule_entries_found")}
                         </div>
                     )}
                 </DialogContent>

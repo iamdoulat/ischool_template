@@ -24,8 +24,6 @@ import {
 import {
     Card,
     CardContent,
-    CardHeader,
-    CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -46,12 +44,14 @@ import {
     AlignLeft,
     AlignCenter,
     AlignRight,
-    Loader2
+    Loader2,
+    UserPlus
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrency } from "@/components/providers/currency-provider";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 const initialFields = [
     { id: 1, name: "Last Name", active: true },
@@ -113,6 +113,7 @@ function FormSkeleton() {
 }
 
 export default function OnlineAdmissionPage() {
+    const { t } = useTranslation();
     const { selectedCurrency } = useCurrency();
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -162,7 +163,7 @@ export default function OnlineAdmissionPage() {
             }
         } catch (error) {
             console.error("Error fetching online admission settings:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to load settings. Please try again." });
+            toast({ variant: "destructive", title: t("error"), description: t("failed_to_load") });
         } finally {
             setLoading(false);
         }
@@ -174,19 +175,19 @@ export default function OnlineAdmissionPage() {
 
     const validateSettings = () => {
         if (!settings.online_admission_form_fees || isNaN(parseFloat(settings.online_admission_form_fees))) {
-            toast({ variant: "destructive", title: "Validation Error", description: "Please enter a valid numeric value for form fees." });
+            toast({ variant: "destructive", title: t("validation_error"), description: t("please_enter_a_valid_numeric_value_for_form_fees") });
             return false;
         }
         if (parseFloat(settings.online_admission_form_fees) < 0) {
-            toast({ variant: "destructive", title: "Validation Error", description: "Form fees cannot be negative." });
+            toast({ variant: "destructive", title: t("validation_error"), description: t("form_fees_cannot_be_negative") });
             return false;
         }
         if (!settings.instructions.trim()) {
-            toast({ variant: "destructive", title: "Validation Error", description: "Instructions are required." });
+            toast({ variant: "destructive", title: t("validation_error"), description: t("instructions_are_required") });
             return false;
         }
         if (!settings.terms_conditions.trim()) {
-            toast({ variant: "destructive", title: "Validation Error", description: "Terms & conditions are required." });
+            toast({ variant: "destructive", title: t("validation_error"), description: t("terms_conditions_are_required") });
             return false;
         }
         return true;
@@ -211,14 +212,14 @@ export default function OnlineAdmissionPage() {
             });
 
             if (response.data.success) {
-                toast({ title: "Saved", description: "Form settings updated successfully." });
+                toast({ title: t("saved"), description: t("form_settings_updated_successfully") });
                 setSettings(prev => ({ ...prev, admission_form_file: null }));
                 if (fileInputRef.current) fileInputRef.current.value = "";
             }
         } catch (error: unknown) {
             console.error("Save settings error:", error);
-            const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to update form settings.";
-            toast({ variant: "destructive", title: "Error", description: errorMessage });
+            const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || t("failed_to_update_form_settings");
+            toast({ variant: "destructive", title: t("error"), description: errorMessage });
         } finally {
             setSavingSettings(false);
         }
@@ -231,14 +232,14 @@ export default function OnlineAdmissionPage() {
                 fields: fields.map(f => ({ id: f.id, is_active: f.active }))
             });
             if (response.data.success) {
-                toast({ title: "Saved", description: "Fields visibility updated successfully." });
+                toast({ title: t("saved"), description: t("fields_visibility_updated_successfully") });
             } else {
-                toast({ variant: "destructive", title: "Error", description: response.data.message || "Failed to update fields visibility." });
+                toast({ variant: "destructive", title: t("error"), description: response.data.message || t("failed_to_update_fields_visibility") });
             }
         } catch (error: unknown) {
             console.error("Save fields error:", error);
-            const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to update fields visibility.";
-            toast({ variant: "destructive", title: "Error", description: errorMessage });
+            const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || t("failed_to_update_fields_visibility");
+            toast({ variant: "destructive", title: t("error"), description: errorMessage });
         } finally {
             setSavingFields(false);
         }
@@ -255,11 +256,11 @@ export default function OnlineAdmissionPage() {
         if (file) {
             const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
             if (!allowedTypes.includes(file.type)) {
-                toast({ variant: "destructive", title: "Invalid File", description: "Please select a PDF or Word document file." });
+                toast({ variant: "destructive", title: t("invalid_file"), description: t("please_select_a_pdf_or_word_document_file") });
                 return;
             }
             if (file.size > 10 * 1024 * 1024) {
-                toast({ variant: "destructive", title: "File Too Large", description: "File size must be less than 10MB." });
+                toast({ variant: "destructive", title: t("file_too_large"), description: t("file_size_must_be_less_than_10mb") });
                 return;
             }
             setSettings(prev => ({ ...prev, admission_form_file: file, admission_form_file_name: file.name }));
@@ -309,7 +310,7 @@ export default function OnlineAdmissionPage() {
         if (type === 'copy') {
             const text = data.map(row => `${row.Name}\t${row.Status}`).join('\n');
             navigator.clipboard.writeText(text);
-            toast({ title: "Copied", description: "Table data copied to clipboard." });
+            toast({ title: t("copied"), description: t("table_data_copied_to_clipboard") });
         } else if (type === 'csv') {
             const headers = "Name,Status\n";
             const rows = data.map(row => `${row.Name},${row.Status}`).join('\n');
@@ -327,12 +328,18 @@ export default function OnlineAdmissionPage() {
 
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
-            <Card>
-                <CardHeader className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] rounded-t-lg">
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="text-gray-800 text-sm font-bold">Online Admission</CardTitle>
+            <Card className="pt-0 overflow-hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <UserPlus className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("online_admission")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("configure_the_online_admission_form_and_fields")}</p>
+                        </div>
                     </div>
-                </CardHeader>
+                </div>
                 <CardContent className="p-0">
                     <Tabs defaultValue="form-setting" className="flex-1 flex flex-col" onValueChange={setActiveTab}>
                         <div className="px-4 border-b border-gray-100 bg-white">
@@ -341,13 +348,13 @@ export default function OnlineAdmissionPage() {
                                     value="form-setting"
                                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-1 pb-2 h-full shadow-none bg-transparent text-[13px]"
                                 >
-                                    Online Admission Form Setting
+                                    {t("online_admission_form_setting")}
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="fields-setting"
                                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-1 pb-2 h-full shadow-none bg-transparent text-[13px]"
                                 >
-                                    Online Admission Fields Setting
+                                    {t("online_admission_fields_setting")}
                                 </TabsTrigger>
                             </TabsList>
                         </div>
@@ -362,7 +369,7 @@ export default function OnlineAdmissionPage() {
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12 max-w-4xl">
                                             <div className="flex items-center justify-between">
-                                                <label className="text-[12px] font-bold text-gray-700">Online Admission</label>
+                                                <label className="text-[12px] font-bold text-gray-700">{t("online_admission")}</label>
                                                 <Switch
                                                     checked={settings.online_admission}
                                                     onCheckedChange={(val) => setSettings({ ...settings, online_admission: val })}
@@ -370,7 +377,7 @@ export default function OnlineAdmissionPage() {
                                                 />
                                             </div>
                                             <div className="flex items-center justify-between">
-                                                <label className="text-[12px] font-bold text-gray-700">Online Admission Payment Option</label>
+                                                <label className="text-[12px] font-bold text-gray-700">{t("online_admission_payment_option")}</label>
                                                 <Switch
                                                     checked={settings.online_admission_payment_option}
                                                     onCheckedChange={(val) => setSettings({ ...settings, online_admission_payment_option: val })}
@@ -379,7 +386,7 @@ export default function OnlineAdmissionPage() {
                                             </div>
 
                                             <div className="space-y-1.5 md:col-span-1">
-                                                <label className="text-[12px] font-bold text-gray-700">Online Admission Form Fees ({selectedCurrency?.symbol || '$'})</label>
+                                                <label className="text-[12px] font-bold text-gray-700">{t("online_admission_form_fees")} ({selectedCurrency?.symbol || '$'})</label>
                                                 <Input
                                                     className="h-8 text-[12px] border-gray-200 focus:ring-indigo-500 shadow-none rounded w-full"
                                                     value={settings.online_admission_form_fees}
@@ -390,19 +397,19 @@ export default function OnlineAdmissionPage() {
                                             {/* Student Portal Note */}
                                             <div className="md:col-span-2 bg-indigo-50/50 border border-indigo-100/50 p-3 rounded-md">
                                                 <p className="text-[10px] text-indigo-600 font-medium">
-                                                    <strong>Student Portal:</strong> These settings control the online admission form available in the student portal. Toggle online admission to enable/disable new registrations.
+                                                    <strong>{t("student_portal")}:</strong> {t("these_settings_control_the_online_admission_form_available_in_the_student_portal")}
                                                 </p>
                                             </div>
 
                                             <div className="space-y-1.5 md:col-span-2">
-                                                <label className="text-[12px] font-bold text-gray-700">Upload Admission Application Form</label>
+                                                <label className="text-[12px] font-bold text-gray-700">{t("upload_admission_application_form")}</label>
                                                 <div className="space-y-2">
                                                     <div className="flex gap-2">
                                                         <div className="flex-1 border-2 border-dashed border-gray-200 rounded-lg h-8 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={handleFileUpload}>
                                                             <div className="flex items-center gap-2 text-gray-500">
                                                                 <CloudUpload className="h-3 w-3" />
                                                                 <span className="text-[10px] font-medium">
-                                                                    {settings.admission_form_file_name ? settings.admission_form_file_name : "Drag and drop a file here or click"}
+                                                                    {settings.admission_form_file_name ? settings.admission_form_file_name : t("drag_and_drop_a_file_here_or_click")}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -412,19 +419,19 @@ export default function OnlineAdmissionPage() {
                                                     </div>
                                                     {settings.admission_form_file_name && (
                                                         <div className="flex items-center gap-2 text-[10px] text-gray-600">
-                                                            <span>Current file: {settings.admission_form_file_name}</span>
-                                                            <Button variant="ghost" size="sm" className="h-5 px-2 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={removeFile}>Remove</Button>
+                                                            <span>{t("current_file")}: {settings.admission_form_file_name}</span>
+                                                            <Button variant="ghost" size="sm" className="h-5 px-2 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={removeFile}>{t("remove")}</Button>
                                                         </div>
                                                     )}
                                                     <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleFileSelect} className="hidden" />
-                                                    <p className="text-[9px] text-gray-400">Accepted formats: PDF, DOC, DOCX (Max 10MB)</p>
+                                                    <p className="text-[9px] text-gray-400">{t("accepted_formats_pdf_doc_docx_max_10mb")}</p>
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Instructions Editor */}
                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-bold text-gray-700">Online Admission Instructions</label>
+                                            <label className="text-[12px] font-bold text-gray-700">{t("online_admission_instructions")}</label>
                                             <div className="border border-gray-200 rounded-md overflow-hidden">
                                                 <div className="bg-gray-50 p-1 flex items-center gap-1 border-b border-gray-200 flex-wrap">
                                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('bold', instructionsTextareaRef)}><Bold className="h-3 w-3" /></Button>
@@ -441,7 +448,7 @@ export default function OnlineAdmissionPage() {
                                                 <Textarea
                                                     ref={instructionsTextareaRef}
                                                     className="min-h-[100px] border-none focus-visible:ring-0 text-[11px] p-3 resize-y rounded-none shadow-none"
-                                                    placeholder="Enter instructions here..."
+                                                    placeholder={t("enter_instructions_here")}
                                                     value={settings.instructions}
                                                     onChange={(e) => setSettings({ ...settings, instructions: e.target.value })}
                                                 />
@@ -450,7 +457,7 @@ export default function OnlineAdmissionPage() {
 
                                         {/* Terms & Conditions Editor */}
                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-bold text-gray-700">Terms & Conditions</label>
+                                            <label className="text-[12px] font-bold text-gray-700">{t("terms_conditions")}</label>
                                             <div className="border border-gray-200 rounded-md overflow-hidden">
                                                 <div className="bg-gray-50 p-1 flex items-center gap-1 border-b border-gray-200 flex-wrap">
                                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => formatText('bold', termsTextareaRef)}><Bold className="h-3 w-3" /></Button>
@@ -467,7 +474,7 @@ export default function OnlineAdmissionPage() {
                                                 <Textarea
                                                     ref={termsTextareaRef}
                                                     className="min-h-[100px] border-none focus-visible:ring-0 text-[11px] p-3 resize-y rounded-none shadow-none"
-                                                    placeholder="Enter terms here..."
+                                                    placeholder={t("enter_terms_here")}
                                                     value={settings.terms_conditions}
                                                     onChange={(e) => setSettings({ ...settings, terms_conditions: e.target.value })}
                                                 />
@@ -481,7 +488,7 @@ export default function OnlineAdmissionPage() {
                                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-[12px] font-bold uppercase transition-all rounded-full shadow-lg border-none min-w-[120px]"
                                             >
                                                 {savingSettings ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                                                Save
+                                                {t("save")}
                                             </Button>
                                         </div>
                                     </div>
@@ -492,7 +499,7 @@ export default function OnlineAdmissionPage() {
                                     <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 bg-white border-b border-gray-50/50">
                                         <div className="relative w-full md:w-56">
                                             <Input
-                                                placeholder="Search..."
+                                                placeholder={t("search")}
                                                 value={searchTerm}
                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                                 className="h-8 text-[12px] pl-3 border-gray-200 shadow-none rounded bg-white focus:bg-white transition-colors placeholder:text-gray-400"
@@ -530,9 +537,9 @@ export default function OnlineAdmissionPage() {
                                                 <TableHeader className="bg-gray-100">
                                                     <TableRow className="border-b border-gray-100 hover:bg-transparent text-[11px]">
                                                         <TableHead className="h-10 px-4 font-bold text-gray-600 text-[11px] uppercase w-full cursor-pointer hover:text-indigo-600 transition-colors group">
-                                                            <div className="flex items-center gap-1">Name <ArrowUpDown className="h-3 w-3 opacity-30 group-hover:opacity-100" /></div>
+                                                            <div className="flex items-center gap-1">{t("name")} <ArrowUpDown className="h-3 w-3 opacity-30 group-hover:opacity-100" /></div>
                                                         </TableHead>
-                                                        <TableHead className="h-10 px-4 font-bold text-gray-600 text-[11px] uppercase text-right w-24">Action</TableHead>
+                                                        <TableHead className="h-10 px-4 font-bold text-gray-600 text-[11px] uppercase text-right w-24">{t("action")}</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -552,7 +559,7 @@ export default function OnlineAdmissionPage() {
                                                     )) : (
                                                         <TableRow>
                                                             <TableCell colSpan={2} className="h-24 text-center text-[12px] text-gray-400">
-                                                                No matching records found
+                                                                {t("no_records_found")}
                                                             </TableCell>
                                                         </TableRow>
                                                     )}
@@ -567,13 +574,13 @@ export default function OnlineAdmissionPage() {
                                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-[12px] font-bold uppercase transition-all rounded-full shadow-lg border-none min-w-[120px]"
                                             >
                                                 {savingFields ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                                                Save
+                                                {t("save")}
                                             </Button>
                                         </div>
 
                                         <div className="flex items-center justify-between pt-4">
                                             <p className="text-[10px] text-gray-500 font-medium">
-                                                Showing 1 to {filteredFields.length} of {fields.length} entries
+                                                {t("showing")} 1 {t("to")} {filteredFields.length} {t("of")} {fields.length} {t("entries")}
                                             </p>
                                             <div className="flex items-center gap-1">
                                                 <Button variant="outline" size="icon" className="h-7 w-7 text-gray-400 border-gray-200" disabled>

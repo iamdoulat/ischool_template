@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -106,7 +107,8 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 }
 
 export default function BookListPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const { selectedCurrency } = useCurrency();
     const currencySymbol = selectedCurrency?.symbol || "$";
     const [searchTerm, setSearchTerm] = useState("");
@@ -148,7 +150,7 @@ export default function BookListPage() {
             });
         } catch (error) {
             console.error("Error fetching books:", error);
-            toast({ title: "Error", description: "Failed to fetch books", variant: "destructive" });
+            tt.error("failed_to_fetch_books");
         } finally {
             setLoading(false);
         }
@@ -202,23 +204,22 @@ export default function BookListPage() {
 
     const handleSave = async () => {
         if (!formData.title || !formData.book_number) {
-            toast({ title: "Error", description: "Title and Book Number are required", variant: "destructive" });
+            tt.error("title_and_book_number_required");
             return;
         }
         setSaving(true);
         try {
             if (editingBook) {
                 await api.put(`/library/books/${editingBook.id}`, formData);
-                toast({ title: "Success", description: "Book updated successfully" });
+                tt.success("book_updated_successfully");
             } else {
                 await api.post('/library/books', formData);
-                toast({ title: "Success", description: "Book added successfully" });
+                tt.success("book_added_successfully");
             }
             setIsDialogOpen(false);
             fetchBooks();
         } catch (error) {
-            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to save book";
-            toast({ title: "Error", description: message, variant: "destructive" });
+            tt.error("failed_to_save_book");
         } finally {
             setSaving(false);
         }
@@ -233,19 +234,19 @@ export default function BookListPage() {
         if (!deleteBookId) return;
         try {
             await api.delete(`/library/books/${deleteBookId}`);
-            toast({ title: "Success", description: "Book deleted successfully" });
+            tt.success("book_deleted_successfully");
             setIsDeleteDialogOpen(false);
             setDeleteBookId(null);
             fetchBooks();
         } catch {
-            toast({ title: "Error", description: "Failed to delete book", variant: "destructive" });
+            tt.error("failed_to_delete_book");
         }
     };
 
     const handleCopy = () => {
         const text = books.map(b => `${b.title}\t${b.book_number}\t${b.author}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        tt.success("data_copied_to_clipboard");
     };
 
     const handleExportCSV = () => {
@@ -279,14 +280,14 @@ export default function BookListPage() {
                         <Library className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Book List</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? books.length} book{(pagination?.total ?? books.length) === 1 ? "" : "s"} in the library</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("book_list")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("books_in_library_count", { count: pagination?.total ?? books.length })}</p>
                     </div>
                     <Button
                         onClick={handleAddClick}
                         className="ml-auto h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                     >
-                        <Plus className="h-4 w-4" /> Add Book
+                        <Plus className="h-4 w-4" /> {t("add_book")}
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -295,14 +296,14 @@ export default function BookListPage() {
                         <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search by title, author, number..."
+                                    placeholder={t("search_by_title_author_number")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-9 text-xs"
                                 />
                             </div>
                             <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                                <Search className="h-4 w-4" /> Search
+                                <Search className="h-4 w-4" /> {t("search")}
                             </Button>
                         </form>
 
@@ -340,19 +341,19 @@ export default function BookListPage() {
                         <Table className="min-w-[1200px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Book Title <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Description</TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Book Number <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600">ISBN Number</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Publisher</TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Author <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Subject</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Rack Number</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Qty</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Available</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Book Price</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Post Date</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right sticky right-0 bg-gray-50 shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("book_title")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("description")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("book_number")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("isbn_number")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("publisher")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("author")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("subject")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("rack_number")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("qty")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("available")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("book_price")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("post_date")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right sticky right-0 bg-gray-50 shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -361,7 +362,7 @@ export default function BookListPage() {
                                 ) : books.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                            No books found
+                                            {t("no_books_found")}
                                         </TableCell>
                                     </TableRow>
                                 ) : books.map((book) => (
@@ -384,7 +385,7 @@ export default function BookListPage() {
                                                     size="sm"
                                                     onClick={() => handleEditClick(book)}
                                                     className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                    title="Edit"
+                                                    title={t("edit")}
                                                 >
                                                     <Pencil className="h-4 w-4" />
                                                 </Button>
@@ -392,7 +393,7 @@ export default function BookListPage() {
                                                     size="sm"
                                                     onClick={() => handleDeleteClick(book.id)}
                                                     className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
-                                                    title="Delete"
+                                                    title={t("delete")}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -407,7 +408,7 @@ export default function BookListPage() {
                     {/* Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
                         <div>
-                            Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
+                            {t("showing_x_to_y_of_z", { from: pagination?.from || 0, to: pagination?.to || 0, total: pagination?.total || 0 })}
                         </div>
                         <div className="flex gap-1 items-center">
                             <Button
@@ -452,29 +453,29 @@ export default function BookListPage() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-gray-800">{editingBook ? 'Edit Book' : 'Add New Book'}</DialogTitle>
+                        <DialogTitle className="text-lg font-bold text-gray-800">{editingBook ? t("edit_book") : t("add_new_book")}</DialogTitle>
                     </DialogHeader>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
                         <div className="space-y-1.5 sm:col-span-2">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Book Title <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("book_title_label")} <span className="text-red-500">*</span></Label>
                             <Input
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                 className="h-9 border-gray-200 text-xs shadow-none"
-                                placeholder="Enter book title"
+                                placeholder={t("enter_book_title")}
                             />
                         </div>
                         <div className="space-y-1.5 sm:col-span-2">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Description</Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("description")}</Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 className="border-gray-200 text-xs shadow-none min-h-[60px]"
-                                placeholder="Enter description"
+                                placeholder={t("enter_description")}
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Book Number <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("book_number_label")} <span className="text-red-500">*</span></Label>
                             <Input
                                 value={formData.book_number}
                                 onChange={(e) => setFormData({ ...formData, book_number: e.target.value })}
@@ -482,7 +483,7 @@ export default function BookListPage() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">ISBN Number</Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("isbn_number")}</Label>
                             <Input
                                 value={formData.isbn_number}
                                 onChange={(e) => setFormData({ ...formData, isbn_number: e.target.value })}
@@ -490,7 +491,7 @@ export default function BookListPage() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Publisher</Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("publisher")}</Label>
                             <Input
                                 value={formData.publisher}
                                 onChange={(e) => setFormData({ ...formData, publisher: e.target.value })}
@@ -498,7 +499,7 @@ export default function BookListPage() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Author</Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("author")}</Label>
                             <Input
                                 value={formData.author}
                                 onChange={(e) => setFormData({ ...formData, author: e.target.value })}
@@ -506,7 +507,7 @@ export default function BookListPage() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Subject</Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("subject")}</Label>
                             <Input
                                 value={formData.subject}
                                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
@@ -514,7 +515,7 @@ export default function BookListPage() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Rack Number</Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("rack_number")}</Label>
                             <Input
                                 value={formData.rack_number}
                                 onChange={(e) => setFormData({ ...formData, rack_number: e.target.value })}
@@ -522,7 +523,7 @@ export default function BookListPage() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Quantity <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("quantity_label")} <span className="text-red-500">*</span></Label>
                             <Input
                                 type="number"
                                 value={formData.qty}
@@ -531,7 +532,7 @@ export default function BookListPage() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Price</Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("price")}</Label>
                             <Input
                                 type="number"
                                 value={formData.price}
@@ -540,7 +541,7 @@ export default function BookListPage() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Post Date</Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("post_date")}</Label>
                             <DatePicker
                                 value={formData.post_date}
                                 onChange={(date) => setFormData({ ...formData, post_date: date })}
@@ -548,9 +549,9 @@ export default function BookListPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full" disabled={saving}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full" disabled={saving}>{t("cancel")}</Button>
                         <Button onClick={handleSave} disabled={saving} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] uppercase font-bold shadow-lg active:scale-95 transition-all">
-                            {saving ? "Saving..." : "Save Book"}
+                            {saving ? t("saving") : t("save_book")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -560,14 +561,14 @@ export default function BookListPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent className="sm:max-w-[400px]">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Book</AlertDialogTitle>
+                        <AlertDialogTitle>{t("delete_book")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete this book? This action cannot be undone.
+                            {t("delete_book_confirmation")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600 text-white">Delete</AlertDialogAction>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600 text-white">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

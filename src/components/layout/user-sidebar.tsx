@@ -171,6 +171,7 @@ const sidebarColorMap = {
 
 import api from "@/lib/api";
 import { Loader2 } from "lucide-react";
+import { isPortalMenuVisible, visiblePortalSubmenus } from "@/lib/portal-menu-permissions";
 
 export function UserSidebar({
     collapsed = false,
@@ -190,9 +191,26 @@ export function UserSidebar({
     const [sessions, setSessions] = useState<any[]>([]);
     const [fetchingSessions, setFetchingSessions] = useState(false);
     const [changingSessionId, setChangingSessionId] = useState<number | null>(null);
+    const [permissions, setPermissions] = useState<string[]>([]);
+    const [fetchingPermissions, setFetchingPermissions] = useState(true);
 
     useEffect(() => {
         setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        const fetchPermissions = async () => {
+            try {
+                const response = await api.get("/profile");
+                setPermissions(response.data.data?.permissions || []);
+            } catch (error) {
+                console.error("Failed to fetch permissions", error);
+                setPermissions([]);
+            } finally {
+                setFetchingPermissions(false);
+            }
+        };
+        fetchPermissions();
     }, []);
 
     useEffect(() => {
@@ -213,15 +231,33 @@ export function UserSidebar({
         fetchSessions();
     }, []);
 
-    // For User portal we just render static menuItems right now
-    const processedMenuItems = menuItems.map(group => ({
-        ...group,
-        items: group.items.map(item => ({
-            ...item,
-            is_visible: true,
-            label: item.label
+    // Filter portal menus by the logged-in user's role permissions.
+    // While permissions load, show only the always-visible items (dashboard)
+    // to avoid flashing menus the role may not have.
+    const permissionSet = React.useMemo(() => new Set(permissions), [permissions]);
+
+    const processedMenuItems = menuItems
+        .map(group => ({
+            ...group,
+            items: group.items
+                .filter(item => {
+                    if (fetchingPermissions) return item.name === "dashboard";
+                    return isPortalMenuVisible(item.name, permissionSet);
+                })
+                .map(item => {
+                    // Filter submenus for items that define portal submenu permissions.
+                    let submenus = item.submenus;
+                    if (!fetchingPermissions && item.submenus && item.submenus.length > 0) {
+                        const allowed = visiblePortalSubmenus(item.name, permissionSet);
+                        if (allowed.length > 0) {
+                            const allowedSet = new Set(allowed);
+                            submenus = item.submenus.filter(s => allowedSet.has(s.name));
+                        }
+                    }
+                    return { ...item, submenus, is_visible: true, label: item.label };
+                })
         }))
-    }));
+        .filter(group => group.items.length > 0);
 
     const activeSession = sessions.find(s => s.is_active);
 
@@ -344,7 +380,7 @@ export function UserSidebar({
                                                 {!collapsed && (
                                                     <>
                                                         <span className="flex-1 text-left">
-                                                            {item.label}
+                                                            {t(item.name) !== item.name ? t(item.name) : item.label}
                                                         </span>
                                                         {/* Red Badge for Notice Board */}
                                                         {item.badge && (
@@ -381,7 +417,7 @@ export function UserSidebar({
                                                         <div className="space-y-1">
                                                             <div className="px-3 py-2 border-b border-muted/20 mb-1">
                                                                 <p className={cn("text-xs font-bold uppercase tracking-widest", colors.icon)}>
-                                                                    {item.label}
+                                                                    {t(item.name) !== item.name ? t(item.name) : item.label}
                                                                 </p>
                                                             </div>
                                                             <Link
@@ -412,7 +448,7 @@ export function UserSidebar({
                                                                                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                                                                             )}
                                                                         >
-                                                                            {formatLabel(submenu.name)}
+                                                                            {t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name)}
                                                                         </Link>
                                                                     ))}
                                                                 </div>
@@ -448,7 +484,7 @@ export function UserSidebar({
                                                                     )} />
                                                                 </div>
                                                                 <span className="flex-1 text-left">
-                                                                    {item.label}
+                                                                    {t(item.name) !== item.name ? t(item.name) : item.label}
                                                                 </span>
                                                             </div>
                                                         </AccordionTrigger>
@@ -470,7 +506,7 @@ export function UserSidebar({
                                                                                     : "text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
                                                                             )}
                                                                         >
-                                                                            <span className="flex-1">{formatLabel(submenu.name)}</span>
+                                                                            <span className="flex-1">{t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name)}</span>
                                                                             {isSubActive && (
                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-in fade-in zoom-in duration-300 ml-2" />
                                                                             )}

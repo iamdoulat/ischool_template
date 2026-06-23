@@ -21,7 +21,16 @@
       "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" -l \"k:/flyenv_folder/iSchool/backend/app/Http/Controllers/Api/v1/FrontOffice/AdmissionEnquiryController.php\")",
       "Bash(find . -path ./vendor -prune -o -iname \"*visitor*\" -print)",
       "Bash(cd k:/flyenv_folder/iSchool && npx tsc --noEmit 2>&1 | grep -oE \"^src/[^\\(]+\" | sort -u > /tmp/tserr.txt; echo \"=== Files with type errors ===\"; cat /tmp/tserr.txt; echo \"\"; echo \"=== Of those, which are in your git working-tree changes ===\"; git status --porcelain | grep -oE \"src/.*\\\\.tsx?\" | sort -u > /tmp/changed.txt; comm -12 /tmp/tserr.txt /tmp/changed.txt)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Read(//c/Program Files/FlyEnv-Data/app//**)",
+      "Bash(tasklist)",
+      "Bash(powershell -NoProfile -Command 'Get-Process | Where-Object { $_.Name -match '\\\\''mysqld|maria'\\\\'' } | Select-Object Name,Id')",
+      "Read(//c/Program Files/FlyEnv-Data/server//**)",
+      "Read(//c/Program Files/FlyEnv-Data/server/**)",
+      "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan route:list)",
+      "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan migrate --force)",
+      "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan config:clear)",
+      "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan test)"
     ]
   }
 }

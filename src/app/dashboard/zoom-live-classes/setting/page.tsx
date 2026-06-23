@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { RefreshCw, Save, Key, Lock, Globe, Smartphone, RefreshCcw } from "lucid
 import { cn } from "@/lib/utils";
 
 export default function ZoomSettingPage() {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [redirectUrl, setRedirectUrl] = useState("https://demo.smart-school.in/admin/conference/generatetoken");
@@ -48,7 +50,7 @@ export default function ZoomSettingPage() {
             }
         } catch (error) {
             console.error("Failed to fetch settings", error);
-            toast.error("Failed to load settings");
+            toast.error(t("failed_to_load_settings"));
         } finally {
             setLoading(false);
         }
@@ -58,11 +60,11 @@ export default function ZoomSettingPage() {
         setSaving(true);
         try {
             await api.post('/conference/zoom-settings', settings);
-            toast.success("Zoom configuration updated successfully");
+            toast.success(t("zoom_configuration_updated_successfully"));
             fetchSettings();
         } catch (error) {
             console.error("Failed to save configuration", error);
-            toast.error("Failed to save configuration");
+            toast.error(t("failed_to_save_configuration"));
         } finally {
             setSaving(false);
         }
@@ -79,8 +81,8 @@ export default function ZoomSettingPage() {
                             <Key className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Zoom Settings</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">Configure API credentials &amp; access tokens</p>
+                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("zoom_settings")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("configure_api_credentials_and_access_tokens")}</p>
                         </div>
                     </div>
                     <Button
@@ -88,7 +90,7 @@ export default function ZoomSettingPage() {
                         disabled={saving}
                         className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
                     >
-                        {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+                        {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("save")}
                     </Button>
                 </div>
             </div>
@@ -98,7 +100,7 @@ export default function ZoomSettingPage() {
 
                 {/* Alert Notification */}
                 <div className="bg-[#e3f2fd] border border-[#bbdefb] text-[#0d47a1] px-4 py-3 rounded text-[11px] font-medium leading-relaxed">
-                    Access Token not generated, Please authenticate your Account.
+                    {t("access_token_not_generated_please_authenticate_your_account")}
                 </div>
 
                 {/* Dual Panel Form Layout */}
@@ -110,7 +112,7 @@ export default function ZoomSettingPage() {
                         {/* API Key */}
                         <div className="grid grid-cols-12 gap-2 items-center">
                             <Label className="col-span-4 text-right text-[11px] font-bold text-gray-600">
-                                Zoom API Key <span className="text-red-500">*</span>
+                                {t("zoom_api_key")} <span className="text-red-500">*</span>
                             </Label>
                             <div className="col-span-8">
                                 <Input
@@ -124,7 +126,7 @@ export default function ZoomSettingPage() {
                         {/* API Secret */}
                         <div className="grid grid-cols-12 gap-2 items-center">
                             <Label className="col-span-4 text-right text-[11px] font-bold text-gray-600">
-                                Zoom API Secret <span className="text-red-500">*</span>
+                                {t("zoom_api_secret")} <span className="text-red-500">*</span>
                             </Label>
                             <div className="col-span-8">
                                 <Input
@@ -138,7 +140,7 @@ export default function ZoomSettingPage() {
                         {/* Teacher API Credential */}
                         <div className="grid grid-cols-12 gap-2 items-center">
                             <Label className="col-span-4 text-right text-[11px] font-bold text-gray-600">
-                                Teacher Api Credential <span className="text-red-500">*</span>
+                                {t("teacher_api_credential")} <span className="text-red-500">*</span>
                             </Label>
                             <div className="col-span-8 flex items-center gap-6">
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -149,17 +151,17 @@ export default function ZoomSettingPage() {
                                         onChange={() => setSettings({...settings, teacher_api_credential: false})}
                                         className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                     />
-                                    <span className="text-[11px] font-medium text-gray-700">Disabled</span>
+                                    <span className="text-[11px] font-medium text-gray-700">{t("disabled")}</span>
                                 </label>
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
-                                    <input 
-                                        type="radio" 
+                                    <input
+                                        type="radio"
                                         name="teacher_api_credential"
                                         checked={settings.teacher_api_credential}
                                         onChange={() => setSettings({...settings, teacher_api_credential: true})}
                                         className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                     />
-                                    <span className="text-[11px] font-medium text-gray-700">Enabled</span>
+                                    <span className="text-[11px] font-medium text-gray-700">{t("enabled")}</span>
                                 </label>
                             </div>
                         </div>
@@ -167,7 +169,7 @@ export default function ZoomSettingPage() {
                         {/* Staff Client Type */}
                         <div className="grid grid-cols-12 gap-2 items-center">
                             <Label className="col-span-4 text-right text-[11px] font-bold text-gray-600">
-                                Use Zoom Client for Staff <span className="text-red-500">*</span>
+                                {t("use_zoom_client_for_staff")} <span className="text-red-500">*</span>
                             </Label>
                             <div className="col-span-8 flex items-center gap-6">
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -179,7 +181,7 @@ export default function ZoomSettingPage() {
                                         onChange={() => setSettings({...settings, staff_client_type: "web"})}
                                         className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                     />
-                                    <span className="text-[11px] font-medium text-gray-700">Web</span>
+                                    <span className="text-[11px] font-medium text-gray-700">{t("web")}</span>
                                 </label>
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
                                     <input 
@@ -190,7 +192,7 @@ export default function ZoomSettingPage() {
                                         onChange={() => setSettings({...settings, staff_client_type: "app"})}
                                         className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                     />
-                                    <span className="text-[11px] font-medium text-gray-700">Zoom App</span>
+                                    <span className="text-[11px] font-medium text-gray-700">{t("zoom_app")}</span>
                                 </label>
                             </div>
                         </div>
@@ -198,7 +200,7 @@ export default function ZoomSettingPage() {
                         {/* Student Client Type */}
                         <div className="grid grid-cols-12 gap-2 items-center">
                             <Label className="col-span-4 text-right text-[11px] font-bold text-gray-600">
-                                Use Zoom Client for Student <span className="text-red-500">*</span>
+                                {t("use_zoom_client_for_student")} <span className="text-red-500">*</span>
                             </Label>
                             <div className="col-span-8 flex items-center gap-6">
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -210,7 +212,7 @@ export default function ZoomSettingPage() {
                                         onChange={() => setSettings({...settings, student_client_type: "web"})}
                                         className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                     />
-                                    <span className="text-[11px] font-medium text-gray-700">Web</span>
+                                    <span className="text-[11px] font-medium text-gray-700">{t("web")}</span>
                                 </label>
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
                                     <input 
@@ -221,7 +223,7 @@ export default function ZoomSettingPage() {
                                         onChange={() => setSettings({...settings, student_client_type: "app"})}
                                         className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                     />
-                                    <span className="text-[11px] font-medium text-gray-700">Zoom App</span>
+                                    <span className="text-[11px] font-medium text-gray-700">{t("zoom_app")}</span>
                                 </label>
                             </div>
                         </div>
@@ -229,7 +231,7 @@ export default function ZoomSettingPage() {
                         {/* Parent Live Class */}
                         <div className="grid grid-cols-12 gap-2 items-center">
                             <Label className="col-span-4 text-right text-[11px] font-bold text-gray-600">
-                                Parent Live Class <span className="text-red-500">*</span>
+                                {t("parent_live_class")} <span className="text-red-500">*</span>
                             </Label>
                             <div className="col-span-8 flex items-center gap-6">
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -240,17 +242,17 @@ export default function ZoomSettingPage() {
                                         onChange={() => setSettings({...settings, parent_live_class: false})}
                                         className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                     />
-                                    <span className="text-[11px] font-medium text-gray-700">Disabled</span>
+                                    <span className="text-[11px] font-medium text-gray-700">{t("disabled")}</span>
                                 </label>
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
-                                    <input 
-                                        type="radio" 
+                                    <input
+                                        type="radio"
                                         name="parent_live_class"
                                         checked={settings.parent_live_class}
                                         onChange={() => setSettings({...settings, parent_live_class: true})}
                                         className="h-3.5 w-3.5 text-indigo-600 border-gray-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
                                     />
-                                    <span className="text-[11px] font-medium text-gray-700">Enabled</span>
+                                    <span className="text-[11px] font-medium text-gray-700">{t("enabled")}</span>
                                 </label>
                             </div>
                         </div>
@@ -266,11 +268,11 @@ export default function ZoomSettingPage() {
                         {/* Guide links */}
                         <div className="space-y-1 mt-4">
                             <p className="text-[11px] font-medium text-gray-700">
-                                To generate Zoom Api credential <a href="https://marketplace.zoom.us" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-bold">Click Here</a>
+                                {t("to_generate_zoom_api_credential")} <a href="https://marketplace.zoom.us" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-bold">{t("click_here")}</a>
                             </p>
                             
                             <div className="pt-2 space-y-1">
-                                <p className="text-[11px] font-bold text-gray-700">Zoom redirect URL:</p>
+                                <p className="text-[11px] font-bold text-gray-700">{t("zoom_redirect_url")}:</p>
                                 <p className="text-[10px] font-medium text-gray-500 break-all select-all leading-relaxed bg-gray-50 p-2 border border-gray-150 rounded">
                                     {redirectUrl}
                                 </p>
@@ -282,10 +284,10 @@ export default function ZoomSettingPage() {
                             type="button"
                             className="bg-[#7e57c2] hover:bg-[#7048b6] text-white px-5 h-8 text-[11px] font-bold rounded shadow-none transition-all active:scale-95 mt-2 cursor-pointer"
                             onClick={() => {
-                                toast.success("Access Token successfully generated for developer account!");
+                                toast.success(t("access_token_successfully_generated_for_developer_account"));
                             }}
                         >
-                            Get Access Token
+                            {t("get_access_token")}
                         </Button>
 
                     </div>

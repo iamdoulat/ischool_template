@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useImageUrl } from "@/lib/image-url";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 
 interface MediaItem {
     id: number;
@@ -63,6 +65,8 @@ function GridSkeleton() {
 
 export default function MediaManagerPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const resolveImg = useImageUrl();
 
     const [media, setMedia] = useState<MediaItem[]>([]);
@@ -81,9 +85,9 @@ export default function MediaManagerPage() {
             const res = await api.get("front-cms/media");
             setMedia(res.data?.data ?? []);
         } catch {
-            toast({ title: "Error", description: "Failed to load media", variant: "destructive" });
+            tt.error("failed_to_load_media");
         } finally { setLoading(false); }
-    }, [toast]);
+    }, [toast, tt]);
 
     useEffect(() => { fetchMedia(); }, [fetchMedia]);
 
@@ -94,10 +98,10 @@ export default function MediaManagerPage() {
             const data = new FormData();
             for (let i = 0; i < files.length; i++) data.append("files[]", files[i]);
             await api.post("front-cms/media", data, { headers: { "Content-Type": "multipart/form-data" } });
-            toast({ title: "Success", description: `${files.length} file(s) uploaded` });
+            tt.success("x_files_uploaded", { count: files.length });
             fetchMedia();
         } catch {
-            toast({ title: "Error", description: "Failed to upload media", variant: "destructive" });
+            tt.error("failed_to_upload_media");
         } finally { setUploading(false); }
     };
 
@@ -106,10 +110,10 @@ export default function MediaManagerPage() {
         setDeleting(true);
         try {
             await api.delete(`front-cms/media/${deleteId}`);
-            toast({ title: "Success", description: "File deleted" });
+            tt.success("file_deleted");
             fetchMedia();
         } catch {
-            toast({ title: "Error", description: "Failed to delete file", variant: "destructive" });
+            tt.error("failed_to_delete_file");
         } finally { setDeleting(false); setDeleteId(null); }
     };
 
@@ -139,8 +143,8 @@ export default function MediaManagerPage() {
                             <Upload className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold text-slate-800 leading-none">Upload Media</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Upload images, videos, and documents (max 5MB per file)</p>
+                            <CardTitle className="text-base font-bold text-slate-800 leading-none">{t("upload_media")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("upload_images_videos_and_documents")}</p>
                         </div>
                     </div>
                     {uploading && <Loader2 className="h-5 w-5 animate-spin text-indigo-500 shrink-0" />}
@@ -160,8 +164,8 @@ export default function MediaManagerPage() {
                                 <Upload className="h-5 w-5 text-indigo-500" />
                             </div>
                             <div className="text-center">
-                                <span className="text-xs text-gray-600 font-bold block">Drop files here or click to browse</span>
-                                <span className="text-[10px] text-gray-400 mt-0.5">Supports images, videos, PDFs, documents</span>
+                                <span className="text-xs text-gray-600 font-bold block">{t("drop_files_here_or_click_to_browse")}</span>
+                                <span className="text-[10px] text-gray-400 mt-0.5">{t("supports_images_videos_pdfs_documents")}</span>
                             </div>
                         </div>
                     </div>
@@ -176,8 +180,8 @@ export default function MediaManagerPage() {
                             <ImageIcon className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold text-slate-800 leading-none">Media Library</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{media.length} file(s) in library</p>
+                            <CardTitle className="text-base font-bold text-slate-800 leading-none">{t("media_library")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_files_in_library", { count: media.length })}</p>
                         </div>
                     </div>
                 </CardHeader>
@@ -187,16 +191,16 @@ export default function MediaManagerPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input placeholder="Search files..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="pl-9 h-9 text-xs" />
+                            <Input placeholder={t("search_files")} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="pl-9 h-9 text-xs" />
                         </div>
                         <div className="flex items-center gap-3">
                             <Select value={filterType} onValueChange={v => { setFilterType(v); setCurrentPage(1); }}>
                                 <SelectTrigger className="h-9 w-[130px] text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Files</SelectItem>
-                                    <SelectItem value="image">Images</SelectItem>
-                                    <SelectItem value="video">Videos</SelectItem>
-                                    <SelectItem value="application">Documents</SelectItem>
+                                    <SelectItem value="all">{t("all_files")}</SelectItem>
+                                    <SelectItem value="image">{t("images")}</SelectItem>
+                                    <SelectItem value="video">{t("videos")}</SelectItem>
+                                    <SelectItem value="application">{t("documents")}</SelectItem>
                                 </SelectContent>
                             </Select>
                             <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setCurrentPage(1); }}>
@@ -212,7 +216,7 @@ export default function MediaManagerPage() {
                     {loading ? <GridSkeleton /> : paginated.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
                             <FolderOpen className="h-10 w-10 opacity-30" />
-                            <p className="text-xs font-medium">No files found</p>
+                            <p className="text-xs font-medium">{t("no_files_found")}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -257,7 +261,7 @@ export default function MediaManagerPage() {
 
                     {/* Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                        <div>Showing {from} to {to} of {filtered.length} entries</div>
+                        <div>{t("showing_x_to_y_of_z", { from, to, total: filtered.length })}</div>
                         <div className="flex gap-1">
                             <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                             {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, currentPage - 3), currentPage + 2).map(page => (
@@ -273,14 +277,14 @@ export default function MediaManagerPage() {
             <AlertDialog open={!!deleteId} onOpenChange={o => { if (!o) setDeleteId(null); }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete File</AlertDialogTitle>
-                        <AlertDialogDescription>This action cannot be undone. The file will be permanently deleted from the media library.</AlertDialogDescription>
+                        <AlertDialogTitle>{t("delete_file")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("delete_file_confirmation")}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-red-500 hover:bg-red-600">
                             {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Delete
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

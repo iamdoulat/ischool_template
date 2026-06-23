@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface Visitor {
     id: number;
@@ -43,6 +44,7 @@ interface Visitor {
 }
 
 export default function UserVisitorBookPage() {
+    const { t } = useTranslation();
     const [visitors, setVisitors] = useState<Visitor[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -70,7 +72,7 @@ export default function UserVisitorBookPage() {
             setCurrentPage(res.current_page || page);
         } catch (error) {
             console.error("Error fetching visitors:", error);
-            toast.error("Failed to load visitors");
+            toast.error(t("failed_to_load_visitors"));
         } finally {
             setLoading(false);
         }
@@ -99,9 +101,9 @@ export default function UserVisitorBookPage() {
                         <Users className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Visitor Book</h1>
+                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("visitor_book")}</h1>
                         <p className="text-[11px] text-gray-500 mt-1">
-                            {totalEntries} visitor{totalEntries === 1 ? "" : "s"} recorded
+                            {totalEntries} {totalEntries === 1 ? t("visitor") : t("visitors")} {t("recorded")}
                         </p>
                     </div>
                 </div>
@@ -113,7 +115,7 @@ export default function UserVisitorBookPage() {
                         <div className="relative w-full md:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Search visitors..."
+                                placeholder={t("search_visitors")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
@@ -153,15 +155,15 @@ export default function UserVisitorBookPage() {
                         <Table className="min-w-[1100px]">
                             <TableHeader className="bg-gray-50/80 border-b border-gray-100">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                    <TableHead className="py-3 px-4 h-auto">Purpose <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Visitor Name <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Phone <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">ID Card <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-center">No. of Persons</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Note</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Date <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">In Time <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Out Time <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("purpose")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("visitor_name")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("phone")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("id_card")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-center">{t("number_of_persons")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("note")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("date")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("in_time")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("out_time")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -170,7 +172,7 @@ export default function UserVisitorBookPage() {
                                         <TableCell colSpan={9} className="text-center py-12">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                                Loading visitors...
+                                                {t("loading_visitors")}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -179,7 +181,7 @@ export default function UserVisitorBookPage() {
                                         <TableCell colSpan={9} className="py-14 text-center">
                                             <div className="flex flex-col items-center text-gray-400">
                                                 <Users className="h-10 w-10 opacity-30 mb-2" />
-                                                <p className="text-[11px] font-bold uppercase tracking-widest">No visitors recorded</p>
+                                                <p className="text-[11px] font-bold uppercase tracking-widest">{t("no_visitors_recorded")}</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -214,12 +216,12 @@ export default function UserVisitorBookPage() {
                     <div className="lg:hidden">
                         {loading ? (
                             <div className="flex items-center justify-center gap-2 text-gray-400 py-12">
-                                <Loader2 className="h-4 w-4 animate-spin" /> Loading visitors...
+                                <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_visitors")}
                             </div>
                         ) : visitors.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                                 <Users className="h-12 w-12 opacity-30 mb-3" />
-                                <p className="font-bold uppercase text-[11px] tracking-widest">No visitors recorded</p>
+                                <p className="font-bold uppercase text-[11px] tracking-widest">{t("no_visitors_recorded")}</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -260,8 +262,8 @@ export default function UserVisitorBookPage() {
                     {/* ── Pagination ── */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
-                            Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
+                            {Math.min(startIndex + sizeNum, totalEntries)} {t("of")} {totalEntries} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (

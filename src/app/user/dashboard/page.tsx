@@ -27,6 +27,7 @@ import { Progress } from "@/components/ui/progress";
 import { mockUserDashboardData } from "@/lib/mock-user-dashboard";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 // ─── Reusable presentational helpers ────────────────────────────────────────────
 
@@ -108,6 +109,7 @@ function EmptyState({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
 }
 
 export default function UserDashboardPage() {
+    const { t } = useTranslation();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [qrDataUrl, setQrDataUrl] = useState<string>("");
@@ -161,8 +163,16 @@ export default function UserDashboardPage() {
         homework,
         teachers,
         visitors,
-        libraryBooks
+        libraryBooks,
+        widgets
     } = data || mockUserDashboardData;
+
+    // Card visibility controlled from admin (student-profile-setting → Dashboard Setting).
+    // Defaults to visible when the backend doesn't supply a flag (e.g. mock data).
+    const showWidget = (key: string): boolean => {
+        if (!widgets || typeof widgets[key] === "undefined") return true;
+        return !!widgets[key];
+    };
 
     const attendance = Number(profile.attendance_percentage) || 0;
     const minAttendance = Number(profile.minimum_attendance) || 0;
@@ -175,42 +185,44 @@ export default function UserDashboardPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                     icon={Percent}
-                    label="Attendance"
+                    label={t("attendance")}
                     value={`${attendance}%`}
                     gradient={isAboveMin ? "from-green-500 to-emerald-400" : "from-red-500 to-rose-400"}
                     sub={
                         <span className="inline-flex items-center gap-1 font-semibold text-white/90">
                             {isAboveMin ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-                            {isAboveMin ? "Above" : "Below"} {minAttendance}% min
+                            {isAboveMin ? t("above") : t("below")} {minAttendance}% {t("min")}
                         </span>
                     }
                 />
                 <StatCard
                     icon={CalendarClock}
-                    label="Upcoming Classes"
+                    label={t("upcoming_classes")}
                     value={upcomingClasses?.length ?? 0}
                     gradient="from-[#FF9800] to-amber-400"
-                    sub={<span className="text-white/80 font-medium">scheduled today</span>}
+                    sub={<span className="text-white/80 font-medium">{t("scheduled_today")}</span>}
                 />
                 <StatCard
                     icon={ClipboardList}
-                    label="Pending Homework"
+                    label={t("pending_homework")}
                     value={pendingHomework}
                     gradient="from-indigo-500 to-[#6366F1]"
-                    sub={<span className="text-white/80 font-medium">of {homework?.length ?? 0} total</span>}
+                    sub={<span className="text-white/80 font-medium">{t("of")} {homework?.length ?? 0} {t("total")}</span>}
                 />
                 <StatCard
                     icon={Library}
-                    label="Books Issued"
+                    label={t("books_issued")}
                     value={libraryBooks?.length ?? 0}
                     gradient="from-purple-500 to-fuchsia-400"
-                    sub={<span className="text-white/80 font-medium">from library</span>}
+                    sub={<span className="text-white/80 font-medium">{t("from_library")}</span>}
                 />
             </div>
 
             {/* ── Top Row: Welcome + Notice Board ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+            {(showWidget("welcome_student") || showWidget("notice_board")) && (
+            <div className={cn("grid grid-cols-1 gap-6 items-stretch", showWidget("welcome_student") && showWidget("notice_board") ? "lg:grid-cols-2" : "lg:grid-cols-1")}>
                 {/* Welcome / Hero Card */}
+                {showWidget("welcome_student") && (
                 <Card className="shadow-sm rounded-xl overflow-hidden border-0 w-full p-0 gap-0">
                     <CardContent className="p-0 h-full">
                         <div className="flex flex-col sm:flex-row h-full">
@@ -226,9 +238,9 @@ export default function UserDashboardPage() {
                                     )}
                                 </div>
                                 <div className="relative text-white min-w-0">
-                                    <p className="text-[12px] font-medium text-white/80">Welcome back,</p>
+                                    <p className="text-[12px] font-medium text-white/80">{t("welcome_back")},</p>
                                     <h2 className="text-xl font-bold leading-tight truncate">{profile.name}!</h2>
-                                    <p className="text-[12px] text-white/90 mt-1">Keep going, you&apos;re doing great. 🎯</p>
+                                    <p className="text-[12px] text-white/90 mt-1">{t("keep_going_message")} 🎯</p>
                                 </div>
                             </div>
 
@@ -236,7 +248,7 @@ export default function UserDashboardPage() {
                             <div className="flex-1 p-4 sm:p-5 bg-white flex flex-col justify-center gap-3">
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5">
-                                        <span className="text-[12px] font-semibold text-gray-600">Current Attendance</span>
+                                        <span className="text-[12px] font-semibold text-gray-600">{t("current_attendance")}</span>
                                         <span className="text-sm font-bold text-gray-800">{attendance}%</span>
                                     </div>
                                     <Progress
@@ -245,7 +257,7 @@ export default function UserDashboardPage() {
                                     />
                                     <p className={cn("text-[11px] mt-1.5 inline-flex items-center gap-1 font-semibold", isAboveMin ? "text-green-600" : "text-red-500")}>
                                         {isAboveMin ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-                                        {isAboveMin ? "Above" : "Below"} the {minAttendance}% minimum mark
+                                        {isAboveMin ? t("above") : t("below")} {t("the")} {minAttendance}% {t("minimum_mark")}
                                     </p>
                                 </div>
 
@@ -260,7 +272,7 @@ export default function UserDashboardPage() {
                                                 </div>
                                             )}
                                         </div>
-                                        <span className="text-[9px] text-gray-400 mt-1 font-medium">QR Code</span>
+                                        <span className="text-[9px] text-gray-400 mt-1 font-medium">{t("qr_code")}</span>
                                     </div>
                                     <div className="flex flex-col items-center">
                                         <svg className="h-[26px] w-[120px]" viewBox="0 0 100 30" preserveAspectRatio="none">
@@ -297,9 +309,11 @@ export default function UserDashboardPage() {
                         </div>
                     </CardContent>
                 </Card>
+                )}
 
                 {/* Notice Board */}
-                <SectionCard icon={Bell} title="Notice Board" count={notices?.length} className="h-auto lg:h-full lg:min-h-[208px]">
+                {showWidget("notice_board") && (
+                <SectionCard icon={Bell} title={t("notice_board")} count={notices?.length} className="h-auto lg:h-full lg:min-h-[208px]">
                     {notices.length > 0 ? (
                         <div className="divide-y divide-gray-100">
                             {notices.map((notice: any) => (
@@ -322,15 +336,19 @@ export default function UserDashboardPage() {
                             ))}
                         </div>
                     ) : (
-                        <EmptyState icon={Bell} text="No notices to display." />
+                        <EmptyState icon={Bell} text={t("no_notices_to_display")} />
                     )}
                 </SectionCard>
+                )}
             </div>
+            )}
 
             {/* ── Middle Row ── */}
+            {(showWidget("subject_progress") || showWidget("upcoming_class") || showWidget("homework")) && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {/* Subject Progress */}
-                <SectionCard icon={BookOpen} title="Subject Progress" count={subjectProgress?.length}>
+                {showWidget("subject_progress") && (
+                <SectionCard icon={BookOpen} title={t("subject_progress")} count={subjectProgress?.length}>
                     {subjectProgress.length > 0 ? (
                         <div className="p-4 space-y-4">
                             {subjectProgress.map((item: any) => (
@@ -347,12 +365,14 @@ export default function UserDashboardPage() {
                             ))}
                         </div>
                     ) : (
-                        <EmptyState icon={BookOpen} text="No subject progress data available." />
+                        <EmptyState icon={BookOpen} text={t("no_subject_progress_data")} />
                     )}
                 </SectionCard>
+                )}
 
                 {/* Upcoming Class */}
-                <SectionCard icon={CalendarClock} title="Upcoming Class" count={upcomingClasses?.length}>
+                {showWidget("upcoming_class") && (
+                <SectionCard icon={CalendarClock} title={t("upcoming_class")} count={upcomingClasses?.length}>
                     {upcomingClasses.length > 0 ? (
                         <div className="divide-y divide-gray-100">
                             {upcomingClasses.map((item: any) => (
@@ -368,7 +388,7 @@ export default function UserDashboardPage() {
                                     </div>
                                     <div className="text-right shrink-0">
                                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full whitespace-nowrap">
-                                            <MapPin className="h-3 w-3" /> Room {item.room}
+                                            <MapPin className="h-3 w-3" /> {t("room")} {item.room}
                                         </span>
                                         <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 justify-end whitespace-nowrap">
                                             <Clock className="h-3 w-3" /> {item.time}
@@ -378,12 +398,14 @@ export default function UserDashboardPage() {
                             ))}
                         </div>
                     ) : (
-                        <EmptyState icon={CalendarClock} text="No upcoming classes scheduled." />
+                        <EmptyState icon={CalendarClock} text={t("no_upcoming_classes")} />
                     )}
                 </SectionCard>
+                )}
 
                 {/* Homework */}
-                <SectionCard icon={ClipboardList} title="Homework" count={homework?.length}>
+                {showWidget("homework") && (
+                <SectionCard icon={ClipboardList} title={t("homework")} count={homework?.length}>
                     {homework.length > 0 ? (
                         <div className="divide-y divide-gray-100">
                             {homework.map((item: any) => (
@@ -398,22 +420,26 @@ export default function UserDashboardPage() {
                                         </span>
                                     </div>
                                     <div className="flex flex-col gap-0.5 text-[11px] text-gray-500">
-                                        <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3 text-gray-400" /> Assigned: {item.date}</span>
-                                        <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3 text-gray-400" /> Submission: {item.submission}</span>
+                                        <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3 text-gray-400" /> {t("assigned")}: {item.date}</span>
+                                        <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3 text-gray-400" /> {t("submission")}: {item.submission}</span>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <EmptyState icon={ClipboardList} text="No homework assigned." />
+                        <EmptyState icon={ClipboardList} text={t("no_homework_assigned")} />
                     )}
                 </SectionCard>
+                )}
             </div>
+            )}
 
             {/* ── Bottom Row ── */}
+            {(showWidget("teacher_list") || showWidget("visitor_list") || showWidget("library")) && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {/* Teacher List */}
-                <SectionCard icon={GraduationCap} title="Teacher List" count={teachers?.length}>
+                {showWidget("teacher_list") && (
+                <SectionCard icon={GraduationCap} title={t("teacher_list")} count={teachers?.length}>
                     {teachers.length > 0 ? (
                         <div className="divide-y divide-gray-100">
                             {teachers.map((item: any) => (
@@ -427,7 +453,7 @@ export default function UserDashboardPage() {
                                             <span className="text-[11px] text-gray-500">({item.code})</span>
                                             {item.isClassTeacher && (
                                                 <span className="bg-[#5cb85c] text-white text-[9px] px-1.5 py-0.5 rounded-full uppercase font-bold">
-                                                    Class Teacher
+                                                    {t("class_teacher")}
                                                 </span>
                                             )}
                                         </div>
@@ -436,12 +462,14 @@ export default function UserDashboardPage() {
                             ))}
                         </div>
                     ) : (
-                        <EmptyState icon={GraduationCap} text="No teachers assigned." />
+                        <EmptyState icon={GraduationCap} text={t("no_teachers_assigned")} />
                     )}
                 </SectionCard>
+                )}
 
                 {/* Visitor List */}
-                <SectionCard icon={UserCheck} title="Visitor List" count={visitors?.length}>
+                {showWidget("visitor_list") && (
+                <SectionCard icon={UserCheck} title={t("visitor_list")} count={visitors?.length}>
                     {visitors.length > 0 ? (
                         <div className="divide-y divide-gray-100">
                             {visitors.map((item: any) => (
@@ -451,7 +479,7 @@ export default function UserDashboardPage() {
                                     </div>
                                     <div className="min-w-0">
                                         <p className="text-[13px] font-semibold text-gray-800 truncate">{item.name}</p>
-                                        <p className="text-[11px] text-gray-500">Purpose: {item.purpose}</p>
+                                        <p className="text-[11px] text-gray-500">{t("purpose")}: {item.purpose}</p>
                                         <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
                                             <Clock className="h-3 w-3" /> {item.date}
                                         </p>
@@ -460,20 +488,22 @@ export default function UserDashboardPage() {
                             ))}
                         </div>
                     ) : (
-                        <EmptyState icon={UserCheck} text="No recent visitors." />
+                        <EmptyState icon={UserCheck} text={t("no_recent_visitors")} />
                     )}
                 </SectionCard>
+                )}
 
                 {/* Library Book Issue List */}
-                <SectionCard icon={Library} title="Library Books" count={libraryBooks?.length} bodyClassName="overflow-auto">
+                {showWidget("library") && (
+                <SectionCard icon={Library} title={t("library_books")} count={libraryBooks?.length} bodyClassName="overflow-auto">
                     {libraryBooks.length > 0 ? (
                         <table className="w-full text-xs">
                             <thead className="sticky top-0 bg-gray-50/95 backdrop-blur z-10">
                                 <tr className="border-b border-gray-200 text-gray-600">
-                                    <th className="text-left font-bold py-2.5 px-3 whitespace-nowrap">No.</th>
-                                    <th className="text-left font-bold py-2.5 px-3">Title</th>
-                                    <th className="text-left font-bold py-2.5 px-3 whitespace-nowrap">Issued</th>
-                                    <th className="text-left font-bold py-2.5 px-3 whitespace-nowrap">Return</th>
+                                    <th className="text-left font-bold py-2.5 px-3 whitespace-nowrap">{t("no")}</th>
+                                    <th className="text-left font-bold py-2.5 px-3">{t("title")}</th>
+                                    <th className="text-left font-bold py-2.5 px-3 whitespace-nowrap">{t("issued")}</th>
+                                    <th className="text-left font-bold py-2.5 px-3 whitespace-nowrap">{t("return")}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -491,10 +521,12 @@ export default function UserDashboardPage() {
                             </tbody>
                         </table>
                     ) : (
-                        <EmptyState icon={Library} text="No books issued." />
+                        <EmptyState icon={Library} text={t("no_books_issued")} />
                     )}
                 </SectionCard>
+                )}
             </div>
+            )}
 
             {/* Notice Detail Modal */}
             <Dialog open={!!selectedNotice} onOpenChange={(open) => !open && setSelectedNotice(null)}>
@@ -516,7 +548,7 @@ export default function UserDashboardPage() {
                         />
                     ) : (
                         <div className="text-sm text-gray-600 leading-relaxed whitespace-pre-line break-words min-h-[200px]">
-                            {selectedNotice?.description || "No additional details available for this notice."}
+                            {selectedNotice?.description || t("no_additional_details")}
                         </div>
                     )}
                 </DialogContent>

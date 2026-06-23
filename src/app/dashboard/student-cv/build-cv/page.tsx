@@ -3,14 +3,15 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { 
-    Copy, FileSpreadsheet, FileBox, Printer, Columns, 
-    ChevronLeft, ChevronRight, Search, ArrowUpDown, LayoutList, Settings, ChevronDown
+    Copy, FileSpreadsheet, FileBox, Printer, Columns,
+    ChevronLeft, ChevronRight, Search, ArrowUpDown, LayoutList, Settings, ChevronDown, FileUser
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ interface Student {
 }
 
 export default function BuildCVPage() {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState("");
     const [searching, setSearching] = useState(false);
     const [criteria, setCriteria] = useState<any[]>([]);
@@ -77,7 +79,7 @@ export default function BuildCVPage() {
             }
         } catch (error) {
             console.error("Failed to fetch criteria", error);
-            toast.error("Failed to load criteria");
+            toast.error(t("failed_to_load_criteria"));
         } finally {
             setLoading(false);
         }
@@ -92,7 +94,7 @@ export default function BuildCVPage() {
             setStudents(response.data.data || []);
         } catch (error) {
             console.error("Failed to fetch students", error);
-            toast.error("Failed to load student list");
+            toast.error(t("failed_to_load_student_list"));
         } finally {
             setSearching(false);
         }
@@ -100,7 +102,7 @@ export default function BuildCVPage() {
 
     const handleSearch = async () => {
         if (!selectedClass || !selectedSection) {
-            toast.error("Please select Class and Section");
+            toast.error(t("please_select_class_and_section"));
             return;
         }
         fetchStudentsForClassSection(selectedClass, selectedSection);
@@ -137,11 +139,19 @@ export default function BuildCVPage() {
         <div className="p-4 bg-gray-50/10 min-h-screen font-sans text-xs space-y-4">
             
             {/* Criteria Filtering Section */}
-            <div className="bg-white rounded border border-gray-100 p-4 shadow-sm space-y-4">
-                <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                    <span className="text-sm font-semibold tracking-tight text-gray-800">Select Criteria</span>
+            <div className="bg-white rounded border border-gray-100 shadow-sm space-y-4 overflow-hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <FileUser className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("build_student_cv")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("select_class_and_section_to_build")}</p>
+                        </div>
+                    </div>
                     <Link href="/dashboard/student-cv/setting">
-                        <Button 
+                        <Button
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-7.5 text-[11px] font-bold rounded-full shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
                         >
                             <Settings className="h-3 w-3" /> Setting
@@ -149,6 +159,7 @@ export default function BuildCVPage() {
                     </Link>
                 </div>
 
+                <div className="p-4 pt-0 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Class Selection */}
                     <div className="space-y-1">
@@ -195,6 +206,7 @@ export default function BuildCVPage() {
                     >
                         <Search className="h-3.5 w-3.5" /> Search
                     </Button>
+                </div>
                 </div>
             </div>
 

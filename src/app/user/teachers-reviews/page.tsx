@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Table,
     TableBody,
@@ -58,8 +59,9 @@ interface Teacher {
 }
 
 function RatingStars({ rating, size = "sm" }: { rating: number | null; size?: "sm" | "md" }) {
+    const { t } = useTranslation();
     if (rating === null) {
-        return <span className="text-[11px] text-gray-400 italic">Not rated</span>;
+        return <span className="text-[11px] text-gray-400 italic">{t("not_rated")}</span>;
     }
     const dim = size === "md" ? "h-4 w-4" : "h-3.5 w-3.5";
     return (
@@ -119,6 +121,7 @@ function SelectableStars({ value, onChange }: { value: number; onChange: (v: num
 }
 
 export default function UserTeachersReviewsPage() {
+    const { t } = useTranslation();
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -139,7 +142,7 @@ export default function UserTeachersReviewsPage() {
             setTeachers(response.data?.data || []);
         } catch (error) {
             console.error("Error fetching teachers reviews:", error);
-            toast.error("Failed to load teachers reviews");
+            toast.error(t("failed_to_load_teachers_reviews"));
         } finally {
             setLoading(false);
         }
@@ -167,11 +170,11 @@ export default function UserTeachersReviewsPage() {
                 comment: commentValue,
             };
             await api.post("/user/teachers-reviews", payload);
-            toast.success("Rating submitted successfully");
+            toast.success(t("rating_submitted_successfully"));
             setDialogOpen(false);
             fetchData();
         } catch {
-            toast.error("Failed to submit rating");
+            toast.error(t("failed_to_submit_rating"));
         } finally {
             setSubmitting(false);
         }
@@ -193,60 +196,60 @@ export default function UserTeachersReviewsPage() {
 
     /* ---------- Exports ---------- */
     const exportRows = () =>
-        filteredData.map((t) => ({
-            "Teacher Name": t.teacherName,
-            "Subjects": t.schedule.map((s) => s.subject).join(", ") || "—",
-            "Schedule": t.schedule.map((s) => s.time).join(" | ") || "—",
-            "Room": t.schedule.map((s) => s.room).filter(Boolean).join(", ") || "—",
-            "Email": t.email || "—",
-            "Phone": t.phone || "—",
-            "My Rating": t.rating ?? "—",
-            "Comment": t.comment || "—",
-            "Status": t.ratingStatus || "—",
+        filteredData.map((row) => ({
+            [t("teacher_name")]: row.teacherName,
+            [t("subjects")]: row.schedule.map((s) => s.subject).join(", ") || "—",
+            [t("schedule")]: row.schedule.map((s) => s.time).join(" | ") || "—",
+            [t("room")]: row.schedule.map((s) => s.room).filter(Boolean).join(", ") || "—",
+            [t("email")]: row.email || "—",
+            [t("phone")]: row.phone || "—",
+            [t("my_rating")]: row.rating ?? "—",
+            [t("comment")]: row.comment || "—",
+            [t("status")]: row.ratingStatus || "—",
         }));
 
     const copyToClipboard = () => {
         const text = filteredData
-            .map((t) => `${t.teacherName} - ${t.rating ?? "Not rated"} - ${t.comment || ""}`)
+            .map((row) => `${row.teacherName} - ${row.rating ?? t("not_rated")} - ${row.comment || ""}`)
             .join("\n");
         navigator.clipboard.writeText(text);
-        toast.success("Copied to clipboard");
+        toast.success(t("copied_to_clipboard"));
     };
 
     const exportToExcel = () => {
         const ws = XLSX.utils.json_to_sheet(exportRows());
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Teachers Reviews");
+        XLSX.utils.book_append_sheet(wb, ws, t("teachers_reviews"));
         XLSX.writeFile(wb, "teachers_reviews.xlsx");
-        toast.success("Excel exported");
+        toast.success(t("excel_exported"));
     };
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Teachers Reviews", 14, 15);
+        doc.text(t("teachers_reviews"), 14, 15);
         autoTable(doc, {
-            head: [["Teacher Name", "Subjects", "Email", "Phone", "Rating", "Status"]],
-            body: filteredData.map((t) => [
-                t.teacherName,
-                t.schedule.map((s) => s.subject).join(", ") || "—",
-                t.email || "—",
-                t.phone || "—",
-                t.rating ?? "—",
-                t.ratingStatus || "—",
+            head: [[t("teacher_name"), t("subjects"), t("email"), t("phone"), t("rating"), t("status")]],
+            body: filteredData.map((row) => [
+                row.teacherName,
+                row.schedule.map((s) => s.subject).join(", ") || "—",
+                row.email || "—",
+                row.phone || "—",
+                row.rating ?? "—",
+                row.ratingStatus || "—",
             ]),
             startY: 20,
             styles: { fontSize: 8 },
             headStyles: { fillColor: [99, 102, 241] },
         });
         doc.save("teachers_reviews.pdf");
-        toast.success("PDF exported");
+        toast.success(t("pdf_exported"));
     };
 
     const toolbarActions = [
-        { icon: Copy, label: "Copy", action: copyToClipboard },
-        { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
-        { icon: FileDown, label: "PDF", action: exportToPDF },
-        { icon: Printer, label: "Print", action: () => window.print() },
+        { icon: Copy, label: t("copy"), action: copyToClipboard },
+        { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
+        { icon: FileDown, label: t("pdf"), action: exportToPDF },
+        { icon: Printer, label: t("print"), action: () => window.print() },
     ];
 
     return (
@@ -258,8 +261,8 @@ export default function UserTeachersReviewsPage() {
                         <GraduationCap className="h-5 w-5" />
                     </div>
                     <div>
-                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-tight">Teachers Reviews</h1>
-                        <p className="text-[12px] text-gray-500">Rate and review your subject teachers</p>
+                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-tight">{t("teachers_reviews")}</h1>
+                        <p className="text-[12px] text-gray-500">{t("rate_and_review_your_subject_teachers")}</p>
                     </div>
                 </div>
 
@@ -269,7 +272,7 @@ export default function UserTeachersReviewsPage() {
                         <div className="relative w-full md:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             <Input
-                                placeholder="Search teacher, subject or email..."
+                                placeholder={t("search_teacher_subject_or_email")}
                                 value={searchTerm}
                                 onChange={(e) => {
                                     setSearchTerm(e.target.value);
@@ -318,14 +321,14 @@ export default function UserTeachersReviewsPage() {
                         <Table className="min-w-[1100px]">
                             <TableHeader className="bg-gray-50">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap text-[11px] font-bold uppercase tracking-wide text-gray-600 border-b border-gray-100">
-                                    <TableHead className="py-3 px-4 h-auto">Teacher</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Subject</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Time</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-center">Room</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Contact</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">My Rating</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Comment</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-right print:hidden">Action</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("teacher")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("subject")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("time")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-center">{t("room")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("contact")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("my_rating")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("comment")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-right print:hidden">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -334,14 +337,14 @@ export default function UserTeachersReviewsPage() {
                                         <TableCell colSpan={8} className="text-center py-12 text-gray-500 text-sm">
                                             <div className="flex items-center justify-center gap-2">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                                Loading teachers reviews...
+                                                {t("loading")}
                                             </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : paginatedData.length === 0 ? (
                                     <TableRow className="hover:bg-transparent">
                                         <TableCell colSpan={8} className="text-center py-12 text-gray-400 text-sm">
-                                            No teachers found
+                                            {t("no_teachers_found")}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -352,7 +355,7 @@ export default function UserTeachersReviewsPage() {
                                                     <span>{item.teacherName}</span>
                                                     {item.isClassTeacher && (
                                                         <span className="w-fit px-1.5 py-0.5 bg-[#5cb85c]/10 text-[#3d8b3d] text-[10px] rounded font-bold border border-[#5cb85c]/20">
-                                                            Class Teacher
+                                                            {t("class_teacher")}
                                                         </span>
                                                     )}
                                                 </div>
@@ -408,9 +411,9 @@ export default function UserTeachersReviewsPage() {
                                                     className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#e68900] hover:to-[#5558e6] text-white h-8 px-3 rounded-lg text-[11px] font-medium shadow-sm transition-all"
                                                 >
                                                     {item.rating !== null ? (
-                                                        <><Pencil className="h-3 w-3 mr-1" />Edit</>
+                                                        <><Pencil className="h-3 w-3 mr-1" />{t("edit")}</>
                                                     ) : (
-                                                        <><Plus className="h-3.5 w-3.5 mr-1" />Rate</>
+                                                        <><Plus className="h-3.5 w-3.5 mr-1" />{t("rate")}</>
                                                     )}
                                                 </Button>
                                             </TableCell>
@@ -426,10 +429,10 @@ export default function UserTeachersReviewsPage() {
                         {loading ? (
                             <div className="flex items-center justify-center gap-2 py-12 text-gray-500 text-sm">
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Loading teachers reviews...
+                                {t("loading")}
                             </div>
                         ) : paginatedData.length === 0 ? (
-                            <div className="text-center py-12 text-gray-400 text-sm">No teachers found</div>
+                            <div className="text-center py-12 text-gray-400 text-sm">{t("no_teachers_found")}</div>
                         ) : (
                             paginatedData.map((item) => (
                                 <div key={item.id} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -438,7 +441,7 @@ export default function UserTeachersReviewsPage() {
                                             <h3 className="font-semibold text-gray-800 text-sm truncate">{item.teacherName}</h3>
                                             {item.isClassTeacher && (
                                                 <span className="mt-1 inline-block px-1.5 py-0.5 bg-[#5cb85c]/10 text-[#3d8b3d] text-[10px] rounded font-bold border border-[#5cb85c]/20">
-                                                    Class Teacher
+                                                    {t("class_teacher")}
                                                 </span>
                                             )}
                                         </div>
@@ -447,9 +450,9 @@ export default function UserTeachersReviewsPage() {
                                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#e68900] hover:to-[#5558e6] text-white h-8 px-3 rounded-lg text-[11px] font-medium shadow-sm shrink-0"
                                         >
                                             {item.rating !== null ? (
-                                                <><Pencil className="h-3 w-3 mr-1" />Edit</>
+                                                <><Pencil className="h-3 w-3 mr-1" />{t("edit")}</>
                                             ) : (
-                                                <><Plus className="h-3.5 w-3.5 mr-1" />Rate</>
+                                                <><Plus className="h-3.5 w-3.5 mr-1" />{t("rate")}</>
                                             )}
                                         </Button>
                                     </div>
@@ -489,8 +492,8 @@ export default function UserTeachersReviewsPage() {
                     {/* Footer Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] text-gray-500 pt-2">
                         <div>
-                            Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
+                            {Math.min(startIndex + sizeNum, totalEntries)} {t("of")} {totalEntries} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (
@@ -533,7 +536,7 @@ export default function UserTeachersReviewsPage() {
                     <DialogHeader>
                         <DialogTitle className="text-gray-800 text-base flex items-center gap-2">
                             <Star className="h-4 w-4 text-[#f39c12] fill-[#f39c12]" />
-                            Rate Teacher
+                            {t("rate_teacher")}
                         </DialogTitle>
                         <DialogDescription className="text-gray-500 text-xs">
                             {selectedTeacher?.teacherName}
@@ -541,15 +544,15 @@ export default function UserTeachersReviewsPage() {
                     </DialogHeader>
                     <div className="space-y-5 py-2">
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-2">Rating</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-2">{t("rating")}</label>
                             <SelectableStars value={ratingValue} onChange={setRatingValue} />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-2">Comment (optional)</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-2">{t("comment_optional")}</label>
                             <Textarea
                                 value={commentValue}
                                 onChange={(e) => setCommentValue(e.target.value)}
-                                placeholder="Write your feedback..."
+                                placeholder={t("write_your_feedback")}
                                 className="min-h-[100px] text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
                             />
                         </div>
@@ -559,7 +562,7 @@ export default function UserTeachersReviewsPage() {
                                 onClick={() => setDialogOpen(false)}
                                 className="h-9 px-4 text-xs border-gray-200 text-gray-600"
                             >
-                                Cancel
+                                {t("cancel")}
                             </Button>
                             <Button
                                 onClick={handleSubmitRating}
@@ -567,9 +570,9 @@ export default function UserTeachersReviewsPage() {
                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#e68900] hover:to-[#5558e6] text-white h-9 px-5 text-xs font-medium shadow-sm transition-all disabled:opacity-50"
                             >
                                 {submitting ? (
-                                    <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Submitting...</>
+                                    <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />{t("submitting")}</>
                                 ) : (
-                                    "Submit Rating"
+                                    t("submit_rating")
                                 )}
                             </Button>
                         </div>

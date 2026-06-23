@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -111,6 +113,8 @@ function SkeletonRows({ rows = 5, cols = TABLE_COLS }: { rows?: number; cols?: n
 
 export default function StudentCertificatePage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -139,7 +143,7 @@ export default function StudentCertificatePage() {
                 total: d.total, from: d.from, to: d.to,
             });
         } catch {
-            toast({ title: "Error", description: "Failed to fetch certificates", variant: "destructive" });
+            tt.error("failed_to_fetch_certificates");
         } finally {
             setLoading(false);
         }
@@ -157,22 +161,22 @@ export default function StudentCertificatePage() {
 
     const handleSave = async () => {
         if (!form.name.trim()) {
-            toast({ title: "Validation Error", description: "Certificate Name is required", variant: "destructive" });
+            toast({ title: t("validation_error"), description: t("certificate_name_is_required"), variant: "destructive" });
             return;
         }
         setSaving(true);
         try {
             if (editingId) {
                 await api.put(`/certificate/student-certificates/${editingId}`, form);
-                toast({ title: "Updated", description: "Certificate updated successfully" });
+                tt.success("certificate_updated_successfully");
             } else {
                 await api.post(`/certificate/student-certificates`, form);
-                toast({ title: "Created", description: "Certificate created successfully" });
+                tt.success("certificate_created_successfully");
             }
             resetForm();
             fetchTemplates(pagination?.current_page ?? 1);
         } catch {
-            toast({ title: "Error", description: "Failed to save certificate", variant: "destructive" });
+            tt.error("failed_to_save_certificate");
         } finally {
             setSaving(false);
         }
@@ -195,11 +199,11 @@ export default function StudentCertificatePage() {
         if (!deleteId) return;
         try {
             await api.delete(`/certificate/student-certificates/${deleteId}`);
-            toast({ title: "Deleted", description: "Certificate deleted successfully" });
+            tt.success("certificate_deleted_successfully");
             if (editingId === deleteId) resetForm();
             fetchTemplates(pagination?.current_page ?? 1);
         } catch {
-            toast({ title: "Error", description: "Failed to delete certificate", variant: "destructive" });
+            tt.error("failed_to_delete_certificate");
         } finally {
             setDeleteId(null);
         }
@@ -230,9 +234,9 @@ export default function StudentCertificatePage() {
             const res = await api.post("/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
             const url = res.data?.data?.url ?? res.data?.url ?? "";
             setForm((f) => ({ ...f, background_image: url }));
-            toast({ title: "Uploaded", description: "Background image uploaded" });
+            tt.success("background_image_uploaded");
         } catch {
-            toast({ title: "Error", description: "Failed to upload image", variant: "destructive" });
+            tt.error("failed_to_upload_image");
         } finally {
             setUploading(false);
         }
@@ -244,11 +248,11 @@ export default function StudentCertificatePage() {
 
     const handleCopy = () => {
         navigator.clipboard.writeText(templates.map((t) => t.name).join("\n"));
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        tt.success("data_copied_to_clipboard");
     };
 
     const handleExportCSV = () => {
-        const rows = [["Certificate Name", "Background Image"], ...templates.map((t) => [t.name, t.background_image || "-"])];
+        const rows = [[t("certificate_name"), t("background_image")], ...templates.map((t) => [t.name, t.background_image || "-"])];
         const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
@@ -276,12 +280,12 @@ export default function StudentCertificatePage() {
                             </span>
                             <div className="min-w-0 flex-1">
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {editingId ? "Edit Student Certificate" : "Add Student Certificate"}
+                                    {editingId ? t("edit_student_certificate") : t("add_student_certificate")}
                                 </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">Design a reusable certificate template</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("design_reusable_certificate_template")}</p>
                             </div>
                             {editingId && (
-                                <Button variant="ghost" size="icon" onClick={resetForm} className="h-7 w-7 text-gray-500" title="Cancel edit">
+                                <Button variant="ghost" size="icon" onClick={resetForm} className="h-7 w-7 text-gray-500" title={t("cancel_edit")}>
                                     <X className="h-4 w-4" />
                                 </Button>
                             )}
@@ -289,15 +293,15 @@ export default function StudentCertificatePage() {
                         <CardContent className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Certificate Name <span className="text-red-500">*</span>
+                                    {t("certificate_name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-9 text-xs" />
                             </div>
 
                             {([
-                                ["Header Left Text", "header_left"],
-                                ["Header Center Text", "header_center"],
-                                ["Header Right Text", "header_right"],
+                                [t("header_left_text"), "header_left"],
+                                [t("header_center_text"), "header_center"],
+                                [t("header_right_text"), "header_right"],
                             ] as const).map(([label, key]) => (
                                 <div key={key} className="space-y-1.5">
                                     <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{label}</Label>
@@ -307,7 +311,7 @@ export default function StudentCertificatePage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Body Text <span className="text-red-500">*</span>
+                                    {t("body_text")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Textarea
                                     ref={bodyRef}
@@ -330,9 +334,9 @@ export default function StudentCertificatePage() {
                             </div>
 
                             {([
-                                ["Footer Left Text", "footer_left"],
-                                ["Footer Center Text", "footer_center"],
-                                ["Footer Right Text", "footer_right"],
+                                [t("footer_left_text"), "footer_left"],
+                                [t("footer_center_text"), "footer_center"],
+                                [t("footer_right_text"), "footer_right"],
                             ] as const).map(([label, key]) => (
                                 <div key={key} className="space-y-1.5">
                                     <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{label}</Label>
@@ -341,13 +345,13 @@ export default function StudentCertificatePage() {
                             ))}
 
                             <div className="space-y-3 pt-2 border-t border-gray-100">
-                                <h3 className="text-[10px] font-bold text-gray-800 uppercase tracking-wider">Certificate Design</h3>
+                                <h3 className="text-[10px] font-bold text-gray-800 uppercase tracking-wider">{t("certificate_design")}</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     {([
-                                        ["Header Height", "header_height"],
-                                        ["Footer Height", "footer_height"],
-                                        ["Body Height", "body_height"],
-                                        ["Body Width", "body_width"],
+                                        [t("header_height"), "header_height"],
+                                        [t("footer_height"), "footer_height"],
+                                        [t("body_height"), "body_height"],
+                                        [t("body_width"), "body_width"],
                                     ] as const).map(([label, key]) => (
                                         <div key={key} className="space-y-1">
                                             <Label className="text-[10px] text-gray-400">{label}</Label>
@@ -358,7 +362,7 @@ export default function StudentCertificatePage() {
                             </div>
 
                             <div className="flex items-center gap-3 py-2 border-t border-gray-100">
-                                <Label className="text-[10px] font-bold text-gray-800 uppercase tracking-tight">Student Photo</Label>
+                                <Label className="text-[10px] font-bold text-gray-800 uppercase tracking-tight">{t("student_photo")}</Label>
                                 <Switch
                                     checked={form.enable_student_photo}
                                     onCheckedChange={(v) => setForm({ ...form, enable_student_photo: v })}
@@ -367,7 +371,7 @@ export default function StudentCertificatePage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Background Image</Label>
+                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("background_image")}</Label>
                                 <input
                                     ref={fileRef}
                                     type="file"
@@ -384,14 +388,14 @@ export default function StudentCertificatePage() {
                                     ) : form.background_image ? (
                                         <>
                                             <img src={form.background_image} alt="bg" className="h-16 object-contain rounded" />
-                                            <p className="text-[10px] text-gray-500">Click to replace</p>
+                                            <p className="text-[10px] text-gray-500">{t("click_to_replace")}</p>
                                         </>
                                     ) : (
                                         <>
                                             <div className="h-8 w-8 rounded-full bg-indigo-50 flex items-center justify-center">
                                                 <Upload className="h-4 w-4 text-indigo-500" />
                                             </div>
-                                            <p className="text-[10px] text-gray-500 font-medium">Drag and drop a file here or click</p>
+                                            <p className="text-[10px] text-gray-500 font-medium">{t("drag_drop_or_click")}</p>
                                         </>
                                     )}
                                 </div>
@@ -399,7 +403,7 @@ export default function StudentCertificatePage() {
 
                             <div className="flex justify-end gap-2 pt-2">
                                 {editingId && (
-                                    <Button variant="outline" onClick={resetForm} className="h-9 px-5 text-xs">Cancel</Button>
+                                    <Button variant="outline" onClick={resetForm} className="h-9 px-5 text-xs">{t("cancel")}</Button>
                                 )}
                                 <Button
                                     onClick={handleSave}
@@ -407,7 +411,7 @@ export default function StudentCertificatePage() {
                                     className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
                                 >
                                     {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                                    {editingId ? "Update" : "Save"}
+                                    {editingId ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </CardContent>
@@ -422,16 +426,16 @@ export default function StudentCertificatePage() {
                                 <FileText className="h-5 w-5" />
                             </span>
                             <div className="min-w-0">
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student Certificate List</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? templates.length} certificate{(pagination?.total ?? templates.length) === 1 ? "" : "s"}</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_certificate_list")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? templates.length} {t("certificates")}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
                                 <form onSubmit={(e) => { e.preventDefault(); fetchTemplates(1); }} className="flex items-center gap-2 w-full md:w-auto">
-                                    <Input placeholder="Search certificates..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 h-9 text-xs w-full md:w-64" />
+                                    <Input placeholder={t("search_certificates")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 h-9 text-xs w-full md:w-64" />
                                     <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                                        <Search className="h-4 w-4" /> Search
+                                        <Search className="h-4 w-4" /> {t("search")}
                                     </Button>
                                 </form>
                                 <div className="flex items-center gap-2">
@@ -455,9 +459,9 @@ export default function StudentCertificatePage() {
                                 <Table className="min-w-[560px]">
                                     <TableHeader className="bg-gray-50 text-xs uppercase">
                                         <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                            <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Certificate Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                            <TableHead className="font-semibold text-gray-600">Background Image</TableHead>
-                                            <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                            <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("certificate_name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                            <TableHead className="font-semibold text-gray-600">{t("background_image")}</TableHead>
+                                            <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -466,7 +470,7 @@ export default function StudentCertificatePage() {
                                         ) : templates.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                                    No certificates found
+                                                    {t("no_certificates_found")}
                                                 </TableCell>
                                             </TableRow>
                                         ) : templates.map((t) => (
@@ -483,13 +487,13 @@ export default function StudentCertificatePage() {
                                                 </TableCell>
                                                 <TableCell className="py-3 text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        <Button size="icon" onClick={() => handlePreview(t)} title="Preview" className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all">
+                                                        <Button size="icon" onClick={() => handlePreview(t)} title={t("preview")} className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all">
                                                             <Eye className="h-3.5 w-3.5" />
                                                         </Button>
-                                                        <Button size="icon" onClick={() => startEdit(t)} title="Edit" className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all">
+                                                        <Button size="icon" onClick={() => startEdit(t)} title={t("edit")} className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all">
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
-                                                        <Button size="icon" onClick={() => setDeleteId(t.id)} title="Delete" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all">
+                                                        <Button size="icon" onClick={() => setDeleteId(t.id)} title={t("delete")} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all">
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
@@ -501,7 +505,7 @@ export default function StudentCertificatePage() {
                             </div>
 
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                                <div>Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries</div>
+                                <div>{t("showing_x_to_y_of_z", { from: pagination?.from || 0, to: pagination?.to || 0, total: pagination?.total || 0 })}</div>
                                 <div className="flex gap-1 items-center">
                                     <Button variant="outline" size="sm" disabled={!pagination || pagination.current_page === 1} onClick={() => fetchTemplates(pagination!.current_page - 1)} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40">
                                         <ChevronLeft className="h-4 w-4" />
@@ -524,12 +528,12 @@ export default function StudentCertificatePage() {
             <AlertDialog open={deleteId !== null} onOpenChange={(o) => !o && setDeleteId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Certificate?</AlertDialogTitle>
-                        <AlertDialogDescription>This action cannot be undone. The certificate template will be permanently removed.</AlertDialogDescription>
+                        <AlertDialogTitle>{t("delete_certificate_q")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("delete_certificate_description")}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

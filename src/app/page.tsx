@@ -61,11 +61,15 @@ export default function Home() {
       <main className="flex-1">
         {/* Hero Section */}
         {hfs.hero_enabled !== false && (
-        <section className="relative bg-gradient-to-br from-indigo-900 via-slate-800 to-slate-900 text-white overflow-hidden py-[50px]">
+        <section className="relative bg-gradient-to-br from-indigo-900 via-slate-800 to-slate-900 text-white overflow-hidden py-16 md:py-24 lg:py-28">
           <div
             className="absolute inset-0 opacity-40 bg-cover bg-center mix-blend-overlay"
             style={hfs.hero_background ? { backgroundImage: `url('${hfs.hero_background}')` } : {}}
           />
+          {/* Animated decorative glows */}
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/30 rounded-full blur-3xl animate-blob pointer-events-none" />
+          <div className="absolute top-1/3 -right-24 w-96 h-96 bg-fuchsia-600/20 rounded-full blur-3xl animate-blob animation-delay-2000 pointer-events-none" />
+          <div className="absolute -bottom-24 left-1/3 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-blob animation-delay-4000 pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
           <div className="container mx-auto px-4 md:px-8 relative z-10">
             <div className="max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-1000">
@@ -88,7 +92,7 @@ export default function Home() {
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
-                <Button variant="outline" size="lg" className="text-base font-bold px-10 h-14 rounded-full bg-white/10 text-white border-white/20 hover:bg-white hover:text-slate-900 backdrop-blur-sm transition-all duration-300">
+                <Button asChild variant="outline" size="lg" className="text-base font-bold px-10 h-14 rounded-full bg-white/10 text-white border-white/20 hover:bg-white hover:text-slate-900 backdrop-blur-sm transition-all duration-300">
                   <Link href={hfs.hero_btn2_link || "#"}>
                     {hfs.hero_btn2_text || "Take a Tour"}
                   </Link>

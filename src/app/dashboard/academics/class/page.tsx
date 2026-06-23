@@ -10,6 +10,8 @@ import {
     Pencil, Trash2, Copy, FileSpreadsheet, FileText, Printer, Columns, ChevronLeft, ChevronRight, Loader2, X, School
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     Select,
     SelectContent,
@@ -73,6 +75,8 @@ export default function ClassPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [idToDelete, setIdToDelete] = useState<number | null>(null);
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -141,11 +145,11 @@ export default function ClassPage() {
         const allTags = [...sectionTags];
 
         if (!className.trim()) {
-            toast("error", "Please provide a class name.");
+            tt.error("please_fill_required_fields");
             return;
         }
         if (allTags.length === 0) {
-            toast("error", "Add at least one section (e.g. A, B, C).");
+            tt.error("add_at_least_one_section");
             return;
         }
 
@@ -160,11 +164,10 @@ export default function ClassPage() {
             }
             resetForm();
             fetchClasses(currentPage);
-            toast("success", editingId ? "Class updated successfully" : "Class created successfully");
+            tt.success(editingId ? "updated_successfully" : "created_successfully");
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            const message = err.response?.data?.message || "Error saving class";
-            toast("error", message);
+            tt.error(err.response?.data?.message || "failed_to_save");
             console.error("Error saving class:", error);
         } finally {
             setSaving(false);
@@ -188,12 +191,12 @@ export default function ClassPage() {
         try {
             const response = await api.delete(`/academics/classes/${idToDelete}`);
             if (response.data.status === "success") {
-                toast("success", response.data.message || "Class deleted successfully");
+                tt.success("deleted_successfully");
                 fetchClasses(currentPage);
             }
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Error deleting class");
+            tt.error(err.response?.data?.message || "failed_to_delete");
         } finally {
             setLoading(false);
             setIsDeleteDialogOpen(false);
@@ -204,11 +207,11 @@ export default function ClassPage() {
     const exportToCopy = () => {
         const text = classes.map(c => `${c.name}: ${c.sections.map(s => s.name).join(", ")}`).join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
-        const data = classes.map(c => ({ Class: c.name, Sections: c.sections.map(s => s.name).join(", ") }));
+        const data = classes.map(c => ({ [t("class")]: c.name, [t("sections")]: c.sections.map(s => s.name).join(", ") }));
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Classes");
@@ -218,7 +221,7 @@ export default function ClassPage() {
     const exportToPDF = () => {
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [["Class", "Sections"]],
+            head: [[t("class"), t("sections")]],
             body: classes.map(c => [c.name, c.sections.map(s => s.name).join(", ")]),
         });
         doc.save("classes.pdf");
@@ -227,9 +230,9 @@ export default function ClassPage() {
     const printTable = () => {
         const printWindow = window.open("", "", "height=600,width=800");
         if (!printWindow) return;
-        printWindow.document.write("<html><head><title>Class List</title>");
+        printWindow.document.write("<html><head><title>" + t("class_list") + "</title>");
         printWindow.document.write("<style>table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ddd;padding:8px;text-align:left;}th{background:#f2f2f2;}</style>");
-        printWindow.document.write("</head><body><h2>Class List</h2><table><thead><tr><th>Class</th><th>Sections</th></tr></thead><tbody>");
+        printWindow.document.write("</head><body><h2>" + t("class_list") + "</h2><table><thead><tr><th>" + t("class") + "</th><th>" + t("sections") + "</th></tr></thead><tbody>");
         classes.forEach(c => { printWindow.document.write(`<tr><td>${c.name}</td><td>${c.sections.map(s => s.name).join(", ")}</td></tr>`); });
         printWindow.document.write("</tbody></table></body></html>");
         printWindow.document.close();
@@ -249,10 +252,10 @@ export default function ClassPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {editingId ? "Edit Class" : "Add Class"}
+                                {editingId ? t("edit_class") : t("add_class")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {editingId ? "Update class details" : "Create a class with sections"}
+                                {editingId ? t("update_class_details") : t("create_class_with_sections")}
                             </p>
                         </div>
                     </CardHeader>
@@ -261,14 +264,14 @@ export default function ClassPage() {
                             {/* Class Name */}
                             <div className="space-y-2">
                                 <Label htmlFor="className" className="text-sm font-medium text-gray-700">
-                                    Class <span className="text-red-500">*</span>
+                                    {t("class")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     id="className"
                                     className="h-9 focus-visible:ring-indigo-500"
                                     value={className}
                                     onChange={(e) => setClassName(e.target.value)}
-                                    placeholder="e.g. Class 1"
+                                    placeholder={t("e.g. class_1")}
                                     required
                                 />
                             </div>
@@ -276,17 +279,17 @@ export default function ClassPage() {
                             {/* Sections Tag Input */}
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium text-gray-700">
-                                    Sections <span className="text-red-500">*</span>
+                                    {t("sections")} <span className="text-red-500">*</span>
                                 </Label>
-                                <p className="text-xs text-gray-400">Select sections from the dropdown to add them to this class.</p>
+                                <p className="text-xs text-gray-400">{t("select_sections_to_add")}</p>
 
                                 <Select onValueChange={addSectionTag}>
                                     <SelectTrigger className="h-9 focus-visible:ring-indigo-500">
-                                        <SelectValue placeholder="Select a section to add" />
+                                        <SelectValue placeholder={t("select_section_to_add")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {availableSections.length === 0 && (
-                                            <div className="p-2 text-xs text-gray-500 text-center">No sections available</div>
+                                            <div className="p-2 text-xs text-gray-500 text-center">{t("no_sections_available")}</div>
                                         )}
                                         {availableSections.map((sec) => (
                                             <SelectItem key={sec.name} value={sec.name} disabled={sectionTags.includes(sec.name)}>
@@ -326,7 +329,7 @@ export default function ClassPage() {
                                         onClick={resetForm}
                                         className="px-4 h-9 text-xs"
                                     >
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button
@@ -335,7 +338,7 @@ export default function ClassPage() {
                                     className={`px-8 h-9 text-xs flex items-center gap-2 ${saveGradient}`}
                                 >
                                     {saving && <Loader2 className="h-3 w-3 animate-spin" />}
-                                    {editingId ? "Update" : "Save"}
+                                    {editingId ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </div>
@@ -351,15 +354,15 @@ export default function ClassPage() {
                             <School className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Class List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{total} total entr{total === 1 ? 'y' : 'ies'}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("class_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: total })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="px-4 pb-4 space-y-4">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500"
@@ -367,19 +370,19 @@ export default function ClassPage() {
                             </div>
 
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="Copy">
+                                <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title={t("copy")}>
                                     <Copy className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="Excel">
+                                <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title={t("excel")}>
                                     <FileSpreadsheet className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="PDF">
+                                <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title={t("pdf")}>
                                     <FileText className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button onClick={printTable} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="Print">
+                                <Button onClick={printTable} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title={t("print")}>
                                     <Printer className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="Columns">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title={t("columns")}>
                                     <Columns className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
@@ -389,9 +392,9 @@ export default function ClassPage() {
                             <Table>
                                 <TableHeader className="bg-gray-50/50 text-[11px] uppercase">
                                     <TableRow className="hover:bg-transparent border-gray-100">
-                                        <TableHead className="font-bold text-gray-700 py-3">Class</TableHead>
-                                        <TableHead className="font-bold text-gray-700 py-3">Sections</TableHead>
-                                        <TableHead className="font-bold text-gray-700 text-right py-3">Action</TableHead>
+                                        <TableHead className="font-bold text-gray-700 py-3">{t("class")}</TableHead>
+                                        <TableHead className="font-bold text-gray-700 py-3">{t("sections")}</TableHead>
+                                        <TableHead className="font-bold text-gray-700 text-right py-3">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -399,7 +402,7 @@ export default function ClassPage() {
                                         <TableSkeleton rows={5} cols={3} />
                                     ) : classes.length === 0 ? (
                                         <tr>
-                                            <td colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                            <td colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                         </tr>
                                     ) : (
                                         classes.map((cls) => (
@@ -416,7 +419,7 @@ export default function ClassPage() {
                                                                     {section.name}
                                                                 </span>
                                                             ))
-                                                            : <span className="text-gray-400 text-xs italic">No sections</span>
+                                                            : <span className="text-gray-400 text-xs italic">{t("no_sections")}</span>
                                                         }
                                                     </div>
                                                 </TableCell>
@@ -449,7 +452,7 @@ export default function ClassPage() {
 
                         {/* Pagination */}
                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
-                            <div>Showing {from} to {to} of {total} entries</div>
+                            <div>{t("showing_x_to_y_of_z", { from, to, total })}</div>
                             <div className="flex gap-1">
                                 <Button
                                     variant="outline" size="sm"
@@ -488,15 +491,15 @@ export default function ClassPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete this class and all its sections. This action cannot be undone.
+                            {t("delete_class_confirm_message")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                            Delete
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

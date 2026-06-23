@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Card,
     CardContent,
@@ -48,6 +49,7 @@ interface Question {
 
 export default function QuestionBankPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [viewEntries, setViewEntries] = useState(100);
     const [searchQuery, setSearchQuery] = useState("");
@@ -97,34 +99,34 @@ export default function QuestionBankPage() {
             setQuestions(response.data.data || []);
             setTotalEntries(response.data.total || 0);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch question bank", variant: "destructive" });
+            toast({ title: t("error"), description: t("failed_to_fetch_question_bank"), variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this question?")) return;
+        if (!confirm(t("are_you_sure_delete_this_question"))) return;
         try {
             await api.delete(`/online-course/questions/${id}`);
-            toast({ title: "Success", description: "Question removed from bank" });
+            toast({ title: t("success"), description: t("question_removed_from_bank") });
             fetchQuestions();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to delete question", variant: "destructive" });
+            toast({ title: t("error"), description: t("failed_to_delete_question"), variant: "destructive" });
         }
     };
 
     const handleBulkDelete = async () => {
         if (selectedIds.length === 0) return;
-        if (!confirm(`Are you sure you want to delete ${selectedIds.length} questions?`)) return;
-        
+        if (!confirm(t("are_you_sure_delete_x_questions", { count: selectedIds.length }))) return;
+
         try {
             await api.post('/online-course/questions/bulk-delete', { ids: selectedIds });
-            toast({ title: "Success", description: "Selected questions deleted" });
+            toast({ title: t("success"), description: t("selected_questions_deleted") });
             setSelectedIds([]);
             fetchQuestions();
         } catch (error) {
-            toast({ title: "Error", description: "Bulk deletion failed", variant: "destructive" });
+            toast({ title: t("error"), description: t("bulk_deletion_failed"), variant: "destructive" });
         }
     };
 
@@ -147,72 +149,79 @@ export default function QuestionBankPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 font-sans">
             {/* Select Criteria Card */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
-                            <Search className="h-5 w-5" />
+            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <HelpCircle className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("question_strategy_engine")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("build_and_filter_question_bank")}</p>
                         </div>
-                        <CardTitle className="text-xl font-black tracking-tight text-slate-700 uppercase">Question Strategy Engine</CardTitle>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <Button className="h-9 px-6 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest gap-2 shadow-lg active:scale-95 transition-all">
                             <Plus className="h-4 w-4" />
-                            Add Tag
+                            {t("add_tag")}
                         </Button>
                         <Button className="h-9 px-6 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest gap-2 shadow-lg active:scale-95 transition-all">
                             <Plus className="h-4 w-4" />
-                            Add Question
+                            {t("add_question")}
                         </Button>
                         <Button className="h-9 px-6 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest gap-2 shadow-lg active:scale-95 transition-all">
                             <FileUp className="h-4 w-4" />
-                            Import
+                            {t("import")}
                         </Button>
-                        <Button 
+                        <Button
                             onClick={handleBulkDelete}
                             disabled={selectedIds.length === 0}
                             className="h-9 px-6 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest gap-2 shadow-lg active:scale-95 transition-all disabled:opacity-50"
                         >
                             <Trash2 className="h-4 w-4" />
-                            Bulk Delete ({selectedIds.length})
+                            {t("bulk_delete")} ({selectedIds.length})
                         </Button>
                     </div>
-                </CardHeader>
+                </div>
                 <CardContent className="p-10">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 items-end">
-                        <CriteriaSelect 
-                            label="Question Tag" 
-                            options={criteria.tags.map(t => ({ id: t, name: t }))} 
-                            value={filters.tag} 
-                            onChange={(val) => setFilters({...filters, tag: val})} 
+                        <CriteriaSelect
+                            label={t("question_tag")}
+                            options={criteria.tags.map(t => ({ id: t, name: t }))}
+                            value={filters.tag}
+                            onChange={(val) => setFilters({...filters, tag: val})}
+                            placeholder={t("select_registry_node")}
                         />
-                        <CriteriaSelect 
-                            label="Question Type" 
-                            options={criteria.types.map(t => ({ id: t, name: t }))} 
-                            value={filters.type} 
-                            onChange={(val) => setFilters({...filters, type: val})} 
+                        <CriteriaSelect
+                            label={t("question_type")}
+                            options={criteria.types.map(t => ({ id: t, name: t }))}
+                            value={filters.type}
+                            onChange={(val) => setFilters({...filters, type: val})}
+                            placeholder={t("select_registry_node")}
                         />
-                        <CriteriaSelect 
-                            label="Question Level" 
-                            options={criteria.levels.map(t => ({ id: t, name: t }))} 
-                            value={filters.level} 
-                            onChange={(val) => setFilters({...filters, level: val})} 
+                        <CriteriaSelect
+                            label={t("question_level")}
+                            options={criteria.levels.map(t => ({ id: t, name: t }))}
+                            value={filters.level}
+                            onChange={(val) => setFilters({...filters, level: val})}
+                            placeholder={t("select_registry_node")}
                         />
-                        <CriteriaSelect 
-                            label="Created By" 
-                            options={criteria.creators} 
-                            value={filters.created_by} 
-                            onChange={(val) => setFilters({...filters, created_by: val})} 
+                        <CriteriaSelect
+                            label={t("created_by")}
+                            options={criteria.creators}
+                            value={filters.created_by}
+                            onChange={(val) => setFilters({...filters, created_by: val})}
+                            placeholder={t("select_registry_node")}
                         />
-                        
+
                         <div className="lg:col-start-4 flex justify-end">
-                            <Button 
+                            <Button
                                 onClick={fetchQuestions}
                                 disabled={loading}
                                 className="h-14 px-12 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[11px] font-black uppercase tracking-[0.2em] gap-3 shadow-2xl shadow-orange-200/50 active:scale-95 transition-all group"
                             >
                                 {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />}
-                                Filter Questions
+                                {t("filter_questions")}
                             </Button>
                         </div>
                     </div>
@@ -222,7 +231,7 @@ export default function QuestionBankPage() {
             {/* Question Bank Card */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
                 <CardHeader className="px-8 py-6 border-b border-muted/50">
-                    <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Institutional Question Registry</CardTitle>
+                    <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">{t("institutional_question_registry")}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     {/* Table Tools */}
@@ -230,7 +239,7 @@ export default function QuestionBankPage() {
                         <div className="relative w-full md:w-[400px]">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                             <Input
-                                placeholder="Search through question nodes..."
+                                placeholder={t("search_through_question_nodes")}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && fetchQuestions()}
@@ -244,9 +253,9 @@ export default function QuestionBankPage() {
                                     onChange={(e) => setViewEntries(Number(e.target.value))}
                                     className="bg-transparent text-[11px] font-black uppercase border-none focus:ring-0 cursor-pointer min-w-[80px]"
                                 >
-                                    <option value={100}>100 Nodes</option>
-                                    <option value={50}>50 Nodes</option>
-                                    <option value={20}>20 Nodes</option>
+                                    <option value={100}>{t("x_nodes", { count: 100 })}</option>
+                                    <option value={50}>{t("x_nodes", { count: 50 })}</option>
+                                    <option value={20}>{t("x_nodes", { count: 20 })}</option>
                                 </select>
                                 <ChevronDown className="h-3 w-3 text-muted-foreground ml-2 pointer-events-none" />
                             </div>
@@ -266,19 +275,19 @@ export default function QuestionBankPage() {
                             <thead className="bg-muted/30 text-muted-foreground text-[10px] font-black uppercase tracking-[0.2em] border-b border-muted/50">
                                 <tr>
                                     <th className="px-8 py-5 w-12 text-center">
-                                        <Checkbox 
-                                            checked={questions.length > 0 && selectedIds.length === questions.length} 
+                                        <Checkbox
+                                            checked={questions.length > 0 && selectedIds.length === questions.length}
                                             onCheckedChange={toggleAll}
                                             className="rounded-md border-gray-300"
                                         />
                                     </th>
-                                    <th className="px-6 py-5">Q. Identity</th>
-                                    <th className="px-6 py-5">Tag Node</th>
-                                    <th className="px-6 py-5">Classification</th>
-                                    <th className="px-6 py-5 text-center">Difficulty</th>
-                                    <th className="px-6 py-5 w-[400px]">Content Insight</th>
-                                    <th className="px-6 py-5">Curator</th>
-                                    <th className="px-8 py-5 text-right">Utility</th>
+                                    <th className="px-6 py-5">{t("q_identity")}</th>
+                                    <th className="px-6 py-5">{t("tag_node")}</th>
+                                    <th className="px-6 py-5">{t("classification")}</th>
+                                    <th className="px-6 py-5 text-center">{t("difficulty")}</th>
+                                    <th className="px-6 py-5 w-[400px]">{t("content_insight")}</th>
+                                    <th className="px-6 py-5">{t("curator")}</th>
+                                    <th className="px-8 py-5 text-right">{t("utility")}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -293,8 +302,8 @@ export default function QuestionBankPage() {
                                                     </div>
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <p className="text-[11px] font-black text-slate-700 uppercase tracking-[0.3em] animate-pulse">Executing Question Audit</p>
-                                                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest italic">Decrypting institutional question bank nodes...</p>
+                                                    <p className="text-[11px] font-black text-slate-700 uppercase tracking-[0.3em] animate-pulse">{t("executing_question_audit")}</p>
+                                                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest italic">{t("decrypting_question_bank_nodes")}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -307,8 +316,8 @@ export default function QuestionBankPage() {
                                                     <HelpCircle className="h-16 w-16 opacity-30" />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <p className="text-rose-500/60 font-black text-[10px] uppercase tracking-[0.3em] bg-rose-50 px-6 py-2 rounded-full border border-rose-100">No data nodes available</p>
-                                                    <p className="text-[9px] uppercase font-black text-gray-400 tracking-tighter italic">Initiate search or define criteria to populate the registry.</p>
+                                                    <p className="text-rose-500/60 font-black text-[10px] uppercase tracking-[0.3em] bg-rose-50 px-6 py-2 rounded-full border border-rose-100">{t("no_data_nodes_available")}</p>
+                                                    <p className="text-[9px] uppercase font-black text-gray-400 tracking-tighter italic">{t("initiate_search_to_populate_registry")}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -320,8 +329,8 @@ export default function QuestionBankPage() {
                                             index % 2 === 0 ? 'bg-white' : 'bg-gray-50/20'
                                         )}>
                                             <td className="px-8 py-5 text-center">
-                                                <Checkbox 
-                                                    checked={selectedIds.includes(q.id)} 
+                                                <Checkbox
+                                                    checked={selectedIds.includes(q.id)}
                                                     onCheckedChange={() => toggleOne(q.id)}
                                                     className="rounded-md border-gray-300"
                                                 />
@@ -359,10 +368,10 @@ export default function QuestionBankPage() {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="rounded-lg border-gray-100 shadow-2xl p-2 min-w-[160px]">
                                                         <DropdownMenuItem className="rounded-lg px-4 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-3 text-indigo-600 focus:bg-indigo-50">
-                                                            <Edit3 className="h-3.5 w-3.5" /> Edit Node
+                                                            <Edit3 className="h-3.5 w-3.5" /> {t("edit_node")}
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem onClick={() => handleDelete(q.id)} className="rounded-lg px-4 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer gap-3 text-rose-600 focus:bg-rose-50">
-                                                            <Trash2 className="h-3.5 w-3.5" /> Purge Entry
+                                                            <Trash2 className="h-3.5 w-3.5" /> {t("purge_entry")}
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -377,7 +386,7 @@ export default function QuestionBankPage() {
                     {/* Pagination Footer */}
                     <div className="px-8 py-6 bg-muted/10 border-t border-muted/50 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">
-                            Showing {questions.length > 0 ? 1 : 0} to {questions.length} of {totalEntries} entries
+                            {t("showing_x_to_y_of_z", { from: questions.length > 0 ? 1 : 0, to: questions.length, total: totalEntries })}
                         </p>
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" className="h-10 w-10 rounded-lg border-muted/50 text-muted-foreground hover:bg-card transition-all" disabled>
@@ -397,19 +406,19 @@ export default function QuestionBankPage() {
     );
 }
 
-function CriteriaSelect({ label, options, value, onChange }: { label: string, options: any[], value: string, onChange: (val: string) => void }) {
+function CriteriaSelect({ label, options, value, onChange, placeholder }: { label: string, options: any[], value: string, onChange: (val: string) => void, placeholder: string }) {
     return (
         <div className="space-y-3 group">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-primary transition-colors">
                 {label}
             </label>
             <div className="relative">
-                <select 
+                <select
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     className="flex h-12 w-full rounded-lg border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer shadow-none"
                 >
-                    <option value="">Select Registry Node</option>
+                    <option value="">{placeholder}</option>
                     {options.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
                 </select>
                 <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />

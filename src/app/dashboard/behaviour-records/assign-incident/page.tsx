@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     Card,
     CardContent,
@@ -61,7 +62,8 @@ interface Incident {
 }
 
 export default function AssignIncidentPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [criteria, setCriteria] = useState<{ classes: any[] }>({ classes: [] });
@@ -116,7 +118,7 @@ export default function AssignIncidentPage() {
 
     const handleSearch = async () => {
         if (!selectedClass || !selectedSection) {
-            toast({ title: "Validation", description: "Please select Class and Section", variant: "destructive" });
+            tt.error("please_select_class_and_section");
             return;
         }
 
@@ -128,7 +130,7 @@ export default function AssignIncidentPage() {
             setStudents(response.data);
             setSelectedStudents([]);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to locate students", variant: "destructive" });
+            tt.error("failed_to_locate_students");
         } finally {
             setLoading(false);
         }
@@ -136,12 +138,12 @@ export default function AssignIncidentPage() {
 
     const handleAssign = async () => {
         if (selectedStudents.length === 0) {
-            toast({ title: "Validation", description: "Please select at least one student", variant: "destructive" });
+            tt.error("please_select_at_least_one_student");
             return;
         }
 
         if (!formData.incident_id || !formData.incident_date) {
-            toast({ title: "Validation", description: "Incident type and date are required", variant: "destructive" });
+            tt.error("incident_type_and_date_are_required");
             return;
         }
 
@@ -151,7 +153,7 @@ export default function AssignIncidentPage() {
                 student_ids: selectedStudents,
                 ...formData
             });
-            toast({ title: "Success", description: "Behavioural incident assigned successfully" });
+            tt.success("behavioural_incident_assigned_successfully");
             setOpen(false);
             setFormData({
                 incident_id: "",
@@ -160,7 +162,7 @@ export default function AssignIncidentPage() {
             });
             handleSearch(); // Refresh total points
         } catch (error) {
-            toast({ title: "Error", description: "Failed to assign incident", variant: "destructive" });
+            tt.error("failed_to_assign_incident");
         } finally {
             setSubmitting(false);
         }
@@ -191,17 +193,17 @@ export default function AssignIncidentPage() {
                         <GraduationCap className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Assign Incident</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Pick a class and section to find students</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("assign_incident")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("pick_a_class_and_section_to_find_students")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-5 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Class <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("class_label")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
                                 <SelectTrigger className="h-9 text-xs">
-                                    <SelectValue placeholder="Select class" />
+                                    <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {criteria.classes.map(cls => <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>)}
@@ -209,10 +211,10 @@ export default function AssignIncidentPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Section <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("section_label")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection}>
                                 <SelectTrigger className="h-9 text-xs">
-                                    <SelectValue placeholder="Select section" />
+                                    <SelectValue placeholder={t("select_section")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(sec => <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>)}
@@ -227,7 +229,7 @@ export default function AssignIncidentPage() {
                             className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                         >
                             {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                            Find Students
+                            {t("find_students")}
                         </Button>
                     </div>
                 </CardContent>
@@ -241,8 +243,8 @@ export default function AssignIncidentPage() {
                             <Users className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Students</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Select students to assign an incident</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("students")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("select_students_to_assign_an_incident")}</p>
                         </div>
                     </div>
                     {selectedStudents.length > 0 && (
@@ -251,7 +253,7 @@ export default function AssignIncidentPage() {
                             className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all animate-in zoom-in shrink-0"
                         >
                             <UserPlus className="h-4 w-4" />
-                            Assign ({selectedStudents.length})
+                            {t("assign_x", { count: selectedStudents.length })}
                         </Button>
                     )}
                 </CardHeader>
@@ -266,11 +268,11 @@ export default function AssignIncidentPage() {
                                             onCheckedChange={toggleAll}
                                         />
                                     </TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Student</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Adm. No.</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Gender</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-center">Points</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right w-[100px]">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("student")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("adm_no")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("gender")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center">{t("points")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right w-[100px]">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -290,8 +292,8 @@ export default function AssignIncidentPage() {
                                         <TableCell colSpan={6} className="px-4 py-14 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <FolderOpen className="h-10 w-10 opacity-30" />
-                                                <p className="text-xs font-semibold text-gray-500">No students found</p>
-                                                <p className="text-[11px] text-gray-400">Select a class and section, then click &ldquo;Find Students&rdquo;.</p>
+                                                <p className="text-xs font-semibold text-gray-500">{t("no_students_found")}</p>
+                                                <p className="text-[11px] text-gray-400">{t("select_a_class_and_section_then_click_find_students")}</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -330,7 +332,7 @@ export default function AssignIncidentPage() {
                                                     onClick={() => { setSelectedStudents([student.id]); setOpen(true); }}
                                                     size="sm" className="h-7 px-3 rounded bg-indigo-500 hover:bg-indigo-600 text-white text-[11px] font-bold shadow-sm active:scale-95 transition-all"
                                                 >
-                                                    Assign
+                                                    {t("assign")}
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -341,7 +343,7 @@ export default function AssignIncidentPage() {
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-gray-500 font-medium">
-                        <div>{students.length} student{students.length === 1 ? "" : "s"} found</div>
+                        <div>{t("x_students", { count: students.length })}</div>
                         <div className="flex gap-1 items-center">
                             <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40" disabled>
                                 <ChevronLeft className="h-4 w-4" />
@@ -366,7 +368,7 @@ export default function AssignIncidentPage() {
                                 <div className="h-10 w-10 rounded-lg bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
                                     <ShieldAlert className="h-5 w-5" />
                                 </div>
-                                Assign Incident
+                                {t("assign_incident")}
                             </DialogTitle>
                         </DialogHeader>
                     </div>
@@ -377,15 +379,15 @@ export default function AssignIncidentPage() {
                                 <Users className="h-4 w-4" />
                             </div>
                             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-700">
-                                Target: {selectedStudents.length} Students Selected
+                                {t("target_x_students_selected", { count: selectedStudents.length })}
                             </span>
                         </div>
 
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Incident Type <span className="text-red-500">*</span></Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">{t("incident_type")} <span className="text-red-500">*</span></Label>
                             <Select value={formData.incident_id} onValueChange={(val) => setFormData({...formData, incident_id: val})}>
                                 <SelectTrigger className="h-14 rounded-lg bg-gray-50/50 border-gray-100 focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight px-6">
-                                    <SelectValue placeholder="Select Incident Type" />
+                                    <SelectValue placeholder={t("select_incident_type")} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
                                     {incidents.map(inc => (
@@ -398,7 +400,7 @@ export default function AssignIncidentPage() {
                         </div>
 
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Incident Date <span className="text-red-500">*</span></Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">{t("incident_date")} <span className="text-red-500">*</span></Label>
                             <div className="relative">
                                 <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                                 <Input
@@ -411,11 +413,11 @@ export default function AssignIncidentPage() {
                         </div>
 
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Assigned Description</Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">{t("assigned_description")}</Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                placeholder="Details regarding this specific assignment..."
+                                placeholder={t("details_regarding_this_specific_assignment")}
                                 rows={4}
                                 className="border-gray-100 bg-gray-50/50 rounded-lg focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight px-6 py-4 resize-none"
                             />
@@ -423,14 +425,14 @@ export default function AssignIncidentPage() {
                     </div>
 
                     <div className="p-8 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-4">
-                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-12 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest">Discard</Button>
+                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-12 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest">{t("discard")}</Button>
                         <Button
                             onClick={handleAssign}
                             disabled={submitting}
                             className="btn-gradient text-white px-12 h-12 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex gap-3 active:scale-95"
                         >
                             {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Commit Assignment
+                            {t("commit_assignment")}
                         </Button>
                     </div>
                 </DialogContent>

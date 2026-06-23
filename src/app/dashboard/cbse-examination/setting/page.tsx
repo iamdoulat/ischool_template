@@ -143,13 +143,15 @@ export default function CBSESettingsPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
-                <div>
-                    <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
-                        <Settings2 className="h-6 w-6 text-indigo-500" />
-                        CBSE Examination Settings
-                    </h1>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Configure global examination parameters & board standards</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Settings2 className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">CBSE Examination Settings</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Configure board parameters and standards</p>
+                    </div>
                 </div>
             </div>
 

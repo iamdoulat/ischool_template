@@ -192,15 +192,17 @@ export default function ExamListPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
-                <div>
-                    <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
-                        <GraduationCap className="h-6 w-6 text-indigo-500" />
-                        Board Examination Registry
-                    </h1>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Management of official board examinations & publication cycles</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <GraduationCap className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Board Examination Registry</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Manage board exams and publication cycles</p>
+                    </div>
                 </div>
-                <Button 
+                <Button
                     onClick={() => { resetForm(); setOpen(true); }}
                     className="btn-gradient text-white px-8 h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex gap-2"
                 >

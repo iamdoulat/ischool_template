@@ -23,7 +23,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -63,7 +64,8 @@ export default function FeesDiscountPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const { symbol, formatCurrency } = useCurrencyFormatter();
 
     // Search and Pagination states
@@ -96,7 +98,7 @@ export default function FeesDiscountPage() {
             const res = await api.get("/fee-discounts");
             setDiscounts(res.data.data || []);
         } catch (error) {
-            toast("error", "Failed to fetch discounts");
+            tt.error("failed_to_fetch_discounts");
         } finally {
             setLoading(false);
         }
@@ -140,14 +142,14 @@ export default function FeesDiscountPage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this discount?")) return;
+        if (!confirm(t("are_you_sure_you_want_to_delete_this_discount"))) return;
 
         try {
             await api.delete(`/fee-discounts/${id}`);
-            toast("success", "Discount deleted successfully");
+            tt.success("discount_deleted_successfully");
             fetchDiscounts();
         } catch (error) {
-            toast("error", "Failed to delete discount");
+            tt.error("failed_to_delete_discount");
         }
     };
 
@@ -157,16 +159,16 @@ export default function FeesDiscountPage() {
         try {
             if (editingId) {
                 await api.put(`/fee-discounts/${editingId}`, formData);
-                toast("success", "Discount updated successfully");
+                tt.success("discount_updated_successfully");
             } else {
                 await api.post("/fee-discounts", formData);
-                toast("success", "Discount created successfully");
+                tt.success("discount_created_successfully");
             }
             resetForm();
             fetchDiscounts();
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Something went wrong");
+            tt.error(err.response?.data?.message || "something_went_wrong");
         } finally {
             setSaving(false);
         }
@@ -213,9 +215,9 @@ export default function FeesDiscountPage() {
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Fees Discount List", 14, 15);
+        doc.text(t("fees_discount_list"), 14, 15);
         autoTable(doc, {
-            head: [['Name', 'Discount Code', 'Percentage', 'Amount', 'Use Count', 'Expiry Date']],
+            head: [[t("name"), t("discount_code"), t("percentage"), t("amount"), t("use_count"), t("expiry_date")]],
             body: filteredDiscounts.map(d => [
                 d.name,
                 d.code,
@@ -232,7 +234,7 @@ export default function FeesDiscountPage() {
     const copyToClipboard = () => {
         const text = exportData.map(d => Object.values(d).join('\t')).join('\n');
         navigator.clipboard.writeText(Object.keys(exportData[0] || {}).join('\t') + '\n' + text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     return (
@@ -247,10 +249,10 @@ export default function FeesDiscountPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {editingId ? "Edit Fees Discount" : "Add Fees Discount"}
+                                    {editingId ? t("edit_fees_discount") : t("add_fees_discount")}
                                 </CardTitle>
                                 <p className="text-[11px] text-gray-500 mt-1">
-                                    {editingId ? "Update discount details" : "Create a new discount"}
+                                    {editingId ? t("update_discount_details") : t("create_a_new_discount")}
                                 </p>
                             </div>
                         </div>
@@ -265,13 +267,13 @@ export default function FeesDiscountPage() {
                             {/* Name */}
                             <div className="space-y-2 group">
                                 <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Name <span className="text-destructive font-black">*</span>
+                                    {t("name")} <span className="text-destructive font-black">*</span>
                                 </label>
                                 <Input
                                     name="name"
                                     value={formData.name}
                                     onChange={handleInputChange}
-                                    placeholder="Enter discount name"
+                                    placeholder={t("enter_discount_name")}
                                     required
                                     className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                 />
@@ -280,13 +282,13 @@ export default function FeesDiscountPage() {
                             {/* Discount Code */}
                             <div className="space-y-2 group">
                                 <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Discount Code <span className="text-destructive font-black">*</span>
+                                    {t("discount_code")} <span className="text-destructive font-black">*</span>
                                 </label>
                                 <Input
                                     name="code"
                                     value={formData.code}
                                     onChange={handleInputChange}
-                                    placeholder="Enter discount code"
+                                    placeholder={t("enter_discount_code")}
                                     required
                                     className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                 />
@@ -295,12 +297,12 @@ export default function FeesDiscountPage() {
                             {/* Discount Type */}
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">
-                                    Discount Type
+                                    {t("discount_type")}
                                 </label>
                                 <div className="grid grid-cols-2 gap-4">
                                     {[
-                                        { id: "percentage", label: "Percentage" },
-                                        { id: "fix", label: "Fix Amount" }
+                                        { id: "percentage", label: t("percentage") },
+                                        { id: "fix", label: t("fix_amount") }
                                     ].map((type) => (
                                         <label
                                             key={type.id}
@@ -332,7 +334,7 @@ export default function FeesDiscountPage() {
                                 {formData.type === "percentage" ? (
                                     <div className="space-y-2 group col-span-2">
                                         <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                            Percentage (%) <span className="text-destructive font-black">*</span>
+                                            {t("percentage")} (%) <span className="text-destructive font-black">*</span>
                                         </label>
                                         <Input
                                             name="percentage"
@@ -347,7 +349,7 @@ export default function FeesDiscountPage() {
                                 ) : (
                                     <div className="space-y-2 group col-span-2">
                                         <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                            Amount ({symbol}) <span className="text-destructive font-black">*</span>
+                                            {t("amount")} ({symbol}) <span className="text-destructive font-black">*</span>
                                         </label>
                                         <Input
                                             name="amount"
@@ -366,7 +368,7 @@ export default function FeesDiscountPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2 group">
                                     <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors leading-none">
-                                        Max Use Count <span className="text-destructive font-black">*</span>
+                                        {t("max_use_count")} <span className="text-destructive font-black">*</span>
                                     </label>
                                     <Input
                                         name="use_count"
@@ -380,7 +382,7 @@ export default function FeesDiscountPage() {
                                 </div>
                                 <div className="space-y-2 group">
                                     <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                        Expiry Date
+                                        {t("expiry_date")}
                                     </label>
                                     <Input
                                         name="expiry_date"
@@ -395,13 +397,13 @@ export default function FeesDiscountPage() {
                             {/* Description */}
                             <div className="space-y-2 group">
                                 <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Description
+                                        {t("description")}
                                 </label>
                                 <Textarea
                                     name="description"
                                     value={formData.description || ""}
                                     onChange={handleInputChange}
-                                    placeholder="Enter description"
+                                    placeholder={t("enter_description")}
                                     className="min-h-[100px] rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium resize-none text-xs"
                                 />
                             </div>
@@ -409,7 +411,7 @@ export default function FeesDiscountPage() {
                             <div className="pt-4 flex justify-end gap-2">
                                 {editingId && (
                                     <Button type="button" variant="outline" className="h-10 px-6 rounded-lg font-bold text-xs active:scale-95 transition-all" onClick={resetForm}>
-                                        Cancel
+                                            {t("cancel")}
                                     </Button>
                                 )}
                                 <Button
@@ -419,7 +421,7 @@ export default function FeesDiscountPage() {
                                     className="h-10 px-8 rounded-lg font-bold text-xs tracking-tight shadow-lg shadow-primary/25 active:scale-95 transition-all flex items-center gap-2"
                                 >
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                    {saving ? "Processing..." : editingId ? "Update Discount" : "Save Discount"}
+                                    {saving ? t("processing") : editingId ? t("update_discount") : t("save_discount")}
                                 </Button>
                             </div>
                         </form>
@@ -435,9 +437,9 @@ export default function FeesDiscountPage() {
                             <BadgePercent className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Fees Discount List</CardTitle>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("fees_discount_list")}</CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {filteredDiscounts.length} total entr{filteredDiscounts.length === 1 ? 'y' : 'ies'}
+                                {t("x_total_entries", { count: filteredDiscounts.length })}
                             </p>
                         </div>
                     </CardHeader>
@@ -448,7 +450,7 @@ export default function FeesDiscountPage() {
                             <div className="relative w-full max-w-sm group">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 <Input
-                                    placeholder="Search by name or code..."
+                                    placeholder={t("search_by_name_or_code")}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
@@ -467,15 +469,15 @@ export default function FeesDiscountPage() {
                                 >
                                     <option value="50">50</option>
                                     <option value="100">100</option>
-                                    <option value="All">All</option>
+                                    <option value="All">{t("all")}</option>
                                 </select>
                                 <div className="h-8 w-px bg-muted/50 mx-2" />
                                 <div className="flex items-center gap-1">
-                                    <IconButton icon={Copy} onClick={copyToClipboard} title="Copy" />
-                                    <IconButton icon={FileSpreadsheet} onClick={exportToExcel} title="Excel" />
-                                    <IconButton icon={FileText} onClick={exportToCSV} title="CSV" />
-                                    <IconButton icon={FileCode} onClick={exportToPDF} title="PDF" />
-                                    <IconButton icon={Printer} onClick={() => window.print()} title="Print" />
+                                    <IconButton icon={Copy} onClick={copyToClipboard} title={t("copy")} />
+                                    <IconButton icon={FileSpreadsheet} onClick={exportToExcel} title={t("excel")} />
+                                    <IconButton icon={FileText} onClick={exportToCSV} title={t("csv")} />
+                                    <IconButton icon={FileCode} onClick={exportToPDF} title={t("pdf")} />
+                                    <IconButton icon={Printer} onClick={() => window.print()} title={t("print")} />
                                 </div>
                             </div>
                         </div>
@@ -486,17 +488,18 @@ export default function FeesDiscountPage() {
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-muted/10">
-                                            {[
-                                                "Name", "Discount Code", "Percentage", "Amount", "Use Count", "Expiry Date", "Action"
-                                            ].map((header) => (
-                                                <th key={header} className={cn(
+                                            {(() => {
+                                                const headerKeys = ["name", "discount_code", "percentage", "amount", "use_count", "expiry_date", "action"];
+                                                const centerAlignKeys = ["percentage", "amount", "use_count", "expiry_date"];
+                                                return headerKeys.map((key, i) => (
+                                                <th key={key} className={cn(
                                                     "px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-foreground border-b border-muted/20 whitespace-nowrap",
-                                                    header === "Action" ? "text-center w-36" : "",
-                                                    ["Percentage", "Amount", "Use Count", "Expiry Date"].includes(header) ? "text-center" : ""
+                                                    key === "action" ? "text-center w-36" : "",
+                                                    centerAlignKeys.includes(key) ? "text-center" : ""
                                                 )}>
-                                                    {header}
+                                                    {t(key)}
                                                 </th>
-                                            ))}
+                                            )))();}}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-muted/10">
@@ -504,7 +507,7 @@ export default function FeesDiscountPage() {
                                             <TableSkeleton rows={5} cols={7} />
                                         ) : paginatedDiscounts.length === 0 ? (
                                             <tr>
-                                                <td colSpan={7} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                                <td colSpan={7} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                             </tr>
                                         ) : (
                                             paginatedDiscounts.map((discount) => (
@@ -566,7 +569,7 @@ export default function FeesDiscountPage() {
                         {filteredDiscounts.length > 0 && (
                             <div className="flex items-center justify-between pt-4 border-t border-muted/20">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] italic">
-                                    Showing {Math.min((currentPage - 1) * pageSize + 1, filteredDiscounts.length)} to {Math.min(currentPage * pageSize, filteredDiscounts.length)} of {filteredDiscounts.length} entries
+                                    {t("showing_x_to_y_of_z", { from: Math.min((currentPage - 1) * pageSize + 1, filteredDiscounts.length), to: Math.min(currentPage * pageSize, filteredDiscounts.length), total: filteredDiscounts.length })}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button

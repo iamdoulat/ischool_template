@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, QrCode, Smartphone, Download, Printer, CheckCircle, AlertCircle, Nfc } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
 
 const QR_API_BASE = "https://api.qrserver.com/v1/create-qr-code/";
 
@@ -60,6 +61,7 @@ function QrSkeleton() {
 }
 
 export default function MyQrPassPage() {
+    const { t } = useTranslation();
     const [data, setData] = useState<StudentData | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -71,7 +73,7 @@ export default function MyQrPassPage() {
                     setData(res.data.data);
                 }
             } catch {
-                toast.error("Failed to load your QR pass");
+                toast.error(t("failed_to_load_your_qr_pass"));
             } finally {
                 setLoading(false);
             }
@@ -130,8 +132,8 @@ export default function MyQrPassPage() {
                                 <QrCode className="h-5 w-5" />
                             </span>
                             <div className="min-w-0">
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">My Attendance Pass</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">Your personal QR code & NFC tag for smart attendance</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("my_attendance_pass")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("your_personal_qr_code_and_nfc_tag_for_smart_attendance")}</p>
                             </div>
                         </div>
                     </CardHeader>
@@ -147,15 +149,15 @@ export default function MyQrPassPage() {
                                                 alt="My QR Pass"
                                                 className="w-52 h-52 rounded-xl border-4 border-gray-100 shadow-sm"
                                             />
-                                            <p className="text-[10px] text-gray-400 mt-3 uppercase tracking-widest font-bold">Scan at attendance terminal</p>
+                                            <p className="text-[10px] text-gray-400 mt-3 uppercase tracking-widest font-bold">{t("scan_at_attendance_terminal")}</p>
                                             <div className="flex gap-2 mt-4">
                                                 <Button onClick={handleDownload} size="sm" variant="outline"
                                                     className="h-8 text-[11px] gap-1.5 border-indigo-200 text-indigo-600 hover:bg-indigo-50">
-                                                    <Download className="h-3.5 w-3.5" /> Download
+                                                    <Download className="h-3.5 w-3.5" /> {t("download")}
                                                 </Button>
                                                 <Button onClick={handlePrint} size="sm"
                                                     className="h-8 text-[11px] gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white">
-                                                    <Printer className="h-3.5 w-3.5" /> Print
+                                                    <Printer className="h-3.5 w-3.5" /> {t("print")}
                                                 </Button>
                                             </div>
                                         </CardContent>
@@ -166,8 +168,8 @@ export default function MyQrPassPage() {
                                     <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden">
                                         <CardContent className="p-10 flex flex-col items-center">
                                             <QrCode className="h-16 w-16 text-gray-200 mb-3" />
-                                            <p className="text-sm font-semibold text-gray-500">No QR Code Generated</p>
-                                            <p className="text-xs text-gray-400 mt-1 text-center">Contact your school administrator to generate your attendance QR code.</p>
+                                            <p className="text-sm font-semibold text-gray-500">{t("no_qr_code_generated")}</p>
+                                            <p className="text-xs text-gray-400 mt-1 text-center">{t("contact_your_school_administrator_to_generate_your_attendance_qr_code")}</p>
                                         </CardContent>
                                     </Card>
                                 </div>
@@ -181,17 +183,17 @@ export default function MyQrPassPage() {
                                             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                                                 <QrCode className="h-4 w-4" />
                                             </span>
-                                            <CardTitle className="text-sm font-bold text-slate-800 leading-none">QR Code</CardTitle>
+                                            <CardTitle className="text-sm font-bold text-slate-800 leading-none">{t("qr_code")}</CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-4">
                                             <div className="flex items-center gap-3">
                                                 {data.has_qr ? (
                                                     <span className="inline-flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full text-xs font-semibold">
-                                                        <CheckCircle className="h-3.5 w-3.5" /> Generated
+                                                        <CheckCircle className="h-3.5 w-3.5" /> {t("generated")}
                                                     </span>
                                                 ) : (
                                                     <span className="inline-flex items-center gap-1.5 text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-xs font-semibold">
-                                                        <AlertCircle className="h-3.5 w-3.5" /> Not Generated
+                                                        <AlertCircle className="h-3.5 w-3.5" /> {t("not_generated")}
                                                     </span>
                                                 )}
                                                 {data.qr_code && (
@@ -206,24 +208,24 @@ export default function MyQrPassPage() {
                                             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                                                 <Nfc className="h-4 w-4" />
                                             </span>
-                                            <CardTitle className="text-sm font-bold text-slate-800 leading-none">NFC Tag</CardTitle>
+                                            <CardTitle className="text-sm font-bold text-slate-800 leading-none">{t("nfc_tag")}</CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-4">
                                             <div className="flex items-center gap-3">
                                                 {data.has_nfc ? (
                                                     <span className="inline-flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full text-xs font-semibold">
-                                                        <CheckCircle className="h-3.5 w-3.5" /> Assigned
+                                                        <CheckCircle className="h-3.5 w-3.5" /> {t("assigned")}
                                                     </span>
                                                 ) : (
                                                     <span className="inline-flex items-center gap-1.5 text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-xs font-semibold">
-                                                        <AlertCircle className="h-3.5 w-3.5" /> Not Assigned
+                                                        <AlertCircle className="h-3.5 w-3.5" /> {t("not_assigned")}
                                                     </span>
                                                 )}
                                                 {data.nfc_uid && (
                                                     <code className="px-2 py-0.5 bg-slate-100 rounded text-[10px] font-mono text-gray-500">{data.nfc_uid}</code>
                                                 )}
                                             </div>
-                                            <p className="text-[11px] text-gray-400 mt-2">Tap your NFC-enabled card or phone at the attendance terminal.</p>
+                                            <p className="text-[11px] text-gray-400 mt-2">{t("tap_your_nfc_enabled_card_or_phone_at_the_attendance_terminal")}</p>
                                         </CardContent>
                                     </Card>
 
@@ -233,13 +235,13 @@ export default function MyQrPassPage() {
                                             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                                                 <Smartphone className="h-4 w-4" />
                                             </span>
-                                            <CardTitle className="text-sm font-bold text-slate-800 leading-none">Details</CardTitle>
+                                            <CardTitle className="text-sm font-bold text-slate-800 leading-none">{t("details")}</CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                                             {([
-                                                ["Name", data.name],
-                                                ["Role", data.role],
-                                                ["Admission No", data.admission_no || "—"],
+                                                [t("name"), data.name],
+                                                [t("role"), data.role],
+                                                [t("admission_no"), data.admission_no || "—"],
                                             ] as [string, string][]).map(([label, value]) => (
                                                 <div key={label}>
                                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{label}</p>

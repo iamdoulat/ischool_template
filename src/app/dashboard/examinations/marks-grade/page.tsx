@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,7 +54,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function MarksGradePage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [grades, setGrades] = useState<GradeEntry[]>([]);
     const [loading, setLoading] = useState(false);
@@ -90,7 +92,7 @@ export default function MarksGradePage() {
             });
             setGrades(response.data || []);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch grades", variant: "destructive" });
+            tt.error("failed_to_fetch_grades");
         } finally {
             setLoading(false);
         }
@@ -111,7 +113,7 @@ export default function MarksGradePage() {
 
     const handleSave = async () => {
         if (!formData.exam_type || !formData.name || !formData.percent_from || !formData.percent_upto || !formData.grade_point) {
-            toast({ title: "Validation Error", description: "Please fill in all required fields", variant: "destructive" });
+            tt.error("please_fill_in_all_required_fields");
             return;
         }
 
@@ -119,15 +121,15 @@ export default function MarksGradePage() {
         try {
             if (editMode && selectedId) {
                 await api.put(`/examination/marks-grades/${selectedId}`, formData);
-                toast({ title: "Success", description: "Grade updated successfully" });
+                tt.success("grade_updated_successfully");
             } else {
                 await api.post('/examination/marks-grades', formData);
-                toast({ title: "Success", description: "Grade created successfully" });
+                tt.success("grade_created_successfully");
             }
             resetForm();
             fetchGrades();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to save grade", variant: "destructive" });
+            tt.error("failed_to_save_grade");
         } finally {
             setSubmitting(false);
         }
@@ -150,10 +152,10 @@ export default function MarksGradePage() {
         if (!deleteId) return;
         try {
             await api.delete(`/examination/marks-grades/${deleteId}`);
-            toast({ title: "Success", description: "Grade deleted successfully" });
+            tt.success("grade_deleted_successfully");
             fetchGrades();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to delete grade", variant: "destructive" });
+            tt.error("failed_to_delete_grade");
         } finally {
             setDeleteId(null);
         }
@@ -184,34 +186,34 @@ export default function MarksGradePage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {editMode ? "Edit Grade" : "Add Grade"}
+                                    {editMode ? t("edit_grade") : t("add_grade")}
                                 </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">Define a grading criteria</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("define_grading_criteria")}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="px-6 pb-6">
                             <div className="space-y-5">
                                 <div className="space-y-2">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                        Exam Type <span className="text-red-500">*</span>
+                                        {t("exam_type")} <span className="text-red-500">*</span>
                                     </Label>
                                     <Select value={formData.exam_type} onValueChange={(val) => setFormData({...formData, exam_type: val})}>
                                         <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none">
-                                            <SelectValue placeholder="Select" />
+                                            <SelectValue placeholder={t("select")} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="General Purpose (Pass/Fail)">General Purpose (Pass/Fail)</SelectItem>
-                                            <SelectItem value="School Based Grading System">School Based Grading System</SelectItem>
-                                            <SelectItem value="College Based Grading System">College Based Grading System</SelectItem>
-                                            <SelectItem value="GPA Grading System">GPA Grading System</SelectItem>
-                                            <SelectItem value="Average Passing">Average Passing</SelectItem>
+                                            <SelectItem value="General Purpose (Pass/Fail)">{t("general_purpose_pass_fail")}</SelectItem>
+                                            <SelectItem value="School Based Grading System">{t("school_based_grading_system")}</SelectItem>
+                                            <SelectItem value="College Based Grading System">{t("college_based_grading_system")}</SelectItem>
+                                            <SelectItem value="GPA Grading System">{t("gpa_grading_system")}</SelectItem>
+                                            <SelectItem value="Average Passing">{t("average_passing")}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                        Grade Name <span className="text-red-500">*</span>
+                                        {t("grade_name")} <span className="text-red-500">*</span>
                                     </Label>
                                     <Input
                                         value={formData.name}
@@ -224,7 +226,7 @@ export default function MarksGradePage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                            Percent From <span className="text-red-500">*</span>
+                                            {t("percent_from")} <span className="text-red-500">*</span>
                                         </Label>
                                         <Input
                                             type="number"
@@ -236,7 +238,7 @@ export default function MarksGradePage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                            Percent Upto <span className="text-red-500">*</span>
+                                            {t("percent_upto")} <span className="text-red-500">*</span>
                                         </Label>
                                         <Input
                                             type="number"
@@ -250,7 +252,7 @@ export default function MarksGradePage() {
 
                                 <div className="space-y-2">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                        Grade Point <span className="text-red-500">*</span>
+                                        {t("grade_point")} <span className="text-red-500">*</span>
                                     </Label>
                                     <Input
                                         type="number"
@@ -264,12 +266,12 @@ export default function MarksGradePage() {
 
                                 <div className="space-y-2">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                        Description
+                                        {t("description")}
                                     </Label>
                                     <Textarea
                                         value={formData.description}
                                         onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                        placeholder="Enter grade description"
+                                        placeholder={t("enter_grade_description")}
                                         className="min-h-[100px] border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 p-4"
                                     />
                                 </div>
@@ -277,7 +279,7 @@ export default function MarksGradePage() {
                                 <div className="flex gap-2 pt-4 justify-end">
                                     {editMode && (
                                         <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5">
-                                            Cancel
+                                            {t("cancel")}
                                         </Button>
                                     )}
                                     <Button
@@ -285,7 +287,7 @@ export default function MarksGradePage() {
                                         disabled={submitting}
                                         className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
                                     >
-                                        {submitting ? "Saving..." : editMode ? "Update" : "Save"}
+                                        {submitting ? t("saving") : editMode ? t("update") : t("save")}
                                     </Button>
                                 </div>
                             </div>
@@ -302,8 +304,8 @@ export default function MarksGradePage() {
                                     <GraduationCap className="h-5 w-5" />
                                 </span>
                                 <div>
-                                    <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Marks Grade</CardTitle>
-                                    <p className="text-[11px] text-gray-500 mt-1">{grades.length} grades</p>
+                                    <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("marks_grade")}</CardTitle>
+                                    <p className="text-[11px] text-gray-500 mt-1">{t("x_grades", { count: grades.length })}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -342,7 +344,7 @@ export default function MarksGradePage() {
                                 <div className="relative w-full md:w-72">
                                     <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
                                     <Input
-                                        placeholder="Search grades..."
+                                        placeholder={t("search_grades")}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
@@ -354,12 +356,12 @@ export default function MarksGradePage() {
                                 <Table>
                                     <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                                         <TableRow className="hover:bg-transparent border-gray-50">
-                                            <TableHead className="py-4 px-6">Exam Type</TableHead>
-                                            <TableHead className="py-4 px-6">Grade Name</TableHead>
-                                            <TableHead className="py-4 px-6">Percent From / Upto</TableHead>
-                                            <TableHead className="py-4 px-6">Grade Point</TableHead>
-                                            <TableHead className="py-4 px-6">Description</TableHead>
-                                            <TableHead className="py-4 px-6 text-right">Action</TableHead>
+                                            <TableHead className="py-4 px-6">{t("exam_type")}</TableHead>
+                                            <TableHead className="py-4 px-6">{t("grade_name")}</TableHead>
+                                            <TableHead className="py-4 px-6">{t("percent_from_upto")}</TableHead>
+                                            <TableHead className="py-4 px-6">{t("grade_point")}</TableHead>
+                                            <TableHead className="py-4 px-6">{t("description")}</TableHead>
+                                            <TableHead className="py-4 px-6 text-right">{t("action")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -368,7 +370,7 @@ export default function MarksGradePage() {
                                         ) : groupedData.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={6} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                                    No data found
+                                                    {t("no_data_found")}
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
@@ -402,7 +404,7 @@ export default function MarksGradePage() {
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="py-4 px-6 text-gray-400 italic text-[11px] max-w-[200px] truncate">
-                                                            {entry.description || "No description"}
+                                                            {entry.description || t("no_description")}
                                                         </TableCell>
                                                         <TableCell className="py-4 px-6 text-right">
                                                             <div className="flex items-center justify-end gap-2">
@@ -430,15 +432,15 @@ export default function MarksGradePage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Grade</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("delete_grade")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            Are you sure you want to delete this marks grade? This will permanently remove the grading criteria from the selected exam system.
+                            {t("delete_grade_confirmation")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            Yes, Delete Grade
+                            {t("yes_delete_grade")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

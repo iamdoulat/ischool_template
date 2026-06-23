@@ -28,6 +28,8 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useImageUrl } from "@/lib/image-url";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 
 interface EventItem {
     id: number;
@@ -59,6 +61,8 @@ function TableSkeleton({ cols }: { cols: number }) {
 
 export default function EventPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const resolvedGetImageUrl = useImageUrl();
     const resolveImg = (path: string | null) => {
         if (!path) return null;
@@ -89,9 +93,9 @@ export default function EventPage() {
             const res = await api.get("front-cms/events");
             setEvents(res.data?.data ?? []);
         } catch {
-            toast({ title: "Error", description: "Failed to load events", variant: "destructive" });
+            tt.error("failed_to_load_events");
         } finally { setLoading(false); }
-    }, [toast]);
+    }, [toast, tt]);
 
     useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
@@ -108,7 +112,7 @@ export default function EventPage() {
 
     const handleSave = async () => {
         if (!form.title || !form.start_date) {
-            toast({ title: "Validation", description: "Title and Start Date are required", variant: "destructive" }); return;
+            tt.error("title_and_start_date_required"); return;
         }
         setSaving(true);
         try {
@@ -119,10 +123,10 @@ export default function EventPage() {
             if (form.image) fd.append("image", form.image);
             if (editingId) { fd.append("_method", "PUT"); await api.post(`front-cms/events/${editingId}`, fd, { headers: { "Content-Type": "multipart/form-data" } }); }
             else { await api.post("front-cms/events", fd, { headers: { "Content-Type": "multipart/form-data" } }); }
-            toast({ title: "Success", description: editingId ? "Event updated" : "Event created" });
+            tt.success(editingId ? "event_updated" : "event_created");
             setOpen(false); fetchEvents();
         } catch {
-            toast({ title: "Error", description: "Failed to save event", variant: "destructive" });
+            tt.error("failed_to_save_event");
         } finally { setSaving(false); }
     };
 
@@ -130,9 +134,9 @@ export default function EventPage() {
         if (!deleteId) return;
         try {
             await api.delete(`front-cms/events/${deleteId}`);
-            toast({ title: "Success", description: "Event deleted" }); fetchEvents();
+            tt.success("event_deleted"); fetchEvents();
         } catch {
-            toast({ title: "Error", description: "Failed to delete event", variant: "destructive" });
+            tt.error("failed_to_delete_event");
         } finally { setDeleteId(null); }
     };
 
@@ -155,12 +159,12 @@ export default function EventPage() {
                             <CalendarDays className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold text-slate-800 leading-none">Events</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Manage school events and activities</p>
+                            <CardTitle className="text-base font-bold text-slate-800 leading-none">{t("events")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("manage_school_events_and_activities")}</p>
                         </div>
                     </div>
                     <Button onClick={openAdd} className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all shrink-0">
-                        <Plus className="h-4 w-4" /> Add Event
+                        <Plus className="h-4 w-4" /> {t("add_event")}
                     </Button>
                 </CardHeader>
 
@@ -168,10 +172,10 @@ export default function EventPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input placeholder="Search events..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="pl-9 h-9 text-xs" />
+                            <Input placeholder={t("search_events")} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="pl-9 h-9 text-xs" />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">Show</span>
+                            <span className="text-xs text-gray-500">{t("show")}</span>
                             <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setCurrentPage(1); }}>
                                 <SelectTrigger className="h-9 w-[70px] text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
@@ -185,15 +189,15 @@ export default function EventPage() {
                         <Table className="min-w-[640px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600">Title</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Date</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Venue</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right w-[110px]">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("title")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("date")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("venue")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right w-[110px]">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? <TableSkeleton cols={4} /> : paginated.length === 0 ? (
-                                    <TableRow><TableCell colSpan={4} className="py-14 text-center text-xs text-gray-400">No events found.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} className="py-14 text-center text-xs text-gray-400">{t("no_events_found")}</TableCell></TableRow>
                                 ) : paginated.map(item => (
                                     <TableRow key={item.id} className="text-xs hover:bg-gray-50/60 transition-colors">
                                         <TableCell className="py-3 font-medium text-gray-800">{item.title}</TableCell>
@@ -217,7 +221,7 @@ export default function EventPage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium">
-                        <div>Showing {from} to {to} of {filtered.length} entries</div>
+                        <div>{t("showing_x_to_y_of_z", { from, to, total: filtered.length })}</div>
                         <div className="flex gap-1">
                             <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                             {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, currentPage - 3), currentPage + 2).map(page => (
@@ -235,41 +239,41 @@ export default function EventPage() {
                     <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b">
                         <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
                             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm"><CalendarDays className="h-4 w-4" /></span>
-                            {editingId ? "Edit Event" : "Add Event"}
+                            {editingId ? t("edit_event") : t("add_event")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-gray-600">Title <span className="text-red-500">*</span></Label>
-                            <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" placeholder="Event title" />
+                            <Label className="text-xs font-semibold text-gray-600">{t("title")} <span className="text-red-500">*</span></Label>
+                            <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" placeholder={t("event_title")} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-semibold text-gray-600">Start Date <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-semibold text-gray-600">{t("start_date")} <span className="text-red-500">*</span></Label>
                                 <Input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} className="h-9 text-xs" />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-semibold text-gray-600">End Date</Label>
+                                <Label className="text-xs font-semibold text-gray-600">{t("end_date")}</Label>
                                 <Input type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} className="h-9 text-xs" />
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-gray-600">Venue</Label>
-                            <Input value={form.venue} onChange={e => setForm({ ...form, venue: e.target.value })} className="h-9 text-xs" placeholder="School Hall, Ground…" />
+                            <Label className="text-xs font-semibold text-gray-600">{t("venue")}</Label>
+                            <Input value={form.venue} onChange={e => setForm({ ...form, venue: e.target.value })} className="h-9 text-xs" placeholder={t("school_hall_ground")} />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-gray-600">Description</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("description")}</Label>
                             <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} className="text-xs resize-none" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-gray-600">Image</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("image")}</Label>
                             <Input type="file" accept="image/*" onChange={e => setForm({ ...form, image: e.target.files?.[0] ?? null })} className="h-9 text-xs" />
                         </div>
                     </div>
                     <DialogFooter className="px-5 py-4 border-t bg-gray-50">
-                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-9 px-5 text-xs font-bold">Cancel</Button>
+                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-9 px-5 text-xs font-bold">{t("cancel")}</Button>
                         <Button onClick={handleSave} disabled={saving} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95">
-                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Event"}
+                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save_event")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -289,11 +293,11 @@ export default function EventPage() {
                                 </div>
                             )}
                             <div className="grid grid-cols-2 gap-3 text-xs">
-                                <div><p className="text-gray-400 font-medium mb-0.5">Start Date</p><p className="font-semibold text-gray-700 flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-indigo-400" />{viewItem.start_date}</p></div>
-                                {viewItem.end_date && <div><p className="text-gray-400 font-medium mb-0.5">End Date</p><p className="font-semibold text-gray-700 flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-indigo-400" />{viewItem.end_date}</p></div>}
-                                {viewItem.venue && <div className="col-span-2"><p className="text-gray-400 font-medium mb-0.5">Venue</p><p className="font-semibold text-gray-700 flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-indigo-400" />{viewItem.venue}</p></div>}
+                                <div><p className="text-gray-400 font-medium mb-0.5">{t("start_date")}</p><p className="font-semibold text-gray-700 flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-indigo-400" />{viewItem.start_date}</p></div>
+                                {viewItem.end_date && <div><p className="text-gray-400 font-medium mb-0.5">{t("end_date")}</p><p className="font-semibold text-gray-700 flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-indigo-400" />{viewItem.end_date}</p></div>}
+                                {viewItem.venue && <div className="col-span-2"><p className="text-gray-400 font-medium mb-0.5">{t("venue")}</p><p className="font-semibold text-gray-700 flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-indigo-400" />{viewItem.venue}</p></div>}
                             </div>
-                            {viewItem.description && <div><p className="text-gray-400 font-medium text-xs mb-0.5">Description</p><p className="text-gray-600 text-xs leading-relaxed">{viewItem.description}</p></div>}
+                            {viewItem.description && <div><p className="text-gray-400 font-medium text-xs mb-0.5">{t("description")}</p><p className="text-gray-600 text-xs leading-relaxed">{viewItem.description}</p></div>}
                         </div>
                     )}
                 </DialogContent>
@@ -303,12 +307,12 @@ export default function EventPage() {
             <AlertDialog open={!!deleteId} onOpenChange={o => { if (!o) setDeleteId(null); }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Event</AlertDialogTitle>
-                        <AlertDialogDescription>This action cannot be undone. The event will be permanently deleted.</AlertDialogDescription>
+                        <AlertDialogTitle>{t("delete_event")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("delete_event_confirmation")}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

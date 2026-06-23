@@ -39,6 +39,8 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     Dialog,
     DialogContent,
@@ -85,6 +87,8 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 
 export default function StudentTransportFeesPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
     const [fetchingInitial, setFetchingInitial] = useState(true);
@@ -121,7 +125,7 @@ export default function StudentTransportFeesPage() {
             setVehicles(vehiclesRes.data.data.data || vehiclesRes.data.data || []);
             setPickupPoints(pointsRes.data.data.data || pointsRes.data.data || []);
         } catch (error) {
-            toast("error", "Failed to load initial data");
+            tt.error("failed_to_load_initial_data");
         } finally {
             setFetchingInitial(false);
         }
@@ -137,13 +141,13 @@ export default function StudentTransportFeesPage() {
             const res = await api.get(`/academics/sections?school_class_id=${classId}`);
             setSections(res.data.data.data || res.data.data || []);
         } catch (error) {
-            toast("error", "Failed to load sections");
+            tt.error("failed_to_load_sections");
         }
     };
 
     const handleSearch = async () => {
         if (!filters.class_id) {
-            toast("error", "Please select a class");
+            toast("error", t("please_select_a_class"));
             return;
         }
         setLoading(true);
@@ -156,7 +160,7 @@ export default function StudentTransportFeesPage() {
             setStudents(res.data.data);
             setCurrentPage(1);
         } catch (error) {
-            toast("error", "Failed to fetch students");
+            tt.error("failed_to_fetch_students");
         } finally {
             setLoading(false);
         }
@@ -175,30 +179,30 @@ export default function StudentTransportFeesPage() {
     const handleAssign = async () => {
         if (!selectedStudent) return;
         if (!assignmentForm.route_id || !assignmentForm.vehicle_id || !assignmentForm.pickup_point_id) {
-            toast("error", "Please select all fields");
+            toast("error", t("please_select_all_fields"));
             return;
         }
         setLoading(true);
         try {
             await api.post("/transport/student-assignments", { student_id: selectedStudent.id, ...assignmentForm });
-            toast("success", "Transport assigned successfully");
+            tt.success("transport_assigned_successfully");
             setIsAssignModalOpen(false);
             handleSearch();
         } catch (error) {
-            toast("error", "Failed to assign transport");
+            tt.error("failed_to_assign_transport");
         } finally {
             setLoading(false);
         }
     };
 
     const handleRemoveAssignment = async (studentId: number) => {
-        if (!confirm("Are you sure you want to remove transport for this student?")) return;
+        if (!confirm(t("remove_transport_confirmation"))) return;
         try {
             await api.delete(`/transport/student-assignments/${studentId}`);
-            toast("success", "Transport assignment removed");
+            tt.success("transport_assignment_removed");
             handleSearch();
         } catch (error) {
-            toast("error", "Failed to remove assignment");
+            tt.error("failed_to_remove_assignment");
         }
     };
 
@@ -231,15 +235,15 @@ export default function StudentTransportFeesPage() {
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(filteredStudents.map(s => `${s.admission_no}\t${s.name}\t${s.school_class?.name || '-'}\t${s.transport_assignment?.route?.title || '-'}`).join('\n'));
-        toast("success", "Data copied to clipboard");
+        tt.success("data_copied_to_clipboard");
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: copyToClipboard, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: exportToExcel, title: "Excel" },
-        { Icon: FileText, onClick: exportToPDF, title: "PDF" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: copyToClipboard, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: exportToExcel, title: t("excel") },
+        { Icon: FileText, onClick: exportToPDF, title: t("pdf") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     return (
@@ -251,8 +255,8 @@ export default function StudentTransportFeesPage() {
                         <SlidersHorizontal className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter students by class and section</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_students_by_class_and_section")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -265,23 +269,23 @@ export default function StudentTransportFeesPage() {
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-semibold text-gray-600">Class <span className="text-red-500">*</span></Label>
+                                    <Label className="text-xs font-semibold text-gray-600">{t("class")} <span className="text-red-500">*</span></Label>
                                     <Select onValueChange={handleClassChange} value={filters.class_id}>
-                                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Class" /></SelectTrigger>
+                                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select_class")} /></SelectTrigger>
                                         <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-semibold text-gray-600">Section</Label>
+                                    <Label className="text-xs font-semibold text-gray-600">{t("section")}</Label>
                                     <Select onValueChange={(val) => setFilters({ ...filters, section_id: val })} value={filters.section_id}>
-                                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Section" /></SelectTrigger>
+                                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select_section")} /></SelectTrigger>
                                         <SelectContent>{sections.map((s) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                             </div>
                             <div className="flex justify-end pt-2">
                                 <Button onClick={handleSearch} disabled={loading} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
-                                    <Search className="h-4 w-4" /> {loading ? "Searching..." : "Search"}
+                                    <Search className="h-4 w-4" /> {loading ? t("searching") : t("search")}
                                 </Button>
                             </div>
                         </>
@@ -296,13 +300,13 @@ export default function StudentTransportFeesPage() {
                         <Bus className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student Transport Fees</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{filteredStudents.length} student{filteredStudents.length === 1 ? "" : "s"}</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_transport_fees")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{filteredStudents.length} {filteredStudents.length === 1 ? t("student").toLowerCase() : t("students").toLowerCase()}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                        <Input placeholder="Search..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="h-9 text-xs w-full md:w-64" />
+                        <Input placeholder={t("search")} value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="h-9 text-xs w-full md:w-64" />
                         <div className="flex items-center gap-2">
                             <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
                                 <SelectTrigger className="w-[70px] h-9 text-xs"><SelectValue /></SelectTrigger>
@@ -326,22 +330,22 @@ export default function StudentTransportFeesPage() {
                         <Table className="min-w-[1400px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600">Admission No</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Student Name</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Class</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Father Name</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Date Of Birth</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Route Title</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Vehicle Number</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Pickup Point</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("admission_no")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("student_name")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("class")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("father_name")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("date_of_birth")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("route_title")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("vehicle_number")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("pickup_point")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <SkeletonRows rows={6} cols={TABLE_COLS} />
                                 ) : paginatedStudents.length === 0 ? (
-                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{searched ? "No students found" : "Select a class and search"}</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{searched ? t("no_students_found") : t("select_class_and_search")}</TableCell></TableRow>
                                 ) : paginatedStudents.map((student) => (
                                     <TableRow key={student.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
                                         <TableCell className="py-3 text-gray-700 font-medium">{student.admission_no}</TableCell>
@@ -354,10 +358,10 @@ export default function StudentTransportFeesPage() {
                                         <TableCell className="py-3 text-gray-500">{student.transport_assignment?.pickup_point?.name || '-'}</TableCell>
                                         <TableCell className="py-3 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <Button title="View" onClick={() => { setSelectedStudent(student); setIsViewModalOpen(true); }} size="sm" className="h-7 w-7 bg-blue-500 hover:bg-blue-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Eye className="h-4 w-4" /></Button>
-                                                <Button title="Edit" onClick={() => handleOpenAssign(student)} size="sm" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-4 w-4" /></Button>
+                                                <Button title={t("view")} onClick={() => { setSelectedStudent(student); setIsViewModalOpen(true); }} size="sm" className="h-7 w-7 bg-blue-500 hover:bg-blue-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Eye className="h-4 w-4" /></Button>
+                                                <Button title={t("edit")} onClick={() => handleOpenAssign(student)} size="sm" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-4 w-4" /></Button>
                                                 {student.transport_assignment && (
-                                                    <Button title="Delete" onClick={() => handleRemoveAssignment(student.id)} size="sm" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-4 w-4" /></Button>
+                                                    <Button title={t("delete")} onClick={() => handleRemoveAssignment(student.id)} size="sm" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-4 w-4" /></Button>
                                                 )}
                                             </div>
                                         </TableCell>
@@ -368,7 +372,7 @@ export default function StudentTransportFeesPage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                        <div>Showing {filteredStudents.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredStudents.length)} of {filteredStudents.length} entries</div>
+                        <div>{t("showing_x_to_y_of_z", { from: filteredStudents.length === 0 ? 0 : startIndex + 1, to: Math.min(startIndex + itemsPerPage, filteredStudents.length), total: filteredStudents.length })}</div>
                         <div className="flex gap-1 items-center">
                             <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -384,34 +388,34 @@ export default function StudentTransportFeesPage() {
             <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>Assign Transport: {selectedStudent?.name}</DialogTitle>
+                        <DialogTitle>{t("assign_transport")}: {selectedStudent?.name}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
-                            <Label>Route <span className="text-red-500">*</span></Label>
+                            <Label>{t("route")} <span className="text-red-500">*</span></Label>
                             <Select value={assignmentForm.route_id} onValueChange={(val) => setAssignmentForm({ ...assignmentForm, route_id: val })}>
-                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="Select Route" /></SelectTrigger>
+                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder={t("select_route")} /></SelectTrigger>
                                 <SelectContent>{routes.map((r) => <SelectItem key={r.id} value={r.id.toString()}>{r.title}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="grid gap-2">
-                            <Label>Vehicle <span className="text-red-500">*</span></Label>
+                            <Label>{t("vehicle")} <span className="text-red-500">*</span></Label>
                             <Select value={assignmentForm.vehicle_id} onValueChange={(val) => setAssignmentForm({ ...assignmentForm, vehicle_id: val })}>
-                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="Select Vehicle" /></SelectTrigger>
+                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder={t("select_vehicle")} /></SelectTrigger>
                                 <SelectContent>{vehicles.map((v) => <SelectItem key={v.id} value={v.id.toString()}>{v.vehicle_no}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="grid gap-2">
-                            <Label>Pickup Point <span className="text-red-500">*</span></Label>
+                            <Label>{t("pickup_point")} <span className="text-red-500">*</span></Label>
                             <Select value={assignmentForm.pickup_point_id} onValueChange={(val) => setAssignmentForm({ ...assignmentForm, pickup_point_id: val })}>
-                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="Select Point" /></SelectTrigger>
+                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder={t("select_point")} /></SelectTrigger>
                                 <SelectContent>{pickupPoints.map((p) => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAssignModalOpen(false)} className="h-9 text-[11px] rounded-full px-6">Cancel</Button>
-                        <Button disabled={loading} onClick={handleAssign} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all min-w-[120px]">{loading ? "Saving..." : "Save Assignment"}</Button>
+                        <Button variant="outline" onClick={() => setIsAssignModalOpen(false)} className="h-9 text-[11px] rounded-full px-6">{t("cancel")}</Button>
+                        <Button disabled={loading} onClick={handleAssign} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all min-w-[120px]">{loading ? t("saving") : t("save_assignment")}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -420,18 +424,18 @@ export default function StudentTransportFeesPage() {
             <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>View Transport: {selectedStudent?.name}</DialogTitle>
+                        <DialogTitle>{t("view_transport")}: {selectedStudent?.name}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-3 py-4 text-[12px]">
-                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">Admission No</span><span className="text-gray-700 font-medium">{selectedStudent?.admission_no}</span></div>
-                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">Student Name</span><span className="text-[#6366f1] font-bold">{selectedStudent?.name}</span></div>
-                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">Class</span><span className="text-gray-700 font-medium">{selectedStudent?.school_class?.name} ({selectedStudent?.section?.name})</span></div>
-                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">Route</span><span className="text-indigo-600 font-bold">{selectedStudent?.transport_assignment?.route?.title || "Not Assigned"}</span></div>
-                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">Vehicle</span><span className="text-gray-700 font-medium">{selectedStudent?.transport_assignment?.vehicle?.vehicle_no || "Not Assigned"}</span></div>
-                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">Pickup Point</span><span className="text-gray-700 font-medium">{selectedStudent?.transport_assignment?.pickup_point?.name || "Not Assigned"}</span></div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("admission_no")}</span><span className="text-gray-700 font-medium">{selectedStudent?.admission_no}</span></div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("student_name")}</span><span className="text-[#6366f1] font-bold">{selectedStudent?.name}</span></div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("class")}</span><span className="text-gray-700 font-medium">{selectedStudent?.school_class?.name} ({selectedStudent?.section?.name})</span></div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("route")}</span><span className="text-indigo-600 font-bold">{selectedStudent?.transport_assignment?.route?.title || t("not_assigned")}</span></div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("vehicle")}</span><span className="text-gray-700 font-medium">{selectedStudent?.transport_assignment?.vehicle?.vehicle_no || t("not_assigned")}</span></div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("pickup_point")}</span><span className="text-gray-700 font-medium">{selectedStudent?.transport_assignment?.pickup_point?.name || t("not_assigned")}</span></div>
                     </div>
                     <DialogFooter>
-                        <Button onClick={() => setIsViewModalOpen(false)} className="rounded-full px-8 h-9 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all">Close</Button>
+                        <Button onClick={() => setIsViewModalOpen(false)} className="rounded-full px-8 h-9 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all">{t("close")}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

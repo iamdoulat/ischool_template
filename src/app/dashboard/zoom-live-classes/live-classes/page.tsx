@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ interface LiveClass {
 }
 
 export default function LiveClassesPage() {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState("");
     const [classes, setClasses] = useState<LiveClass[]>([]);
     const [loading, setLoading] = useState(false);
@@ -106,7 +108,7 @@ export default function LiveClassesPage() {
             }
         } catch (error) {
             console.error("Failed to fetch classes", error);
-            toast.error("Failed to load live classes");
+            toast.error(t("failed_to_load_live_classes"));
         } finally {
             setLoading(false);
         }
@@ -114,7 +116,7 @@ export default function LiveClassesPage() {
 
     const handleSave = async () => {
         if (!formData.title || !formData.date_time || !formData.class_id || !formData.section_id || !formData.staff_id) {
-            toast.error("Required fields missing");
+            toast.error(t("required_fields_missing"));
             return;
         }
 
@@ -122,17 +124,17 @@ export default function LiveClassesPage() {
         try {
             if (editMode && selectedId) {
                 await api.put(`/conference/live-classes/${selectedId}`, formData);
-                toast.success("Live class updated successfully");
+                toast.success(t("live_class_updated_successfully"));
             } else {
                 await api.post('/conference/live-classes', formData);
-                toast.success("Live class scheduled successfully");
+                toast.success(t("live_class_scheduled_successfully"));
             }
             setOpen(false);
             resetForm();
             fetchClasses();
         } catch (error) {
             console.error("Failed to save class", error);
-            toast.error("Failed to save live class");
+            toast.error(t("failed_to_save_live_class"));
         } finally {
             setSubmitting(false);
         }
@@ -158,11 +160,11 @@ export default function LiveClassesPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/conference/live-classes/${deleteId}`);
-            toast.success("Live class expunged successfully");
+            toast.success(t("live_class_expunged_successfully"));
             fetchClasses();
         } catch (error) {
             console.error("Failed to delete", error);
-            toast.error("Failed to expunge live class");
+            toast.error(t("failed_to_expunge_live_class"));
         } finally {
             setDeleteId(null);
         }
@@ -189,7 +191,7 @@ export default function LiveClassesPage() {
         if (item.staff) {
             list.push({
                 name: `${item.staff.name} ${item.staff.last_name ?? ''}`.trim(),
-                role: "Teacher",
+                role: t("teacher"),
                 id: item.staff.employee_id || item.staff_id,
                 last_join: formatDateTime(item.date_time),
             });
@@ -197,7 +199,7 @@ export default function LiveClassesPage() {
         if (item.creator) {
             list.push({
                 name: `${item.creator.name} ${item.creator.last_name ?? ''}`.trim(),
-                role: item.creator.employee_id ? "Host" : "Admin",
+                role: item.creator.employee_id ? t("host") : t("admin"),
                 id: item.creator.employee_id || item.created_by,
                 last_join: formatDateTime(item.date_time),
             });
@@ -247,8 +249,8 @@ export default function LiveClassesPage() {
                             <Video className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Live Classes</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">Schedule &amp; manage Zoom live classes</p>
+                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("live_classes")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("schedule_and_manage_zoom_live_classes")}</p>
                         </div>
                     </div>
                     <Button
@@ -256,7 +258,7 @@ export default function LiveClassesPage() {
                         className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-full shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
                     >
                         <Plus className="h-3.5 w-3.5" />
-                        Add
+                        {t("add")}
                     </Button>
                 </div>
             </div>
@@ -269,7 +271,7 @@ export default function LiveClassesPage() {
                     <div className="relative w-full md:w-64">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                         <Input
-                            placeholder="Search"
+                            placeholder={t("search")}
                             value={searchTerm}
                             onChange={(e) => {
                                 setSearchTerm(e.target.value);
@@ -308,13 +310,13 @@ export default function LiveClassesPage() {
                     <Table className="min-w-[1000px]">
                         <TableHeader className="bg-transparent border-b border-gray-100">
                             <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                <TableHead className="py-3 px-4">Class <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Section <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Date Time <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Api Used <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Created By <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Total Join <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4 text-right">Action</TableHead>
+                                <TableHead className="py-3 px-4">{t("class")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("section")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("date_time")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("api_used")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("created_by")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("total_join")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 text-right">{t("action")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -331,14 +333,14 @@ export default function LiveClassesPage() {
                             ) : classes.length === 0 ? (
                                 <TableRow className="hover:bg-transparent h-64">
                                     <TableCell colSpan={7} className="text-center py-12 text-gray-400 font-bold uppercase text-[10px] tracking-widest">
-                                        No virtual class sessions scheduled.
+                                        {t("no_virtual_class_sessions_scheduled")}
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 classes.map((item, idx) => (
                                     <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap">
                                         <TableCell className="py-3 px-4 text-gray-700 font-medium">{item.school_class?.name || "Class 1"}</TableCell>
-                                        <TableCell className="py-3 px-4 text-gray-600">{item.section?.name?.replace('SECTION - ', '') || "A"}</TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-600">{item.section?.name?.replace('SECTION - ', '') || t("section_a")}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-600">{formatDateTime(item.date_time)}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-600 font-medium">{item.api_used || "Global"}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-600">
@@ -352,21 +354,21 @@ export default function LiveClassesPage() {
                                                 <Button 
                                                     onClick={() => handleOpenJoinList(item)}
                                                     className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                                                    title="View Join List"
+                                                    title={t("view_join_list")}
                                                 >
                                                     <List className="h-3.5 w-3.5" />
                                                 </Button>
                                                 <Button 
                                                     onClick={() => handleEdit(item)}
                                                     className="bg-emerald-500 hover:bg-emerald-600 text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                                                    title="Edit Class"
+                                                    title={t("edit_class")}
                                                 >
                                                     <Pencil className="h-3 w-3" />
                                                 </Button>
                                                 <Button 
                                                     onClick={() => setDeleteId(item.id)}
                                                     className="bg-rose-500 hover:bg-rose-600 text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                                                    title="Delete Class"
+                                                    title={t("delete_class")}
                                                 >
                                                     <Trash2 className="h-3 w-3" />
                                                 </Button>
@@ -382,8 +384,11 @@ export default function LiveClassesPage() {
                 {/* Footer Controls */}
                 <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
                     <div>
-                        Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                        {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                        {t("showing_x_to_y_of_z", {
+                            from: totalEntries > 0 ? startIndex + 1 : 0,
+                            to: Math.min(startIndex + sizeNum, totalEntries),
+                            total: totalEntries
+                        })}
                     </div>
 
                     {totalEntries > 0 && (
@@ -432,7 +437,7 @@ export default function LiveClassesPage() {
                     <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
                         <DialogHeader>
                             <DialogTitle className="text-white text-sm font-semibold tracking-tight">
-                                {editMode ? "Edit Live Class" : "Add Live Class"}
+                                {editMode ? t("edit_live_class") : t("add_live_class")}
                             </DialogTitle>
                         </DialogHeader>
                         <button 
@@ -448,11 +453,11 @@ export default function LiveClassesPage() {
                         
                         {/* Title */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Class Dimension Name <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("class_dimension_name")} <span className="text-red-500">*</span></Label>
                             <Input
                                 value={formData.title}
                                 onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                placeholder="Enter title"
+                                placeholder={t("enter_title")}
                                 className="h-9 border-gray-200 focus-visible:ring-indigo-500 rounded text-xs shadow-none w-full"
                             />
                         </div>
@@ -460,10 +465,10 @@ export default function LiveClassesPage() {
                         <div className="grid grid-cols-2 gap-4">
                             {/* Class */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-medium text-gray-700">{t("class")} <span className="text-red-500">*</span></Label>
                                 <Select value={formData.class_id} onValueChange={(val) => setFormData({...formData, class_id: val})}>
                                     <SelectTrigger className="h-9 border-gray-200 text-xs rounded text-gray-700">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent className="rounded shadow-xl">
                                         {criteria.classes.map(c => (
@@ -475,10 +480,10 @@ export default function LiveClassesPage() {
 
                             {/* Section */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">Section <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-medium text-gray-700">{t("section")} <span className="text-red-500">*</span></Label>
                                 <Select value={formData.section_id} onValueChange={(val) => setFormData({...formData, section_id: val})}>
                                     <SelectTrigger className="h-9 border-gray-200 text-xs rounded text-gray-700">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent className="rounded shadow-xl">
                                         {criteria.classes.find(c => c.id.toString() === formData.class_id)?.sections.map((s: any) => (
@@ -492,10 +497,10 @@ export default function LiveClassesPage() {
                         <div className="grid grid-cols-2 gap-4">
                             {/* Instructor */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">Assigned Instructor <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-medium text-gray-700">{t("assigned_instructor")} <span className="text-red-500">*</span></Label>
                                 <Select value={formData.staff_id} onValueChange={(val) => setFormData({...formData, staff_id: val})}>
                                     <SelectTrigger className="h-9 border-gray-200 text-xs rounded text-gray-700">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent className="rounded shadow-xl">
                                         {criteria.staff.map(st => (
@@ -507,7 +512,7 @@ export default function LiveClassesPage() {
 
                             {/* Date Time */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">Date Time <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-medium text-gray-700">{t("date_time")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="datetime-local"
                                     value={formData.date_time}
@@ -520,7 +525,7 @@ export default function LiveClassesPage() {
                         <div className="grid grid-cols-2 gap-4">
                             {/* Duration */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">Duration (Minutes) <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-medium text-gray-700">{t("duration_minutes")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="number"
                                     value={formData.duration}
@@ -531,14 +536,14 @@ export default function LiveClassesPage() {
 
                             {/* API Used */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">Api Used</Label>
+                                <Label className="text-[11px] font-medium text-gray-700">{t("api_used")}</Label>
                                 <Select value={formData.api_used} onValueChange={(val) => setFormData({...formData, api_used: val})}>
                                     <SelectTrigger className="h-9 border-gray-200 text-xs rounded text-gray-700">
-                                        <SelectValue placeholder="Global" />
+                                        <SelectValue placeholder={t("global")} />
                                     </SelectTrigger>
                                     <SelectContent className="rounded shadow-xl">
-                                        <SelectItem value="Global">Global</SelectItem>
-                                        <SelectItem value="Self">Self</SelectItem>
+                                        <SelectItem value="Global">{t("global")}</SelectItem>
+                                        <SelectItem value="Self">{t("self")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -546,11 +551,11 @@ export default function LiveClassesPage() {
 
                         {/* Description / Agenda */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Description</Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("description")}</Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                placeholder="Session Objectives"
+                                placeholder={t("session_objectives")}
                                 className="min-h-[80px] border-gray-200 focus-visible:ring-indigo-500 rounded text-xs shadow-none resize-none w-full p-2"
                             />
                         </div>
@@ -564,14 +569,14 @@ export default function LiveClassesPage() {
                             onClick={() => setOpen(false)}
                             className="h-8.5 px-4 font-semibold text-gray-500 border-gray-200 hover:bg-gray-100 rounded cursor-pointer"
                         >
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button 
                             onClick={handleSave}
                             disabled={submitting}
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-5 h-8.5 font-bold rounded shadow transition-all active:scale-95 border-0 cursor-pointer"
                         >
-                            Save
+                            {t("save")}
                         </Button>
                     </div>
 
@@ -585,7 +590,7 @@ export default function LiveClassesPage() {
                     {/* Header */}
                     <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
                         <DialogHeader>
-                            <DialogTitle className="text-white text-sm font-semibold tracking-tight">Join List</DialogTitle>
+                            <DialogTitle className="text-white text-sm font-semibold tracking-tight">{t("join_list")}</DialogTitle>
                         </DialogHeader>
                         <button 
                             onClick={() => setJoinModalOpen(false)} 
@@ -600,7 +605,7 @@ export default function LiveClassesPage() {
                         <div className="relative w-full md:w-48">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search..."
+                                placeholder={t("search_placeholder")}
                                 value={joinSearchTerm}
                                 onChange={(e) => setJoinSearchTerm(e.target.value)}
                                 className="pl-8 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
@@ -637,15 +642,15 @@ export default function LiveClassesPage() {
                             <Table className="min-w-[700px]">
                                 <TableHeader className="bg-transparent border-b border-gray-100">
                                     <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-2.5 px-4">Staff / Student <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                        <TableHead className="py-2.5 px-4 text-right">Last Join</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("staff_student")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                        <TableHead className="py-2.5 px-4 text-right">{t("last_join")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredJoinList.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={2} className="text-center py-8 text-gray-400 uppercase text-[10px] tracking-wider">
-                                                No session join records matching search filter.
+                                                {t("no_session_join_records_matching_search_filter")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -667,7 +672,11 @@ export default function LiveClassesPage() {
                         {/* Modal Footer pagination */}
                         <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                             <div>
-                                Showing 1 to {filteredJoinList.length} of {filteredJoinList.length} entries
+                                {t("showing_x_to_y_of_z", {
+                                    from: filteredJoinList.length > 0 ? 1 : 0,
+                                    to: filteredJoinList.length,
+                                    total: filteredJoinList.length
+                                })}
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <button className="h-7 w-7 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl active:scale-95 border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none" disabled>
@@ -690,15 +699,15 @@ export default function LiveClassesPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="max-w-[450px] p-6 bg-white border border-gray-200 shadow-2xl rounded text-gray-700 text-xs">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-gray-800 text-sm font-semibold tracking-tight">Expunge Curriculum Cycle</AlertDialogTitle>
+                        <AlertDialogTitle className="text-gray-800 text-sm font-semibold tracking-tight">{t("expunge_curriculum_cycle")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-gray-500 text-xs leading-relaxed mt-2">
-                            Are you sure you want to permanently delete this virtual session? This action will invalidate all join protocols and analytical records associated with this curriculum link.
+                            {t("confirm_expunge_live_class")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6 gap-2">
-                        <AlertDialogCancel className="h-8.5 px-4 font-semibold text-gray-500 border-gray-200 hover:bg-gray-100 rounded cursor-pointer">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-8.5 px-4 font-semibold text-gray-500 border-gray-200 hover:bg-gray-100 rounded cursor-pointer">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 text-white h-8.5 px-4 font-bold rounded shadow transition-all active:scale-95 border-0 cursor-pointer">
-                            Confirm Expunge
+                            {t("confirm_expunge")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

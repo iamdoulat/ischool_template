@@ -46,6 +46,8 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -83,6 +85,8 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 
 export default function PickupPointPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [points, setPoints] = useState<PickupPoint[]>([]);
     const [loading, setLoading] = useState(true);
@@ -102,7 +106,7 @@ export default function PickupPointPage() {
             setPoints(response.data.data);
         } catch (error) {
             console.error("Error fetching pickup points:", error);
-            toast("error", "Failed to load pickup points");
+            tt.error("failed_to_load_pickup_points");
         } finally {
             setLoading(false);
         }
@@ -114,22 +118,22 @@ export default function PickupPointPage() {
 
     const handleSubmit = async () => {
         if (!formState.name) {
-            toast("error", "Pickup point name is required");
+            toast("error", t("pickup_point_name_required"));
             return;
         }
         try {
             if (isEditing && currentPoint) {
                 await api.put(`/transport/pickup-points/${currentPoint.id}`, formState);
-                toast("success", "Pickup point updated successfully");
+                tt.success("pickup_point_updated_successfully");
             } else {
                 await api.post("/transport/pickup-points", formState);
-                toast("success", "Pickup point created successfully");
+                tt.success("pickup_point_created_successfully");
             }
             setIsModalOpen(false);
             resetForm();
             fetchData();
         } catch (error: any) {
-            toast("error", error.response?.data?.message || "Failed to save pickup point");
+            tt.error("failed_to_save_pickup_point");
         }
     };
 
@@ -150,13 +154,13 @@ export default function PickupPointPage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this pickup point?")) return;
+        if (!confirm(t("delete_pickup_point_confirmation"))) return;
         try {
             await api.delete(`/transport/pickup-points/${id}`);
-            toast("success", "Pickup point deleted successfully");
+            tt.success("pickup_point_deleted_successfully");
             fetchData();
         } catch (error) {
-            toast("error", "Failed to delete pickup point");
+            tt.error("failed_to_delete_pickup_point");
         }
     };
 
@@ -238,15 +242,15 @@ export default function PickupPointPage() {
     const copyToClipboard = () => {
         const text = points.map(p => `${p.name} (${p.latitude}, ${p.longitude})`).join('\n');
         navigator.clipboard.writeText(text);
-        toast("success", "Data copied to clipboard");
+        tt.success("data_copied_to_clipboard");
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: copyToClipboard, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: exportToExcel, title: "Excel" },
-        { Icon: FileText, onClick: exportToPDF, title: "PDF" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: copyToClipboard, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: exportToExcel, title: t("excel") },
+        { Icon: FileText, onClick: exportToPDF, title: t("pdf") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     return (
@@ -257,16 +261,16 @@ export default function PickupPointPage() {
                         <MapPin className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Pickup Point List</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{points.length} pickup point{points.length === 1 ? "" : "s"}</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("pickup_point_list")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{points.length} {points.length === 1 ? t("pickup_point").toLowerCase() : t("pickup_points").toLowerCase()}</p>
                     </div>
                     <Button onClick={() => { resetForm(); setIsModalOpen(true); }} className="ml-auto h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
-                        <Plus className="h-4 w-4" /> Add
+                        <Plus className="h-4 w-4" /> {t("add")}
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                        <Input placeholder="Search..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="h-9 text-xs w-full md:w-64" />
+                        <Input placeholder={t("search")} value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="h-9 text-xs w-full md:w-64" />
                         <div className="flex items-center gap-2">
                             <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
                                 <SelectTrigger className="w-[70px] h-9 text-xs"><SelectValue /></SelectTrigger>
@@ -290,17 +294,17 @@ export default function PickupPointPage() {
                         <Table className="min-w-[700px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Latitude</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Longitude</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("latitude")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("longitude")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <SkeletonRows rows={6} cols={TABLE_COLS} />
                                 ) : paginatedData.length === 0 ? (
-                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No pickup points found</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_pickup_points_found")}</TableCell></TableRow>
                                 ) : paginatedData.map((point) => (
                                     <TableRow key={point.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
                                         <TableCell className="py-3 text-gray-700 font-medium">{point.name}</TableCell>
@@ -320,7 +324,7 @@ export default function PickupPointPage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                        <div>Showing {filteredPoints.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredPoints.length)} of {filteredPoints.length} entries</div>
+                        <div>{t("showing_x_to_y_of_z", { from: filteredPoints.length === 0 ? 0 : startIndex + 1, to: Math.min(startIndex + itemsPerPage, filteredPoints.length), total: filteredPoints.length })}</div>
                         <div className="flex gap-1 items-center">
                             <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -337,37 +341,37 @@ export default function PickupPointPage() {
                 <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl bg-white">
                     <DialogHeader className="p-6 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
                         <DialogTitle className="text-white text-xl font-bold tracking-tight">
-                            {isViewing ? "View Pickup Point" : isEditing ? "Edit Pickup Point" : "Add Pickup Point"}
+                            {isViewing ? t("view_pickup_point") : isEditing ? t("edit_pickup_point") : t("add_pickup_point")}
                         </DialogTitle>
-                        <p className="text-indigo-100 text-xs font-medium opacity-90">{isViewing ? "Pickup point details." : "Manage transit location details."}</p>
+                        <p className="text-indigo-100 text-xs font-medium opacity-90">{isViewing ? t("pickup_point_details") : t("manage_transit_location_details")}</p>
                     </DialogHeader>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Pickup Point Name <span className="text-red-500">*</span></Label>
-                            <Input value={formState.name} onChange={(e) => setFormState({ ...formState, name: e.target.value })} readOnly={isViewing} className="h-10 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg text-xs" placeholder="e.g. Brooklyn North" />
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("pickup_point_name")} <span className="text-red-500">*</span></Label>
+                            <Input value={formState.name} onChange={(e) => setFormState({ ...formState, name: e.target.value })} readOnly={isViewing} className="h-10 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg text-xs" placeholder={t("pickup_point_name_placeholder")} />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Latitude</Label>
+                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("latitude")}</Label>
                                 <Input value={formState.latitude} onChange={(e) => setFormState({ ...formState, latitude: e.target.value })} readOnly={isViewing} className="h-10 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg text-xs" placeholder="23.2195..." />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Longitude</Label>
+                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("longitude")}</Label>
                                 <Input value={formState.longitude} onChange={(e) => setFormState({ ...formState, longitude: e.target.value })} readOnly={isViewing} className="h-10 border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg text-xs" placeholder="79.9206..." />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Select Location on Map (Leaflet)</Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("select_location_on_map")}</Label>
                             <div id="map-container" className="w-full h-[250px] bg-gray-100 rounded-lg border border-gray-100 overflow-hidden z-0">
-                                <div className="flex items-center justify-center h-full text-gray-400 text-[10px] italic">Loading Map...</div>
+                                <div className="flex items-center justify-center h-full text-gray-400 text-[10px] italic">{t("loading_map")}</div>
                             </div>
-                            <p className="text-[10px] text-gray-400">Click on the map to set pickup point coordinates.</p>
+                            <p className="text-[10px] text-gray-400">{t("click_map_to_set_coordinates")}</p>
                         </div>
                     </div>
                     <DialogFooter className="p-6 bg-gray-50/50 block sm:flex sm:justify-end gap-3 border-t border-gray-100">
-                        <Button onClick={() => setIsModalOpen(false)} variant="outline" className="w-full sm:w-auto px-6 h-10 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-gray-100 transition-all shadow-sm">{isViewing ? "Close" : "Cancel"}</Button>
+                        <Button onClick={() => setIsModalOpen(false)} variant="outline" className="w-full sm:w-auto px-6 h-10 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-gray-100 transition-all shadow-sm">{isViewing ? t("close") : t("cancel")}</Button>
                         {!isViewing && (
-                            <Button onClick={handleSubmit} className="w-full sm:w-auto px-10 h-10 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all">{isEditing ? "Save Changes" : "Create Point"}</Button>
+                            <Button onClick={handleSubmit} className="w-full sm:w-auto px-10 h-10 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all">{isEditing ? t("save_changes") : t("create_point")}</Button>
                         )}
                     </DialogFooter>
                 </DialogContent>

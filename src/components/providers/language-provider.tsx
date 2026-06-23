@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { i18nFallbacks } from "@/lib/i18n-fallbacks";
 
 interface Language {
     id: number;
@@ -16,14 +17,14 @@ interface Language {
 interface LanguageContextType {
     selectedLanguage: Language | null;
     setSelectedLanguage: (lang: Language) => void;
-    t: (key: string) => string;
+    t: (key: string, params?: Record<string, string | number>) => string;
     loading: boolean;
 }
 
 const LanguageContext = createContext<LanguageContextType>({
     selectedLanguage: null,
     setSelectedLanguage: () => { },
-    t: (key: string) => key,
+    t: (key: string, _params?: Record<string, string | number>) => key,
     loading: true,
 });
 
@@ -75,55 +76,39 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
         updateLayoutDirection(lang.is_rtl);
     };
 
-    const t = (key: string): string => {
-        if (key === 'send_wa') return 'Send WA';
-        if (key === 'wa_template') return 'WA Template';
-        if (key === 'whatsapp_messaging') return 'WhatsApp Gateway';
-        if (key === 'sms_setting') return 'SMS Gateway';
-        if (key === 'email_setting') return 'Email Gateway';
-        if (key === 'email_sms_log') return 'Email / SMS / WA Logs';
-        if (key === 'schedule_email_sms_log') return 'Schedule Email / SMS / WA Logs';
-        if (translations[key]) return translations[key];
-
-        // Built-in English fallbacks — shown when no translation file is loaded
-        const fallbacks: Record<string, string> = {
-            // General
-            name: "Name",
-            save: "Save",
-            cancel: "Cancel",
-            edit: "Edit",
-            delete: "Delete",
-            search: "Search",
-            active: "Active",
-            status: "Status",
-            action: "Action",
-            add: "Add",
-            // Languages page
-            language_list: "Language List",
-            language: "Language",
-            short_code: "Short Code",
-            country_code: "Country Code",
-            is_rtl: "RTL",
-            add_language: "Add Language",
-            search_languages: "Search languages...",
-            // Notifications
-            notification_settings: "Notification Settings",
-            // Sessions
-            session_settings: "Session Settings",
-            // WhatsApp / SMS
+    const t = (key: string, params?: Record<string, string | number>): string => {
+        // Hardcoded overrides — special display names that differ from key convention
+        const overrides: Record<string, string> = {
+            send_wa: "Send WA",
+            wa_template: "WA Template",
             whatsapp_messaging: "WhatsApp Gateway",
             sms_setting: "SMS Gateway",
             email_setting: "Email Gateway",
-            send_wa: "Send WA",
-            wa_template: "WA Template",
             email_sms_log: "Email / SMS / WA Logs",
             schedule_email_sms_log: "Schedule Email / SMS / WA Logs",
-            // Common table labels
-            no_records: "No records found",
-            loading: "Loading...",
         };
 
-        return fallbacks[key] ?? key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        if (overrides[key]) return overrides[key];
+
+        // 1. API-loaded translations take top priority
+        if (translations[key]) return translations[key];
+
+        // 2. Built-in English fallbacks
+        let result = i18nFallbacks[key];
+
+        // 3. Ultimate fallback: humanize the key itself
+        if (!result) {
+            result = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        }
+
+        // Interpolation: replace {paramName} placeholders
+        if (params) {
+            for (const [k, v] of Object.entries(params)) {
+                result = result.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+            }
+        }
+
+        return result;
     };
 
     return (

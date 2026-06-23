@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -52,6 +53,7 @@ function TableSkeleton({ cols }: { cols: number }) {
 }
 
 export default function AnnualCalendarPage() {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState("");
     const [filterType, setFilterType] = useState<string>("all");
     const [holidayTypes, setHolidayTypes] = useState<HolidayTypeOption[]>([]);
@@ -182,13 +184,13 @@ export default function AnnualCalendarPage() {
                             <CalendarRange className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold text-slate-800 leading-none">Annual Calendar</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Manage holidays, events, and vacation schedules</p>
+                            <CardTitle className="text-base font-bold text-slate-800 leading-none">{t("annual_calendar")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("manage_holidays_events_and_vacation_schedules")}</p>
                         </div>
                     </div>
                     <Button onClick={() => { resetForm(); setOpen(true); }}
                         className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all shrink-0">
-                        <Plus className="h-4 w-4" /> Add Entry
+                        <Plus className="h-4 w-4" /> {t("add_entry")}
                     </Button>
                 </CardHeader>
 
@@ -197,7 +199,7 @@ export default function AnnualCalendarPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                             <div className="space-y-1.5 w-full sm:w-56">
-                                <Label className="text-xs font-semibold text-gray-600">Holiday Type</Label>
+                                <Label className="text-xs font-semibold text-gray-600">{t("holiday_type")}</Label>
                                 <Select value={filterType} onValueChange={v => { setFilterType(v); setCurrentPage(1); }}>
                                     <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="All Types" /></SelectTrigger>
                                     <SelectContent>

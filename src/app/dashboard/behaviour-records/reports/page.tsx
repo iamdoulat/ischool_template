@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     Card,
     CardContent,
@@ -62,7 +63,8 @@ interface AssignedIncident {
 }
 
 export default function ReportsPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [activeReport, setActiveReport] = useState("incident");
     const [loading, setLoading] = useState(false);
     const [criteria, setCriteria] = useState<{ classes: any[], sessions: any[] }>({ classes: [], sessions: [] });
@@ -105,7 +107,7 @@ export default function ReportsPage() {
 
     const fetchReports = async () => {
         if (!selectedClass || !selectedSection) {
-            toast({ title: "Validation", description: "Please select Class and Section", variant: "destructive" });
+            tt.error("please_select_class_and_section");
             return;
         }
 
@@ -121,7 +123,7 @@ export default function ReportsPage() {
             });
             setReports(response.data.data || []);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch analytical report", variant: "destructive" });
+            tt.error("failed_to_fetch_analytical_report");
         } finally {
             setLoading(false);
         }
@@ -137,33 +139,33 @@ export default function ReportsPage() {
             });
             setStudentIncidents(response.data);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch student incident audit", variant: "destructive" });
+            tt.error("failed_to_fetch_student_incident_audit");
         } finally {
             setAuditLoading(false);
         }
     };
 
     const deleteIncident = async (id: string) => {
-        if (!confirm("Are you sure you want to purge this assigned incident?")) return;
+        if (!confirm(t("are_you_sure_you_want_to_purge_this_assigned_incident"))) return;
         try {
             await api.delete(`/behaviour/assigned-incidents/${id}`);
-            toast({ title: "Success", description: "Incident node purged successfully" });
+            tt.success("incident_node_purged_successfully");
             // Refresh audit list
             if (selectedStudent) handleAudit(selectedStudent);
             // Refresh main report to update points
             fetchReports();
         } catch (error) {
-            toast({ title: "Error", description: "Purge protocol failed", variant: "destructive" });
+            tt.error("purge_protocol_failed");
         }
     };
 
     const reportTypes = [
-        { id: "incident", label: "Incident Registry Report", icon: ShieldAlert },
-        { id: "behaviour", label: "Nodal Behaviour Rank", icon: BarChart3 },
-        { id: "class_rank", label: "Class Performance Rank", icon: GraduationCap },
-        { id: "section_rank", label: "Section Performance Matrix", icon: Layers },
-        { id: "house_rank", label: "Institutional House Rank", icon: Home },
-        { id: "incident_wise", label: "Incident Analytical Audit", icon: Zap },
+        { id: "incident", label: t("incident_registry_report"), icon: ShieldAlert },
+        { id: "behaviour", label: t("nodal_behaviour_rank"), icon: BarChart3 },
+        { id: "class_rank", label: t("class_performance_rank"), icon: GraduationCap },
+        { id: "section_rank", label: t("section_performance_matrix"), icon: Layers },
+        { id: "house_rank", label: t("institutional_house_rank"), icon: Home },
+        { id: "incident_wise", label: t("incident_analytical_audit"), icon: Zap },
     ];
 
     return (
@@ -176,8 +178,8 @@ export default function ReportsPage() {
                             <BarChart3 className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Behaviour Reports</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Generate behaviour and ranking reports</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("behaviour_reports")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("generate_behaviour_and_ranking_reports")}</p>
                         </div>
                     </div>
                 </CardHeader>
@@ -199,10 +201,10 @@ export default function ReportsPage() {
                     {/* Select Criteria */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Class <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("class_label")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
                                 <SelectTrigger className="h-9 text-xs">
-                                    <SelectValue placeholder="Select class" />
+                                    <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {criteria.classes.map(cls => <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>)}
@@ -210,10 +212,10 @@ export default function ReportsPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Section <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("section_label")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection}>
                                 <SelectTrigger className="h-9 text-xs">
-                                    <SelectValue placeholder="Select section" />
+                                    <SelectValue placeholder={t("select_section")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(sec => <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>)}
@@ -221,14 +223,14 @@ export default function ReportsPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Session</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("session")}</Label>
                             <Select value={selectedSession} onValueChange={setSelectedSession}>
                                 <SelectTrigger className="h-9 text-xs">
-                                    <SelectValue placeholder="Current session" />
+                                    <SelectValue placeholder={t("current_session")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="current">Current Session</SelectItem>
-                                    <SelectItem value="all">All Sessions</SelectItem>
+                                    <SelectItem value="current">{t("current_session")}</SelectItem>
+                                    <SelectItem value="all">{t("all_sessions")}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -239,7 +241,7 @@ export default function ReportsPage() {
                             className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                         >
                             <Search className="h-4 w-4" />
-                            Generate Report
+                            {t("generate_report")}
                         </Button>
                     </div>
                 </CardContent>
@@ -253,8 +255,8 @@ export default function ReportsPage() {
                             <Layers className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Report Results</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Results for the selected criteria</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("report_results")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("results_for_the_selected_criteria")}</p>
                         </div>
                     </div>
                     <div className="flex gap-1">
@@ -267,13 +269,13 @@ export default function ReportsPage() {
                         <Table className="min-w-[760px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600">Adm. No.</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Student</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-center">Class</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Gender</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-center">Incidents</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-center">Points</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right w-[80px]">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("adm_no")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("student")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center">{t("class_label")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("gender")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center">{t("incidents")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center">{t("points")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right w-[80px]">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -294,8 +296,8 @@ export default function ReportsPage() {
                                         <TableCell colSpan={7} className="px-4 py-14 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <FolderOpen className="h-10 w-10 opacity-30" />
-                                                <p className="text-xs font-semibold text-gray-500">No results yet</p>
-                                                <p className="text-[11px] text-gray-400">Choose criteria above and click &ldquo;Generate Report&rdquo;.</p>
+                                                <p className="text-xs font-semibold text-gray-500">{t("no_results_yet")}</p>
+                                                <p className="text-[11px] text-gray-400">{t("choose_criteria_above_and_click_generate_report")}</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -341,7 +343,7 @@ export default function ReportsPage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium">
-                        <div>{reports.length} student{reports.length === 1 ? "" : "s"}</div>
+                        <div>{t("x_students", { count: reports.length })}</div>
                         <div className="flex gap-1 items-center">
                             <Button
                                 variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
@@ -372,7 +374,7 @@ export default function ReportsPage() {
                                 <UserCheck className="h-6 w-6" />
                             </div>
                             <div>
-                                <DialogTitle className="text-xl font-black uppercase tracking-tight">Nodal Incident Audit</DialogTitle>
+                                <DialogTitle className="text-xl font-black uppercase tracking-tight">{t("nodal_incident_audit")}</DialogTitle>
                                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-1">
                                     {selectedStudent?.name} ({selectedStudent?.admission_no})
                                 </p>
@@ -384,22 +386,22 @@ export default function ReportsPage() {
                         {auditLoading ? (
                             <div className="h-64 flex flex-col items-center justify-center space-y-3">
                                 <RefreshCw className="h-8 w-8 text-indigo-500 animate-spin" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Syncing Behavioural Audit Data...</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t("syncing_behavioural_audit_data")}</p>
                             </div>
                         ) : studentIncidents.length === 0 ? (
                             <div className="h-64 flex flex-col items-center justify-center gap-4">
                                 <ShieldAlert className="h-10 w-10 text-gray-300" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">No incidents assigned to this student node.</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t("no_incidents_assigned_to_this_student_node")}</p>
                             </div>
                         ) : (
                             <Table>
                                 <TableHeader className="bg-slate-50/50">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100">
-                                        <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 pl-8">Protocol Date</TableHead>
-                                        <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5">Incident Title</TableHead>
-                                        <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 text-center">Points</TableHead>
-                                        <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5">Assigned By</TableHead>
-                                        <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 pr-8 text-right">Purge Protocol</TableHead>
+                                        <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 pl-8">{t("protocol_date")}</TableHead>
+                                        <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5">{t("incident_title")}</TableHead>
+                                        <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 text-center">{t("points")}</TableHead>
+                                        <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5">{t("assigned_by")}</TableHead>
+                                        <TableHead className="font-black text-slate-600 text-[10px] uppercase tracking-[0.2em] py-5 pr-8 text-right">{t("purge_protocol")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -446,7 +448,7 @@ export default function ReportsPage() {
 
                     <div className="p-8 bg-slate-50 border-t border-gray-100 flex justify-end">
                         <Button onClick={() => setAuditOpen(false)} className="h-12 px-12 rounded-full bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 active:scale-95 transition-all">
-                            Discard Audit
+                            {t("discard_audit")}
                         </Button>
                     </div>
                 </DialogContent>

@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useSettings } from "@/components/providers/settings-provider";
 import { LanguageProvider } from "@/components/providers/language-provider";
 import { CurrencyProvider } from "@/components/providers/currency-provider";
+import { useTranslation } from "@/hooks/use-translation";
 
 import { useTheme, ThemeProvider } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ function UserLayoutContent({
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const { settings, loading } = useSettings();
     const { setTheme } = useTheme();
+    const { t } = useTranslation();
 
     // Set page title and sync theme settings
     useEffect(() => {
@@ -91,7 +93,7 @@ function UserLayoutContent({
                         </p>
                     </div>
                     <p className="text-[12px] text-muted-foreground font-medium">
-                        © 2026 {loading ? "" : (settings?.school_name || "Smart School")}. All rights reserved.
+                        © 2026 {loading ? "" : (settings?.school_name || "Smart School")}. {t("all_rights_reserved")}
                     </p>
                 </footer>
             </div>

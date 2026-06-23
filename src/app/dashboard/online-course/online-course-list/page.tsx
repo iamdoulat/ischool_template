@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Search,
     Plus,
@@ -11,6 +12,7 @@ import {
     ChevronDown,
     Loader2,
     BookOpen,
+    Monitor,
     Pencil,
     Trash2,
     Eye,
@@ -127,7 +129,7 @@ interface Course {
 }
 
 export default function OnlineCoursePage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
     const { symbol, formatCurrency } = useCurrencyFormatter();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -189,11 +191,11 @@ export default function OnlineCoursePage() {
                 setCourses([]);
             }
         } catch {
-            toast("error", "Failed to fetch courses");
+            toast.error(t("failed_to_fetch_courses"));
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, currentPage, perPage]);
+    }, [searchTerm, currentPage, perPage, t]);
 
     useEffect(() => {
         fetchCourses(1);
@@ -257,18 +259,18 @@ export default function OnlineCoursePage() {
                 await api.post(`/online-course/courses/${editingId}`, fd, {
                     headers: { "Content-Type": "multipart/form-data" },
                 });
-                toast("success", "Course updated successfully");
+                toast.success(t("course_updated_successfully"));
             } else {
                 await api.post("/online-course/courses", fd, {
                     headers: { "Content-Type": "multipart/form-data" },
                 });
-                toast("success", "Course created successfully");
+                toast.success(t("course_created_successfully"));
             }
             setIsDialogOpen(false);
             resetForm();
             fetchCourses(1);
         } catch {
-            toast("error", "Failed to save course");
+            toast.error(t("failed_to_save_course"));
         } finally {
             setSaving(false);
         }
@@ -294,10 +296,10 @@ export default function OnlineCoursePage() {
         if (!deleteId) return;
         try {
             await api.delete(`/online-course/courses/${deleteId}`);
-            toast("success", "Course deleted successfully");
+            toast.success(t("course_deleted_successfully"));
             fetchCourses(1);
         } catch {
-            toast("error", "Failed to delete course");
+            toast.error(t("failed_to_delete_course"));
         } finally {
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
@@ -307,7 +309,7 @@ export default function OnlineCoursePage() {
     const exportToCopy = () => {
         const text = courses.map((c) => `${c.title}\t${c.category}\t${formatCurrency(c.price)}\t${c.class_name}`).join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        toast.success(t("copied_to_clipboard"));
     };
 
     const exportToExcel = () => {
@@ -327,7 +329,7 @@ export default function OnlineCoursePage() {
     const exportToPDF = () => {
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [["Title", "Category", "Price", "Class", "Instructor"]],
+            head: [[t("title"), t("category"), t("price"), t("class"), t("instructor")]],
             body: courses.map((c) => [c.title, c.category, formatCurrency(c.price), c.class_name, c.instructor?.name || ""]),
         });
         doc.save("courses.pdf");
@@ -337,10 +339,10 @@ export default function OnlineCoursePage() {
         const win = window.open("", "_blank");
         if (!win) return;
         win.document.write(`
-            <html><head><title>Courses</title>
+            <html><head><title>${t("courses")}</title>
             <style>table { width:100%; border-collapse:collapse; } th,td { border:1px solid #ddd; padding:8px; text-align:left; } th { background:#f5f5f5; }</style>
-            </head><body><h2>Courses</h2><table>
-            <thead><tr><th>Title</th><th>Category</th><th>Price</th><th>Class</th><th>Instructor</th></tr></thead>
+            </head><body><h2>${t("courses")}</h2><table>
+            <thead><tr><th>${t("title")}</th><th>${t("category")}</th><th>${t("price")}</th><th>${t("class")}</th><th>${t("instructor")}</th></tr></thead>
             <tbody>${courses.map((c) => `<tr><td>${c.title}</td><td>${c.category}</td><td>${formatCurrency(c.price)}</td><td>${c.class_name}</td><td>${c.instructor?.name || ""}</td></tr>`).join("")}
             </tbody></table></body></html>`);
         win.document.close();
@@ -350,13 +352,18 @@ export default function OnlineCoursePage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-xl font-semibold text-gray-800 tracking-tight">Online Courses</h1>
-                    <p className="text-xs text-gray-500 font-medium mt-0.5">Manage your course catalog</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Monitor className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("online_courses")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("x_courses_in_your_catalog", { count: total })}</p>
+                    </div>
                 </div>
                 <Button onClick={handleOpenAdd} className={cn("h-9 px-5 text-xs font-bold rounded-full shadow-md flex items-center gap-2", activeGradient)}>
-                    <Plus className="h-4 w-4" /> Add Course
+                    <Plus className="h-4 w-4" /> {t("add_course")}
                 </Button>
             </div>
 
@@ -365,7 +372,7 @@ export default function OnlineCoursePage() {
                 <div className="relative w-full md:w-72">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                     <Input
-                        placeholder="Search courses..."
+                        placeholder={t("search_courses")}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-9 h-9 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
@@ -373,7 +380,7 @@ export default function OnlineCoursePage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
-                        <span>Show</span>
+                        <span>{t("show")}</span>
                         <Select value={String(perPage)} onValueChange={(v) => { setPerPage(Number(v)); setCurrentPage(1); }}>
                             <SelectTrigger className="h-7 text-xs w-16 border-gray-200">
                                 <SelectValue />
@@ -385,19 +392,19 @@ export default function OnlineCoursePage() {
                                 <SelectItem value="500">500</SelectItem>
                             </SelectContent>
                         </Select>
-                        <span>entries</span>
+                        <span>{t("entries")}</span>
                     </div>
                     <div className="flex items-center gap-1 text-gray-400">
-                        <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="Copy">
+                        <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title={t("copy")}>
                             <Copy className="h-3.5 w-3.5" />
                         </Button>
-                        <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="Excel">
+                        <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title={t("excel")}>
                             <FileSpreadsheet className="h-3.5 w-3.5" />
                         </Button>
-                        <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="PDF">
+                        <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title={t("pdf")}>
                             <FileText className="h-3.5 w-3.5" />
                         </Button>
-                        <Button onClick={exportToPrint} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title="Print">
+                        <Button onClick={exportToPrint} variant="ghost" size="icon" className="h-7 w-7 hover:bg-indigo-50 hover:text-indigo-600" title={t("print")}>
                             <Printer className="h-3.5 w-3.5" />
                         </Button>
                     </div>
@@ -415,12 +422,12 @@ export default function OnlineCoursePage() {
                     <Table>
                         <TableHeader className="bg-gray-50/50 text-[11px] uppercase">
                             <TableRow className="hover:bg-transparent border-gray-100">
-                                <TableHead className="font-bold text-gray-700 py-3">Course</TableHead>
-                                <TableHead className="font-bold text-gray-700 py-3">Category</TableHead>
-                                <TableHead className="font-bold text-gray-700 py-3">Class</TableHead>
-                                <TableHead className="font-bold text-gray-700 py-3">Instructor</TableHead>
-                                <TableHead className="font-bold text-gray-700 py-3 text-right">Price ({symbol})</TableHead>
-                                <TableHead className="font-bold text-gray-700 py-3 text-right">Action</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3">{t("course")}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3">{t("category")}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3">{t("class")}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3">{t("instructor")}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3 text-right">{t("price_with_symbol", { symbol })}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3 text-right">{t("action")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -428,8 +435,8 @@ export default function OnlineCoursePage() {
                                 <TableRow>
                                     <TableCell colSpan={6} className="h-40 text-center text-gray-400 text-sm">
                                         <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                                        <p className="font-medium">No courses found</p>
-                                        <p className="text-xs mt-1">Click &quot;Add Course&quot; to create one.</p>
+                                        <p className="font-medium">{t("no_courses_found")}</p>
+                                        <p className="text-xs mt-1">{t("click_add_course_to_create_one")}</p>
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -477,7 +484,7 @@ export default function OnlineCoursePage() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between text-xs text-gray-500 font-medium px-4 py-3 border-t border-gray-100">
                     <div className="flex items-center gap-1.5">
-                        <span>Showing {from} to {to} of {total}</span>
+                        <span>{t("showing_x_to_y_of_z", { from, to, total })}</span>
                     </div>
                     <div className="flex gap-1">
                         <Button variant="outline" size="sm" className="h-7 w-7 p-0 border-gray-200" disabled={currentPage === 1} onClick={() => fetchCourses(currentPage - 1)}>
@@ -501,13 +508,13 @@ export default function OnlineCoursePage() {
                     <DialogHeader>
                         <DialogTitle className="text-base font-bold text-gray-800 flex items-center gap-2">
                             <BookOpen className="h-5 w-5 text-indigo-500" />
-                            {editingId ? "Edit Course" : "Add Course"}
+                            {editingId ? t("edit_course") : t("add_course")}
                         </DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSave} className="space-y-5">
                         {/* Thumbnail */}
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Thumbnail</Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("thumbnail")}</Label>
                             <div className="flex items-center gap-4">
                                 <div
                                     onClick={() => document.getElementById("thumb-input")?.click()}
@@ -523,7 +530,7 @@ export default function OnlineCoursePage() {
                                     ) : (
                                         <div className="flex flex-col items-center gap-1 text-gray-400">
                                             <Upload className="h-5 w-5" />
-                                            <span className="text-[8px] font-bold uppercase">Upload</span>
+                                            <span className="text-[8px] font-bold uppercase">{t("upload")}</span>
                                         </div>
                                     )}
                                 </div>
@@ -539,55 +546,55 @@ export default function OnlineCoursePage() {
                                         }
                                     }}
                                 />
-                                <p className="text-[10px] text-gray-400">Recommended: 1200x628px</p>
+                                <p className="text-[10px] text-gray-400">{t("recommended_size")}</p>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Title</Label>
-                                <Input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="Course title" />
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("title")}</Label>
+                                <Input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder={t("course_title_placeholder")} />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Sub Title</Label>
-                                <Input value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="Course subtitle" />
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("sub_title")}</Label>
+                                <Input value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder={t("course_subtitle_placeholder")} />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Category</Label>
-                                <Input required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="Science, Arts..." />
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("category")}</Label>
+                                <Input required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder={t("category_placeholder")} />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Instructor Name</Label>
-                                <Input value={form.instructor_name} onChange={(e) => setForm({ ...form, instructor_name: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="John Doe" />
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("instructor_name")}</Label>
+                                <Input value={form.instructor_name} onChange={(e) => setForm({ ...form, instructor_name: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder={t("instructor_name_placeholder")} />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Class</Label>
-                                <Input value={form.class_name} onChange={(e) => setForm({ ...form, class_name: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="e.g. Class 10" />
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("class")}</Label>
+                                <Input value={form.class_name} onChange={(e) => setForm({ ...form, class_name: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder={t("class_placeholder")} />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Price ({symbol})</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("price_with_symbol", { symbol })}</Label>
                                 <Input required type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="0.00" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Original Price ({symbol})</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("original_price_with_symbol", { symbol })}</Label>
                                 <Input type="number" step="0.01" value={form.original_price} onChange={(e) => setForm({ ...form, original_price: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder="0.00" />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Description</Label>
-                            <Textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="min-h-[100px] text-xs border-gray-200 rounded-lg" placeholder="Course description..." />
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("description")}</Label>
+                            <Textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="min-h-[100px] text-xs border-gray-200 rounded-lg" placeholder={t("course_description_placeholder")} />
                         </div>
 
                         {/* Course Outline Accordions */}
                         <div className="space-y-3 border-t border-gray-100 pt-4">
                             <div className="flex items-center justify-between">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Course Outline</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("course_outline")}</Label>
                                 <Button type="button" onClick={() => setForm({ ...form, outline: [...form.outline, { id: Date.now(), title: "", description: "", video_url: "" }] })} className="h-7 text-[9px] font-bold rounded-full px-3 flex items-center gap-1 bg-gradient-to-r from-orange-400 to-indigo-500 text-white">
-                                    <Plus size={12} /> Add Outline Item
+                                    <Plus size={12} /> {t("add_outline_item")}
                                 </Button>
                             </div>
                             {form.outline.length === 0 && (
-                                <p className="text-[11px] text-gray-400 italic">No outline items added yet.</p>
+                                <p className="text-[11px] text-gray-400 italic">{t("no_outline_items_added_yet")}</p>
                             )}
                             {form.outline.map((item, idx) => (
                                 <div key={item.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50/20 space-y-3 relative group">
@@ -596,17 +603,17 @@ export default function OnlineCoursePage() {
                                     </Button>
                                     <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                                         <ChevronDown size={12} className="text-indigo-400" />
-                                        Item {idx + 1}
+                                        {t("item_n", { n: idx + 1 })}
                                     </div>
                                     <div className="space-y-2 pr-8">
-                                        <Input value={item.title} onChange={(e) => { const o = [...form.outline]; o[idx] = { ...o[idx], title: e.target.value }; setForm({ ...form, outline: o }); }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder="Outline title..." />
+                                        <Input value={item.title} onChange={(e) => { const o = [...form.outline]; o[idx] = { ...o[idx], title: e.target.value }; setForm({ ...form, outline: o }); }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder={t("outline_title_placeholder")} />
                                         <div className="flex items-center gap-2">
-                                            <Input value={item.video_url || ""} onChange={(e) => { const o = [...form.outline]; o[idx] = { ...o[idx], video_url: e.target.value }; setForm({ ...form, outline: o }); }} className="h-8 text-[11px] bg-white border-gray-100 rounded-lg flex-1" placeholder="YouTube video URL (optional)..." />
+                                            <Input value={item.video_url || ""} onChange={(e) => { const o = [...form.outline]; o[idx] = { ...o[idx], video_url: e.target.value }; setForm({ ...form, outline: o }); }} className="h-8 text-[11px] bg-white border-gray-100 rounded-lg flex-1" placeholder={t("youtube_video_url_optional_placeholder")} />
                                             {item.video_url && (
                                                 <Play size={14} className="text-red-400 shrink-0" />
                                             )}
                                         </div>
-                                        <Textarea value={item.description} onChange={(e) => { const o = [...form.outline]; o[idx] = { ...o[idx], description: e.target.value }; setForm({ ...form, outline: o }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg" placeholder="Outline description..." />
+                                        <Textarea value={item.description} onChange={(e) => { const o = [...form.outline]; o[idx] = { ...o[idx], description: e.target.value }; setForm({ ...form, outline: o }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg" placeholder={t("outline_description_placeholder")} />
                                     </div>
                                 </div>
                             ))}
@@ -615,13 +622,13 @@ export default function OnlineCoursePage() {
                         {/* Live Class Accordions */}
                         <div className="space-y-3 border-t border-gray-100 pt-4">
                             <div className="flex items-center justify-between">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Live Class</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("live_class")}</Label>
                                 <Button type="button" onClick={() => setForm({ ...form, live_classes: [...form.live_classes, { id: Date.now(), title: "", description: "", live_link: "" }] })} className="h-7 text-[9px] font-bold rounded-full px-3 flex items-center gap-1 bg-gradient-to-r from-orange-400 to-indigo-500 text-white">
-                                    <Plus size={12} /> Add Live Class
+                                    <Plus size={12} /> {t("add_live_class")}
                                 </Button>
                             </div>
                             {form.live_classes.length === 0 && (
-                                <p className="text-[11px] text-gray-400 italic">No live classes added yet.</p>
+                                <p className="text-[11px] text-gray-400 italic">{t("no_live_classes_added_yet")}</p>
                             )}
                             {form.live_classes.map((item, idx) => (
                                 <div key={item.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50/20 space-y-3 relative group">
@@ -630,12 +637,12 @@ export default function OnlineCoursePage() {
                                     </Button>
                                     <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                                         <Play size={12} className="text-cyan-400" />
-                                        Live Class {idx + 1}
+                                        {t("live_class_n", { n: idx + 1 })}
                                     </div>
                                     <div className="space-y-2 pr-8">
-                                        <Input value={item.title} onChange={(e) => { const o = [...form.live_classes]; o[idx] = { ...o[idx], title: e.target.value }; setForm({ ...form, live_classes: o }); }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder="Live class title..." />
-                                        <Input value={item.live_link} onChange={(e) => { const o = [...form.live_classes]; o[idx] = { ...o[idx], live_link: e.target.value }; setForm({ ...form, live_classes: o }); }} className="h-8 text-[11px] bg-white border-gray-100 rounded-lg" placeholder="Live class link (e.g. https://meet.google.com/...)" />
-                                        <Textarea value={item.description} onChange={(e) => { const o = [...form.live_classes]; o[idx] = { ...o[idx], description: e.target.value }; setForm({ ...form, live_classes: o }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg" placeholder="Live class description..." />
+                                        <Input value={item.title} onChange={(e) => { const o = [...form.live_classes]; o[idx] = { ...o[idx], title: e.target.value }; setForm({ ...form, live_classes: o }); }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder={t("live_class_title_placeholder")} />
+                                        <Input value={item.live_link} onChange={(e) => { const o = [...form.live_classes]; o[idx] = { ...o[idx], live_link: e.target.value }; setForm({ ...form, live_classes: o }); }} className="h-8 text-[11px] bg-white border-gray-100 rounded-lg" placeholder={t("live_class_link_placeholder")} />
+                                        <Textarea value={item.description} onChange={(e) => { const o = [...form.live_classes]; o[idx] = { ...o[idx], description: e.target.value }; setForm({ ...form, live_classes: o }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg" placeholder={t("live_class_description_placeholder")} />
                                     </div>
                                 </div>
                             ))}
@@ -644,13 +651,13 @@ export default function OnlineCoursePage() {
                         {/* Quizzes Accordions */}
                         <div className="space-y-3 border-t border-gray-100 pt-4">
                             <div className="flex items-center justify-between">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Quizzes</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("quizzes")}</Label>
                                 <Button type="button" onClick={() => setForm({ ...form, quizzes: [...form.quizzes, { id: Date.now(), title: "", description: "", option_1: "", option_2: "", option_3: "", option_4: "", correct_option: 1, points: 1 }] })} className="h-7 text-[9px] font-bold rounded-full px-3 flex items-center gap-1 bg-gradient-to-r from-orange-400 to-indigo-500 text-white">
-                                    <Plus size={12} /> Add Question
+                                    <Plus size={12} /> {t("add_question")}
                                 </Button>
                             </div>
                             {form.quizzes.length === 0 && (
-                                <p className="text-[11px] text-gray-400 italic">No quiz questions added yet.</p>
+                                <p className="text-[11px] text-gray-400 italic">{t("no_quiz_questions_added_yet")}</p>
                             )}
                             {form.quizzes.map((item, idx) => (
                                 <div key={item.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50/20 space-y-3 relative group">
@@ -659,29 +666,29 @@ export default function OnlineCoursePage() {
                                     </Button>
                                     <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                                         <Check size={12} className="text-rose-400" />
-                                        Question {idx + 1}
+                                        {t("question_n", { n: idx + 1 })}
                                     </div>
                                     <div className="space-y-2 pr-8">
-                                        <Input value={item.title} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], title: e.target.value }; setForm({ ...form, quizzes: o }); }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder="Question title..." />
-                                        <Textarea value={item.description} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], description: e.target.value }; setForm({ ...form, quizzes: o }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg" placeholder="Question description..." />
+                                        <Input value={item.title} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], title: e.target.value }; setForm({ ...form, quizzes: o }); }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder={t("question_title_placeholder")} />
+                                        <Textarea value={item.description} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], description: e.target.value }; setForm({ ...form, quizzes: o }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg" placeholder={t("question_description_placeholder")} />
                                         <div className="grid grid-cols-2 gap-2">
-                                            <Input value={item.option_1} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_1: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 1 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder="Option 1" />
-                                            <Input value={item.option_2} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_2: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 2 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder="Option 2" />
-                                            <Input value={item.option_3} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_3: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 3 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder="Option 3" />
-                                            <Input value={item.option_4} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_4: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 4 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder="Option 4" />
+                                            <Input value={item.option_1} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_1: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 1 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder={t("option_1")} />
+                                            <Input value={item.option_2} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_2: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 2 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder={t("option_2")} />
+                                            <Input value={item.option_3} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_3: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 3 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder={t("option_3")} />
+                                            <Input value={item.option_4} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], option_4: e.target.value }; setForm({ ...form, quizzes: o }); }} className={`h-8 text-[11px] bg-white border-gray-100 rounded-lg ${item.correct_option === 4 ? "border-l-4 border-l-emerald-500" : ""}`} placeholder={t("option_4")} />
                                         </div>
                                         <div className="flex gap-3 items-center">
                                             <div className="flex items-center gap-2">
-                                                <Label className="text-[9px] font-bold text-gray-400 uppercase">Correct</Label>
+                                                <Label className="text-[9px] font-bold text-gray-400 uppercase">{t("correct")}</Label>
                                                 <select value={item.correct_option} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], correct_option: Number(e.target.value) }; setForm({ ...form, quizzes: o }); }} className="h-8 text-[11px] bg-white border border-gray-200 rounded-lg px-2 text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-400">
-                                                    <option value={1}>Option 1</option>
-                                                    <option value={2}>Option 2</option>
-                                                    <option value={3}>Option 3</option>
-                                                    <option value={4}>Option 4</option>
+                                                    <option value={1}>{t("option_1")}</option>
+                                                    <option value={2}>{t("option_2")}</option>
+                                                    <option value={3}>{t("option_3")}</option>
+                                                    <option value={4}>{t("option_4")}</option>
                                                 </select>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <Label className="text-[9px] font-bold text-gray-400 uppercase">Points</Label>
+                                                <Label className="text-[9px] font-bold text-gray-400 uppercase">{t("points")}</Label>
                                                 <Input type="number" min={1} value={item.points} onChange={(e) => { const o = [...form.quizzes]; o[idx] = { ...o[idx], points: Number(e.target.value) }; setForm({ ...form, quizzes: o }); }} className="h-8 w-16 text-[11px] bg-white border-gray-100 rounded-lg text-center" />
                                             </div>
                                         </div>
@@ -692,11 +699,11 @@ export default function OnlineCoursePage() {
 
                         <DialogFooter className="pt-2">
                             <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }} className="h-9 text-xs font-bold rounded-full px-6">
-                                Cancel
+                                {t("cancel")}
                             </Button>
                             <Button disabled={saving} className={cn("h-9 text-xs font-bold rounded-full px-6 shadow-md", activeGradient)}>
                                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                                {editingId ? "Update" : "Save"}
+                                {editingId ? t("update") : t("save")}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -707,15 +714,15 @@ export default function OnlineCoursePage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete this course. This action cannot be undone.
+                            {t("permanently_delete_course_warning")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="h-9 text-xs font-bold rounded-full px-6">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-9 text-xs font-bold rounded-full px-6">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="h-9 text-xs font-bold rounded-full px-6 bg-red-600 hover:bg-red-700">
-                            Delete
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -727,7 +734,7 @@ export default function OnlineCoursePage() {
                     <DialogHeader>
                         <DialogTitle className="text-base font-bold text-gray-800 flex items-center gap-2">
                             <BookOpen className="h-5 w-5 text-indigo-500" />
-                            {viewCourse?.title || "Course Details"}
+                            {viewCourse?.title || t("course_details")}
                         </DialogTitle>
                     </DialogHeader>
                     {viewCourse && (
@@ -755,30 +762,30 @@ export default function OnlineCoursePage() {
                             <div className="grid grid-cols-5 gap-2">
                                 <div className="bg-indigo-50 rounded-lg py-2 px-2 text-center border border-indigo-100">
                                     <p className="text-sm font-black text-indigo-600">{viewCourse.total_lessons || 0}</p>
-                                    <p className="text-[9px] font-bold uppercase tracking-wider text-indigo-400">Lessons</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-indigo-400">{t("lessons")}</p>
                                 </div>
                                 <div className="bg-emerald-50 rounded-lg py-2 px-2 text-center border border-emerald-100">
                                     <p className="text-[11px] font-black text-emerald-600">{viewCourse.total_hours || "0"}</p>
-                                    <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">Hours</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">{t("hours")}</p>
                                 </div>
                                 <div className="bg-amber-50 rounded-lg py-2 px-2 text-center border border-amber-100">
                                     <p className="text-sm font-black text-amber-600">{viewCourse.total_exams || 0}</p>
-                                    <p className="text-[9px] font-bold uppercase tracking-wider text-amber-400">Exams</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-amber-400">{t("exams")}</p>
                                 </div>
                                 <div className="bg-cyan-50 rounded-lg py-2 px-2 text-center border border-cyan-100">
                                     <p className="text-sm font-black text-cyan-600">0</p>
-                                    <p className="text-[9px] font-bold uppercase tracking-wider text-cyan-400">Live Class</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-cyan-400">{t("live_class")}</p>
                                 </div>
                                 <div className="bg-rose-50 rounded-lg py-2 px-2 text-center border border-rose-100">
                                     <p className="text-sm font-black text-rose-600">{viewCourse.total_quizzes || 0}</p>
-                                    <p className="text-[9px] font-bold uppercase tracking-wider text-rose-400">Quizzes</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-rose-400">{t("quizzes")}</p>
                                 </div>
                             </div>
 
                             {/* Pricing & Instructor */}
                             <div className="flex gap-2">
                                 <div className="flex-1 bg-gradient-to-br from-sky-50 to-blue-50 rounded-lg py-2.5 px-3 text-center border border-sky-100">
-                                    <p className="text-[8px] font-bold uppercase tracking-widest text-sky-400">Pricing</p>
+                                    <p className="text-[8px] font-bold uppercase tracking-widest text-sky-400">{t("pricing")}</p>
                                     <div className="flex items-center justify-center gap-1.5">
                                         <span className="text-base font-black text-gray-800">{formatCurrency(viewCourse.price)}</span>
                                         {viewCourse.original_price > 0 && (
@@ -787,8 +794,8 @@ export default function OnlineCoursePage() {
                                     </div>
                                 </div>
                                 <div className="flex-1 bg-gradient-to-br from-purple-50 to-fuchsia-50 rounded-lg py-2.5 px-3 text-center border border-purple-100">
-                                    <p className="text-[8px] font-bold uppercase tracking-widest text-purple-400">Instructor</p>
-                                    <p className="text-xs font-bold text-gray-700 truncate">{viewCourse.instructor?.name || "N/A"}</p>
+                                    <p className="text-[8px] font-bold uppercase tracking-widest text-purple-400">{t("instructor")}</p>
+                                    <p className="text-xs font-bold text-gray-700 truncate">{viewCourse.instructor?.name || t("n_a")}</p>
                                 </div>
                             </div>
 
@@ -796,7 +803,7 @@ export default function OnlineCoursePage() {
                                 <>
                                     {/* Course Outline */}
                                     <div className="space-y-3">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Course Outline</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t("course_outline")}</p>
                                         {viewCourse.outline && viewCourse.outline.length > 0 ? (
                                             <div className="space-y-2">
                                                 {viewCourse.outline.map((item, idx) => {
@@ -856,13 +863,13 @@ export default function OnlineCoursePage() {
                                                 })}
                                             </div>
                                         ) : (
-                                            <p className="text-[11px] text-gray-400 italic">No outline items available.</p>
+                                            <p className="text-[11px] text-gray-400 italic">{t("no_outline_items_available")}</p>
                                         )}
                                     </div>
 
                                     {/* Live Class */}
                                     <div className="space-y-3">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Live Class</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t("live_class")}</p>
                                         {viewCourse.live_classes && viewCourse.live_classes.length > 0 ? (
                                             <div className="space-y-2">
                                                 {viewCourse.live_classes.map((item, idx) => {
@@ -884,7 +891,7 @@ export default function OnlineCoursePage() {
                                                                     {item.live_link && (
                                                                         <a href={item.live_link} target="_blank" rel="noopener noreferrer">
                                                                             <Button className="h-7 text-[10px] font-bold rounded-full px-4 shadow-sm bg-gradient-to-r from-orange-400 to-rose-500 text-white hover:shadow-md transition-shadow">
-                                                                                <Play size={11} className="mr-1" /> Join
+                                                                                <Play size={11} className="mr-1" /> {t("join")}
                                                                             </Button>
                                                                         </a>
                                                                     )}
@@ -900,13 +907,13 @@ export default function OnlineCoursePage() {
                                                 })}
                                             </div>
                                         ) : (
-                                            <p className="text-[11px] text-gray-400 italic">No live classes available.</p>
+                                            <p className="text-[11px] text-gray-400 italic">{t("no_live_classes_available")}</p>
                                         )}
                                     </div>
 
                                     {/* Quizzes */}
                                     <div className="space-y-3">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Quizzes</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t("quizzes")}</p>
                                         {viewCourse.quizzes && viewCourse.quizzes.length > 0 ? (
                                             <div className="space-y-3">
                                                 {viewCourse.quizzes.map((item, idx) => {
@@ -921,7 +928,7 @@ export default function OnlineCoursePage() {
                                                                         <span className="inline-flex items-center justify-center h-5 w-5 rounded-full text-[9px] font-bold bg-rose-500 text-white shrink-0">{idx + 1}</span>
                                                                         <span className="text-xs font-semibold text-gray-700">{item.title}</span>
                                                                     </div>
-                                                                    <span className="text-[10px] font-bold text-amber-600 shrink-0 ml-2">{item.points} pts</span>
+                                                                    <span className="text-[10px] font-bold text-amber-600 shrink-0 ml-2">{item.points} {t("pts")}</span>
                                                                 </div>
                                                                 {item.description && (
                                                                     <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">{item.description}</p>
@@ -946,35 +953,35 @@ export default function OnlineCoursePage() {
                                                     const totalPts = viewCourse.quizzes!.reduce((s, q) => s + q.points, 0);
                                                     return (
                                                         <div className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 text-xs font-semibold text-gray-600">
-                                                            <span>Total Points: <span className="text-indigo-600">{totalPts}</span></span>
-                                                            <span>Pass: <span className="text-emerald-600">{Math.ceil(totalPts * 0.5)} pts</span></span>
+                                                            <span>{t("total_points_x", { points: totalPts })}</span>
+                                                            <span>{t("pass_x_pts", { points: Math.ceil(totalPts * 0.5) })}</span>
                                                         </div>
                                                     );
                                                 })()}
                                             </div>
                                         ) : (
-                                            <p className="text-[11px] text-gray-400 italic">No quiz questions available.</p>
+                                            <p className="text-[11px] text-gray-400 italic">{t("no_quiz_questions_available")}</p>
                                         )}
                                     </div>
                                 </>
                             ) : (
                                 <div className="flex flex-col items-center justify-center py-8 px-4 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 text-center">
                                     <BookOpen className="h-10 w-10 text-gray-300 mb-3" />
-                                    <p className="text-sm font-semibold text-gray-600">Apply to view full course details</p>
-                                    <p className="text-[11px] text-gray-400 mt-1 mb-4">Outline, live classes, and quizzes are hidden until you apply.</p>
+                                    <p className="text-sm font-semibold text-gray-600">{t("apply_to_view_full_course_details")}</p>
+                                    <p className="text-[11px] text-gray-400 mt-1 mb-4">{t("details_hidden_until_apply")}</p>
                                     <Button onClick={() => setShowFullDetails(true)} className="h-9 text-xs font-bold rounded-full px-6 shadow-md bg-gradient-to-r from-orange-400 to-indigo-500 text-white">
-                                        Apply Now
+                                        {t("apply_now")}
                                     </Button>
                                 </div>
                             )}
 
                             <DialogFooter>
                                 <Button onClick={() => setIsViewDialogOpen(false)} className="h-9 text-xs font-bold rounded-full px-6">
-                                    Close
+                                    {t("close")}
                                 </Button>
                                 <a href="/online_admission" target="_blank" rel="noopener noreferrer">
                                     <Button className="h-9 text-xs font-bold rounded-full px-6 shadow-md bg-gradient-to-r from-orange-400 to-indigo-500 text-white">
-                                        Apply Now
+                                        {t("apply_now")}
                                     </Button>
                                 </a>
                             </DialogFooter>

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Dialog,
@@ -30,13 +31,6 @@ import {
     Search,
     FileCode,
 } from "lucide-react";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import EmojiPicker from "@/components/ui/emoji-picker";
 import VariablePicker from "@/components/ui/variable-picker";
@@ -90,7 +84,8 @@ interface PaginationData {
 }
 
 export default function SMSTemplatePage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [templates, setTemplates] = useState<SMSTemplate[]>([]);
@@ -138,12 +133,12 @@ export default function SMSTemplatePage() {
                 from: response.data.from,
                 to: response.data.to
             });
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch SMS templates", variant: "destructive" });
+        } catch {
+            tt.toast("error", "failed_to_fetch_sms_templates");
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, limit, toast]);
+    }, [searchTerm, limit, tt]);
 
     useEffect(() => {
         fetchTemplates();
@@ -153,10 +148,10 @@ export default function SMSTemplatePage() {
         try {
             if (editMode && selectedId) {
                 await api.put(`/communicate/sms-templates/${selectedId}`, formData);
-                toast({ title: "Success", description: "Template updated successfully" });
+                tt.success("template_updated_successfully");
             } else {
                 await api.post('/communicate/sms-templates', formData);
-                toast({ title: "Success", description: "Template added successfully" });
+                tt.success("template_added_successfully");
             }
             setIsDialogOpen(false);
             setFormData({ title: "", template_id: "", message: "" });
@@ -165,11 +160,7 @@ export default function SMSTemplatePage() {
             fetchTemplates();
         } catch (error: unknown) {
             const err = error as { response?: { data?: { message?: string } } };
-            toast({
-                title: "Error",
-                description: err.response?.data?.message || "Failed to save template",
-                variant: "destructive",
-            });
+            tt.toast("error", err.response?.data?.message || "failed_to_save_template");
         }
     };
 
@@ -197,13 +188,13 @@ export default function SMSTemplatePage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (confirm("Are you sure you want to delete this template?")) {
+        if (confirm(t("delete_template_confirm"))) {
             try {
                 await api.delete(`/communicate/sms-templates/${id}`);
-                toast({ title: "Success", description: "Template deleted successfully" });
+                tt.success("template_deleted_successfully");
                 fetchTemplates();
-            } catch (error) {
-                toast({ title: "Error", description: "Failed to delete template", variant: "destructive" });
+            } catch {
+                tt.toast("error", "failed_to_delete_template");
             }
         }
     };
@@ -243,7 +234,7 @@ export default function SMSTemplatePage() {
     const handleCopy = () => {
         const text = templates.map(t => `${t.title}\t${t.message}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        tt.success("data_copied_to_clipboard");
     };
 
     const handleExportExcel = () => {
@@ -255,7 +246,7 @@ export default function SMSTemplatePage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "SMS Templates");
         XLSX.writeFile(workbook, "sms_templates.xlsx");
-        toast({ title: "Success", description: "Exported to Excel successfully" });
+        tt.success("exported_to_excel_successfully");
     };
 
     const handleExportCSV = () => {
@@ -275,7 +266,7 @@ export default function SMSTemplatePage() {
 
     const handleExportPDF = () => {
         const doc = new jsPDF();
-        doc.text("SMS Templates Report", 14, 15);
+        doc.text(t("sms_templates_report"), 14, 15);
         const tableColumn = ["Title", "Template ID", "Message"];
         const tableRows = templates.map(t => [
             t.title,
@@ -284,7 +275,7 @@ export default function SMSTemplatePage() {
         ]);
         autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
         doc.save("sms_templates.pdf");
-        toast({ title: "Success", description: "Exported to PDF successfully" });
+        tt.success("exported_to_pdf_successfully");
     };
 
     return (
@@ -295,10 +286,10 @@ export default function SMSTemplatePage() {
                     <div className="p-2 bg-indigo-50 rounded-lg">
                         <MessageSquare className="h-5 w-5 text-indigo-500" />
                     </div>
-                    <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">SMS Template List</h1>
+                    <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">{t("sms_template_list")}</h1>
                 </div>
                 <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="btn-gradient gap-2 h-9 px-6 text-[10px] font-bold uppercase transition-all rounded-full shadow-lg shadow-indigo-100">
-                    <Plus className="h-4 w-4" /> Add Template
+                    <Plus className="h-4 w-4" /> {t("add_template")}
                 </Button>
             </div>
 
@@ -309,8 +300,8 @@ export default function SMSTemplatePage() {
                         <MessageSquare className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">SMS Templates</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{pagination?.total || 0} template(s)</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("sms_templates")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{pagination?.total || 0} {t("templates").toLowerCase()}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
@@ -319,7 +310,7 @@ export default function SMSTemplatePage() {
                         <div className="relative w-full max-w-sm group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                             <Input
-                                placeholder="Search templates..."
+                                placeholder={t("search_templates")}
                                 className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -337,11 +328,11 @@ export default function SMSTemplatePage() {
                             </select>
                             <div className="h-8 w-px bg-muted/50 mx-2" />
                             <div className="flex gap-1">
-                                <IconButton icon={CopyIcon} onClick={handleCopy} title="Copy" />
-                                <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} title="Excel" />
-                                <IconButton icon={FileText} onClick={handleExportCSV} title="CSV" />
-                                <IconButton icon={FileCode} onClick={handleExportPDF} title="PDF" />
-                                <IconButton icon={Printer} onClick={() => window.print()} title="Print" />
+                                <IconButton icon={CopyIcon} onClick={handleCopy} title={t("copy")} />
+                                <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} title={t("excel")} />
+                                <IconButton icon={FileText} onClick={handleExportCSV} title={t("csv")} />
+                                <IconButton icon={FileCode} onClick={handleExportPDF} title={t("pdf")} />
+                                <IconButton icon={Printer} onClick={() => window.print()} title={t("print")} />
                             </div>
                         </div>
                     </div>
@@ -352,10 +343,10 @@ export default function SMSTemplatePage() {
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-muted/30">
-                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50">Title</th>
-                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50">Template ID</th>
-                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50">Message</th>
-                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 text-right">Action</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50">{t("title")}</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50">{t("template_id")}</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50">{t("message")}</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 text-right">{t("action")}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-muted/50">
@@ -363,7 +354,7 @@ export default function SMSTemplatePage() {
                                         <TableSkeleton rows={5} cols={4} />
                                     ) : templates.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                            <td colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                         </tr>
                                     ) : (
                                         templates.map((template) => (
@@ -374,15 +365,15 @@ export default function SMSTemplatePage() {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center justify-end gap-1.5 pr-2">
                                                         <Button size="icon" onClick={() => handleView(template)}
-                                                            className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all" title="View">
+                                                            className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all" title={t("view")}>
                                                             <Eye className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button size="icon" onClick={() => handleEdit(template)}
-                                                            className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-90 transition-all" title="Edit">
+                                                            className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-90 transition-all" title={t("edit")}>
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button size="icon" onClick={() => handleDelete(template.id)}
-                                                            className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 active:scale-90 transition-all" title="Delete">
+                                                            className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 active:scale-90 transition-all" title={t("delete")}>
                                                             <X className="h-4 w-4" />
                                                         </Button>
                                                     </div>
@@ -399,7 +390,7 @@ export default function SMSTemplatePage() {
                     {pagination && pagination.total > 0 && (
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                Showing {pagination.from} to {pagination.to} of {pagination.total} entries
+                                {t("showing_x_to_y_of_z", { from: pagination.from, to: pagination.to, total: pagination.total })}
                             </p>
                             <div className="flex items-center gap-2">
                                 <Button size="icon" disabled={pagination.current_page === 1}
@@ -438,35 +429,35 @@ export default function SMSTemplatePage() {
                                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                                     <MessageSquare className="h-4 w-4" />
                                 </span>
-                                {viewMode ? "View SMS Template" : editMode ? "Edit SMS Template" : "Add SMS Template"}
+                                {viewMode ? t("view_sms_template") : editMode ? t("edit_sms_template") : t("add_sms_template")}
                             </DialogTitle>
                             <p className="text-[11px] text-gray-500 mt-1 pl-10">
-                                {viewMode ? "Review template details" : editMode ? "Update an existing SMS template" : "Create a new SMS template"}
+                                {viewMode ? t("review_template_details") : editMode ? t("update_existing_sms_template") : t("create_new_sms_template")}
                             </p>
                         </DialogHeader>
                     </div>
                     <div className="p-6 space-y-4 bg-white overflow-y-auto max-h-[70vh]">
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Title <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("title")} <span className="text-red-500">*</span></Label>
                             {viewMode ? (
                                 <p className="text-sm text-gray-700 font-medium px-1">{formData.title}</p>
                             ) : (
                                 <Input value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    placeholder="e.g. Fees Reminder"
+                                    placeholder={t("sms_template_title_placeholder")}
                                     className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500" />
                             )}
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Template ID <span className="text-gray-300 font-normal normal-case tracking-normal">(optional)</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("template_id")} <span className="text-gray-300 font-normal normal-case tracking-normal">({t("optional").toLowerCase()})</span></Label>
                             <Input value={formData.template_id}
                                 onChange={(e) => setFormData({ ...formData, template_id: e.target.value })}
                                 readOnly={viewMode}
-                                placeholder="e.g. DLT Template ID"
+                                placeholder={t("sms_template_id_placeholder")}
                                 className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Message <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("message")} <span className="text-red-500">*</span></Label>
                             {viewMode ? (
                                 <div className="border border-gray-100 rounded-lg p-4 min-h-[120px] text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{formData.message}</div>
                             ) : (
@@ -475,7 +466,7 @@ export default function SMSTemplatePage() {
                                         <Textarea ref={textareaRef}
                                             value={formData.message}
                                             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                                            placeholder="Enter template message content..."
+                                            placeholder={t("enter_template_message_content")}
                                             className="border-gray-200 text-xs shadow-none min-h-[120px] focus-visible:ring-indigo-500 leading-relaxed pb-8"
                                             maxLength={smsInfo.isUnicode ? 918 : 4590} />
                                         <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
@@ -492,9 +483,9 @@ export default function SMSTemplatePage() {
                                             smsInfo.segments <= 3 ? "text-amber-600" :
                                             "text-red-600"
                                         )}>
-                                            {smsInfo.chars.toLocaleString()} Characters ({smsInfo.segments} SMS{smsInfo.segments !== 1 ? 'es' : ''})
+                                            {smsInfo.chars.toLocaleString()} {t("characters")} ({smsInfo.segments} {t("sms")}{smsInfo.segments !== 1 ? 'es' : ''})
                                             {smsInfo.chars > 0 && (
-                                                <span className="text-gray-400 ml-1">— {smsInfo.perSegment} per segment{smsInfo.isUnicode ? ' (Unicode)' : ''}</span>
+                                                <span className="text-gray-400 ml-1">— {smsInfo.perSegment} {t("per_segment")}{smsInfo.isUnicode ? ` (${t("unicode")})` : ''}</span>
                                             )}
                                         </span>
                                     </div>
@@ -506,11 +497,11 @@ export default function SMSTemplatePage() {
                         <DialogFooter className="gap-3">
                             <Button variant="outline" onClick={() => setIsDialogOpen(false)}
                                 className="h-10 text-[10px] uppercase font-bold rounded-full px-8 bg-white border-gray-200">
-                                {viewMode ? "Close" : "Cancel"}
+                                {viewMode ? t("close") : t("cancel")}
                             </Button>
                             {!viewMode && (
                                 <Button onClick={handleSave} className="btn-gradient h-10 px-10 text-[10px] uppercase font-bold rounded-full shadow-xl shadow-indigo-100">
-                                    {editMode ? "Update Template" : "Save Template"}
+                                    {editMode ? t("update_template") : t("save_template")}
                                 </Button>
                             )}
                         </DialogFooter>

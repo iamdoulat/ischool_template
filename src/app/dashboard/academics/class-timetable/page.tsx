@@ -11,6 +11,8 @@ import {
 import Link from "next/link";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useSettings } from "@/components/providers/settings-provider";
 
 interface TimetableEntry {
@@ -73,6 +75,8 @@ function TimetableSkeleton({ days }: { days: string[] }) {
 
 export default function ClassTimetablePage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const { settings } = useSettings();
 
     // Derived ordered days based on settings
@@ -124,7 +128,7 @@ export default function ClassTimetablePage() {
                 setSubjectGroups(subjectGroupRes.data.data?.data || subjectGroupRes.data.data || []);
             } catch (error) {
                 console.error("Error fetching prerequisites:", error);
-                toast("error", "Failed to load prerequisite data");
+                tt.error("failed_to_load");
             } finally {
                 setLoading(false);
             }
@@ -147,7 +151,7 @@ export default function ClassTimetablePage() {
 
     const handleSearch = async () => {
         if (!selectedClassId || !selectedSectionId) {
-            toast("error", "Please select both Class and Section");
+            tt.error("please_select_class_and_section");
             return;
         }
 
@@ -170,22 +174,22 @@ export default function ClassTimetablePage() {
             setTimetableData(grouped);
         } catch (error) {
             console.error("Error searching timetable:", error);
-            toast("error", "Failed to fetch timetable");
+            tt.error("failed_to_fetch");
         } finally {
             setSearching(false);
         }
     };
 
     const handleDeleteEntry = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this entry?")) return;
+        if (!confirm(t("are_you_sure_delete_entry"))) return;
 
         try {
             await api.delete(`/academics/class-timetables/${id}`);
-            toast("success", "Entry deleted successfully");
+            tt.success("entry_deleted_successfully");
             handleSearch(); // Refresh list
         } catch (error) {
             console.error("Error deleting entry:", error);
-            toast("error", "Failed to delete entry");
+            tt.error("failed_to_delete");
         }
     };
 
@@ -199,7 +203,7 @@ export default function ClassTimetablePage() {
             <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-100 no-print">
                 <div className="flex items-center gap-2 text-[#6366f1]">
                     <CalendarClock className="h-6 w-6" />
-                    <h1 className="text-xl font-medium text-gray-800">Class Time Table</h1>
+                    <h1 className="text-xl font-medium text-gray-800">{t("class_time_table")}</h1>
                 </div>
             </div>
 
@@ -211,13 +215,13 @@ export default function ClassTimetablePage() {
                             <Filter className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Choose class &amp; section to view timetable</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("choose_class_section_to_view_timetable")}</p>
                         </div>
                     </div>
                     <Link href="/dashboard/academics/class-timetable/add">
                         <Button className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-3 h-8 text-xs gap-1 shadow-md transition-all duration-300">
-                            <Plus className="h-4 w-4" /> Add
+                            <Plus className="h-4 w-4" /> {t("add")}
                         </Button>
                     </Link>
                 </CardHeader>
@@ -226,7 +230,7 @@ export default function ClassTimetablePage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                         <div className="space-y-2">
                             <Label className="text-xs font-semibold text-gray-600 uppercase">
-                                Class <span className="text-red-500">*</span>
+                                {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select
                                 value={selectedClassId}
@@ -238,7 +242,7 @@ export default function ClassTimetablePage() {
                                 }}
                             >
                                 <SelectTrigger className="h-10">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
@@ -248,7 +252,7 @@ export default function ClassTimetablePage() {
 
                         <div className="space-y-2">
                             <Label className="text-xs font-semibold text-gray-600 uppercase">
-                                Section <span className="text-red-500">*</span>
+                                {t("section")} <span className="text-red-500">*</span>
                             </Label>
                             <Select
                                 value={selectedSectionId}
@@ -256,7 +260,7 @@ export default function ClassTimetablePage() {
                                 disabled={!selectedClassId}
                             >
                                 <SelectTrigger className="h-10">
-                                    <SelectValue placeholder={!selectedClassId ? "Select class first" : "Select"} />
+                                    <SelectValue placeholder={!selectedClassId ? t("select_class_first") : t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
@@ -266,11 +270,11 @@ export default function ClassTimetablePage() {
 
                         <div className="space-y-2">
                             <Label className="text-xs font-semibold text-gray-600 uppercase">
-                                Subject Group
+                                {t("subject_group")}
                             </Label>
                             <Select value={selectedSubjectGroupId} onValueChange={setSelectedSubjectGroupId}>
                                 <SelectTrigger className="h-10">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {subjectGroups.filter(sg => !selectedClassId || String(sg.school_class_id) === selectedClassId).map(sg => (
@@ -288,7 +292,7 @@ export default function ClassTimetablePage() {
                             disabled={searching || loading}
                         >
                             {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                            Search
+                            {t("search")}
                         </Button>
                     </div>
                 </CardContent>
@@ -302,8 +306,8 @@ export default function ClassTimetablePage() {
                             <CalendarClock className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Class Timetable</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{totalEntries} scheduled entr{totalEntries === 1 ? 'y' : 'ies'}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("class_timetable")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_scheduled_entries", { count: totalEntries })}</p>
                         </div>
                     </div>
                     <Button
@@ -325,7 +329,7 @@ export default function ClassTimetablePage() {
                                 {timetableData.map((dayData) => (
                                     <div key={dayData.day} className="flex-1 min-w-[200px] border-r last:border-r-0">
                                         <div className="bg-gray-50/50 p-2 text-center border-b">
-                                            <span className="text-sm font-bold text-gray-700">{dayData.day}</span>
+                                            <span className="text-sm font-bold text-gray-700">{t(dayData.day.toLowerCase())}</span>
                                         </div>
                                         <div className="p-3 space-y-3 bg-white min-h-[400px]">
                                             {dayData.entries.length > 0 ? (
@@ -340,7 +344,7 @@ export default function ClassTimetablePage() {
                                                         <div className="space-y-2 text-[11px]">
                                                             <div className="flex items-start gap-2">
                                                                 <BookOpen className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                                <span className="font-semibold text-green-600">Subject: {entry.subject?.name} ({entry.subject?.code})</span>
+                                                                <span className="font-semibold text-green-600">{t("subject")}: {entry.subject?.name} ({entry.subject?.code})</span>
                                                             </div>
                                                             <div className="flex items-start gap-2">
                                                                 <Clock className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
@@ -352,7 +356,7 @@ export default function ClassTimetablePage() {
                                                             </div>
                                                             <div className="flex items-start gap-2">
                                                                 <MapPin className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                                <span className="text-green-700 font-medium">Room: {entry.room || "N/A"}</span>
+                                                                <span className="text-green-700 font-medium">{t("room_no")}: {entry.room || t("n_a")}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -361,7 +365,7 @@ export default function ClassTimetablePage() {
                                                 <div className="bg-white border rounded-lg p-3 text-center">
                                                     <div className="flex items-center justify-center gap-2 text-red-500 text-[11px] font-medium py-1">
                                                         <AlertCircle className="h-3.5 w-3.5" />
-                                                        <span>Not Scheduled</span>
+                                                        <span>{t("not_scheduled")}</span>
                                                     </div>
                                                 </div>
                                             )}

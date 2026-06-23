@@ -28,7 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { useImageUrl } from "@/lib/image-url";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -90,7 +91,8 @@ export default function OnlineAdmissionPage() {
     const [admissions, setAdmissions] = useState<OnlineAdmission[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
     const router = useRouter();
 
     // Dialog states
@@ -129,11 +131,11 @@ export default function OnlineAdmissionPage() {
             setTo(paginationData.to || 0);
         } catch (error) {
             console.error("Error fetching admissions:", error);
-            toast("error", "Failed to fetch online admissions.");
+            tt.error("failed_to_fetch_online_admissions");
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, toast]);
+    }, [searchTerm, tt]);
 
     const fetchClasses = useCallback(async () => {
         try {
@@ -172,7 +174,7 @@ export default function OnlineAdmissionPage() {
     // Export functions
     const exportToCopy = () => {
         if (admissions.length === 0) {
-            toast("error", "No data to copy.");
+            tt.error("no_data_to_copy");
             return;
         }
         const headers = ["Reference No", "Student Name", "Class", "Section", "Father Name", "DOB", "Gender", "Category", "Mobile", "Form Status", "Payment Status", "Enrolled", "Created At"];
@@ -194,12 +196,12 @@ export default function OnlineAdmissionPage() {
 
         const text = [headers.join("\t"), ...rows.map(r => r.join("\t"))].join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
         if (admissions.length === 0) {
-            toast("error", "No data to export.");
+            tt.error("no_data_to_export");
             return;
         }
         const data = admissions.map(a => ({
@@ -222,12 +224,12 @@ export default function OnlineAdmissionPage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Admissions");
         XLSX.writeFile(workbook, "online_admissions.xlsx");
-        toast("success", "Excel file downloaded");
+        tt.success("excel_file_downloaded");
     };
 
     const exportToPDF = () => {
         if (admissions.length === 0) {
-            toast("error", "No data to export.");
+            tt.error("no_data_to_export");
             return;
         }
         const doc = new jsPDF("landscape");
@@ -249,7 +251,7 @@ export default function OnlineAdmissionPage() {
             styles: { fontSize: 8 },
         });
         doc.save("online_admissions.pdf");
-        toast("success", "PDF file downloaded");
+        tt.success("pdf_file_downloaded");
     };
 
     const handlePrint = () => {
@@ -257,13 +259,13 @@ export default function OnlineAdmissionPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this record? This action cannot be undone.")) return;
+        if (!confirm(t("are_you_sure_delete_record"))) return;
         try {
             await api.delete(`/online-admissions/${id}`);
-            toast("success", "Admission record deleted successfully.");
+            tt.success("admission_record_deleted_successfully");
             fetchAdmissions(currentPage);
         } catch (error) {
-            toast("error", "Failed to delete record. Please try again.");
+            tt.error("failed_to_delete_record");
         }
     };
 
@@ -273,13 +275,13 @@ export default function OnlineAdmissionPage() {
         try {
             const response = await api.post(`/online-admissions/${selectedAdmission.id}/enroll`);
             const enrolledStudent = response.data?.data;
-            const message = response.data?.message || `Successfully enrolled ${selectedAdmission.first_name} as a student.`;
-            toast("success", message);
+            const message = response.data?.message || t("successfully_enrolled", { name: selectedAdmission.first_name });
+            tt.success(message);
             setEnrollDialogOpen(false);
             setSelectedAdmission(null);
             fetchAdmissions(currentPage);
         } catch (error: any) {
-            toast("error", error.response?.data?.message || "Failed to enroll applicant.");
+            tt.error(error.response?.data?.message || t("failed_to_enroll_applicant"));
         } finally {
             setSubmitting(false);
         }
@@ -304,8 +306,8 @@ export default function OnlineAdmissionPage() {
                         <Globe className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Online Admission List</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{total} application{total === 1 ? "" : "s"} total</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("online_admission_list")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{total} {t(total === 1 ? "application" : "applications")} {t("total")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -314,7 +316,7 @@ export default function OnlineAdmissionPage() {
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search"
+                                placeholder={t("search")}
                                 className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -326,11 +328,11 @@ export default function OnlineAdmissionPage() {
                                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             </div>
                             <div className="flex gap-1">
-                                <IconButton icon={Printer} onClick={handlePrint} title="Print" />
-                                <IconButton icon={Copy} onClick={exportToCopy} title="Copy" />
-                                <IconButton icon={TableIcon} onClick={exportToExcel} title="Excel" />
-                                <IconButton icon={FileText} onClick={exportToPDF} title="PDF" />
-                                <IconButton icon={Download} onClick={() => admissions.length > 0 && exportToExcel()} title="Download" />
+                                <IconButton icon={Printer} onClick={handlePrint} title={t("print")} />
+                                <IconButton icon={Copy} onClick={exportToCopy} title={t("copy")} />
+                                <IconButton icon={TableIcon} onClick={exportToExcel} title={t("excel")} />
+                                <IconButton icon={FileText} onClick={exportToPDF} title={t("pdf")} />
+                                <IconButton icon={Download} onClick={() => admissions.length > 0 && exportToExcel()} title={t("download")} />
                             </div>
                         </div>
                     </div>
@@ -340,20 +342,20 @@ export default function OnlineAdmissionPage() {
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-muted/50 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                 <tr>
-                                    <Th>Reference No</Th>
-                                    <Th>Student Name</Th>
-                                    <Th>Class</Th>
-                                    <Th>Section</Th>
-                                    <Th>Father Name</Th>
-                                    <Th>Date Of Birth</Th>
-                                    <Th>Gender</Th>
-                                    <Th>Category</Th>
-                                    <Th>Student Mobile Number</Th>
-                                    <Th>Form Status</Th>
-                                    <Th>Payment Status</Th>
-                                    <Th>Enrolled</Th>
-                                    <Th>Created At</Th>
-                                    <Th className="text-right print:hidden">Action</Th>
+                                    <Th>{t("reference_no")}</Th>
+                                    <Th>{t("student_name")}</Th>
+                                    <Th>{t("class")}</Th>
+                                    <Th>{t("section")}</Th>
+                                    <Th>{t("father_name")}</Th>
+                                    <Th>{t("date_of_birth")}</Th>
+                                    <Th>{t("gender")}</Th>
+                                    <Th>{t("category")}</Th>
+                                    <Th>{t("student_mobile_number")}</Th>
+                                    <Th>{t("form_status")}</Th>
+                                    <Th>{t("payment_status")}</Th>
+                                    <Th>{t("enrolled")}</Th>
+                                    <Th>{t("created_at")}</Th>
+                                    <Th className="text-right print:hidden">{t("action")}</Th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-muted/30">
@@ -361,7 +363,7 @@ export default function OnlineAdmissionPage() {
                                     <TableSkeleton rows={5} cols={14} />
                                 ) : admissions.length === 0 ? (
                                     <tr>
-                                        <td colSpan={14} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                        <td colSpan={14} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                     </tr>
                                 ) : (
                                     admissions.map((student) => (
@@ -419,12 +421,12 @@ export default function OnlineAdmissionPage() {
                                                                 setEnrollDialogOpen(true);
                                                             }}
                                                             className="bg-green-500 hover:bg-green-600"
-                                                            title="Enroll"
+                                                            title={t("enroll")}
                                                         />
                                                     )}
-                                                    <ActionBtn icon={Eye} onClick={() => handleView(student)} className="bg-indigo-500 hover:bg-indigo-600" title="View" />
-                                                    <ActionBtn icon={Pencil} onClick={() => handleEdit(student)} className="bg-amber-500 hover:bg-amber-600" title="Edit" />
-                                                    <ActionBtn icon={Trash2} onClick={() => handleDelete(student.id)} className="bg-red-500 hover:bg-red-600" title="Delete" />
+                                                    <ActionBtn icon={Eye} onClick={() => handleView(student)} className="bg-indigo-500 hover:bg-indigo-600" title={t("view")} />
+                                                    <ActionBtn icon={Pencil} onClick={() => handleEdit(student)} className="bg-amber-500 hover:bg-amber-600" title={t("edit")} />
+                                                    <ActionBtn icon={Trash2} onClick={() => handleDelete(student.id)} className="bg-red-500 hover:bg-red-600" title={t("delete")} />
                                                 </div>
                                             </Td>
                                         </tr>
@@ -435,7 +437,7 @@ export default function OnlineAdmissionPage() {
                     </div>
 
                     <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium print:hidden">
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Showing {from} to {to} of {total} entries</p>
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{t("showing_x_to_y_of_z", { from, to, total })}</p>
                         <div className="flex items-center gap-2">
                             <Button
                                 variant="outline"
@@ -482,9 +484,9 @@ export default function OnlineAdmissionPage() {
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
                             <Eye className="h-5 w-5 text-indigo-500" />
-                            Admission Application Details
+                            {t("admission_application_details")}
                         </DialogTitle>
-                        <DialogDescription className="font-semibold text-primary">Reference No: {selectedAdmission?.reference_no}</DialogDescription>
+                        <DialogDescription className="font-semibold text-primary">{t("reference_no")}: {selectedAdmission?.reference_no}</DialogDescription>
                     </DialogHeader>
                     {selectedAdmission && (
                         <div className="space-y-6 pt-4">
@@ -493,7 +495,7 @@ export default function OnlineAdmissionPage() {
                                     {selectedAdmission.student_photo ? (
                                         <img
                                             src={getImageUrl(selectedAdmission.student_photo)}
-                                            alt="Student"
+                                            alt={t("student")}
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
@@ -503,24 +505,24 @@ export default function OnlineAdmissionPage() {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">Student Info</h4>
-                                    <InfoRow label="Full Name" value={`${selectedAdmission.first_name} ${selectedAdmission.middle_name || ""} ${selectedAdmission.last_name}`} />
-                                    <InfoRow label="Date of Birth" value={formatDate(selectedAdmission.dob)} />
-                                    <InfoRow label="Gender" value={selectedAdmission.gender} />
-                                    <InfoRow label="Mobile" value={selectedAdmission.phone} />
-                                    <InfoRow label="Email" value={selectedAdmission.email} />
-                                    <InfoRow label="Class" value={selectedAdmission.school_class?.name} />
-                                    <InfoRow label="Section" value={selectedAdmission.section?.name} />
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">{t("student_info")}</h4>
+                                    <InfoRow label={t("full_name")} value={`${selectedAdmission.first_name} ${selectedAdmission.middle_name || ""} ${selectedAdmission.last_name}`} />
+                                    <InfoRow label={t("date_of_birth")} value={formatDate(selectedAdmission.dob)} />
+                                    <InfoRow label={t("gender")} value={selectedAdmission.gender} />
+                                    <InfoRow label={t("mobile")} value={selectedAdmission.phone} />
+                                    <InfoRow label={t("email")} value={selectedAdmission.email} />
+                                    <InfoRow label={t("class")} value={selectedAdmission.school_class?.name} />
+                                    <InfoRow label={t("section")} value={selectedAdmission.section?.name} />
                                 </div>
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">Parent Info</h4>
-                                    <InfoRow label="Father Name" value={selectedAdmission.father_name} />
-                                    <InfoRow label="Father Mobile" value={selectedAdmission.father_phone} />
-                                    <InfoRow label="Mother Name" value={selectedAdmission.mother_name} />
-                                    <InfoRow label="Mother Mobile" value={selectedAdmission.mother_phone} />
-                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 mt-4">Status</h4>
-                                    <InfoRow label="Form Status" value={selectedAdmission.form_status} />
-                                    <InfoRow label="Payment Status" value={selectedAdmission.payment_status} />
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">{t("parent_info")}</h4>
+                                    <InfoRow label={t("father_name")} value={selectedAdmission.father_name} />
+                                    <InfoRow label={t("father_mobile")} value={selectedAdmission.father_phone} />
+                                    <InfoRow label={t("mother_name")} value={selectedAdmission.mother_name} />
+                                    <InfoRow label={t("mother_mobile")} value={selectedAdmission.mother_phone} />
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 mt-4">{t("status")}</h4>
+                                    <InfoRow label={t("form_status")} value={selectedAdmission.form_status} />
+                                    <InfoRow label={t("payment_status")} value={selectedAdmission.payment_status} />
                                 </div>
                             </div>
                         </div>
@@ -536,12 +538,12 @@ export default function OnlineAdmissionPage() {
                             <div className="p-2 bg-green-100 rounded-lg text-green-600">
                                 <Check className="h-5 w-5" />
                             </div>
-                            Confirm Enrollment
+                            {t("confirm_enrollment")}
                         </DialogTitle>
                         <DialogDescription className="pt-2 text-sm text-muted-foreground font-medium">
-                            Are you sure you want to enroll <span className="text-foreground font-bold">{selectedAdmission?.first_name} {selectedAdmission?.last_name}</span>?
+                            {t("are_you_sure_enroll")} <span className="text-foreground font-bold">{selectedAdmission?.first_name} {selectedAdmission?.last_name}</span>?
                             <br /><br />
-                            This will create a new student record and generate an admission number automatically.
+                            {t("enroll_confirmation_description")}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex justify-end gap-3 mt-4">
@@ -550,7 +552,7 @@ export default function OnlineAdmissionPage() {
                             onClick={() => setEnrollDialogOpen(false)}
                             className="rounded-lg border-muted/50 active:scale-95 transition-all"
                         >
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button
                             onClick={handleEnroll}
@@ -560,9 +562,9 @@ export default function OnlineAdmissionPage() {
                             {submitting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Enrolling...
+                                    {t("enrolling")}
                                 </>
-                            ) : "Confirm Enrollment"}
+                            ) : t("confirm_enrollment")}
                         </Button>
                     </div>
                 </DialogContent>

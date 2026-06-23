@@ -13,11 +13,12 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Save, Lock, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Save, Lock, ShieldCheck, UserCog } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
 import api from "@/lib/api";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface Role {
     name: string;
@@ -32,6 +33,7 @@ export default function EditStaffPage() {
     const router = useRouter();
     const params = useParams();
     const { toast } = useToast();
+    const { t } = useTranslation();
     const id = params.id;
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,8 +90,8 @@ export default function EditStaffPage() {
                 ]);
             } else if (user) {
                 toast({
-                    title: "Unauthorized",
-                    description: "You do not have permission to edit staff.",
+                    title: t("unauthorized"),
+                    description: t("no_permission_edit_staff"),
                     variant: "destructive",
                 });
                 router.push("/dashboard/hr/staff-directory");
@@ -184,15 +186,15 @@ export default function EditStaffPage() {
             console.error("Error fetching staff details:", error);
             if (error.response?.status === 404) {
                 toast({
-                    title: "Not Found",
-                    description: "Staff member not found",
+                    title: t("not_found"),
+                    description: t("staff_not_found"),
                     variant: "destructive",
                 });
                 router.push("/dashboard/hr/staff-directory");
             } else {
                 toast({
-                    title: "Error",
-                    description: "Failed to load staff details",
+                    title: t("error"),
+                    description: t("failed_to_load_staff_details"),
                     variant: "destructive",
                 });
             }
@@ -221,15 +223,15 @@ export default function EditStaffPage() {
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
 
-        if (!formData.staff_id.trim()) newErrors.staff_id = "Staff ID is required";
-        if (!formData.role) newErrors.role = "Role is required";
-        if (!formData.first_name.trim()) newErrors.first_name = "First Name is required";
+        if (!formData.staff_id.trim()) newErrors.staff_id = t("staff_id_required");
+        if (!formData.role) newErrors.role = t("role_required");
+        if (!formData.first_name.trim()) newErrors.first_name = t("first_name_required");
         if (!formData.email.trim()) {
-            newErrors.email = "Email is required";
+            newErrors.email = t("email_required");
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = "Invalid email format";
+            newErrors.email = t("invalid_email_format");
         }
-        if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
+        if (!formData.phone.trim()) newErrors.phone = t("phone_required");
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -248,8 +250,8 @@ export default function EditStaffPage() {
 
             if (response.data.status === "Success") {
                 toast({
-                    title: "Success",
-                    description: "Staff member updated successfully!",
+                    title: t("success"),
+                    description: t("staff_updated_successfully"),
                 });
                 router.push("/dashboard/hr/staff-directory");
             }
@@ -258,8 +260,8 @@ export default function EditStaffPage() {
                 setErrors(error.response.data.errors);
             } else {
                 toast({
-                    title: "Error",
-                    description: error.response?.data?.message || "Failed to update staff member. Please try again.",
+                    title: t("error"),
+                    description: error.response?.data?.message || t("failed_to_update_staff"),
                     variant: "destructive",
                 });
             }
@@ -273,15 +275,15 @@ export default function EditStaffPage() {
         setPasswordErrors({});
 
         if (!passwordData.current_password) {
-            setPasswordErrors(prev => ({ ...prev, current_password: "Current password is required" }));
+            setPasswordErrors(prev => ({ ...prev, current_password: t("current_password_required") }));
             return;
         }
         if (passwordData.new_password.length < 8) {
-            setPasswordErrors(prev => ({ ...prev, new_password: "Password must be at least 8 characters" }));
+            setPasswordErrors(prev => ({ ...prev, new_password: t("password_min_8_chars") }));
             return;
         }
         if (passwordData.new_password !== passwordData.new_password_confirmation) {
-            setPasswordErrors(prev => ({ ...prev, new_password_confirmation: "Passwords do not match" }));
+            setPasswordErrors(prev => ({ ...prev, new_password_confirmation: t("passwords_do_not_match") }));
             return;
         }
 
@@ -295,8 +297,8 @@ export default function EditStaffPage() {
 
             if (response.data.status === "Success") {
                 toast({
-                    title: "Success",
-                    description: "Password updated successfully!",
+                    title: t("success"),
+                    description: t("password_updated_successfully"),
                 });
                 setPasswordData({
                     current_password: "",
@@ -309,8 +311,8 @@ export default function EditStaffPage() {
                 setPasswordErrors(error.response.data.errors);
             } else {
                 toast({
-                    title: "Error",
-                    description: error.response?.data?.message || "Failed to update password.",
+                    title: t("error"),
+                    description: error.response?.data?.message || t("failed_to_update_password"),
                     variant: "destructive",
                 });
             }
@@ -325,7 +327,7 @@ export default function EditStaffPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen space-y-4 bg-gray-50/10">
                 <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
-                <p className="text-sm text-gray-400 font-medium">Loading staff details...</p>
+                <p className="text-sm text-gray-400 font-medium">{t("loading_staff_details")}</p>
             </div>
         );
     }
@@ -333,16 +335,22 @@ export default function EditStaffPage() {
     return (
         <div className="p-6 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
                     <Button
                         variant="ghost"
                         onClick={() => router.back()}
-                        className="hover:bg-gray-100 rounded-lg"
+                        className="h-9 w-9 p-0 hover:bg-white/60 rounded-lg shrink-0"
                     >
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-2xl font-bold text-gray-800">Edit Staff</h1>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <UserCog className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("edit_staff")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("update_staff_details")}</p>
+                    </div>
                 </div>
             </div>
 
@@ -350,7 +358,7 @@ export default function EditStaffPage() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
                 <p className="text-sm text-blue-800">
-                    Updating staff details will take effect immediately. Email cannot be changed if it's already in use by another user.
+                    {t("staff_update_info")}
                 </p>
             </div>
 
@@ -359,18 +367,18 @@ export default function EditStaffPage() {
                 <form onSubmit={handleSubmit} className="p-8 space-y-8">
                     {/* Basic Information Section */}
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">Basic Information</h2>
+                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">{t("basic_information")}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* Staff ID */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">
-                                    Staff ID <span className="text-red-500">*</span>
+                                    {t("staff_id")} <span className="text-red-500">*</span>
                                 </Label>
                                 <div className="relative">
                                     <Input
                                         value={formData.staff_id}
                                         onChange={(e) => handleInputChange("staff_id", e.target.value)}
-                                        placeholder="Enter Staff ID"
+                                        placeholder={t("enter_staff_id")}
                                         readOnly={!!formData.staff_id}
                                         className={`h-11 border-gray-200 pr-12 ${errors.staff_id ? "border-red-500" : ""} ${formData.staff_id ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""}`}
                                     />
@@ -391,11 +399,11 @@ export default function EditStaffPage() {
                             {/* Role */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">
-                                    Role <span className="text-red-500">*</span>
+                                    {t("role")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select value={formData.role} onValueChange={(value) => handleInputChange("role", value)}>
                                     <SelectTrigger className={`h-11 border-gray-200 ${errors.role ? "border-red-500" : ""}`}>
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {roles.map((role) => (
@@ -409,28 +417,28 @@ export default function EditStaffPage() {
                             {/* Status */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">
-                                    Status
+                                    {t("status")}
                                 </Label>
                                 <Select 
                                     value={formData.active ? "true" : "false"} 
                                     onValueChange={(value) => handleInputChange("active", value === "true")}
                                 >
                                     <SelectTrigger className="h-11 border-gray-200">
-                                        <SelectValue placeholder="Select Status" />
+                                        <SelectValue placeholder={t("select_status")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="true">Active</SelectItem>
-                                        <SelectItem value="false">Disabled</SelectItem>
+                                        <SelectItem value="true">{t("active")}</SelectItem>
+                                        <SelectItem value="false">{t("disabled")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             {/* Designation */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Designation</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("designation")}</Label>
                                 <Select value={formData.designation} onValueChange={(value) => handleInputChange("designation", value)}>
                                     <SelectTrigger className="h-11 border-gray-200">
-                                        <SelectValue placeholder="Select Designation" />
+                                        <SelectValue placeholder={t("select_designation")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {designations.map((d) => (
@@ -442,10 +450,10 @@ export default function EditStaffPage() {
 
                             {/* Department */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Department</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("department")}</Label>
                                 <Select value={formData.department} onValueChange={(value) => handleInputChange("department", value)}>
                                     <SelectTrigger className="h-11 border-gray-200">
-                                        <SelectValue placeholder="Select Department" />
+                                        <SelectValue placeholder={t("select_department")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {departments.map((d) => (
@@ -458,12 +466,12 @@ export default function EditStaffPage() {
                             {/* First Name */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">
-                                    First Name <span className="text-red-500">*</span>
+                                    {t("first_name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     value={formData.first_name}
                                     onChange={(e) => handleInputChange("first_name", e.target.value)}
-                                    placeholder="Enter First Name"
+                                    placeholder={t("enter_first_name")}
                                     className={`h-11 border-gray-200 ${errors.first_name ? "border-red-500" : ""}`}
                                 />
                                 {errors.first_name && <p className="text-xs text-red-500">{errors.first_name}</p>}
@@ -471,33 +479,33 @@ export default function EditStaffPage() {
 
                             {/* Last Name */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Last Name</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("last_name")}</Label>
                                 <Input
                                     value={formData.last_name}
                                     onChange={(e) => handleInputChange("last_name", e.target.value)}
-                                    placeholder="Enter Last Name"
+                                    placeholder={t("enter_last_name")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
 
                             {/* Father Name */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Father Name</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("father_name")}</Label>
                                 <Input
                                     value={formData.father_name}
                                     onChange={(e) => handleInputChange("father_name", e.target.value)}
-                                    placeholder="Enter Father Name"
+                                    placeholder={t("enter_father_name")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
 
                             {/* Mother Name */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Mother Name</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("mother_name")}</Label>
                                 <Input
                                     value={formData.mother_name}
                                     onChange={(e) => handleInputChange("mother_name", e.target.value)}
-                                    placeholder="Enter Mother Name"
+                                    placeholder={t("enter_mother_name")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
@@ -505,13 +513,13 @@ export default function EditStaffPage() {
                             {/* Email */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">
-                                    Email (Login Username) <span className="text-red-500">*</span>
+                                    {t("email_login_username")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     type="email"
                                     value={formData.email}
                                     onChange={(e) => handleInputChange("email", e.target.value)}
-                                    placeholder="Enter Email Address"
+                                    placeholder={t("enter_email_address")}
                                     className={`h-11 border-gray-200 ${errors.email ? "border-red-500" : ""}`}
                                 />
                                 {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
@@ -519,22 +527,22 @@ export default function EditStaffPage() {
 
                             {/* Gender */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Gender</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("gender")}</Label>
                                 <Select value={formData.gender} onValueChange={(value) => handleInputChange("gender", value)}>
                                     <SelectTrigger className="h-11 border-gray-200">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Male">Male</SelectItem>
-                                        <SelectItem value="Female">Female</SelectItem>
-                                        <SelectItem value="Other">Other</SelectItem>
+                                        <SelectItem value="Male">{t("male")}</SelectItem>
+                                        <SelectItem value="Female">{t("female")}</SelectItem>
+                                        <SelectItem value="Other">{t("other")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             {/* Date of Birth */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Date of Birth</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("date_of_birth")}</Label>
                                 <DatePicker
                                     value={formData.date_of_birth}
                                     onChange={(val) => handleInputChange("date_of_birth", val)}
@@ -544,7 +552,7 @@ export default function EditStaffPage() {
 
                             {/* Date of Joining */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Date of Joining</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("date_of_joining")}</Label>
                                 <DatePicker
                                     value={formData.date_of_joining}
                                     onChange={(val) => handleInputChange("date_of_joining", val)}
@@ -555,12 +563,12 @@ export default function EditStaffPage() {
                             {/* Phone */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">
-                                    Phone <span className="text-red-500">*</span>
+                                    {t("phone")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     value={formData.phone}
                                     onChange={(e) => handleInputChange("phone", e.target.value)}
-                                    placeholder="Enter Phone Number"
+                                    placeholder={t("enter_phone_number")}
                                     className={`h-11 border-gray-200 ${errors.phone ? "border-red-500" : ""}`}
                                 />
                                 {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
@@ -568,34 +576,34 @@ export default function EditStaffPage() {
 
                             {/* Emergency Contact */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Emergency Contact Number</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("emergency_contact_number")}</Label>
                                 <Input
                                     value={formData.emergency_contact}
                                     onChange={(e) => handleInputChange("emergency_contact", e.target.value)}
-                                    placeholder="Enter Emergency Contact"
+                                    placeholder={t("enter_emergency_contact")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
 
                             {/* Marital Status */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Marital Status</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("marital_status")}</Label>
                                 <Select value={formData.marital_status} onValueChange={(value) => handleInputChange("marital_status", value)}>
                                     <SelectTrigger className="h-11 border-gray-200">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Single">Single</SelectItem>
-                                        <SelectItem value="Married">Married</SelectItem>
-                                        <SelectItem value="Divorced">Divorced</SelectItem>
-                                        <SelectItem value="Widowed">Widowed</SelectItem>
+                                        <SelectItem value="Single">{t("single")}</SelectItem>
+                                        <SelectItem value="Married">{t("married")}</SelectItem>
+                                        <SelectItem value="Divorced">{t("divorced")}</SelectItem>
+                                        <SelectItem value="Widowed">{t("widowed")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             {/* Photo - Full Width */}
                             <div className="md:col-span-3 space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Photo</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("photo")}</Label>
                                 <FileUpload
                                     type="avatar"
                                     accept="image/*"
@@ -611,23 +619,23 @@ export default function EditStaffPage() {
 
                     {/* Address Section */}
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">Address</h2>
+                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">{t("address")}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Address</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("address")}</Label>
                                 <Textarea
                                     value={formData.address}
                                     onChange={(e) => handleInputChange("address", e.target.value)}
-                                    placeholder="Enter Current Address"
+                                    placeholder={t("enter_current_address")}
                                     className="border-gray-200 min-h-[80px]"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Permanent Address</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("permanent_address")}</Label>
                                 <Textarea
                                     value={formData.permanent_address}
                                     onChange={(e) => handleInputChange("permanent_address", e.target.value)}
-                                    placeholder="Enter Permanent Address"
+                                    placeholder={t("enter_permanent_address")}
                                     className="border-gray-200 min-h-[80px]"
                                 />
                             </div>
@@ -636,43 +644,43 @@ export default function EditStaffPage() {
 
                     {/* Professional Details Section */}
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">Professional Details</h2>
+                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">{t("professional_details")}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Qualification</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("qualification")}</Label>
                                 <Input
                                     value={formData.qualification}
                                     onChange={(e) => handleInputChange("qualification", e.target.value)}
-                                    placeholder="Enter Qualification"
+                                    placeholder={t("enter_qualification")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Work Experience</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("work_experience")}</Label>
                                 <Input
                                     value={formData.work_experience}
                                     onChange={(e) => handleInputChange("work_experience", e.target.value)}
-                                    placeholder="Enter Work Experience"
+                                    placeholder={t("enter_work_experience")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">
-                                    PAN / NID Number
+                                    {t("pan_nid_number")}
                                 </Label>
                                 <Input
                                     value={formData.pan_number}
                                     onChange={(e) => handleInputChange("pan_number", e.target.value)}
-                                    placeholder="Enter PAN / NID Number"
+                                    placeholder={t("enter_pan_nid_number")}
                                     className="h-11 border-gray-200"
                                 />
                             </div>
                             <div className="md:col-span-3 space-y-2">
-                                <Label className="text-xs font-bold text-gray-500 uppercase">Note</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase">{t("note")}</Label>
                                 <Textarea
                                     value={formData.note}
                                     onChange={(e) => handleInputChange("note", e.target.value)}
-                                    placeholder="Enter Additional Notes"
+                                    placeholder={t("enter_additional_notes")}
                                     className="border-gray-200 min-h-[80px]"
                                 />
                             </div>
@@ -684,12 +692,12 @@ export default function EditStaffPage() {
                         <div>
                             <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200 flex items-center gap-2">
                                 <Lock className="h-5 w-5 text-amber-500" />
-                                Security & Password
+                                {t("security_and_password")}
                             </h2>
                             <div className="bg-gray-50/50 rounded-lg p-6 border border-gray-100">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500 uppercase">Current Password</Label>
+                                        <Label className="text-xs font-bold text-gray-500 uppercase">{t("current_password")}</Label>
                                         <Input
                                             type="password"
                                             value={passwordData.current_password}
@@ -700,7 +708,7 @@ export default function EditStaffPage() {
                                         {passwordErrors.current_password && <p className="text-xs text-red-500">{passwordErrors.current_password}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500 uppercase">New Password</Label>
+                                        <Label className="text-xs font-bold text-gray-500 uppercase">{t("new_password")}</Label>
                                         <Input
                                             type="password"
                                             value={passwordData.new_password}
@@ -711,7 +719,7 @@ export default function EditStaffPage() {
                                         {passwordErrors.new_password && <p className="text-xs text-red-500">{passwordErrors.new_password}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500 uppercase">Confirm New Password</Label>
+                                        <Label className="text-xs font-bold text-gray-500 uppercase">{t("confirm_new_password")}</Label>
                                         <Input
                                             type="password"
                                             value={passwordData.new_password_confirmation}
@@ -731,12 +739,12 @@ export default function EditStaffPage() {
                                             {isChangingPassword ? (
                                                 <>
                                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                    Updating...
+                                                    {t("updating")}
                                                 </>
                                             ) : (
                                                 <>
                                                     <ShieldCheck className="h-4 w-4 mr-2" />
-                                                    Update Password
+                                                    {t("update_password")}
                                                 </>
                                             )}
                                         </Button>
@@ -754,7 +762,7 @@ export default function EditStaffPage() {
                             onClick={() => router.back()}
                             className="px-8 h-11 rounded-lg border-gray-300 hover:bg-gray-50"
                         >
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button
                             type="submit"
@@ -764,12 +772,12 @@ export default function EditStaffPage() {
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Updating Staff...
+                                    {t("updating_staff")}
                                 </>
                             ) : (
                                 <>
                                     <Save className="h-4 w-4 mr-2" />
-                                    Update Staff
+                                    {t("update_staff_button")}
                                 </>
                             )}
                         </Button>

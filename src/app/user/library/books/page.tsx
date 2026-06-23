@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Table, TableBody, TableCell, TableHead,
     TableHeader, TableRow,
@@ -44,6 +45,7 @@ type Book = {
 const PAGE_SIZES = [10, 25, 50, 100];
 
 export default function UserLibraryBooksPage() {
+    const { t } = useTranslation();
     const [books, setBooks] = useState<Book[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -76,7 +78,7 @@ export default function UserLibraryBooksPage() {
                 setFrom(raw?.from ?? 0);
                 setTo(raw?.to ?? 0);
             } catch {
-                toast({ variant: "destructive", title: "Error", description: "Failed to load books." });
+                toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_books") });
             } finally {
                 setLoading(false);
             }
@@ -94,24 +96,24 @@ export default function UserLibraryBooksPage() {
 
     const exportRows = () =>
         books.map((b) => ({
-            "Book Title": b.title,
-            "Book Number": b.book_number || "",
-            "ISBN": b.isbn_number || "",
-            "Publisher": b.publisher || "",
-            "Author": b.author || "",
-            "Subject": b.subject || "",
-            "Rack Number": b.rack_number || "",
-            "Qty": b.qty,
-            "Available": b.available,
-            "Book Price": formatPrice(b.price),
-            "Post Date": formatDate(b.post_date || b.created_at),
+            [t("book_title")]: b.title,
+            [t("book_number")]: b.book_number || "",
+            [t("isbn")]: b.isbn_number || "",
+            [t("publisher")]: b.publisher || "",
+            [t("author")]: b.author || "",
+            [t("subject")]: b.subject || "",
+            [t("rack_number")]: b.rack_number || "",
+            [t("qty")]: b.qty,
+            [t("available")]: b.available,
+            [t("book_price")]: formatPrice(b.price),
+            [t("post_date")]: formatDate(b.post_date || b.created_at),
         }));
 
     const copyToClipboard = useCallback(() => {
         const rows = exportRows();
         const text = rows.map((r) => Object.values(r).join("\t")).join("\n");
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied to clipboard" });
+        toast({ title: t("copied_to_clipboard") });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [books, toast]);
 
@@ -125,9 +127,9 @@ export default function UserLibraryBooksPage() {
 
     const exportToPDF = useCallback(() => {
         const doc = new jsPDF("l");
-        doc.text("Library Books", 14, 16);
+        doc.text(t("library_books"), 14, 16);
         autoTable(doc, {
-            head: [["Book Title", "Book No.", "Publisher", "Author", "Subject", "Rack", "Avail/Qty", "Price"]],
+            head: [[t("book_title"), t("book_no"), t("publisher"), t("author"), t("subject"), t("rack"), t("avail_qty"), t("price")]],
             body: books.map((b) => [
                 b.title, b.book_number || "", b.publisher || "", b.author || "", b.subject || "",
                 b.rack_number || "", `${b.available}/${b.qty}`, formatPrice(b.price),
@@ -156,7 +158,7 @@ export default function UserLibraryBooksPage() {
                     : "bg-red-100 text-red-600 border-red-200 hover:bg-red-100"
             )}
         >
-            {b.available > 0 ? `${b.available}/${b.qty} available` : "Out of stock"}
+            {b.available > 0 ? `${b.available}/${b.qty} ${t("available").toLowerCase()}` : t("out_of_stock")}
         </Badge>
     );
 
@@ -170,9 +172,9 @@ export default function UserLibraryBooksPage() {
                             <Library className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Library Books</h1>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("library_books")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {loading ? "Loading…" : `${total} book${total === 1 ? "" : "s"} in catalogue`}
+                                {loading ? t("loading") : `${total} book${total === 1 ? "" : "s"} in catalogue`}
                             </p>
                         </div>
                     </div>
@@ -184,7 +186,7 @@ export default function UserLibraryBooksPage() {
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search title, author, publisher, subject..."
+                                placeholder={t("search_title_author_publisher_subject")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-8 h-9 text-sm rounded-[10px]"
@@ -205,10 +207,10 @@ export default function UserLibraryBooksPage() {
 
                             <div className="flex items-center border border-gray-200 rounded-[10px] overflow-hidden">
                                 {[
-                                    { icon: Copy, label: "Copy", action: copyToClipboard },
-                                    { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
-                                    { icon: FileDown, label: "PDF", action: exportToPDF },
-                                    { icon: Printer, label: "Print", action: () => window.print() },
+                                    { icon: Copy, label: t("copy"), action: copyToClipboard },
+                                    { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
+                                    { icon: FileDown, label: t("pdf"), action: exportToPDF },
+                                    { icon: Printer, label: t("print"), action: () => window.print() },
                                 ].map(({ icon: Icon, label, action }, i, arr) => (
                                     <Button
                                         key={label}
@@ -233,14 +235,14 @@ export default function UserLibraryBooksPage() {
                         <Table className="min-w-[1000px]">
                             <TableHeader>
                                 <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200 text-[12px] font-bold text-gray-700">
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Book Title</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Book No.</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Author</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Publisher</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Subject</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Rack</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Availability</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-right">Price</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("book_title")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("book_no")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("author")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("publisher")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("subject")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("rack")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">{t("availability")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-right">{t("price")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -249,7 +251,7 @@ export default function UserLibraryBooksPage() {
                                         <TableCell colSpan={8} className="h-32 text-center">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                                <span>Loading...</span>
+                                                <span>{t("loading")}</span>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -258,7 +260,7 @@ export default function UserLibraryBooksPage() {
                                         <TableCell colSpan={8} className="h-32 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <BookOpen className="h-8 w-8 opacity-30" />
-                                                <span className="text-sm">No books available.</span>
+                                                <span className="text-sm">{t("no_books_available")}</span>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -276,7 +278,7 @@ export default function UserLibraryBooksPage() {
                                                     <div className="min-w-0">
                                                         <div className="truncate max-w-[220px]">{b.title}</div>
                                                         {b.isbn_number && (
-                                                            <div className="text-[10px] text-gray-400 font-normal">ISBN: {b.isbn_number}</div>
+                                                            <div className="text-[10px] text-gray-400 font-normal">{t("isbn")}: {b.isbn_number}</div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -300,12 +302,12 @@ export default function UserLibraryBooksPage() {
                         {loading ? (
                             <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                <span>Loading...</span>
+                                <span>{t("loading")}</span>
                             </div>
                         ) : books.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
                                 <BookOpen className="h-8 w-8 opacity-30" />
-                                <span className="text-sm">No books available.</span>
+                                <span className="text-sm">{t("no_books_available")}</span>
                             </div>
                         ) : (
                             books.map((b) => (
@@ -349,7 +351,7 @@ export default function UserLibraryBooksPage() {
                                         {b.rack_number && (
                                             <span className="flex items-center gap-1.5 min-w-0">
                                                 <MapPin className="h-3 w-3 text-gray-400 shrink-0" />
-                                                <span className="truncate">Rack {b.rack_number}</span>
+                                                <span className="truncate">{t("rack")} {b.rack_number}</span>
                                             </span>
                                         )}
                                     </div>
@@ -366,7 +368,7 @@ export default function UserLibraryBooksPage() {
                     {!loading && (
                         <div className="flex items-center justify-between mt-4 gap-3 flex-wrap print:hidden">
                             <span className="text-[12px] text-gray-500">
-                                {total === 0 ? "No entries" : `Showing ${from} to ${to} of ${total} entries`}
+                                {total === 0 ? t("no_entries") : `${t("showing")} ${from} ${t("to")} ${to} ${t("of")} ${total} ${t("entries")}`}
                             </span>
                             <div className="flex items-center gap-1.5">
                                 <Button

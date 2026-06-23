@@ -130,10 +130,10 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-0 bg-card/95 backdrop-blur-md border-muted/50 shadow-2xl rounded-2xl overflow-hidden" align="end" sideOffset={12}>
                     <div className="flex items-center justify-between p-3 border-b border-muted/50 bg-muted/20">
-                        <h4 className="text-sm font-bold text-foreground">Notifications</h4>
+                        <h4 className="text-sm font-bold text-foreground">{t("notifications")}</h4>
                         {unreadCount > 0 && (
                             <Button variant="ghost" size="sm" onClick={markAllAsRead} className="h-6 text-[10px] uppercase text-primary hover:bg-primary/10 hover:text-primary px-2 rounded-md font-semibold">
-                                Mark all as read
+                                {t("mark_all_as_read")}
                             </Button>
                         )}
                     </div>
@@ -141,7 +141,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                         {notifications.length === 0 ? (
                             <div className="p-6 text-center text-xs text-muted-foreground italic flex flex-col items-center gap-2">
                                 <Bell className="h-6 w-6 opacity-20" />
-                                No notifications yet
+                                {t("no_notifications")}
                             </div>
                         ) : (
                             <div className="flex flex-col">
@@ -176,7 +176,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                     </div>
                     <div className="p-2 border-t border-muted/50 bg-muted/20 text-center">
                         <Button variant="ghost" className="w-full h-8 text-[11px] uppercase font-bold text-muted-foreground hover:text-primary rounded-xl">
-                            View All Notifications
+                            {t("view_all_notifications")}
                         </Button>
                     </div>
                 </PopoverContent>
@@ -308,7 +308,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                         {loading ? (
                             <div className="h-6 w-32 bg-muted-foreground/10 animate-pulse rounded-md" />
                         ) : (
-                            settings?.school_name || "Smart School"
+                            settings?.school_name || t("smart_school")
                         )}
                     </h1>
                     <div className="h-0.5 w-12 bg-gradient-to-r from-primary to-transparent rounded-full mt-[-2px] hidden md:block opacity-70" />
@@ -319,7 +319,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                 <div className="hidden lg:flex items-center relative max-w-sm group">
                     <Search className="absolute left-4 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Input
-                        placeholder="Search by Student Name..."
+                        placeholder={t("search_student")}
                         className="pl-11 h-10 w-[320px] bg-muted/30 border-muted/50 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all rounded-2xl shadow-sm group-hover:bg-muted/50"
                     />
                 </div>
@@ -335,7 +335,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                         </Button>
                         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-[#6366f1] text-white text-[11px] font-bold rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                             <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#6366f1] rotate-45" />
-                            Switch Branch
+                            {t("switch_branch")}
                         </div>
                     </div>
 
@@ -409,10 +409,10 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                         </PopoverTrigger>
                         <PopoverContent className="w-64 p-2 bg-card/95 backdrop-blur-md border-muted/50 shadow-2xl rounded-2xl" align="end" sideOffset={12}>
                             <div className="p-3 border-b border-muted/50 mb-2">
-                                <p className="text-sm font-bold text-foreground truncate">{user?.name || "Loading..."}</p>
+                                <p className="text-sm font-bold text-foreground truncate">{user?.name || t("loading")}</p>
                                 <p className="text-[10px] md:text-xs font-medium text-muted-foreground truncate">{user?.email || "..."}</p>
                                 <div className="mt-2 text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary w-fit px-2 py-0.5 rounded-full ring-1 ring-primary/20">
-                                    {user?.role || "Staff"}
+                                    {user?.role || t("staff")}
                                 </div>
                             </div>
                             <div className="space-y-1">
@@ -422,7 +422,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                                     onClick={() => router.push(`/dashboard/hr/staff-directory/edit/${user?.staff_id}`)}
                                 >
                                     <UserIcon className="h-4 w-4" />
-                                    My Profile
+                                    {t("my_profile")}
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -430,7 +430,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                                     className="w-full justify-start gap-3 h-10 text-sm font-semibold rounded-xl text-destructive hover:bg-destructive/10 transition-all mt-2"
                                 >
                                     <LogOut className="h-4 w-4" />
-                                    Sign Out
+                                    {t("sign_out")}
                                 </Button>
                             </div>
                         </PopoverContent>

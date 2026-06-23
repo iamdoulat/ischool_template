@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,7 +80,8 @@ interface Section {
 }
 
 export default function LoginCredentialsSendPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [classes, setClasses] = useState<AcademicClass[]>([]);
     const [sections, setSections] = useState<Section[]>([]);
     const [selectedClass, setSelectedClass] = useState<string>("");
@@ -98,10 +100,10 @@ export default function LoginCredentialsSendPage() {
         try {
             const response = await api.get('/academics/classes?no_paginate=true');
             setClasses(response.data.data || response.data);
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch classes", variant: "destructive" });
+        } catch {
+            tt.toast("error", "failed_to_fetch_classes");
         }
-    }, [toast]);
+    }, [tt]);
 
     useEffect(() => {
         fetchClasses();
@@ -116,7 +118,7 @@ export default function LoginCredentialsSendPage() {
 
     const handleSearch = useCallback(async () => {
         if (!selectedClass || !selectedSection) {
-            toast({ title: "Required", description: "Please select both class and section", variant: "destructive" });
+            tt.toast("error", "please_select_class_and_section");
             return;
         }
         setLoading(true);
@@ -129,12 +131,12 @@ export default function LoginCredentialsSendPage() {
             });
             setStudents(response.data.data || response.data);
             setSelectedStudentIds([]);
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to search students", variant: "destructive" });
+        } catch {
+            tt.toast("error", "failed_to_search_students");
         } finally {
             setLoading(false);
         }
-    }, [selectedClass, selectedSection, searchTerm, toast]);
+    }, [selectedClass, selectedSection, searchTerm, tt]);
 
     const filteredStudents = useMemo(() => {
         return students.filter(s => {
@@ -167,7 +169,7 @@ export default function LoginCredentialsSendPage() {
 
     const handleSend = async () => {
         if (selectedStudentIds.length === 0) {
-            toast({ title: "Selection Required", description: "Please select at least one student", variant: "destructive" });
+            tt.toast("error", "please_select_at_least_one_student");
             return;
         }
         setSending(true);
@@ -177,9 +179,9 @@ export default function LoginCredentialsSendPage() {
                 message_to: messageTo,
                 notification_type: notificationType
             });
-            toast({ title: "Success", description: response.data.message });
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to send credentials", variant: "destructive" });
+            tt.success(response.data.message);
+        } catch {
+            tt.toast("error", "failed_to_send_credentials");
         } finally {
             setSending(false);
         }
@@ -188,7 +190,7 @@ export default function LoginCredentialsSendPage() {
     const handleCopy = () => {
         const text = students.map(s => `${s.admission_no}\t${s.name} ${s.last_name}\t${s.phone}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Student data copied" });
+        tt.success("student_data_copied");
     };
 
     const handleExportCSV = () => {
@@ -204,10 +206,10 @@ export default function LoginCredentialsSendPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
     ];
 
     return (
@@ -218,8 +220,8 @@ export default function LoginCredentialsSendPage() {
                     <Send className="h-5 w-5 text-indigo-500" />
                 </div>
                 <div>
-                    <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">Login Credentials Send</h1>
-                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5">Send login credentials to students and parents</p>
+                    <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">{t("login_credentials_send")}</h1>
+                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5">{t("login_credentials_send_subtitle")}</p>
                 </div>
             </div>
 
@@ -230,19 +232,19 @@ export default function LoginCredentialsSendPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Choose class and section to find students</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("choose_class_and_section")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                Class <span className="text-red-500">*</span>
+                                {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedClass} onValueChange={handleClassChange}>
                                 <SelectTrigger className="h-10 border-gray-200 text-sm focus:ring-indigo-500 rounded-lg shadow-none bg-gray-50/30">
-                                    <SelectValue placeholder="Select Class" />
+                                    <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
@@ -252,19 +254,19 @@ export default function LoginCredentialsSendPage() {
 
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                Section <span className="text-red-500">*</span>
+                                {t("section")} <span className="text-red-500">*</span>
                             </Label>
                             <div className="flex gap-3 items-center">
                                 <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
                                     <SelectTrigger className="h-10 border-gray-200 text-sm focus:ring-indigo-500 rounded-lg shadow-none bg-gray-50/30 flex-1">
-                                        <SelectValue placeholder="Select Section" />
+                                        <SelectValue placeholder={t("select_section")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {sections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                                 <Button onClick={handleSearch} disabled={loading} className="btn-gradient gap-2 h-10 px-6 text-xs font-bold uppercase transition-all rounded-full shadow-lg shadow-indigo-100">
-                                    <Search className="h-4 w-4" /> {loading ? "Searching..." : "Search"}
+                                    <Search className="h-4 w-4" /> {loading ? t("searching") : t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -279,52 +281,52 @@ export default function LoginCredentialsSendPage() {
                         <Send className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Dispatch Configuration</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Configure how credentials will be sent</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("dispatch_configuration")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("configure_credentials_dispatch")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     {/* Config Row */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-start border-b border-gray-50 pb-8">
                         <div className="space-y-3">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Select All</Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("select_all")}</Label>
                             <div className="flex items-center gap-3">
                                 <Checkbox
                                     checked={filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length}
                                     onCheckedChange={toggleSelectAll}
                                     className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-6 w-6 rounded-md transition-all"
                                 />
-                                <span className="text-[11px] text-gray-400 font-medium">({selectedStudentIds.length} Selected)</span>
+                                <span className="text-[11px] text-gray-400 font-medium">({selectedStudentIds.length} {t("selected")})</span>
                             </div>
                         </div>
 
                         <div className="space-y-2 md:col-span-2">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                Message To <span className="text-red-500">*</span>
+                                {t("message_to")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={messageTo} onValueChange={setMessageTo}>
                                 <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 rounded-lg bg-gray-50/20 shadow-none">
-                                    <SelectValue placeholder="Recipient" />
+                                    <SelectValue placeholder={t("recipient")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="student">Student</SelectItem>
-                                    <SelectItem value="parent">Parent</SelectItem>
+                                    <SelectItem value="student">{t("student")}</SelectItem>
+                                    <SelectItem value="parent">{t("parent")}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                Notification Type <span className="text-red-500">*</span>
+                                {t("notification_type")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={notificationType} onValueChange={setNotificationType}>
                                 <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 rounded-lg bg-gray-50/20 shadow-none">
-                                    <SelectValue placeholder="Method" />
+                                    <SelectValue placeholder={t("method")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="email">Email Only</SelectItem>
-                                    <SelectItem value="sms">SMS Only</SelectItem>
-                                    <SelectItem value="both">Both (Email & SMS)</SelectItem>
+                                    <SelectItem value="email">{t("email_only")}</SelectItem>
+                                    <SelectItem value="sms">{t("sms_only")}</SelectItem>
+                                    <SelectItem value="both">{t("both_email_and_sms")}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -334,7 +336,7 @@ export default function LoginCredentialsSendPage() {
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="relative w-full md:w-64">
                             <Input
-                                placeholder="Filter results..."
+                                placeholder={t("filter_results")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-3 h-9 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50"
@@ -343,7 +345,7 @@ export default function LoginCredentialsSendPage() {
 
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-gray-400 font-medium">Per page:</span>
+                                <span className="text-[10px] text-gray-400 font-medium">{t("per_page")}</span>
                                 <Select value={String(perPage)} onValueChange={(v) => { setPerPage(Number(v)); setCurrentPage(1); }}>
                                     <SelectTrigger className="h-7 w-16 text-[10px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none px-2">
                                         <SelectValue />
@@ -386,12 +388,12 @@ export default function LoginCredentialsSendPage() {
                                             className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4"
                                         />
                                     </TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">Admission No</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">Student Name</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">Class / Section</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">Date Of Birth</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">Gender</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest text-right">Mobile Number</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">{t("admission_no")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">{t("student_name")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">{t("class_section")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">{t("date_of_birth")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest">{t("gender")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-4 tracking-widest text-right">{t("mobile_number")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -400,7 +402,7 @@ export default function LoginCredentialsSendPage() {
                                 ) : paginatedStudents.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={7} className="h-32 text-center text-gray-400 text-xs italic">
-                                            No students found. Please search by class and section.
+                                            {t("no_students_found_search_hint")}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -430,8 +432,8 @@ export default function LoginCredentialsSendPage() {
                     <div className="flex flex-col md:flex-row items-center justify-between pt-6 border-t border-gray-50">
                         <div className="text-[11px] text-gray-400 font-medium mb-4 md:mb-0">
                             {filteredStudents.length > 0
-                                ? `Showing ${startIndex + 1} to ${endIndex} of ${filteredStudents.length} entries`
-                                : "No entries to show"}
+                                ? t("showing_x_to_y_of_z", { from: startIndex + 1, to: endIndex, total: filteredStudents.length })
+                                : t("no_entries_to_show")}
                         </div>
                         <div className="flex items-center gap-4">
                             {totalPages > 1 && (
@@ -502,7 +504,7 @@ export default function LoginCredentialsSendPage() {
                                 disabled={sending || selectedStudentIds.length === 0}
                                 className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-600 text-white px-10 h-10 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg shadow-purple-300/50 min-w-[150px] border-none"
                             >
-                                {sending ? "Sending..." : `Send Credentials (${selectedStudentIds.length})`}
+                                {sending ? t("sending") : `${t("send_credentials")} (${selectedStudentIds.length})`}
                             </Button>
                         </div>
                     </div>

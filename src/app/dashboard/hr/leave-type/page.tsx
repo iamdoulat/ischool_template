@@ -34,7 +34,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -61,7 +62,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function LeaveTypePage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
     const [loading, setLoading] = useState(true);
@@ -80,7 +82,7 @@ export default function LeaveTypePage() {
             setLeaveTypes(response.data.data);
         } catch (error) {
             console.error("Error fetching leave types:", error);
-            toast("error", "Failed to load leave types");
+            tt.error("failed_to_load_leave_types");
         } finally {
             setLoading(false);
         }
@@ -92,23 +94,23 @@ export default function LeaveTypePage() {
 
     const handleSubmit = async () => {
         if (!name.trim()) {
-            toast("error", "Name is required");
+            tt.error("name_is_required");
             return;
         }
 
         try {
             if (isEditing && currentId) {
                 await api.put(`/hr/leave-type/${currentId}`, { name });
-                toast("success", "Leave type updated successfully");
+                tt.success("leave_type_updated_successfully");
             } else {
                 await api.post("/hr/leave-type", { name });
-                toast("success", "Leave type created successfully");
+                tt.success("leave_type_created_successfully");
             }
             resetForm();
             fetchData();
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Failed to save leave type");
+            tt.error(err.response?.data?.message || "failed_to_save_leave_type");
         }
     };
 
@@ -119,13 +121,13 @@ export default function LeaveTypePage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this leave type?")) return;
+        if (!confirm(t("are_you_sure_delete_leave_type"))) return;
         try {
             await api.delete(`/hr/leave-type/${id}`);
-            toast("success", "Leave type deleted successfully");
+            tt.success("leave_type_deleted_successfully");
             fetchData();
         } catch (error) {
-            toast("error", "Failed to delete leave type");
+            tt.error("failed_to_delete_leave_type");
         }
     };
 
@@ -147,15 +149,15 @@ export default function LeaveTypePage() {
     const exportToExcel = () => {
         const ws = XLSX.utils.json_to_sheet(leaveTypes.map(lt => ({ "Leave Type": lt.name })));
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Leave Types");
+        XLSX.utils.book_append_sheet(wb, ws, t("leave_types"));
         XLSX.writeFile(wb, "leave_types.xlsx");
     };
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Leave Type List", 14, 15);
+        doc.text(t("leave_type_list"), 14, 15);
         autoTable(doc, {
-            head: [['No', 'Leave Type Name']],
+            head: [[t("no"), t("leave_type_name")]],
             body: leaveTypes.map((lt, idx) => [idx + 1, lt.name]),
             startY: 20,
         });
@@ -165,7 +167,7 @@ export default function LeaveTypePage() {
     const copyToClipboard = () => {
         const text = leaveTypes.map(lt => lt.name).join('\n');
         navigator.clipboard.writeText(text);
-        toast("success", "Data copied to clipboard");
+        tt.success("data_copied_to_clipboard");
     };
 
     return (
@@ -179,10 +181,10 @@ export default function LeaveTypePage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {isEditing ? "Edit Leave Type" : "Add Leave Type"}
+                                {isEditing ? t("edit_leave_type") : t("add_leave_type")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {isEditing ? "Update existing leave type" : "Create a new leave type"}
+                                {isEditing ? t("update_existing_leave_type") : t("create_new_leave_type")}
                             </p>
                         </div>
                     </CardHeader>
@@ -190,13 +192,13 @@ export default function LeaveTypePage() {
                         <div className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                    Name <span className="text-red-500">*</span>
+                                    {t("name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500 rounded-lg"
-                                    placeholder="e.g. Sick Leave"
+                                    placeholder={t("eg_sick_leave")}
                                 />
                             </div>
 
@@ -207,7 +209,7 @@ export default function LeaveTypePage() {
                                         variant="outline"
                                         className="px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
                                     >
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button
@@ -215,7 +217,7 @@ export default function LeaveTypePage() {
                                     variant="gradient"
                                     className="px-8 h-8 text-[11px] uppercase shadow-sm flex items-center gap-1.5 min-w-[80px]"
                                 >
-                                    {isEditing ? "UPDATE" : "SAVE"}
+                                    {isEditing ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </div>
@@ -231,15 +233,15 @@ export default function LeaveTypePage() {
                             <CalendarDays className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Leave Type List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{filteredLeaveTypes.length} leave type(s)</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("leave_type_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_leave_types", { count: filteredLeaveTypes.length })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="px-5 space-y-4">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
@@ -289,9 +291,9 @@ export default function LeaveTypePage() {
                             <Table>
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="hover:bg-transparent border-gray-100">
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 w-[60px] text-center">No.</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Leave Type</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 w-[60px] text-center">{t("no")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("leave_type")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -299,7 +301,7 @@ export default function LeaveTypePage() {
                                         <TableSkeleton rows={5} cols={3} />
                                     ) : paginatedData.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</TableCell>
+                                            <TableCell colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell>
                                         </TableRow>
                                     ) : (
                                         paginatedData.map((lt, idx) => (

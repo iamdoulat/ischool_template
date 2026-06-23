@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Loader2, Printer } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function ThermalPrintPage() {
+    const { t } = useTranslation();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -43,35 +45,52 @@ export default function ThermalPrintPage() {
         try {
             const res = await api.post("system-setting/thermal-print-settings", settings);
             if (res.data?.status === "success") {
-                toast("success", "Settings saved successfully");
+                toast("success", t("settings_saved_successfully"));
             }
         } catch (error) {
-            toast("error", "Failed to save settings");
+            toast("error", t("failed_to_save"));
             console.error(error);
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex h-[400px] items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-            </div>
-        );
-    }
-
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Thermal Print</h1>
-
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
 
+                {/* Gradient Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Printer className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("thermal_print")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("configure_thermal_receipt_print_settings")}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {loading ? (
+                    /* Form Skeleton */
+                    <div className="w-full p-8 space-y-6 animate-pulse">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                                <div className="md:col-span-2 h-3 w-24 bg-gray-200/70 rounded" />
+                                <div className="md:col-span-10">
+                                    <div className={`bg-gray-200/60 rounded ${i === 0 ? "h-5 w-10" : i >= 2 ? "h-20 w-full" : "h-9 w-full"}`} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                <>
                 {/* Form Container */}
                 <div className="w-full p-8 space-y-6 animate-in fade-in duration-300">
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                        <Label className="text-[11px] font-bold text-gray-600 md:col-span-2">Thermal Print <span className="text-red-500">*</span></Label>
+                        <Label className="text-[11px] font-bold text-gray-600 md:col-span-2">{t("thermal_print")} <span className="text-red-500">*</span></Label>
                         <div className="md:col-span-10">
                             <Switch
                                 checked={settings.status}
@@ -82,7 +101,7 @@ export default function ThermalPrintPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                        <Label className="text-[11px] font-bold text-gray-600 md:col-span-2">School Name <span className="text-red-500">*</span></Label>
+                        <Label className="text-[11px] font-bold text-gray-600 md:col-span-2">{t("school_name")} <span className="text-red-500">*</span></Label>
                         <div className="md:col-span-10">
                             <Input
                                 value={settings.school_name}
@@ -93,7 +112,7 @@ export default function ThermalPrintPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                        <Label className="text-[11px] font-bold text-gray-600 md:col-span-2 mt-2">Address</Label>
+                        <Label className="text-[11px] font-bold text-gray-600 md:col-span-2 mt-2">{t("address")}</Label>
                         <div className="md:col-span-10">
                             <Textarea
                                 value={settings.address}
@@ -104,7 +123,7 @@ export default function ThermalPrintPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                        <Label className="text-[11px] font-bold text-gray-600 md:col-span-2 mt-2">Footer Text</Label>
+                        <Label className="text-[11px] font-bold text-gray-600 md:col-span-2 mt-2">{t("footer_text")}</Label>
                         <div className="md:col-span-10">
                             <Textarea
                                 value={settings.footer_text}
@@ -124,10 +143,12 @@ export default function ThermalPrintPage() {
                         className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-10 h-10 text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5"
                     >
                         {saving ? (
-                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
-                        ) : "Save"}
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("saving")}...</>
+                        ) : t("save")}
                     </Button>
                 </div>
+                </>
+                )}
             </div>
         </div>
     );

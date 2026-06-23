@@ -42,7 +42,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import api from "@/lib/api";
 import {
     Select,
@@ -69,7 +70,8 @@ interface Visitor {
 }
 
 export default function VisitorBookPage() {
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
     const [visitors, setVisitors] = useState<Visitor[]>([]);
     const [purposes, setPurposes] = useState<{ id: number; name: string }[]>([]);
     const [sources, setSources] = useState<{ id: number; name: string }[]>([]);
@@ -131,11 +133,11 @@ export default function VisitorBookPage() {
             setSelectedIds([]);
         } catch (error) {
             console.error("Error fetching visitors:", error);
-            toast("error", "Failed to load visitors");
+            tt.error("failed_to_load_visitors");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, page, limit, toast]);
+    }, [searchQuery, page, limit, tt]);
 
     const fetchPurposes = useCallback(async () => {
         try {
@@ -168,17 +170,17 @@ export default function VisitorBookPage() {
         try {
             if (currentVisitor) {
                 await api.put(`/visitors/${currentVisitor.id}`, formData);
-                toast("success", "Visitor updated successfully");
+                tt.success("visitor_updated_successfully");
             } else {
                 await api.post("/visitors", formData);
-                toast("success", "Visitor added successfully");
+                tt.success("visitor_added_successfully");
             }
             setIsDialogOpen(false);
             fetchVisitors();
             resetForm();
         } catch (error) {
             console.error("Error saving visitor:", error);
-            toast("error", "Failed to save visitor");
+            tt.error("failed_to_save_visitor");
         }
     };
 
@@ -186,26 +188,26 @@ export default function VisitorBookPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/visitors/${deleteId}`);
-            toast("success", "Visitor deleted successfully");
+            tt.success("visitor_deleted_successfully");
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
             fetchVisitors();
         } catch (error) {
             console.error("Error deleting visitor:", error);
-            toast("error", "Failed to delete visitor");
+            tt.error("failed_to_delete_visitor");
         }
     };
 
     const handleBulkDelete = async () => {
         try {
             await api.post("/visitors/bulk-delete", { ids: selectedIds });
-            toast("success", `${selectedIds.length} visitors deleted successfully`);
+            tt.success("visitors_deleted_successfully", { count: selectedIds.length });
             setIsBulkDeleteDialogOpen(false);
             setSelectedIds([]);
             fetchVisitors();
         } catch (error) {
             console.error("Error bulk deleting visitors:", error);
-            toast("error", "Failed to delete selected visitors");
+            tt.error("failed_to_delete_selected_visitors");
         }
     };
 
@@ -269,7 +271,7 @@ export default function VisitorBookPage() {
     const handleCopy = () => {
         const text = visitors.map(v => `${v.purpose}\t${v.meeting_with}\t${v.visitor_name}\t${v.phone}\t${v.date}`).join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const handlePrint = () => {
@@ -277,11 +279,11 @@ export default function VisitorBookPage() {
     };
 
     const handleExportExcel = () => {
-        toast("success", "Exporting to Excel...");
+        tt.success("exporting_to_excel");
     };
 
     const handleExportPDF = () => {
-        toast("success", "Exporting to PDF...");
+        tt.success("exporting_to_pdf");
     };
 
     return (
@@ -293,19 +295,19 @@ export default function VisitorBookPage() {
                             <Users className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Visitor Book</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{total} total visitor{total === 1 ? "" : "s"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("visitor_book")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("total_visitors_count", { total })}</p>
                         </div>
                     </div>
                     <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
                         <DialogTrigger asChild>
                             <Button variant="gradient" size="sm" className="h-9 px-6">
-                                <Plus className="h-4 w-4 mr-2" /> Add
+                                <Plus className="h-4 w-4 mr-2" /> {t("add")}
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl">
                             <div className="bg-[#4F39F6] px-6 py-4 flex items-center justify-between">
-                                <DialogTitle className="text-xl font-bold text-white">{currentVisitor ? "Edit Visitor" : "Add Visitor"}</DialogTitle>
+                                <DialogTitle className="text-xl font-bold text-white">{currentVisitor ? t("edit_visitor") : t("add_visitor")}</DialogTitle>
                                 <button
                                     onClick={() => setIsDialogOpen(false)}
                                     className="text-white/80 hover:text-white transition-colors"
@@ -316,7 +318,7 @@ export default function VisitorBookPage() {
                             <form onSubmit={handleSave} className="p-8 bg-white">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Purpose <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("purpose")} <span className="text-destructive">*</span></label>
                                         <div className="relative">
                                             <select
                                                 className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
@@ -324,7 +326,7 @@ export default function VisitorBookPage() {
                                                 onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
                                                 required
                                             >
-                                                <option value="">Select</option>
+                                                <option value="">{t("select")}</option>
                                                 {purposes.map(p => (
                                                     <option key={p.id} value={p.name}>{p.name}</option>
                                                 ))}
@@ -333,9 +335,9 @@ export default function VisitorBookPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Meeting With <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("meeting_with")} <span className="text-destructive">*</span></label>
                                         <Input
-                                            placeholder="e.g. Staff (Name) or Student (Name)"
+                                            placeholder={t("meeting_with_placeholder")}
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
                                             value={formData.meeting_with}
                                             onChange={(e) => setFormData({ ...formData, meeting_with: e.target.value })}
@@ -343,7 +345,7 @@ export default function VisitorBookPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Visitor Name <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("visitor_name")} <span className="text-destructive">*</span></label>
                                         <Input
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
                                             value={formData.visitor_name}
@@ -355,7 +357,7 @@ export default function VisitorBookPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Phone <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("phone")} <span className="text-destructive">*</span></label>
                                         <Input
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
                                             value={formData.phone}
@@ -364,7 +366,7 @@ export default function VisitorBookPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">ID Card</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("id_card")}</label>
                                         <Input
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
                                             value={formData.id_card || ""}
@@ -372,7 +374,7 @@ export default function VisitorBookPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Number Of Person <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("number_of_person")} <span className="text-destructive">*</span></label>
                                         <Input
                                             type="number"
                                             min="1"
@@ -386,7 +388,7 @@ export default function VisitorBookPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Date <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("date")} <span className="text-destructive">*</span></label>
                                         <Input
                                             type="date"
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
@@ -396,7 +398,7 @@ export default function VisitorBookPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">In Time <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("in_time")} <span className="text-destructive">*</span></label>
                                         <Input
                                             type="time"
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
@@ -406,7 +408,7 @@ export default function VisitorBookPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Out Time</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("out_time")}</label>
                                         <Input
                                             type="time"
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
@@ -415,14 +417,14 @@ export default function VisitorBookPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Source</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("source")}</label>
                                         <div className="relative">
                                             <select
                                                 className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                                                 value={formData.source || ""}
                                                 onChange={(e) => setFormData({ ...formData, source: e.target.value })}
                                             >
-                                                <option value="">Select</option>
+                                                <option value="">{t("select")}</option>
                                                 {sources.map(s => (
                                                     <option key={s.id} value={s.name}>{s.name}</option>
                                                 ))}
@@ -434,7 +436,7 @@ export default function VisitorBookPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Note</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("note")}</label>
                                         <textarea
                                             className="flex min-h-[80px] w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all focus:bg-white"
                                             value={formData.note || ""}
@@ -442,10 +444,10 @@ export default function VisitorBookPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Attachment</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("attachment")}</label>
                                         <div className="h-20 w-full border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer group">
                                             <Paperclip className="h-5 w-5 text-slate-400 group-hover:text-primary transition-colors" />
-                                            <span className="text-xs text-slate-500 mt-1">Click to upload file</span>
+                                            <span className="text-xs text-slate-500 mt-1">{t("click_to_upload_file")}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -456,7 +458,7 @@ export default function VisitorBookPage() {
                                         variant="gradient"
                                         className="h-11 px-10 text-base font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all"
                                     >
-                                        Save
+                                        {t("save")}
                                     </Button>
                                 </div>
                             </form>
@@ -469,7 +471,7 @@ export default function VisitorBookPage() {
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search visitors..."
+                                placeholder={t("search_visitors")}
                                 className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus:ring-2 focus:ring-indigo-500/20"
                                 value={searchQuery}
                                 onChange={(e) => {
@@ -504,7 +506,7 @@ export default function VisitorBookPage() {
                                 <IconButton icon={Copy} onClick={handleCopy} />
                                 <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} />
                                 <IconButton icon={FileText} onClick={handleExportPDF} />
-                                <IconButton icon={Download} onClick={() => toast("success", "Downloading...")} />
+                                <IconButton icon={Download} onClick={() => tt.success("downloading")} />
                                 <IconButton icon={Columns} />
                             </div>
                         </div>
@@ -521,16 +523,16 @@ export default function VisitorBookPage() {
                                             onCheckedChange={toggleSelectAll}
                                         />
                                     </th>
-                                    <Th>Purpose</Th>
-                                    <Th>Meeting With</Th>
-                                    <Th>Visitor Name</Th>
-                                    <Th>Phone</Th>
-                                    <Th>ID Card</Th>
-                                    <Th>Number Of Person</Th>
-                                    <Th>Date</Th>
-                                    <Th>In Time</Th>
-                                    <Th>Out Time</Th>
-                                    <Th>Source</Th>
+                                    <Th>{t("purpose")}</Th>
+                                    <Th>{t("meeting_with")}</Th>
+                                    <Th>{t("visitor_name")}</Th>
+                                    <Th>{t("phone")}</Th>
+                                    <Th>{t("id_card")}</Th>
+                                    <Th>{t("number_of_person")}</Th>
+                                    <Th>{t("date")}</Th>
+                                    <Th>{t("in_time")}</Th>
+                                    <Th>{t("out_time")}</Th>
+                                    <Th>{t("source")}</Th>
                                     <th className="px-4 py-4 text-right">
                                         <div className="flex justify-end">
                                             {selectedIds.length > 0 ? (
@@ -541,7 +543,7 @@ export default function VisitorBookPage() {
                                                     <Trash2 className="h-3.5 w-3.5 text-white" />
                                                 </button>
                                             ) : (
-                                                <span className="text-muted-foreground font-bold tracking-wider">ACTION</span>
+                                                <span className="text-muted-foreground font-bold tracking-wider">{t("action")}</span>
                                             )}
                                         </div>
                                     </th>
@@ -550,11 +552,11 @@ export default function VisitorBookPage() {
                             <tbody className="divide-y divide-muted/30">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">Loading visitors...</td>
+                                        <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">{t("loading_visitors")}</td>
                                     </tr>
                                 ) : displayedVisitors.length === 0 ? (
                                     <tr>
-                                        <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">No visitors found</td>
+                                        <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">{t("no_visitors_found")}</td>
                                     </tr>
                                 ) : (
                                     displayedVisitors.map((visitor) => (
@@ -595,7 +597,7 @@ export default function VisitorBookPage() {
 
                     <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                            Showing {total > 0 ? (page - 1) * limit + 1 : 0} to {Math.min(page * limit, total)} of {total} entries
+                            {t("showing_x_to_y_of_z", { from: total > 0 ? (page - 1) * limit + 1 : 0, to: Math.min(page * limit, total), total })}
                         </p>
                         <div className="flex items-center gap-2">
                             <Button
@@ -638,14 +640,14 @@ export default function VisitorBookPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the visitor entry.
+                            {t("permanently_delete_visitor_entry")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setDeleteId(null)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setDeleteId(null)}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -653,14 +655,14 @@ export default function VisitorBookPage() {
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Bulk Delete Visitors</AlertDialogTitle>
+                        <AlertDialogTitle>{t("bulk_delete_visitors")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete {selectedIds.length} selected visitor entries? This action cannot be undone.
+                            {t("confirm_bulk_delete_visitors", { count: selectedIds.length })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">Delete Selected</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">{t("delete_selected")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -670,25 +672,25 @@ export default function VisitorBookPage() {
                     <DialogHeader className="bg-[#4F39F6] p-6">
                         <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
                             <Eye className="h-5 w-5" />
-                            Visitor Details
+                            {t("visitor_details")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="p-6">
                         <div className="grid grid-cols-2 gap-y-6 gap-x-8">
-                            <DetailItem label="Purpose" value={selectedVisitor?.purpose} />
-                            <DetailItem label="Source" value={selectedVisitor?.source} />
-                            <DetailItem label="Meeting With" value={selectedVisitor?.meeting_with} />
-                            <DetailItem label="Visitor Name" value={selectedVisitor?.visitor_name} />
-                            <DetailItem label="Phone" value={selectedVisitor?.phone} />
-                            <DetailItem label="ID Card" value={selectedVisitor?.id_card} />
-                            <DetailItem label="Number Of Person" value={selectedVisitor?.number_of_person?.toString()} />
-                            <DetailItem label="Date" value={selectedVisitor?.date ? new Date(selectedVisitor.date).toLocaleDateString() : "-"} />
-                            <DetailItem label="In Time" value={selectedVisitor?.in_time} />
-                            <DetailItem label="Out Time" value={selectedVisitor?.out_time} />
+                            <DetailItem label={t("purpose")} value={selectedVisitor?.purpose} />
+                            <DetailItem label={t("source")} value={selectedVisitor?.source} />
+                            <DetailItem label={t("meeting_with")} value={selectedVisitor?.meeting_with} />
+                            <DetailItem label={t("visitor_name")} value={selectedVisitor?.visitor_name} />
+                            <DetailItem label={t("phone")} value={selectedVisitor?.phone} />
+                            <DetailItem label={t("id_card")} value={selectedVisitor?.id_card} />
+                            <DetailItem label={t("number_of_person")} value={selectedVisitor?.number_of_person?.toString()} />
+                            <DetailItem label={t("date")} value={selectedVisitor?.date ? new Date(selectedVisitor.date).toLocaleDateString() : "-"} />
+                            <DetailItem label={t("in_time")} value={selectedVisitor?.in_time} />
+                            <DetailItem label={t("out_time")} value={selectedVisitor?.out_time} />
                             <div className="col-span-2 space-y-1">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Note</label>
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("note")}</label>
                                 <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px]">
-                                    {selectedVisitor?.note || "No note provided"}
+                                    {selectedVisitor?.note || t("no_note_provided")}
                                 </p>
                             </div>
                         </div>
@@ -698,7 +700,7 @@ export default function VisitorBookPage() {
                                 variant="gradient"
                                 className="px-8 h-10 rounded-lg shadow-lg shadow-indigo-200 transition-all active:scale-95 text-white"
                             >
-                                Close
+                                {t("close")}
                             </Button>
                         </div>
                     </div>

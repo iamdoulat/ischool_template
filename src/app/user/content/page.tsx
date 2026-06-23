@@ -20,6 +20,7 @@ import {
     Loader2, FileText, X, Calendar, User, Users,
     FolderOpen,
 } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
@@ -39,6 +40,7 @@ type SharedContent = {
 const PAGE_SIZES = [10, 25, 50, 100];
 
 export default function UserContentPage() {
+    const { t } = useTranslation();
     const [items, setItems] = useState<SharedContent[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -72,7 +74,7 @@ export default function UserContentPage() {
                 setFrom(raw?.from ?? 0);
                 setTo(raw?.to ?? 0);
             } catch {
-                toast({ variant: "destructive", title: "Error", description: "Failed to load content." });
+                toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_content") });
             } finally {
                 setLoading(false);
             }
@@ -88,33 +90,33 @@ export default function UserContentPage() {
 
     const exportRows = () =>
         items.map((c) => ({
-            "Title": c.title,
-            "Share Date": formatDate(c.share_date),
-            "Valid Upto": formatDate(c.valid_upto),
-            "Shared By": c.sender?.name || "",
-            "Send To": c.send_to,
+            [t("title")]: c.title,
+            [t("share_date")]: formatDate(c.share_date),
+            [t("valid_upto")]: formatDate(c.valid_upto),
+            [t("shared_by")]: c.sender?.name || "",
+            [t("send_to")]: c.send_to,
         }));
 
     const copyToClipboard = useCallback(() => {
         const text = exportRows().map((r) => Object.values(r).join("\t")).join("\n");
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied to clipboard" });
+        toast({ title: t("copied_to_clipboard") });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [items, toast]);
 
     const exportToExcel = useCallback(() => {
         const ws = XLSX.utils.json_to_sheet(exportRows());
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Content");
+        XLSX.utils.book_append_sheet(wb, ws, t("content"));
         XLSX.writeFile(wb, "content-list.xlsx");
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [items]);
 
     const exportToPDF = useCallback(() => {
         const doc = new jsPDF();
-        doc.text("Content List", 14, 16);
+        doc.text(t("content_list"), 14, 16);
         autoTable(doc, {
-            head: [["Title", "Share Date", "Valid Upto", "Shared By", "Send To"]],
+            head: [[t("title"), t("share_date"), t("valid_upto"), t("shared_by"), t("send_to")]],
             body: items.map((c) => [
                 c.title, formatDate(c.share_date), formatDate(c.valid_upto),
                 c.sender?.name || "", c.send_to,
@@ -143,9 +145,9 @@ export default function UserContentPage() {
                         <FolderOpen className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Content List</h1>
+                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("download_center")}</h1>
                         <p className="text-[11px] text-gray-500 mt-1">
-                            {loading ? "Loading shared content…" : `${total} shared item${total === 1 ? "" : "s"}`}
+                            {loading ? t("loading_shared_content") : `${total} ${t("shared_item").toLowerCase()}${total === 1 ? "" : "s"}`}
                         </p>
                     </div>
                 </div>
@@ -155,7 +157,7 @@ export default function UserContentPage() {
                         <div className="relative w-full sm:w-64">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search title or description..."
+                                placeholder={t("search")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-8 h-9 text-sm"
@@ -176,10 +178,10 @@ export default function UserContentPage() {
 
                             <div className="flex items-center border border-gray-200 rounded-md overflow-hidden">
                                 {[
-                                    { icon: Copy, label: "Copy", action: copyToClipboard },
-                                    { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
-                                    { icon: FileDown, label: "PDF", action: exportToPDF },
-                                    { icon: Printer, label: "Print", action: () => window.print() },
+                                    { icon: Copy, label: t("copy"), action: copyToClipboard },
+                                    { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
+                                    { icon: FileDown, label: t("pdf"), action: exportToPDF },
+                                    { icon: Printer, label: t("print"), action: () => window.print() },
                                 ].map(({ icon: Icon, label, action }, i, arr) => (
                                     <Button
                                         key={label}
@@ -204,11 +206,11 @@ export default function UserContentPage() {
                         <Table className="min-w-[700px]">
                             <TableHeader>
                                 <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 border-b border-gray-200">
-                                    <TableHead className="py-3 px-4 font-bold text-gray-600 text-[10px] uppercase">Title</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-600 text-[10px] uppercase">Share Date</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-600 text-[10px] uppercase">Valid Upto</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-600 text-[10px] uppercase">Shared By</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-600 text-[10px] uppercase text-center">Action</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-600 text-[10px] uppercase">{t("title")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-600 text-[10px] uppercase">{t("share_date")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-600 text-[10px] uppercase">{t("valid_upto")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-600 text-[10px] uppercase">{t("shared_by")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-600 text-[10px] uppercase text-center">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -217,7 +219,7 @@ export default function UserContentPage() {
                                         <TableCell colSpan={5} className="h-32 text-center">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                                <span>Loading...</span>
+                                                <span>{t("loading")}</span>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -226,7 +228,7 @@ export default function UserContentPage() {
                                         <TableCell colSpan={5} className="h-32 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <FileText className="h-8 w-8 opacity-30" />
-                                                <span className="text-sm">No content available.</span>
+                                                <span className="text-sm">{t("no_content_available")}</span>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -248,7 +250,7 @@ export default function UserContentPage() {
                                                         {formatDate(item.valid_upto)}
                                                     </span>
                                                     {expired && (
-                                                        <Badge className="ml-2 bg-red-100 text-red-600 border-red-200 hover:bg-red-100 text-[10px]">Expired</Badge>
+                                                        <Badge className="ml-2 bg-red-100 text-red-600 border-red-200 hover:bg-red-100 text-[10px]">{t("expired")}</Badge>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-600">{item.sender?.name || "—"}</TableCell>
@@ -256,7 +258,7 @@ export default function UserContentPage() {
                                                     <Button
                                                         size="icon"
                                                         onClick={() => setSelected(item)}
-                                                        title="View"
+                                                        title={t("view")}
                                                         className="h-7 w-7 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity"
                                                     >
                                                         <Eye className="h-3.5 w-3.5" />
@@ -274,12 +276,12 @@ export default function UserContentPage() {
                     <div className="sm:hidden">
                         {loading ? (
                             <div className="flex items-center justify-center gap-2 text-gray-400 py-12">
-                                <Loader2 className="h-5 w-5 animate-spin" /> Loading...
+                                <Loader2 className="h-5 w-5 animate-spin" /> {t("loading")}
                             </div>
                         ) : items.length === 0 ? (
                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400 py-12">
                                 <FileText className="h-8 w-8 opacity-30" />
-                                <span className="text-sm">No content available.</span>
+                                <span className="text-sm">{t("no_content_available")}</span>
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -290,14 +292,14 @@ export default function UserContentPage() {
                                             <div className="flex items-start justify-between gap-2">
                                                 <h3 className="text-[13px] font-bold text-gray-800 leading-snug">{item.title}</h3>
                                                 {expired && (
-                                                    <Badge className="shrink-0 bg-red-100 text-red-600 border-red-200 hover:bg-red-100 text-[10px]">Expired</Badge>
+                                                    <Badge className="shrink-0 bg-red-100 text-red-600 border-red-200 hover:bg-red-100 text-[10px]">{t("expired")}</Badge>
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-1 gap-1.5 text-[11px] text-gray-600 border-t border-gray-100 pt-2.5">
-                                                <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-indigo-400 shrink-0" />Shared: {formatDate(item.share_date)}</span>
+                                                <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("shared")}: {formatDate(item.share_date)}</span>
                                                 <span className="flex items-center gap-1.5">
                                                     <Calendar className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
-                                                    Valid upto: <span className={cn(expired ? "text-red-500 font-medium" : "")}>{formatDate(item.valid_upto)}</span>
+                                                    {t("valid_upto")}: <span className={cn(expired ? "text-red-500 font-medium" : "")}>{formatDate(item.valid_upto)}</span>
                                                 </span>
                                                 <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.sender?.name || "—"}</span>
                                             </div>
@@ -305,7 +307,7 @@ export default function UserContentPage() {
                                                 onClick={() => setSelected(item)}
                                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-8 text-[11px] font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 border-0 w-full mt-1"
                                             >
-                                                <Eye className="h-3.5 w-3.5" /> View Details
+                                                <Eye className="h-3.5 w-3.5" /> {t("view_details")}
                                             </Button>
                                         </div>
                                     );
@@ -318,7 +320,7 @@ export default function UserContentPage() {
                     {!loading && (
                         <div className="flex items-center justify-between mt-4 gap-3 flex-wrap">
                             <span className="text-[12px] text-gray-500">
-                                {total === 0 ? "No entries" : `Showing ${from} to ${to} of ${total} entries`}
+                                {total === 0 ? t("no_entries") : `${t("showing")} ${from} ${t("to")} ${to} ${t("of")} ${total} ${t("entries")}`}
                             </span>
                             <div className="flex items-center gap-1.5">
                                 <Button
@@ -394,12 +396,12 @@ export default function UserContentPage() {
                         <div className="flex flex-wrap gap-4 px-5 pt-4 pb-2 text-[12px] text-gray-500">
                             <div className="flex items-center gap-1.5">
                                 <Calendar className="h-3.5 w-3.5" />
-                                <span>Shared: <span className="font-medium text-gray-700">{formatDate(selected.share_date)}</span></span>
+                                <span>{t("shared")}: <span className="font-medium text-gray-700">{formatDate(selected.share_date)}</span></span>
                             </div>
                             {selected.valid_upto && (
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    <span>Valid upto: <span className={cn("font-medium", isExpired(selected.valid_upto) ? "text-red-500" : "text-gray-700")}>
+                                    <span>{t("valid_upto")}: <span className={cn("font-medium", isExpired(selected.valid_upto) ? "text-red-500" : "text-gray-700")}>
                                         {formatDate(selected.valid_upto)}
                                     </span></span>
                                 </div>
@@ -407,13 +409,13 @@ export default function UserContentPage() {
                             {selected.sender?.name && (
                                 <div className="flex items-center gap-1.5">
                                     <User className="h-3.5 w-3.5" />
-                                    <span>By: <span className="font-medium text-gray-700">{selected.sender.name}</span></span>
+                                    <span>{t("by")}: <span className="font-medium text-gray-700">{selected.sender.name}</span></span>
                                 </div>
                             )}
                             {selected.send_to && (
                                 <div className="flex items-center gap-1.5">
                                     <Users className="h-3.5 w-3.5" />
-                                    <span>To: <span className="font-medium text-gray-700">{selected.send_to}</span></span>
+                                    <span>{t("to")}: <span className="font-medium text-gray-700">{selected.send_to}</span></span>
                                 </div>
                             )}
                         </div>
@@ -423,7 +425,7 @@ export default function UserContentPage() {
                             {selected.description ? (
                                 <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap">{selected.description}</p>
                             ) : (
-                                <p className="text-[13px] text-gray-400 italic">No description provided.</p>
+                                <p className="text-[13px] text-gray-400 italic">{t("no_description_provided")}</p>
                             )}
                         </div>
 
@@ -433,7 +435,7 @@ export default function UserContentPage() {
                                 onClick={() => setSelected(null)}
                                 className="px-4 py-1.5 h-auto text-[13px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity"
                             >
-                                Close
+                                {t("close")}
                             </Button>
                         </div>
                     </div>

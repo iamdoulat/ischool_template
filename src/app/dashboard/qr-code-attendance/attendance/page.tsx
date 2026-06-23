@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as faceapi from "face-api.js";
+import { useTranslation } from "@/hooks/use-translation";
 import { useImageUrl } from "@/lib/image-url";
 
 interface ScannedUser {
@@ -42,6 +43,7 @@ export default function QrCodeAttendancePage() {
     const [loadingSettings, setLoadingSettings] = useState(true);
     
     const inputRef = useRef<HTMLInputElement>(null);
+    const { t } = useTranslation();
     const cameraImgRef = useRef<HTMLImageElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -65,10 +67,10 @@ export default function QrCodeAttendancePage() {
                         faceapi.nets.faceRecognitionNet.loadFromUri('/models')
                     ]);
                     setModelsLoaded(true);
-                    toast.success("AI Face Recognition Framework mounted!");
+                    toast.success(t("ai_face_recognition_framework_mounted"));
                 } catch (error) {
                     console.error("Error loading face models:", error);
-                    toast.error("Failed to load AI face recognition models.");
+                    toast.error(t("failed_to_load_ai_face_recognition_models"));
                 } finally {
                     setLoadingModels(false);
                 }
@@ -171,12 +173,12 @@ export default function QrCodeAttendancePage() {
             const response = await api.post('/attendance/qr-scan', { code: value });
             setLastUser({...response.data.user, status: response.data.status});
             setScanValue("");
-            toast.success(`Attendance ${response.data.status}: ${response.data.user.name}`);
+            toast.success(t("attendance_status_user", { status: response.data.status, name: response.data.user.name }));
             
             const audio = new Audio('/sounds/success.mp3');
             audio.play().catch(() => {});
         } catch (err: any) {
-            setError(err.response?.data?.message || "Invalid ID Card");
+            setError(err.response?.data?.message || t("invalid_id_card"));
             const audio = new Audio('/sounds/error.mp3');
             audio.play().catch(() => {});
         } finally {
@@ -299,8 +301,8 @@ export default function QrCodeAttendancePage() {
                         <Scan className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Attendance Terminal</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">Real-time scanning &amp; verification</p>
+                        <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("attendance_terminal")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("real_time_scanning_verification")}</p>
                     </div>
                 </div>
 
@@ -314,7 +316,7 @@ export default function QrCodeAttendancePage() {
                                     mode === "camera" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600"
                                 )}
                             >
-                                <Camera className="h-3.5 w-3.5" /> Visual
+                                <Camera className="h-3.5 w-3.5" /> {t("visual")}
                             </button>
                         )}
                         {settings?.use_sensor_device && (
@@ -325,7 +327,7 @@ export default function QrCodeAttendancePage() {
                                     mode === "sensor" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600"
                                 )}
                             >
-                                <Zap className="h-3.5 w-3.5" /> HID / NFC
+                                <Zap className="h-3.5 w-3.5" /> {t("hid_nfc")}
                             </button>
                         )}
                     </div>
@@ -347,8 +349,8 @@ export default function QrCodeAttendancePage() {
                         {mode === "sensor" ? (
                             <div className="w-full max-w-sm space-y-6">
                                 <div className="text-center space-y-1">
-                                    <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest">Ready to Scan</h2>
-                                    <p className="text-[10px] text-gray-400">Connect institutional scanning peripheral</p>
+                                    <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest">{t("ready_to_scan")}</h2>
+                                    <p className="text-[10px] text-gray-400">{t("connect_institutional_scanning_peripheral")}</p>
                                 </div>
 
                                 <Input
@@ -358,7 +360,7 @@ export default function QrCodeAttendancePage() {
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') handleScan(scanValue);
                                     }}
-                                    placeholder="SCAN ID CARD..."
+                                    placeholder={t("scan_id_card")}
                                     className="h-12 text-center text-lg font-bold tracking-widest bg-gray-50/50 rounded focus-visible:ring-indigo-500 uppercase"
                                     autoFocus
                                 />
@@ -378,7 +380,7 @@ export default function QrCodeAttendancePage() {
                                             lensMode === "qr" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600"
                                         )}
                                     >
-                                        <QrCode className="h-3 w-3" /> Card / QR Code
+                                        <QrCode className="h-3 w-3" /> {t("card_qr_code")}
                                     </button>
                                     <button
                                         onClick={() => setLensMode("face")}
@@ -387,7 +389,7 @@ export default function QrCodeAttendancePage() {
                                             lensMode === "face" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600"
                                         )}
                                     >
-                                        <ScanFace className="h-3 w-3" /> AI Face Recognition
+                                        <ScanFace className="h-3 w-3" /> {t("ai_face_recognition")}
                                     </button>
                                 </div>
 
@@ -396,8 +398,8 @@ export default function QrCodeAttendancePage() {
                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950/90 text-white space-y-2 p-4 text-center z-20">
                                             <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />
                                             <div>
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Loading AI Engine</p>
-                                                <p className="text-[8px] text-gray-400 mt-1 max-w-[200px]">Mounting facial landmarks and recognition models...</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">{t("loading_ai_engine")}</p>
+                                                <p className="text-[8px] text-gray-400 mt-1 max-w-[200px]">{t("mounting_facial_landmarks")}</p>
                                             </div>
                                         </div>
                                     )}
@@ -407,12 +409,12 @@ export default function QrCodeAttendancePage() {
                                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white space-y-3 p-4 text-center z-10">
                                                 <AlertCircle className="h-8 w-8 text-rose-500" />
                                                 <div>
-                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400">Connection Failed</p>
-                                                    <p className="text-[9px] text-gray-400 mt-1 max-w-[200px]">Camera offline or invalid credentials.</p>
+                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400">{t("connection_failed")}</p>
+                                                    <p className="text-[9px] text-gray-400 mt-1 max-w-[200px]">{t("camera_offline_or_invalid_credentials")}</p>
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <Button size="sm" variant="outline" className="text-[9px] h-7 bg-white/10 border-white/20 hover:bg-white/20" onClick={() => setCameraError(false)}>
-                                                        Retry
+                                                        {t("retry")}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -423,7 +425,7 @@ export default function QrCodeAttendancePage() {
                                                     crossOrigin="anonymous"
                                                     src={cameraUrl} 
                                                     className="w-full h-full object-cover" 
-                                                    alt="IP Camera Stream" 
+                                                    alt={t("ip_camera_stream")}
                                                     onError={() => setCameraError(true)}
                                                 />
                                                 <canvas 
@@ -444,7 +446,7 @@ export default function QrCodeAttendancePage() {
                                                 </div>
                                             </div>
                                             <div className="text-center">
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400">Optical Source Offline</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400">{t("optical_source_offline")}</p>
                                             </div>
                                         </div>
                                     )}
@@ -465,7 +467,7 @@ export default function QrCodeAttendancePage() {
                                     <div className="flex items-center gap-2">
                                         <div className={cn("h-2 w-2 rounded-full animate-pulse", cameraError ? "bg-rose-500" : "bg-emerald-500")} />
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                            {cameraError ? "Stream Error" : (settings?.ip_camera_url ? "IP Camera Connected" : "Local Camera")}
+                                            {cameraError ? t("stream_error") : (settings?.ip_camera_url ? t("ip_camera_connected") : t("local_camera"))}
                                         </span>
                                     </div>
                                     <Button 
@@ -477,7 +479,7 @@ export default function QrCodeAttendancePage() {
                                             fetchSettings();
                                         }}
                                     >
-                                        <RefreshCw className="h-3 w-3 mr-1.5" /> Refresh
+                                        <RefreshCw className="h-3 w-3 mr-1.5" /> {t("refresh")}
                                     </Button>
                                 </div>
                             </div>
@@ -495,8 +497,8 @@ export default function QrCodeAttendancePage() {
                             <div className="flex flex-col items-center text-center space-y-4 opacity-40">
                                 <UserCircle className="h-16 w-16 text-gray-400" />
                                 <div>
-                                    <h3 className="text-xs font-bold text-gray-600 uppercase tracking-widest">Awaiting Identity</h3>
-                                    <p className="text-[10px] text-gray-500 mt-1">Scan credential to verify</p>
+                                    <h3 className="text-xs font-bold text-gray-600 uppercase tracking-widest">{t("awaiting_identity")}</h3>
+                                    <p className="text-[10px] text-gray-500 mt-1">{t("scan_credential_to_verify")}</p>
                                 </div>
                             </div>
                         ) : error ? (
@@ -505,14 +507,14 @@ export default function QrCodeAttendancePage() {
                                     <AlertCircle className="h-8 w-8" />
                                 </div>
                                 <div>
-                                    <h3 className="text-xs font-bold text-rose-600 uppercase tracking-widest">Access Denied</h3>
+                                    <h3 className="text-xs font-bold text-rose-600 uppercase tracking-widest">{t("access_denied")}</h3>
                                     <p className="text-[10px] text-rose-500 mt-1">{error}</p>
                                 </div>
                                 <Button 
                                     onClick={() => setError(null)}
                                     className="bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold uppercase h-8 px-6 rounded shadow-sm"
                                 >
-                                    Dismiss Error
+                                    {t("dismiss_error")}
                                 </Button>
                             </div>
                         ) : lastUser && (
@@ -522,7 +524,7 @@ export default function QrCodeAttendancePage() {
                                         "text-white px-3 py-1 rounded text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm",
                                         lastUser.status === 'In' ? "bg-emerald-500" : "bg-indigo-500"
                                     )}>
-                                        <CheckCircle2 className="h-3 w-3" /> Identity Verified
+                                        <CheckCircle2 className="h-3 w-3" /> {t("identity_verified")}
                                     </div>
                                 </div>
 
@@ -530,7 +532,7 @@ export default function QrCodeAttendancePage() {
                                     <div className="relative">
                                         <div className="h-24 w-24 rounded bg-white border-2 border-emerald-100 shadow-sm overflow-hidden flex items-center justify-center">
                                             {lastUser.avatar ? (
-                                                <img src={getImageUrl(lastUser.avatar)} alt="Profile" className="w-full h-full object-cover" />
+                                                <img src={getImageUrl(lastUser.avatar)} alt={t("profile")} className="w-full h-full object-cover" />
                                             ) : (
                                                 <UserCircle className="h-12 w-12 text-emerald-100" />
                                             )}
@@ -541,19 +543,19 @@ export default function QrCodeAttendancePage() {
                                         <h3 className="text-lg font-bold text-gray-800 uppercase tracking-tight">{lastUser.name}</h3>
                                         <div className="flex items-center justify-center gap-2">
                                             <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest bg-emerald-100/50 px-2.5 py-0.5 rounded">{lastUser.role}</span>
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ID: {lastUser.admission_no || lastUser.staff_id}</span>
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("id")}: {lastUser.admission_no || lastUser.staff_id}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="bg-white p-4 rounded border border-emerald-50 flex justify-between items-center shadow-sm">
                                     <div className="space-y-1">
-                                        <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Timestamp</p>
+                                        <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">{t("timestamp")}</p>
                                         <p className="text-sm font-black text-emerald-900">{lastUser.time}</p>
                                     </div>
                                     <div className="text-right space-y-1">
-                                        <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Action</p>
-                                        <p className="text-xs font-bold text-emerald-700 uppercase">Attendance {lastUser.status}</p>
+                                        <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">{t("action")}</p>
+                                        <p className="text-xs font-bold text-emerald-700 uppercase">{t("attendance")} {lastUser.status}</p>
                                     </div>
                                 </div>
                             </div>

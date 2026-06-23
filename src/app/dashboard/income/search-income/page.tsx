@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight, Search, Loader2, Filter, ListChecks } from "lucide-react";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+import { useTranslation } from "@/hooks/use-translation";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -43,6 +44,7 @@ interface IncomeRecord {
 
 export default function SearchIncomePage() {
     const { symbol, formatCurrency } = useCurrencyFormatter();
+    const { t } = useTranslation();
     const [searchType, setSearchType] = useState("all");
     const [keyword, setKeyword] = useState("");
     const [startDate, setStartDate] = useState("");
@@ -74,12 +76,12 @@ export default function SearchIncomePage() {
                 }));
                 setIncomes(mappedData);
                 if (mappedData.length === 0) {
-                    toast.info("No records found for the given criteria.");
+                    toast.info(t("no_records_found_for_criteria"));
                 }
             }
         } catch (error) {
             console.error("Error searching income:", error);
-            toast.error("Failed to search income");
+            toast.error(t("failed_to_search_income"));
         } finally {
             setLoading(false);
         }
@@ -87,7 +89,7 @@ export default function SearchIncomePage() {
 
     const handlePeriodSearch = () => {
         if (searchType === "period" && (!startDate || !endDate)) {
-            toast.error("Please select both start and end dates");
+            toast.error(t("please_select_both_start_and_end_dates"));
             return;
         }
         fetchIncomes({ search_type: searchType, start_date: startDate, end_date: endDate });
@@ -95,7 +97,7 @@ export default function SearchIncomePage() {
 
     const handleKeywordSearch = () => {
         if (!keyword.trim()) {
-            toast.error("Please enter a keyword to search");
+            toast.error(t("please_enter_keyword_to_search"));
             return;
         }
         fetchIncomes({ keyword: keyword.trim() });
@@ -109,8 +111,8 @@ export default function SearchIncomePage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Search income by type or keyword</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("search_income_by_type_or_keyword")}</p>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -119,25 +121,25 @@ export default function SearchIncomePage() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="search-type" className="text-xs font-semibold text-gray-600">
-                                    Search Type <span className="text-red-500">*</span>
+                                    {t("search_type")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select value={searchType} onValueChange={setSearchType}>
                                     <SelectTrigger id="search-type">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All</SelectItem>
-                                        <SelectItem value="today">Today</SelectItem>
-                                        <SelectItem value="this-week">This Week</SelectItem>
-                                        <SelectItem value="last-week">Last Week</SelectItem>
-                                        <SelectItem value="this-month">This Month</SelectItem>
-                                        <SelectItem value="last-month">Last Month</SelectItem>
-                                        <SelectItem value="last-3-months">Last 3 Months</SelectItem>
-                                        <SelectItem value="last-6-months">Last 6 Months</SelectItem>
-                                        <SelectItem value="last-12-months">Last 12 Months</SelectItem>
-                                        <SelectItem value="this-year">This Year</SelectItem>
-                                        <SelectItem value="last-year">Last Year</SelectItem>
-                                        <SelectItem value="period">Period</SelectItem>
+                                        <SelectItem value="all">{t("all")}</SelectItem>
+                                        <SelectItem value="today">{t("today")}</SelectItem>
+                                        <SelectItem value="this-week">{t("this_week")}</SelectItem>
+                                        <SelectItem value="last-week">{t("last_week")}</SelectItem>
+                                        <SelectItem value="this-month">{t("this_month")}</SelectItem>
+                                        <SelectItem value="last-month">{t("last_month")}</SelectItem>
+                                        <SelectItem value="last-3-months">{t("last_3_months")}</SelectItem>
+                                        <SelectItem value="last-6-months">{t("last_6_months")}</SelectItem>
+                                        <SelectItem value="last-12-months">{t("last_12_months")}</SelectItem>
+                                        <SelectItem value="this-year">{t("this_year")}</SelectItem>
+                                        <SelectItem value="last-year">{t("last_year")}</SelectItem>
+                                        <SelectItem value="period">{t("period")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -145,11 +147,11 @@ export default function SearchIncomePage() {
                             {searchType === "period" && (
                                 <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-semibold text-gray-600">Start Date</Label>
+                                        <Label className="text-xs font-semibold text-gray-600">{t("start_date")}</Label>
                                         <DatePicker value={startDate} onChange={(val) => setStartDate(val)} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-semibold text-gray-600">End Date</Label>
+                                        <Label className="text-xs font-semibold text-gray-600">{t("end_date")}</Label>
                                         <DatePicker value={endDate} onChange={(val) => setEndDate(val)} />
                                     </div>
                                 </div>
@@ -162,7 +164,7 @@ export default function SearchIncomePage() {
                                     className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                                 >
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                    Search
+                                    {t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -171,11 +173,11 @@ export default function SearchIncomePage() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="search-text" className="text-xs font-semibold text-gray-600">
-                                    Search <span className="text-red-500">*</span>
+                                    {t("search")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     id="search-text"
-                                    placeholder="Search By Income Name, Invoice..."
+                                    placeholder={t("search_by_income_name_invoice")}
                                     value={keyword}
                                     onChange={(e) => setKeyword(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleKeywordSearch()}
@@ -188,7 +190,7 @@ export default function SearchIncomePage() {
                                     className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                                 >
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                    Search
+                                    {t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -202,8 +204,8 @@ export default function SearchIncomePage() {
                         <ListChecks className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Income List</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{incomes.length} record{incomes.length === 1 ? "" : "s"} found</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("income_list")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{incomes.length} {incomes.length === 1 ? t("record_found") : t("records_found")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -211,11 +213,11 @@ export default function SearchIncomePage() {
                         <Table>
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow>
-                                    <TableHead className="font-semibold text-gray-600">Name</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Invoice Number</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Income Head</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Date</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Amount ({symbol})</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("name")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("invoice_number")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("income_head")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("date")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("amount")} ({symbol})</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -225,7 +227,7 @@ export default function SearchIncomePage() {
                                     <TableRow>
                                         <TableCell colSpan={5} className="h-64 text-center">
                                             <div className="flex flex-col items-center justify-center space-y-3 text-red-500/80">
-                                                <span className="text-xs font-medium uppercase tracking-wider">No data available in table</span>
+                                                <span className="text-xs font-medium uppercase tracking-wider">{t("no_data_available_in_table")}</span>
                                                 <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-2 shadow-inner border border-gray-100">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
                                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -237,7 +239,7 @@ export default function SearchIncomePage() {
                                                 </div>
                                                 <div className="flex items-center text-green-600 space-x-1 animate-pulse">
                                                     <span className="font-bold text-lg">+</span>
-                                                    <span className="text-xs font-semibold">Select criteria above and click search.</span>
+                                                    <span className="text-xs font-semibold">{t("select_criteria_and_click_search")}</span>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -259,7 +261,7 @@ export default function SearchIncomePage() {
 
                     <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
                         <div>
-                            Showing {incomes.length > 0 ? 1 : 0} to {incomes.length} of {incomes.length} entries
+                            {t("showing_x_to_y_of_z", { from: incomes.length > 0 ? 1 : 0, to: incomes.length, total: incomes.length })}
                         </div>
                         <div className="flex gap-1">
                             <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronLeft className="h-4 w-4" /></Button>

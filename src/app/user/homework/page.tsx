@@ -20,6 +20,7 @@ import {
     Paperclip, ClipboardList, Layers,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatDate } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -43,6 +44,7 @@ const PAGE_SIZES = [10, 25, 50, 100];
 const fmt = (d: string) => (d ? formatDate(d) : "—");
 
 export default function UserHomeworkPage() {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState<"upcoming" | "closed">("upcoming");
     const [items, setItems] = useState<Homework[]>([]);
     const [loading, setLoading] = useState(true);
@@ -71,10 +73,10 @@ export default function UserHomeworkPage() {
                     setFrom(d?.from ?? 0);
                     setTo(d?.to ?? 0);
                 } else {
-                    toast({ variant: "destructive", title: "Error", description: res.data.message || "Failed to load homework." });
+                    toast({ variant: "destructive", title: t("error"), description: res.data.message || t("failed_to_load_homework") });
                 }
             } catch {
-                toast({ variant: "destructive", title: "Error", description: "Failed to load homework." });
+                toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_homework") });
             } finally {
                 setLoading(false);
             }
@@ -114,7 +116,7 @@ export default function UserHomeworkPage() {
     const copyToClipboard = useCallback(() => {
         const text = exportRows().map((r) => Object.values(r).join("\t")).join("\n");
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied to clipboard" });
+        toast({ title: t("copied_to_clipboard") });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filtered, toast]);
 
@@ -171,9 +173,9 @@ export default function UserHomeworkPage() {
                             <ClipboardList className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Homework</h1>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("homework")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {loading ? "Loading…" : `${total} ${activeTab} assignment${total === 1 ? "" : "s"}`}
+                                {loading ? t("loading") : `${total} ${activeTab} assignment${total === 1 ? "" : "s"}`}
                             </p>
                         </div>
                     </div>
@@ -192,7 +194,7 @@ export default function UserHomeworkPage() {
                                     : "border-transparent text-gray-500 hover:text-gray-700"
                             )}
                         >
-                            {tab} Homework
+                            {t(tab)} {t("homework")}
                             {activeTab === tab && total > 0 && (
                                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
                                     {total}
@@ -208,7 +210,7 @@ export default function UserHomeworkPage() {
                         <div className="relative w-full sm:w-64">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search subject, class, teacher..."
+                                placeholder={t("search")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-8 h-9 text-sm rounded-[10px]"
@@ -229,10 +231,10 @@ export default function UserHomeworkPage() {
 
                             <div className="flex items-center border border-gray-200 rounded-[10px] overflow-hidden">
                                 {[
-                                    { icon: Copy, label: "Copy", action: copyToClipboard },
-                                    { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
-                                    { icon: FileDown, label: "PDF", action: exportToPDF },
-                                    { icon: Printer, label: "Print", action: () => window.print() },
+                                    { icon: Copy, label: t("copy"), action: copyToClipboard },
+                                    { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
+                                    { icon: FileDown, label: t("pdf"), action: exportToPDF },
+                                    { icon: Printer, label: t("print"), action: () => window.print() },
                                 ].map(({ icon: Icon, label, action }, i, arr) => (
                                     <Button
                                         key={label}
@@ -257,15 +259,15 @@ export default function UserHomeworkPage() {
                         <Table className="min-w-[900px]">
                             <TableHeader>
                                 <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200">
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Class</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Section</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Subject</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Homework Date</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Submission Date</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Evaluation Date</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Created By</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Status</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Action</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("class")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("section")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("subject")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("homework_date")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("submission_date")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("evaluation_date")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("created_by")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">{t("status")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -274,7 +276,7 @@ export default function UserHomeworkPage() {
                                         <TableCell colSpan={9} className="h-32 text-center">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                                <span>Loading...</span>
+                                                <span>{t("loading")}</span>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -283,7 +285,7 @@ export default function UserHomeworkPage() {
                                         <TableCell colSpan={9} className="h-32 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <BookOpen className="h-8 w-8 opacity-30" />
-                                                <span className="text-sm">No homework found.</span>
+                                                <span className="text-sm">{t("no_homework_found")}</span>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -305,7 +307,7 @@ export default function UserHomeworkPage() {
                                                 <Button
                                                     size="icon"
                                                     onClick={() => setSelected(h)}
-                                                    title="View"
+                                                    title={t("view")}
                                                     className="h-7 w-7 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity"
                                                 >
                                                     <Eye className="h-3.5 w-3.5" />
@@ -328,7 +330,7 @@ export default function UserHomeworkPage() {
                         ) : filtered.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
                                 <BookOpen className="h-8 w-8 opacity-30" />
-                                <span className="text-sm">No homework found.</span>
+                                <span className="text-sm">{t("no_homework_found")}</span>
                             </div>
                         ) : (
                             filtered.map((h) => (
@@ -370,10 +372,10 @@ export default function UserHomeworkPage() {
 
                                     <div className="mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between">
                                         <span className="text-[11px] text-gray-400">
-                                            {h.attachment ? "Has attachment" : "Tap to view details"}
+                                            {h.attachment ? t("has_attachment") : t("tap_to_view_details")}
                                         </span>
                                         <span className="flex items-center gap-1 text-[11px] font-semibold text-[#6366F1]">
-                                            <Eye className="h-3.5 w-3.5" /> View
+                                            <Eye className="h-3.5 w-3.5" /> {t("view")}
                                         </span>
                                     </div>
                                 </button>
@@ -385,7 +387,7 @@ export default function UserHomeworkPage() {
                     {!loading && (
                         <div className="flex items-center justify-between mt-4 gap-3 flex-wrap print:hidden">
                             <span className="text-[12px] text-gray-500">
-                                {total === 0 ? "No entries" : `Showing ${from} to ${to} of ${total} entries`}
+                                {total === 0 ? t("no_entries") : `${t("showing")} ${from} ${t("to")} ${to} ${t("of")} ${total} ${t("entries")}`}
                             </span>
                             <div className="flex items-center gap-1.5">
                                 <Button
@@ -481,11 +483,11 @@ export default function UserHomeworkPage() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto px-5 py-4">
-                            <p className="text-[12px] font-semibold text-gray-500 mb-1">Description</p>
+                            <p className="text-[12px] font-semibold text-gray-500 mb-1">{t("description")}</p>
                             {selected.description ? (
                                 <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap">{selected.description}</p>
                             ) : (
-                                <p className="text-[13px] text-gray-400 italic">No description provided.</p>
+                                <p className="text-[13px] text-gray-400 italic">{t("no_description_provided")}</p>
                             )}
                             {selected.attachment && (
                                 <a
@@ -494,7 +496,7 @@ export default function UserHomeworkPage() {
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1.5 mt-4 text-[13px] text-[#6366F1] hover:underline"
                                 >
-                                    <Paperclip className="h-3.5 w-3.5" /> View Attachment
+                                    <Paperclip className="h-3.5 w-3.5" /> {t("view_attachment")}
                                 </a>
                             )}
                         </div>
@@ -504,7 +506,7 @@ export default function UserHomeworkPage() {
                                 onClick={() => setSelected(null)}
                                 className="px-4 py-1.5 h-auto text-[13px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity"
                             >
-                                Close
+                                {t("close")}
                             </Button>
                         </div>
                     </div>

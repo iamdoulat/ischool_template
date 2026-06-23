@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     Card,
     CardContent,
@@ -16,7 +17,8 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SettingPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [settings, setSettings] = useState({
@@ -49,9 +51,9 @@ export default function SettingPage() {
         setSaving(true);
         try {
             await api.post('/behaviour/settings', settings);
-            toast({ title: "Success", description: "Behaviour configuration updated" });
+            tt.success("behaviour_configuration_updated");
         } catch (error) {
-            toast({ title: "Error", description: "Failed to update configuration", variant: "destructive" });
+            tt.error("failed_to_update_configuration");
         } finally {
             setSaving(false);
         }
@@ -96,32 +98,32 @@ export default function SettingPage() {
                         <Zap className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Communication Settings</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Control who can comment on behaviour records</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("communication_settings")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("control_who_can_comment_on_behaviour_records")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-5 space-y-5">
                     <div className="space-y-1">
                         <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                             <MessageSquare className="h-4 w-4 text-indigo-500" />
-                            Comment Channels
+                            {t("comment_channels")}
                         </h3>
-                        <p className="text-xs text-gray-500 ml-6">Choose who can comment on a student&apos;s behaviour records</p>
+                        <p className="text-xs text-gray-500 ml-6">{t("choose_who_can_comment_on_student_behaviour_records")}</p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <CheckboxItem
                             id="student"
-                            label="Student comments"
-                            description="Allow students to comment"
+                            label={t("student_comments")}
+                            description={t("allow_students_to_comment")}
                             checked={settings.student_comment}
                             onChange={(val) => setSettings({...settings, student_comment: val})}
                             icon={<UserCheck className="h-4 w-4" />}
                         />
                         <CheckboxItem
                             id="parent"
-                            label="Parent comments"
-                            description="Allow parents to comment"
+                            label={t("parent_comments")}
+                            description={t("allow_parents_to_comment")}
                             checked={settings.parent_comment}
                             onChange={(val) => setSettings({...settings, parent_comment: val})}
                             icon={<Users className="h-4 w-4" />}
@@ -135,7 +137,7 @@ export default function SettingPage() {
                             className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all mt-3"
                         >
                             {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Save Changes
+                            {t("save_changes")}
                         </Button>
                     </div>
                 </CardContent>

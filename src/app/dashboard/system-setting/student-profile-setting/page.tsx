@@ -5,9 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    Card,
+    CardContent,
+} from "@/components/ui/card";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import { Loader2 } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
+import { Loader2, UserCog } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -42,6 +48,7 @@ interface Widget {
 }
 
 export default function StudentProfileSettingPage() {
+    const { t } = useTranslation();
     const [dashboardWidgets, setDashboardWidgets] = useState<Widget[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [allowEditable, setAllowEditable] = useState(false);
@@ -60,11 +67,11 @@ export default function StudentProfileSettingPage() {
             }
         } catch (error) {
             console.error("Failed to fetch settings", error);
-            toast("error", "Failed to load settings");
+            toast("error", t("failed_to_load"));
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, t]);
 
     useEffect(() => {
         fetchSettings();
@@ -77,11 +84,11 @@ export default function StudentProfileSettingPage() {
                 is_student_profile_edit: allowEditable
             });
             if (response.data.status === "Success") {
-                toast("success", "Profile update setting saved");
+                toast("success", t("saved_successfully"));
             }
         } catch (error) {
             console.error("Failed to save profile setting", error);
-            toast("error", "Failed to save profile setting");
+            toast("error", t("failed_to_save"));
         } finally {
             setSavingProfile(false);
         }
@@ -94,11 +101,11 @@ export default function StudentProfileSettingPage() {
                 widgets: dashboardWidgets
             });
             if (response.data.status === "Success") {
-                toast("success", "Dashboard settings saved");
+                toast("success", t("saved_successfully"));
             }
         } catch (error) {
             console.error("Failed to save dashboard settings", error);
-            toast("error", "Failed to save dashboard settings");
+            toast("error", t("failed_to_save"));
         } finally {
             setSavingWidgets(false);
         }
@@ -117,7 +124,7 @@ export default function StudentProfileSettingPage() {
     const handleCopy = () => {
         const text = filteredWidgets.map(w => `${w.name}\t${w.student ? 'Yes' : 'No'}\t${w.parent ? 'Yes' : 'No'}`).join('\n');
         navigator.clipboard.writeText(`Name\tStudent\tParent\n${text}`);
-        toast("success", "Copied to clipboard");
+        toast("success", t("copied_to_clipboard"));
     };
 
     const handleExportExcel = () => {
@@ -128,7 +135,7 @@ export default function StudentProfileSettingPage() {
         a.href = url;
         a.download = `dashboard_settings_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
-        toast("success", "Exported to CSV");
+        toast("success", t("exported_to_csv"));
     };
 
     const handleExportPDF = () => {
@@ -140,16 +147,23 @@ export default function StudentProfileSettingPage() {
     };
 
     return (
-        <div className="p-4 bg-gray-50/10 min-h-screen font-sans space-y-4">
+        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
+            <Card className="pt-0 overflow-hidden flex flex-col min-h-[600px]">
 
-            {/* Page Container */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[600px]">
-
-                {/* Header */}
-                <div className="px-4 py-3 border-b border-gray-50">
-                    <h1 className="text-[14px] font-medium text-gray-700">Student Profile Setting</h1>
+                {/* Gradient Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <UserCog className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("student_profile_setting")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("configure_student_profile_fields_and_dashboard_widgets")}</p>
+                        </div>
+                    </div>
                 </div>
 
+                <CardContent className="p-0 flex flex-col flex-1">
                 {/* Tabs */}
                 <Tabs defaultValue="student-profile-update" className="flex flex-col flex-1">
                     <div className="px-4 border-b border-gray-100">
@@ -158,13 +172,13 @@ export default function StudentProfileSettingPage() {
                                 value="student-profile-update"
                                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-1 pb-2 h-full shadow-none bg-transparent text-[13px]"
                             >
-                                Student Profile Update
+                                {t("student_profile_update")}
                             </TabsTrigger>
                             <TabsTrigger
                                 value="dashboard-setting"
                                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-1 pb-2 h-full shadow-none bg-transparent text-[13px]"
                             >
-                                Dashboard Setting
+                                {t("dashboard_setting")}
                             </TabsTrigger>
                         </TabsList>
                     </div>
@@ -173,7 +187,7 @@ export default function StudentProfileSettingPage() {
                     <TabsContent value="student-profile-update" className="mt-0 p-6">
                         <div className="space-y-6 max-w-4xl">
                             <div className="flex items-center gap-12 border-b border-gray-50 pb-6">
-                                <label className="text-[13px] font-medium text-gray-700 w-48">Allow Editable Form Fields</label>
+                                <label className="text-[13px] font-medium text-gray-700 w-48">{t("allow_editable_form_fields")}</label>
                                 <div className="flex items-center gap-4">
                                     <Switch
                                         checked={allowEditable}
@@ -187,7 +201,7 @@ export default function StudentProfileSettingPage() {
                                         className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-8 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg border-none"
                                     >
                                         {savingProfile && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                                        Save
+                                        {t("save")}
                                     </Button>
                                 </div>
                             </div>
@@ -200,7 +214,7 @@ export default function StudentProfileSettingPage() {
                         <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50/50">
                             <div className="relative w-full md:w-56">
                                 <Input
-                                    placeholder="Search..."
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="h-8 text-[12px] pl-3 border-gray-200 shadow-none rounded bg-white focus:bg-white transition-colors placeholder:text-gray-400"
@@ -228,7 +242,7 @@ export default function StudentProfileSettingPage() {
                                     className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-6 h-7 text-[10px] font-bold uppercase transition-all rounded-full shadow-md border-none"
                                 >
                                     {savingWidgets && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                                    Save
+                                    {t("save")}
                                 </Button>
 
                                 <div className="flex items-center gap-1">
@@ -243,18 +257,22 @@ export default function StudentProfileSettingPage() {
 
                         {/* Table */}
                         <div className="flex-1 p-4 bg-white overflow-auto">
-                            <div className="border border-gray-100 rounded overflow-hidden">
+                            {loading ? (
+                                <TableSkeleton rows={8} columns={3} hasToolbar={false} />
+                            ) : (
+                            <>
+                            <div className="border border-gray-100 rounded overflow-x-auto">
                                 <Table>
                                     <TableHeader className="bg-gray-50/40">
                                         <TableRow className="border-b border-gray-100 hover:bg-transparent text-[11px]">
                                             <TableHead className="h-10 px-4 font-bold text-gray-600 text-[11px] w-full cursor-pointer hover:text-indigo-600 transition-colors group">
-                                                <div className="flex items-center gap-1">Name <ArrowUpDown className="h-3 w-3 opacity-30 group-hover:opacity-100" /></div>
+                                                <div className="flex items-center gap-1">{t("name")} <ArrowUpDown className="h-3 w-3 opacity-30 group-hover:opacity-100" /></div>
                                             </TableHead>
                                             <TableHead className="h-10 px-4 font-bold text-gray-600 text-[11px] text-center w-24">
-                                                <div className="flex items-center justify-center gap-1">Student <ArrowUpDown className="h-3 w-3 opacity-30" /></div>
+                                                <div className="flex items-center justify-center gap-1">{t("student")} <ArrowUpDown className="h-3 w-3 opacity-30" /></div>
                                             </TableHead>
                                             <TableHead className="h-10 px-4 font-bold text-gray-600 text-[11px] text-center w-24">
-                                                <div className="flex items-center justify-center gap-1">Parent <ArrowUpDown className="h-3 w-3 opacity-30" /></div>
+                                                <div className="flex items-center justify-center gap-1">{t("parent")} <ArrowUpDown className="h-3 w-3 opacity-30" /></div>
                                             </TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -285,7 +303,7 @@ export default function StudentProfileSettingPage() {
                                         {filteredWidgets.length === 0 && (
                                             <TableRow>
                                                 <TableCell colSpan={3} className="h-24 text-center text-[12px] text-gray-400">
-                                                    No records found
+                                                    {t("no_records_found")}
                                                 </TableCell>
                                             </TableRow>
                                         )}
@@ -296,7 +314,7 @@ export default function StudentProfileSettingPage() {
                             {/* Pagination */}
                             <div className="flex items-center justify-between pt-4">
                                 <p className="text-[10px] text-gray-500 font-medium">
-                                    Showing 1 to {filteredWidgets.length} of {dashboardWidgets.length} entries
+                                    {t("showing")} 1 {t("to")} {filteredWidgets.length} {t("of")} {dashboardWidgets.length} {t("entries")}
                                 </p>
                                 <div className="flex items-center gap-1">
                                     <Button variant="outline" size="icon" className="h-7 w-7 text-gray-400 border-gray-100 hover:text-indigo-600 disabled:opacity-30 rounded-lg shadow-sm" disabled>
@@ -310,11 +328,14 @@ export default function StudentProfileSettingPage() {
                                     </Button>
                                 </div>
                             </div>
+                            </>
+                            )}
                         </div>
                     </TabsContent>
 
                 </Tabs>
-            </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

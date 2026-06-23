@@ -21,6 +21,7 @@ import {
     printCertificate,
     downloadCertificatePdf,
 } from "@/lib/certificate";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface ApiResponse {
     certificates: CertificateTemplate[];
@@ -45,6 +46,7 @@ function SkeletonCard() {
 }
 
 export default function UserCertificatesPage() {
+    const { t } = useTranslation();
     const { toast } = useToast();
     const [data, setData] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export default function UserCertificatesPage() {
                 const payload = res.data?.data ?? res.data;
                 setData(payload);
             } catch {
-                toast({ title: "Error", description: "Failed to load certificates", variant: "destructive" });
+                toast({ title: t("error"), description: t("failed_to_load_certificates"), variant: "destructive" });
             } finally {
                 setLoading(false);
             }
@@ -77,7 +79,7 @@ export default function UserCertificatesPage() {
             const html = renderCertificateHtml(template, data.student);
             await downloadCertificatePdf(html, `${template.name.replace(/\s+/g, "-")}.pdf`);
         } catch {
-            toast({ title: "Error", description: "Failed to generate PDF", variant: "destructive" });
+            toast({ title: t("error"), description: t("failed_to_generate_pdf"), variant: "destructive" });
         } finally {
             setDownloadingId(null);
         }
@@ -100,8 +102,8 @@ export default function UserCertificatesPage() {
                     <FileBadge className="h-5 w-5" />
                 </span>
                 <div>
-                    <h1 className="text-xl font-bold text-gray-800">My Certificates</h1>
-                    <p className="text-xs text-gray-500">View, preview, and download your certificates</p>
+                    <h1 className="text-xl font-bold text-gray-800">{t("my_certificates")}</h1>
+                    <p className="text-xs text-gray-500">{t("view_preview_and_download_your_certificates")}</p>
                 </div>
             </div>
 
@@ -123,7 +125,7 @@ export default function UserCertificatesPage() {
             ) : s ? (
                 <Card className="shadow-sm border-0 p-0 gap-0 overflow-hidden">
                     <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                        <h3 className="text-sm font-bold text-slate-800">Student Information</h3>
+                        <h3 className="text-sm font-bold text-slate-800">{t("student_information")}</h3>
                     </div>
                     <CardContent className="p-4">
                         <div className="flex flex-col sm:flex-row gap-4 items-start">
@@ -134,12 +136,12 @@ export default function UserCertificatesPage() {
                             </div>
                             <div className="flex-1 grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">
                                 {([
-                                    ["Name", s.name],
-                                    ["Admission No", s.admission_no],
-                                    ["Class", `${s.class}${s.section ? ` (${s.section})` : ""}`],
-                                    ["Father Name", s.father_name],
-                                    ["Roll Number", s.roll_no],
-                                    ["Category", s.category],
+                                    [t("name"), s.name],
+                                    [t("admission_no"), s.admission_no],
+                                    [t("class"), `${s.class}${s.section ? ` (${s.section})` : ""}`],
+                                    [t("father_name"), s.father_name],
+                                    [t("roll_no"), s.roll_no],
+                                    [t("category"), s.category],
                                 ] as [string, string | undefined][]).map(([label, value]) => (
                                     <div key={label}>
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{label}</p>
@@ -161,8 +163,8 @@ export default function UserCertificatesPage() {
                 <Card className="shadow-sm border-0">
                     <CardContent className="flex flex-col items-center justify-center py-16 text-gray-400">
                         <FileBadge className="h-12 w-12 opacity-25 mb-3" />
-                        <p className="text-base font-medium text-gray-500">No certificates available.</p>
-                        <p className="text-xs text-gray-400 mt-1">Contact your school administrator to create certificate templates.</p>
+                        <p className="text-base font-medium text-gray-500">{t("no_certificates_available")}</p>
+                        <p className="text-xs text-gray-400 mt-1">{t("contact_your_school_administrator_to_create_certificate_templates")}</p>
                     </CardContent>
                 </Card>
             ) : (
@@ -206,7 +208,7 @@ export default function UserCertificatesPage() {
                                         "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-none"
                                     )}
                                 >
-                                    <Eye className="h-3.5 w-3.5" /> Preview
+                                    <Eye className="h-3.5 w-3.5" /> {t("preview")}
                                 </Button>
                                 <Button
                                     onClick={() => handlePrint(cert)}
@@ -215,7 +217,7 @@ export default function UserCertificatesPage() {
                                         "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-none"
                                     )}
                                 >
-                                    <Printer className="h-3.5 w-3.5" /> Print
+                                    <Printer className="h-3.5 w-3.5" /> {t("print")}
                                 </Button>
                                 <Button
                                     onClick={() => handleDownload(cert)}

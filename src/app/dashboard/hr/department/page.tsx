@@ -34,7 +34,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -61,7 +62,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function DepartmentPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState(true);
@@ -80,7 +82,7 @@ export default function DepartmentPage() {
             setDepartments(response.data.data);
         } catch (error) {
             console.error("Error fetching departments:", error);
-            toast("error", "Failed to load departments");
+            tt.error("failed_to_load_departments");
         } finally {
             setLoading(false);
         }
@@ -92,23 +94,23 @@ export default function DepartmentPage() {
 
     const handleSubmit = async () => {
         if (!name.trim()) {
-            toast("error", "Name is required");
+            tt.error("name_is_required");
             return;
         }
 
         try {
             if (isEditing && currentId) {
                 await api.put(`/hr/department/${currentId}`, { name });
-                toast("success", "Department updated successfully");
+                tt.success("department_updated_successfully");
             } else {
                 await api.post("/hr/department", { name });
-                toast("success", "Department created successfully");
+                tt.success("department_created_successfully");
             }
             resetForm();
             fetchData();
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Failed to save department");
+            tt.error(err.response?.data?.message || "failed_to_save_department");
         }
     };
 
@@ -119,14 +121,14 @@ export default function DepartmentPage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this department?")) return;
+        if (!confirm(t("are_you_sure_delete_department"))) return;
         try {
             await api.delete(`/hr/department/${id}`);
-            toast("success", "Department deleted successfully");
+            tt.success("department_deleted_successfully");
             fetchData();
         } catch (error) {
             console.error("Error deleting department:", error);
-            toast("error", "Failed to delete department");
+            tt.error("failed_to_delete_department");
         }
     };
 
@@ -148,15 +150,15 @@ export default function DepartmentPage() {
     const exportToExcel = () => {
         const ws = XLSX.utils.json_to_sheet(departments.map(d => ({ Department: d.name })));
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Departments");
+        XLSX.utils.book_append_sheet(wb, ws, t("departments"));
         XLSX.writeFile(wb, "departments.xlsx");
     };
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Department List", 14, 15);
+        doc.text(t("department_list"), 14, 15);
         autoTable(doc, {
-            head: [['No', 'Department Name']],
+            head: [[t("no"), t("department_name")]],
             body: departments.map((d, idx) => [idx + 1, d.name]),
             startY: 20,
         });
@@ -166,7 +168,7 @@ export default function DepartmentPage() {
     const copyToClipboard = () => {
         const text = departments.map(d => d.name).join('\n');
         navigator.clipboard.writeText(text);
-        toast("success", "Data copied to clipboard");
+        tt.success("data_copied_to_clipboard");
     };
 
     return (
@@ -180,10 +182,10 @@ export default function DepartmentPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {isEditing ? "Edit Department" : "Add Department"}
+                                {isEditing ? t("edit_department") : t("add_department")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {isEditing ? "Update department details" : "Create a new department"}
+                                {isEditing ? t("update_department_details") : t("create_new_department")}
                             </p>
                         </div>
                     </CardHeader>
@@ -191,13 +193,13 @@ export default function DepartmentPage() {
                         <div className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                    Name <span className="text-red-500">*</span>
+                                    {t("name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500 rounded-lg"
-                                    placeholder="e.g. Science"
+                                    placeholder={t("eg_science")}
                                 />
                             </div>
 
@@ -208,7 +210,7 @@ export default function DepartmentPage() {
                                         variant="outline"
                                         className="px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
                                     >
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button
@@ -216,7 +218,7 @@ export default function DepartmentPage() {
                                     variant="gradient"
                                     className="px-8 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5"
                                 >
-                                    {isEditing ? "Update" : "Save"}
+                                    {isEditing ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </div>
@@ -233,10 +235,10 @@ export default function DepartmentPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                Department List
+                                {t("department_list")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {filteredDepartments.length} department{filteredDepartments.length === 1 ? "" : "s"}
+                                {t("x_departments", { count: filteredDepartments.length })}
                             </p>
                         </div>
                     </CardHeader>
@@ -244,7 +246,7 @@ export default function DepartmentPage() {
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
@@ -294,8 +296,8 @@ export default function DepartmentPage() {
                             <Table>
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="hover:bg-transparent border-gray-100">
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Name</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("name")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -303,7 +305,7 @@ export default function DepartmentPage() {
                                         <TableSkeleton rows={5} cols={2} />
                                     ) : paginatedData.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={2} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</TableCell>
+                                            <TableCell colSpan={2} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell>
                                         </TableRow>
                                     ) : (
                                         paginatedData.map((dept) => (

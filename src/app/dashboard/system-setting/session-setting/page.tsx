@@ -25,8 +25,6 @@ import {
 import {
     Card,
     CardContent,
-    CardHeader,
-    CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -42,9 +40,11 @@ import {
     Pencil,
     Trash2,
     Info,
+    CalendarRange,
     Loader2,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface SessionEntry {
     id: number;
@@ -80,6 +80,7 @@ function FormSkeleton() {
 }
 
 export default function SessionSettingPage() {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState("");
     const [sessions, setSessions] = useState<SessionEntry[]>([]);
     const [loading, setLoading] = useState(true);
@@ -126,8 +127,8 @@ export default function SessionSettingPage() {
     const handleSave = async () => {
         if (!sessionName.trim()) {
             toast({
-                title: "Error",
-                description: "Session name is required",
+                title: t("error"),
+                description: t("session_name_is_required"),
                 variant: "destructive",
             });
             return;
@@ -144,14 +145,14 @@ export default function SessionSettingPage() {
             if (editId) {
                 await api.put(`/system-setting/sessions/${editId}`, payload);
                 toast({
-                    title: "Success",
-                    description: "Session updated successfully",
+                    title: t("success_title"),
+                    description: t("session_updated_successfully"),
                 });
             } else {
                 await api.post("/system-setting/sessions", payload);
                 toast({
-                    title: "Success",
-                    description: "Session added successfully",
+                    title: t("success_title"),
+                    description: t("session_added_successfully"),
                 });
             }
 
@@ -160,8 +161,8 @@ export default function SessionSettingPage() {
 
         } catch (err: any) {
             toast({
-                title: "Error",
-                description: err.response?.data?.message || "An error occurred",
+                title: t("error"),
+                description: err.response?.data?.message || t("an_error_occurred"),
                 variant: "destructive",
             });
         } finally {
@@ -170,21 +171,21 @@ export default function SessionSettingPage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm("Are you sure you want to delete this session?")) {
+        if (!window.confirm(t("are_you_sure_you_want_to_delete_this_session"))) {
             return;
         }
 
         try {
             await api.delete(`/system-setting/sessions/${id}`);
             toast({
-                title: "Success",
-                description: "Session deleted successfully",
+                title: t("success_title"),
+                description: t("session_deleted_successfully"),
             });
             fetchSessions();
         } catch (err: any) {
             toast({
-                title: "Error",
-                description: err.response?.data?.message || "Failed to delete session",
+                title: t("error"),
+                description: err.response?.data?.message || t("failed_to_delete_session"),
                 variant: "destructive",
             });
         }
@@ -199,14 +200,14 @@ export default function SessionSettingPage() {
                 is_active: true
             });
             toast({
-                title: "Success",
-                description: `Session ${session.session} set as active`,
+                title: t("success_title"),
+                description: `${t("session")} ${session.session} ${t("set_as_active")}`,
             });
             fetchSessions();
         } catch (err: any) {
             toast({
-                title: "Error",
-                description: "Failed to update session status",
+                title: t("error"),
+                description: t("failed_to_update_session_status"),
                 variant: "destructive",
             });
         }
@@ -230,7 +231,7 @@ export default function SessionSettingPage() {
         const rows = filteredSessions.map(s => [s.session, s.is_active ? "Active" : "Inactive"]);
         const tsv = [headers.join("\t"), ...rows.map(r => r.join("\t"))].join("\n");
         navigator.clipboard.writeText(tsv).then(() => {
-            toast({ title: "Copied", description: "Data copied to clipboard" });
+            toast({ title: t("copied"), description: t("data_copied_to_clipboard") });
         });
     };
 
@@ -293,19 +294,25 @@ export default function SessionSettingPage() {
 
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans text-xs">
-            <Card>
-                <CardHeader className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] rounded-t-lg">
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="text-gray-800 text-sm font-bold">Session Setting</CardTitle>
+            <Card className="pt-0 overflow-hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <CalendarRange className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("session_setting")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("manage_academic_sessions")}</p>
+                        </div>
                     </div>
-                </CardHeader>
+                </div>
                 <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row gap-6">
                         {/* Left Side: Add/Edit Session */}
                         <div className="w-full md:w-1/3 md:max-w-sm space-y-4">
                             <div className="bg-white rounded-lg border border-gray-100 p-4 space-y-4 shadow-sm">
                                 <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight border-b border-gray-50 pb-2">
-                                    {editId ? "Edit Session" : "Add Session"}
+                                    {editId ? t("edit_session") : t("add_session")}
                                 </h2>
 
                                 {loading ? (
@@ -314,12 +321,12 @@ export default function SessionSettingPage() {
                                     <div className="space-y-4">
                                         <div className="space-y-1.5">
                                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                                Session <span className="text-red-500">*</span>
+                                                {t("session")} <span className="text-red-500">*</span>
                                             </Label>
                                             <Input
                                                 value={sessionName}
                                                 onChange={(e) => setSessionName(e.target.value)}
-                                                placeholder="e.g. 2026-27"
+                                                placeholder={t("e_g_2026_27")}
                                                 className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                             />
                                         </div>
@@ -331,7 +338,7 @@ export default function SessionSettingPage() {
                                                 onCheckedChange={(checked) => setIsActive(checked as boolean)}
                                             />
                                             <label htmlFor="isActive" className="text-[11px] font-medium leading-none cursor-pointer">
-                                                Set as Active Session
+                                                {t("set_as_active_session")}
                                             </label>
                                         </div>
 
@@ -342,7 +349,7 @@ export default function SessionSettingPage() {
                                                     onClick={resetForm}
                                                     className="h-7 text-[10px] font-bold uppercase"
                                                 >
-                                                    Cancel
+                                                    {t("cancel")}
                                                 </Button>
                                             ) : <div />}
                                             <Button
@@ -351,7 +358,7 @@ export default function SessionSettingPage() {
                                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-[11px] font-bold transition-all rounded-full shadow-md border-none"
                                             >
                                                 {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : null}
-                                                Save
+                                                {t("save")}
                                             </Button>
                                         </div>
                                     </div>
@@ -362,7 +369,7 @@ export default function SessionSettingPage() {
                         {/* Right Side: Session List */}
                         <div className="flex-1 space-y-4">
                             <div className="bg-white rounded-lg border border-gray-100 p-4 space-y-4 shadow-sm">
-                                <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">Session List</h2>
+                                <h2 className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">{t("session_list")}</h2>
 
                                 {/* Warning Note */}
                                 <div className="bg-blue-50/50 border border-blue-100/50 p-3 rounded-md flex gap-2.5 items-start">
@@ -372,7 +379,7 @@ export default function SessionSettingPage() {
                                         </div>
                                     </div>
                                     <p className="text-[10px] text-blue-600/80 leading-relaxed font-medium">
-                                        Note: Changing the session name format may cause issues on some pages or features, so it is recommended not to change the session name format.
+                                        {t("note_changing_the_session_name_format_may_cause_issues")}
                                     </p>
                                 </div>
 
@@ -380,7 +387,7 @@ export default function SessionSettingPage() {
                                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                                     <div className="relative w-full md:w-64">
                                         <Input
-                                            placeholder="Search"
+                                            placeholder={t("search")}
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
                                             className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
@@ -436,11 +443,11 @@ export default function SessionSettingPage() {
                                             <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                                 <TableHead className="py-3 px-4 cursor-pointer hover:bg-gray-50 transition-colors" onClick={toggleSort}>
                                                     <div className="flex items-center">
-                                                        Session <ArrowUpDown className="h-2.5 w-2.5 ml-1 opacity-50" />
+                                                        {t("session")} <ArrowUpDown className="h-2.5 w-2.5 ml-1 opacity-50" />
                                                     </div>
                                                 </TableHead>
-                                                <TableHead className="py-3 px-4">Status <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                                <TableHead className="py-3 px-4 text-right">Action</TableHead>
+                                                <TableHead className="py-3 px-4">{t("status")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                                <TableHead className="py-3 px-4 text-right">{t("action")}</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -460,7 +467,7 @@ export default function SessionSettingPage() {
                                                                         : "bg-gray-100 text-gray-400 hover:bg-emerald-100 hover:text-emerald-600 cursor-pointer"
                                                                 )}
                                                             >
-                                                                {item.is_active ? "Active" : "Set Active"}
+                                                                {item.is_active ? t("active") : t("set_active")}
                                                             </button>
                                                         </TableCell>
                                                         <TableCell className="py-3 px-4 text-right">
@@ -478,7 +485,7 @@ export default function SessionSettingPage() {
                                             ) : (
                                                 <TableRow>
                                                     <TableCell colSpan={3} className="text-center py-6 text-gray-400">
-                                                        No sessions found
+                                                        {t("no_records_found")}
                                                     </TableCell>
                                                 </TableRow>
                                             )}
@@ -491,7 +498,7 @@ export default function SessionSettingPage() {
                                     <div>
                                         {loading
                                             ? <Skeleton className="h-4 w-40 rounded" />
-                                            : `Showing 1 to ${filteredSessions.length} of ${filteredSessions.length} entries`
+                                            : `${t("showing")} 1 ${t("to")} ${filteredSessions.length} ${t("of")} ${filteredSessions.length} ${t("entries")}`
                                         }
                                     </div>
                                     <div className="flex items-center gap-1.5">

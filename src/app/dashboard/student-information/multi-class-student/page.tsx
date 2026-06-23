@@ -33,7 +33,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { useImageUrl } from "@/lib/image-url";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -91,7 +92,8 @@ export default function MultiClassStudentPage() {
         section_id: ""
     });
     const [studentSearch, setStudentSearch] = useState("");
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
 
     const fetchDropdowns = useCallback(async () => {
         try {
@@ -143,11 +145,11 @@ export default function MultiClassStudentPage() {
             setSearched(true);
         } catch (error) {
             console.error("Error fetching multi-class records:", error);
-            toast("error", "Failed to fetch records.");
+            tt.error("failed_to_fetch_records");
         } finally {
             setLoading(false);
         }
-    }, [selectedClass, selectedSection, toast]);
+    }, [selectedClass, selectedSection, tt]);
 
     useEffect(() => {
         fetchDropdowns();
@@ -156,7 +158,7 @@ export default function MultiClassStudentPage() {
     // Export functions
     const exportToCopy = () => {
         if (records.length === 0) return;
-        const headers = ["Admission No", "Student Name", "Class", "Section", "Mobile Number"];
+        const headers = [t("admission_no"), t("student_name"), t("class"), t("section"), t("mobile_number")];
         const rows = records.map(r => [
             r.student.admission_no,
             `${r.student.name} ${r.student.last_name}`,
@@ -166,30 +168,30 @@ export default function MultiClassStudentPage() {
         ]);
         const text = [headers.join("\t"), ...rows.map(row => row.join("\t"))].join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
         if (records.length === 0) return;
         const data = records.map(r => ({
-            "Admission No": r.student.admission_no,
-            "Student Name": `${r.student.name} ${r.student.last_name}`,
-            "Class": r.school_class.name,
-            "Section": r.section.name,
-            "Mobile Number": r.student.phone
+            [t("admission_no")]: r.student.admission_no,
+            [t("student_name")]: `${r.student.name} ${r.student.last_name}`,
+            [t("class")]: r.school_class.name,
+            [t("section")]: r.section.name,
+            [t("mobile_number")]: r.student.phone
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Multi Class Students");
+        XLSX.utils.book_append_sheet(workbook, worksheet, t("multi_class_students"));
         XLSX.writeFile(workbook, "multi_class_students.xlsx");
-        toast("success", "Excel file downloaded");
+        tt.success("excel_file_downloaded");
     };
 
     const exportToPDF = () => {
         if (records.length === 0) return;
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [["Adm No", "Student Name", "Class", "Section", "Mobile"]],
+            head: [[t("adm_no"), t("student_name"), t("class"), t("section"), t("mobile")]],
             body: records.map(r => [
                 r.student.admission_no,
                 `${r.student.name} ${r.student.last_name}`,
@@ -199,37 +201,37 @@ export default function MultiClassStudentPage() {
             ]),
         });
         doc.save("multi_class_students.pdf");
-        toast("success", "PDF file downloaded");
+        tt.success("pdf_file_downloaded");
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to remove this enrollment?")) return;
+        if (!confirm(t("are_you_sure_remove_enrollment"))) return;
         try {
             await api.delete(`/multi-class-students/${id}`);
-            toast("success", "Enrollment removed successfully");
+            tt.success("enrollment_removed_successfully");
             fetchRecords(currentPage, searchTerm);
         } catch (error) {
-            toast("error", "Failed to remove enrollment");
+            tt.error("failed_to_remove_enrollment");
         }
     };
 
     const handleAddSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!addFormData.user_id || !addFormData.school_class_id || !addFormData.section_id) {
-            toast("error", "Please fill all required fields");
+            tt.error("please_fill_all_required_fields");
             return;
         }
 
         setLoading(true);
         try {
             await api.post("/multi-class-students", addFormData);
-            toast("success", "Student assigned to additional class successfully");
+            tt.success("student_assigned_to_additional_class_successfully");
             setIsAddDialogOpen(false);
             setAddFormData({ user_id: "", school_class_id: "", section_id: "" });
             fetchRecords(currentPage, searchTerm);
         } catch (error) {
-            const message = (error as any)?.response?.data?.message || "Failed to assign student";
-            toast("error", message);
+            const message = (error as any)?.response?.data?.message || t("failed_to_assign_student");
+            tt.error(message);
         } finally {
             setLoading(false);
         }
@@ -244,8 +246,8 @@ export default function MultiClassStudentPage() {
                         <UserCircle className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-800">Multi Class Student</h1>
-                        <p className="text-sm text-muted-foreground font-medium">Manage students enrolled in additional classes</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-800">{t("multi_class_student")}</h1>
+                        <p className="text-sm text-muted-foreground font-medium">{t("manage_students_enrolled_in_additional_classes")}</p>
                     </div>
                 </div>
                 <Button
@@ -253,7 +255,7 @@ export default function MultiClassStudentPage() {
                     className="h-12 px-6 rounded-lg shadow-lg shadow-primary/20 font-bold"
                     onClick={() => setIsAddDialogOpen(true)}
                 >
-                    <Plus className="h-5 w-5 mr-2" /> Add Multi-Class Enrollment
+                    <Plus className="h-5 w-5 mr-2" /> {t("add_multi_class_enrollment")}
                 </Button>
             </div>
 
@@ -264,15 +266,15 @@ export default function MultiClassStudentPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter by class and section</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_by_class_and_section")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                         <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                Class <span className="text-destructive">*</span>
+                                {t("class")} <span className="text-destructive">*</span>
                             </label>
                             <div className="relative">
                                 <select
@@ -285,7 +287,7 @@ export default function MultiClassStudentPage() {
                                         fetchSections(val);
                                     }}
                                 >
-                                    <option value="">Select</option>
+                                    <option value="">{t("select")}</option>
                                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
@@ -294,7 +296,7 @@ export default function MultiClassStudentPage() {
 
                         <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                Section <span className="text-destructive">*</span>
+                                {t("section")} <span className="text-destructive">*</span>
                             </label>
                             <div className="relative">
                                 <select
@@ -302,7 +304,7 @@ export default function MultiClassStudentPage() {
                                     value={selectedSection}
                                     onChange={(e) => setSelectedSection(e.target.value)}
                                 >
-                                    <option value="">Select</option>
+                                    <option value="">{t("select")}</option>
                                     {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
@@ -314,7 +316,7 @@ export default function MultiClassStudentPage() {
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search by student..."
+                                placeholder={t("search_by_student")}
                                 className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -323,13 +325,13 @@ export default function MultiClassStudentPage() {
                         </div>
                         <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => {
                             if (!selectedClass || !selectedSection) {
-                                toast("error", "Please select Class and Section first.");
+                                tt.error("please_select_class_and_section_first");
                                 return;
                             }
                             setCurrentPage(1);
                             fetchRecords(1, searchTerm);
                         }} disabled={loading}>
-                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} {t("search")}
                         </Button>
                     </div>
                 </CardContent>
@@ -337,12 +339,12 @@ export default function MultiClassStudentPage() {
 
             {/* Toolbar Panel */}
             <div className="flex justify-end gap-2 print:hidden mb-4">
-                <IconButton icon={Printer} onClick={() => window.print()} title="Print" />
-                <IconButton icon={Copy} onClick={exportToCopy} title="Copy" />
-                <IconButton icon={TableIcon} onClick={exportToExcel} title="Excel" />
-                <IconButton icon={FileText} onClick={exportToPDF} title="PDF" />
-                <IconButton icon={Download} onClick={exportToExcel} title="Download" />
-                <IconButton icon={Columns} title="Columns" />
+                <IconButton icon={Printer} onClick={() => window.print()} title={t("print")} />
+                <IconButton icon={Copy} onClick={exportToCopy} title={t("copy")} />
+                <IconButton icon={TableIcon} onClick={exportToExcel} title={t("excel")} />
+                <IconButton icon={FileText} onClick={exportToPDF} title={t("pdf")} />
+                <IconButton icon={Download} onClick={exportToExcel} title={t("download")} />
+                <IconButton icon={Columns} title={t("columns")} />
             </div>
 
             {/* Data Table */}
@@ -353,8 +355,8 @@ export default function MultiClassStudentPage() {
                             <GitBranch className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Multi Class Student List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{totalRecords} records</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("multi_class_student_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("records_count", { count: totalRecords })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
@@ -362,21 +364,21 @@ export default function MultiClassStudentPage() {
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-muted/50 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                     <tr>
-                                        <Th className="w-16">Avatar</Th>
-                                        <Th>Admission No</Th>
-                                        <Th>Student Name</Th>
-                                        <Th>Category</Th>
-                                        <Th>Class</Th>
-                                        <Th>Section</Th>
-                                        <Th>Mobile Number</Th>
-                                        <Th className="text-right print:hidden">Action</Th>
+                                        <Th className="w-16">{t("avatar")}</Th>
+                                        <Th>{t("admission_no")}</Th>
+                                        <Th>{t("student_name")}</Th>
+                                        <Th>{t("category")}</Th>
+                                        <Th>{t("class")}</Th>
+                                        <Th>{t("section")}</Th>
+                                        <Th>{t("mobile_number")}</Th>
+                                        <Th className="text-right print:hidden">{t("action")}</Th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-muted/30">
                                     {loading ? (
                                         <TableSkeleton rows={5} cols={8} />
                                     ) : records.length === 0 ? (
-                                        <tr><td colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
+                                        <tr><td colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td></tr>
                                     ) : (
                                         records.map((record) => (
                                             <tr key={record.id} className="hover:bg-muted/10 transition-colors">
@@ -385,7 +387,7 @@ export default function MultiClassStudentPage() {
                                                         {(record.student as any)?.avatar ? (
                                                             <img
                                                                 src={getImageUrl((record.student as any).avatar)}
-                                                                alt="Avatar"
+                                                                alt={t("avatar")}
                                                                 className="h-full w-full object-cover"
                                                             />
                                                         ) : (
@@ -399,7 +401,7 @@ export default function MultiClassStudentPage() {
                                                 <Td className="font-medium">{record.student.name} {record.student.last_name}</Td>
                                                 <Td>
                                                     <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
-                                                        {(record.student as any).student_category?.category_name || (record.student as any).category || "General"}
+                                                        {(record.student as any).student_category?.category_name || (record.student as any).category || t("general")}
                                                     </span>
                                                 </Td>
                                                 <Td>{record.school_class.name}</Td>
@@ -411,7 +413,7 @@ export default function MultiClassStudentPage() {
                                                         size="icon"
                                                         className="h-8 w-8 bg-red-500 text-white hover:bg-red-600 rounded-lg transition-all"
                                                         onClick={() => handleDelete(record.id)}
-                                                        title="Remove Enrollment"
+                                                        title={t("remove_enrollment")}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
@@ -427,7 +429,7 @@ export default function MultiClassStudentPage() {
                         {!loading && records.length > 0 && (
                             <div className="px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/10 border-t border-muted/50">
                                 <p className="text-xs text-muted-foreground font-medium">
-                                    Showing {(currentPage - 1) * 50 + 1} to {Math.min(currentPage * 50, totalRecords)} of {totalRecords} entries
+                                    {t("showing_x_to_y_of_z", { from: (currentPage - 1) * 50 + 1, to: Math.min(currentPage * 50, totalRecords), total: totalRecords })}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -497,8 +499,8 @@ export default function MultiClassStudentPage() {
             ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-300 bg-white rounded-lg border border-dashed border-gray-200 shadow-sm print:hidden">
                     <User className="h-16 w-16 mb-4 opacity-10" />
-                    <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">No Data Selected</p>
-                    <p className="text-[11px] text-gray-400 mt-2 italic">Select class and section, then click search.</p>
+                    <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">{t("no_data_selected")}</p>
+                    <p className="text-[11px] text-gray-400 mt-2 italic">{t("select_class_and_section_then_click_search")}</p>
                 </div>
             )}
 
@@ -512,10 +514,10 @@ export default function MultiClassStudentPage() {
                             </div>
                             <div>
                                 <DialogTitle className="text-2xl font-bold text-slate-800 tracking-tight">
-                                    Add Multi-Class Enrollment
+                                    {t("add_multi_class_enrollment")}
                                 </DialogTitle>
                                 <DialogDescription className="text-muted-foreground font-medium mt-1">
-                                    Enroll a student into an additional class and section.
+                                    {t("enroll_a_student_into_additional_class_and_section")}
                                 </DialogDescription>
                             </div>
                         </div>
@@ -526,13 +528,13 @@ export default function MultiClassStudentPage() {
                             <div className="space-y-4">
                                 <div className="space-y-2 group">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                        Select Student <span className="text-destructive">*</span>
+                                        {t("select_student")} <span className="text-destructive">*</span>
                                     </label>
                                     <div className="space-y-3">
                                         <div className="relative">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                             <Input
-                                                placeholder="Filter students by name or admission no..."
+                                                placeholder={t("filter_students_by_name_or_admission_no")}
                                                 className="pl-10 h-11 rounded-lg bg-muted/30 border-muted/50 focus:bg-white"
                                                 value={studentSearch}
                                                 onChange={(e) => setStudentSearch(e.target.value)}
@@ -545,7 +547,7 @@ export default function MultiClassStudentPage() {
                                                 onChange={(e) => setAddFormData({ ...addFormData, user_id: e.target.value })}
                                                 required
                                             >
-                                                <option value="">Select Student</option>
+                                                <option value="">{t("select_student")}</option>
                                                 {allStudents
                                                     .filter(s =>
                                                         `${s.name} ${s.last_name} ${s.admission_no}`.toLowerCase().includes(studentSearch.toLowerCase())
@@ -566,7 +568,7 @@ export default function MultiClassStudentPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2 group">
                                         <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                            Additional Class <span className="text-destructive">*</span>
+                                            {t("additional_class")} <span className="text-destructive">*</span>
                                         </label>
                                         <div className="relative">
                                             <select
@@ -579,7 +581,7 @@ export default function MultiClassStudentPage() {
                                                 }}
                                                 required
                                             >
-                                                <option value="">Select Class</option>
+                                                <option value="">{t("select_class")}</option>
                                                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                             </select>
                                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -588,7 +590,7 @@ export default function MultiClassStudentPage() {
 
                                     <div className="space-y-2 group">
                                         <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                            Additional Section <span className="text-destructive">*</span>
+                                            {t("additional_section")} <span className="text-destructive">*</span>
                                         </label>
                                         <div className="relative">
                                             <select
@@ -597,7 +599,7 @@ export default function MultiClassStudentPage() {
                                                 onChange={(e) => setAddFormData({ ...addFormData, section_id: e.target.value })}
                                                 required
                                             >
-                                                <option value="">Select Section</option>
+                                                <option value="">{t("select_section")}</option>
                                                 {dialogSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                             </select>
                                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -614,7 +616,7 @@ export default function MultiClassStudentPage() {
                                 className="flex-1 h-12 rounded-lg font-bold border-muted/50"
                                 onClick={() => setIsAddDialogOpen(false)}
                             >
-                                Cancel
+                                {t("cancel")}
                             </Button>
                             <Button
                                 type="submit"
@@ -623,7 +625,7 @@ export default function MultiClassStudentPage() {
                                 disabled={loading}
                             >
                                 {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Plus className="h-5 w-5 mr-2" />}
-                                Assign Class
+                                {t("assign_class")}
                             </Button>
                         </DialogFooter>
                     </form>

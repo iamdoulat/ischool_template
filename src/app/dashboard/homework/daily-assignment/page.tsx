@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -112,6 +113,8 @@ export default function DailyAssignmentPage() {
         ? subjects.filter(s => String(s.school_class_id) === filters.class_id)
         : subjects;
 
+    const { t } = useTranslation();
+
     useEffect(() => {
         fetchInitialData();
     }, []);
@@ -157,7 +160,7 @@ export default function DailyAssignmentPage() {
             });
         } catch (error) {
             console.error("Error fetching assignments:", error);
-            toast({ title: "Error", description: "Failed to fetch assignments", variant: "destructive" });
+            toast({ title: t("error"), description: t("failed_to_fetch_assignments"), variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -171,11 +174,11 @@ export default function DailyAssignmentPage() {
     const handleCopy = () => {
         const text = assignments.map(a => `${a.student?.name}\t${a.title}\t${a.subject?.name}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        toast({ title: t("copied"), description: t("data_copied_to_clipboard") });
     };
 
     const handleExportCSV = () => {
-        const headers = ["Student Name", "Class", "Section", "Subject", "Title", "Submission Date"];
+        const headers = [t("student_name"), t("class"), t("section"), t("subject"), t("title"), t("submission_date")];
         const rows = assignments.map(a => [a.student?.name, a.class?.name, a.section?.name, a.subject?.name, a.title, a.submission_date]);
         const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -190,11 +193,11 @@ export default function DailyAssignmentPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     return (
@@ -206,19 +209,19 @@ export default function DailyAssignmentPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter daily assignments</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_daily_assignments")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-5 space-y-4">
                     <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                Class <span className="text-red-500">*</span>
+                                {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={filters.class_id} onValueChange={(v) => setFilters({ ...filters, class_id: v, section_id: "", subject_group_id: "", subject_id: "" })}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
@@ -228,11 +231,11 @@ export default function DailyAssignmentPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                Section <span className="text-red-500">*</span>
+                                {t("section")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={filters.section_id} onValueChange={(v) => setFilters({ ...filters, section_id: v })}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {filteredSections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
@@ -242,11 +245,11 @@ export default function DailyAssignmentPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                Subject Group <span className="text-red-500">*</span>
+                                {t("subject_group")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={filters.subject_group_id} onValueChange={(v) => setFilters({ ...filters, subject_group_id: v })}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {filteredSubjectGroups.map(sg => <SelectItem key={sg.id} value={String(sg.id)}>{sg.name}</SelectItem>)}
@@ -256,11 +259,11 @@ export default function DailyAssignmentPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                Subject <span className="text-red-500">*</span>
+                                {t("subject")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={filters.subject_id} onValueChange={(v) => setFilters({ ...filters, subject_id: v })}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {filteredSubjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
@@ -270,7 +273,7 @@ export default function DailyAssignmentPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                Date <span className="text-red-500">*</span>
+                                {t("date")} <span className="text-red-500">*</span>
                             </Label>
                             <Input
                                 type="date"
@@ -282,7 +285,7 @@ export default function DailyAssignmentPage() {
 
                         <div className="flex justify-end pt-2 md:col-span-5">
                             <Button type="submit" className="btn-gradient gap-2 h-9 px-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-md">
-                                <Search className="h-3.5 w-3.5" /> Search
+                                <Search className="h-3.5 w-3.5" /> {t("search")}
                             </Button>
                         </div>
                     </form>
@@ -296,8 +299,8 @@ export default function DailyAssignmentPage() {
                         <ClipboardList className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Daily Assignment</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? assignments.length} record(s)</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("daily_assignment")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? assignments.length} {t("records")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-5">
@@ -305,7 +308,7 @@ export default function DailyAssignmentPage() {
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4 border-b border-gray-50 pb-4">
                         <div className="relative w-full md:w-64">
                             <Input
-                                placeholder="Search in results..."
+                                placeholder={t("search_in_results")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-3 h-9 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50"
@@ -348,15 +351,15 @@ export default function DailyAssignmentPage() {
                         <Table>
                             <TableHeader className="bg-gray-50/50">
                                 <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Student Name</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Class</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Section</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Subject</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Title</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Submission Date</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Evaluation Date</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Evaluated By</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("student_name")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("class")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("section")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("subject")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("title")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("submission_date")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("evaluation_date")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("evaluated_by")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -368,8 +371,8 @@ export default function DailyAssignmentPage() {
                                             <div className="flex flex-col items-center justify-center space-y-3 opacity-40">
                                                 <Inbox className="h-16 w-16 text-gray-200" />
                                                 <div className="space-y-1">
-                                                    <p className="text-xs font-bold text-red-400">No data available in table</p>
-                                                    <p className="text-[10px] text-indigo-500 font-medium">Search with criteria to see results.</p>
+                                                    <p className="text-xs font-bold text-red-400">{t("no_data_available_in_table")}</p>
+                                                    <p className="text-[10px] text-indigo-500 font-medium">{t("search_with_criteria_to_see_results")}</p>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -400,8 +403,8 @@ export default function DailyAssignmentPage() {
                     {/* Footer / Pagination */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50">
                         <div>
-                            Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
-                        </div>
+                                {t("showing_x_to_y_of_z", { from: pagination?.from || 0, to: pagination?.to || 0, total: pagination?.total || 0 })}
+                            </div>
                         <div className="flex gap-2 items-center">
                             <Button
                                 variant="outline"

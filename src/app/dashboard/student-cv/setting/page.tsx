@@ -7,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
-    Copy, FileSpreadsheet, FileBox, Printer, Columns, 
-    ChevronLeft, ChevronRight, Search, ArrowUpDown, ChevronDown
+    Copy, FileSpreadsheet, FileBox, Printer, Columns,
+    ChevronLeft, ChevronRight, Search, ArrowUpDown, ChevronDown, Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -87,8 +87,16 @@ export default function CVSettingPage() {
         <div className="p-4 bg-gray-50/10 min-h-screen font-sans text-xs space-y-4">
             
             {/* Page Title */}
-            <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                <span className="text-base font-semibold tracking-tight text-gray-800">CV Setting</span>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Settings className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">CV Setting</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Configure CV fields and student panel options</p>
+                    </div>
+                </div>
             </div>
 
             {/* Navigation Tabs */}

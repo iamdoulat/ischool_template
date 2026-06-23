@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 import {
-    Plus,
     Search,
     FileSpreadsheet,
     FileText,
@@ -22,12 +21,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     Dialog,
     DialogContent,
@@ -81,7 +80,8 @@ interface Notice {
 }
 
 export default function NoticeBoardPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -137,12 +137,12 @@ export default function NoticeBoardPage() {
             setCurrentPage(response.data?.current_page || page);
             setLastPage(response.data?.last_page || 1);
             setTotal(response.data?.total || 0);
-        } catch (error) {
-            toast("error", "Failed to fetch notices");
+        } catch {
+            tt.error("failed_to_fetch_notices");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, pageSize, toast]);
+    }, [searchQuery, pageSize, tt]);
 
     useEffect(() => {
         fetchNotices(1);
@@ -162,15 +162,15 @@ export default function NoticeBoardPage() {
             };
             if (isEdit && editId) {
                 await api.put(`/communicate/notices/${editId}`, payload);
-                toast("success", "Notice updated successfully");
+                tt.success("notice_updated_successfully");
             } else {
                 await api.post('/communicate/notices', payload);
-                toast("success", "Notice posted successfully");
+                tt.success("notice_posted_successfully");
             }
             resetForm();
             fetchNotices(1);
-        } catch (error) {
-            toast("error", "Failed to save notice");
+        } catch {
+            tt.error("failed_to_save_notice");
         }
     };
 
@@ -204,24 +204,24 @@ export default function NoticeBoardPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/communicate/notices/${deleteId}`);
-            toast("success", "Notice deleted successfully");
+            tt.success("notice_deleted_successfully");
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
             fetchNotices(1);
-        } catch (error) {
-            toast("error", "Failed to delete notice");
+        } catch {
+            tt.error("failed_to_delete_notice");
         }
     };
 
     const handleBulkDelete = async () => {
         try {
             await api.delete('/communicate/notices/destroy-all', { data: { ids: selectedIds } });
-            toast("success", `${selectedIds.length} notice(s) deleted successfully`);
+            tt.success("notices_deleted_successfully", { count: selectedIds.length });
             setIsBulkDeleteDialogOpen(false);
             setSelectedIds([]);
             fetchNotices(1);
-        } catch (error) {
-            toast("error", "Failed to delete notices");
+        } catch {
+            tt.error("failed_to_delete_notices");
         }
     };
 
@@ -265,7 +265,7 @@ export default function NoticeBoardPage() {
             `${n.title}\t${n.notice_date}\t${n.publish_date}\t${n.is_published ? 'Published' : 'Pending'}\t${n.message_to || ''}`
         ).join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const handlePrint = () => window.print();
@@ -281,7 +281,7 @@ export default function NoticeBoardPage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Notices");
         XLSX.writeFile(workbook, "notices.xlsx");
-        toast("success", "Exported to Excel successfully");
+        tt.success("exported_to_excel_successfully");
     };
 
     const handleExportCSV = () => {
@@ -302,7 +302,7 @@ export default function NoticeBoardPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast("success", "Exported to CSV successfully");
+        tt.success("exported_to_csv_successfully");
     };
 
     const handleExportPDF = () => {
@@ -322,7 +322,7 @@ export default function NoticeBoardPage() {
             startY: 20,
         });
         doc.save("notices.pdf");
-        toast("success", "Exported to PDF successfully");
+        tt.success("exported_to_pdf_successfully");
     };
 
     const startIndex = (currentPage - 1) * pageSize + 1;
@@ -338,10 +338,10 @@ export default function NoticeBoardPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {isEdit ? "Edit Notice" : "Post Notice"}
+                                {isEdit ? t("edit_notice") : t("post_notice")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {isEdit ? "Update existing notice" : "Broadcast to the school community"}
+                                {isEdit ? t("update_existing_notice") : t("broadcast_to_school_community")}
                             </p>
                         </div>
                     </CardHeader>
@@ -350,11 +350,11 @@ export default function NoticeBoardPage() {
                             {/* Title */}
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Title <span className="text-destructive font-black">*</span>
+                                    {t("title")} <span className="text-destructive font-black">*</span>
                                 </label>
                                 <Input
                                     required
-                                    placeholder="e.g. Annual Sports Day 2026"
+                                    placeholder={t("notice_title_placeholder")}
                                     className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -365,7 +365,7 @@ export default function NoticeBoardPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2 group">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                        Notice Date <span className="text-destructive font-black">*</span>
+                                        {t("notice_date")} <span className="text-destructive font-black">*</span>
                                     </label>
                                     <Input
                                         type="date"
@@ -377,7 +377,7 @@ export default function NoticeBoardPage() {
                                 </div>
                                 <div className="space-y-2 group">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                        Publish Date <span className="text-destructive font-black">*</span>
+                                        {t("publish_date")} <span className="text-destructive font-black">*</span>
                                     </label>
                                     <Input
                                         type="date"
@@ -392,7 +392,7 @@ export default function NoticeBoardPage() {
                             {/* Message To */}
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Message To
+                                    {t("message_to")}
                                 </label>
                                 <div className="flex flex-wrap gap-2 pt-1">
                                     {['Student', 'Parent', 'Staff'].map((role) => (
@@ -416,7 +416,7 @@ export default function NoticeBoardPage() {
                             {/* Notify To */}
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Notify Via
+                                    {t("notify_via")}
                                 </label>
                                 <div className="flex flex-wrap gap-2 pt-1">
                                     {['Email', 'SMS', 'WhatsApp', 'Notification'].map((ch) => (
@@ -441,7 +441,7 @@ export default function NoticeBoardPage() {
                             <div className="space-y-2 group">
                                 <div className="flex items-center justify-between">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 transition-colors">
-                                        Message <span className="text-destructive font-black">*</span>
+                                        {t("message")} <span className="text-destructive font-black">*</span>
                                     </label>
                                     <button
                                         type="button"
@@ -456,7 +456,7 @@ export default function NoticeBoardPage() {
                                         required
                                         value={formData.message}
                                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                                        placeholder="Write the notice content here..."
+                                        placeholder={t("write_notice_content_here")}
                                         className="min-h-[150px] rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium resize-none text-xs font-mono"
                                     />
                                 ) : (
@@ -466,7 +466,7 @@ export default function NoticeBoardPage() {
                                             onChange={(value) => setFormData({ ...formData, message: value })}
                                             modules={quillModules}
                                             theme="snow"
-                                            placeholder="Write the notice content here..."
+                                            placeholder={t("write_notice_content_here")}
                                         />
                                     </div>
                                 )}
@@ -475,11 +475,11 @@ export default function NoticeBoardPage() {
                             <div className="pt-4 flex justify-end gap-2">
                                 {isEdit && (
                                     <Button type="button" variant="outline" className="h-11 px-6 rounded-lg font-bold" onClick={resetForm}>
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button type="submit" variant="gradient" className="h-11 px-10 rounded-lg font-bold tracking-tight shadow-lg shadow-primary/25">
-                                    {isEdit ? "Update Notice" : "Publish Notice"}
+                                    {isEdit ? t("update_notice") : t("publish_notice")}
                                 </Button>
                             </div>
                         </form>
@@ -495,8 +495,8 @@ export default function NoticeBoardPage() {
                             <Megaphone className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Notice Board</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{total} notice{total === 1 ? '' : 's'}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("notice_board")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{total} {t(total === 1 ? "notice" : "notices")}</p>
                         </div>
                     </CardHeader>
 
@@ -506,7 +506,7 @@ export default function NoticeBoardPage() {
                             <div className="relative w-full max-w-sm group">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 <Input
-                                    placeholder="Search notices..."
+                                    placeholder={t("search_notices")}
                                     className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -545,12 +545,12 @@ export default function NoticeBoardPage() {
                                                     onCheckedChange={toggleSelectAll}
                                                 />
                                             </th>
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">#</th>
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">Title</th>
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">Notice Date</th>
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">Publish Date</th>
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">Status</th>
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">Message To</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">{t("sr_no")}</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">{t("title")}</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">{t("notice_date")}</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">{t("publish_date")}</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">{t("status")}</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">{t("message_to")}</th>
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap text-right">
                                                 <div className="flex justify-end pr-1">
                                                     {selectedIds.length > 0 ? (
@@ -559,10 +559,10 @@ export default function NoticeBoardPage() {
                                                             className="bg-red-500 hover:bg-red-600 p-1.5 rounded transition-colors flex items-center gap-1 text-white px-2"
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
-                                                            <span className="text-xs font-bold leading-none translate-y-[1px]">Delete</span>
+                                                            <span className="text-xs font-bold leading-none translate-y-[1px]">{t("delete")}</span>
                                                         </button>
                                                     ) : (
-                                                        "Action"
+                                                        t("action")
                                                     )}
                                                 </div>
                                             </th>
@@ -573,7 +573,7 @@ export default function NoticeBoardPage() {
                                             <TableSkeleton rows={5} cols={8} />
                                         ) : notices.length === 0 ? (
                                             <tr>
-                                                <td colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                                <td colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                             </tr>
                                         ) : (
                                             notices.map((notice, idx) => {
@@ -602,7 +602,7 @@ export default function NoticeBoardPage() {
                                                                 "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold",
                                                                 notice.is_published ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
                                                             )}>
-                                                                {notice.is_published ? "Published" : "Pending"}
+                                                                {notice.is_published ? t("published") : t("pending")}
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4">
@@ -620,7 +620,7 @@ export default function NoticeBoardPage() {
                                                                     size="icon"
                                                                     onClick={() => setViewNotice(notice)}
                                                                     className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all"
-                                                                    title="View"
+                                                                    title={t("view")}
                                                                 >
                                                                     <Eye className="h-3.5 w-3.5" />
                                                                 </Button>
@@ -628,7 +628,7 @@ export default function NoticeBoardPage() {
                                                                     size="icon"
                                                                     onClick={() => startEdit(notice)}
                                                                     className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-90 transition-all"
-                                                                    title="Edit"
+                                                                    title={t("edit")}
                                                                 >
                                                                     <Pencil className="h-3.5 w-3.5" />
                                                                 </Button>
@@ -636,7 +636,7 @@ export default function NoticeBoardPage() {
                                                                     size="icon"
                                                                     onClick={() => { setDeleteId(notice.id); setIsDeleteDialogOpen(true); }}
                                                                     className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 active:scale-90 transition-all"
-                                                                    title="Delete"
+                                                                    title={t("delete")}
                                                                 >
                                                                     <Trash2 className="h-3.5 w-3.5" />
                                                                 </Button>
@@ -655,7 +655,7 @@ export default function NoticeBoardPage() {
                         {total > 0 && (
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                    Showing {Math.min((currentPage - 1) * pageSize + 1, total)} to {Math.min(currentPage * pageSize, total)} of {total} entries
+                                    {t("showing_x_to_y_of_z", { from: Math.min((currentPage - 1) * pageSize + 1, total), to: Math.min(currentPage * pageSize, total), total })}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -727,11 +727,11 @@ export default function NoticeBoardPage() {
                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-4 w-4" />
-                                    Notice: {format(new Date(viewNotice.notice_date), 'dd/MM/yyyy')}
+                                    {t("notice")}: {format(new Date(viewNotice.notice_date), 'dd/MM/yyyy')}
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-4 w-4" />
-                                    Publish: {format(new Date(viewNotice.publish_date), 'dd/MM/yyyy')}
+                                    {t("publish")}: {format(new Date(viewNotice.publish_date), 'dd/MM/yyyy')}
                                 </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
@@ -739,7 +739,7 @@ export default function NoticeBoardPage() {
                                     "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold",
                                     viewNotice.is_published ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
                                 )}>
-                                    {viewNotice.is_published ? "Published" : "Pending"}
+                                    {viewNotice.is_published ? t("published") : t("pending")}
                                 </span>
                                 {(viewNotice.message_to ? viewNotice.message_to.split(',').map(s => s.trim()).filter(Boolean) : []).map((to, i) => (
                                     <span key={i} className="inline-flex items-center px-3 py-1 rounded-md bg-indigo-100 text-indigo-700 text-xs font-semibold">{to}</span>
@@ -758,7 +758,7 @@ export default function NoticeBoardPage() {
                     )}
                     <div className="p-6 bg-gray-50/50 border-t border-gray-100">
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setViewNotice(null)} className="h-10 text-[10px] uppercase font-bold rounded-full px-8 bg-white border-gray-200">Close</Button>
+                            <Button variant="outline" onClick={() => setViewNotice(null)} className="h-10 text-[10px] uppercase font-bold rounded-full px-8 bg-white border-gray-200">{t("close")}</Button>
                         </DialogFooter>
                     </div>
                 </DialogContent>
@@ -768,14 +768,14 @@ export default function NoticeBoardPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the notice.
+                            {t("this_action_cannot_be_undone")}. {t("permanently_delete_notice")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">Delete</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -784,14 +784,14 @@ export default function NoticeBoardPage() {
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Selected Notices</AlertDialogTitle>
+                        <AlertDialogTitle>{t("delete_selected_notices")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete {selectedIds.length} selected notice(s)? This action cannot be undone.
+                            {t("delete_selected_notices_confirm", { count: selectedIds.length })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">Delete Selected</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">{t("delete_selected")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

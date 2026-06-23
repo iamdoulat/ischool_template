@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -102,6 +103,8 @@ export default function NfcAssignmentPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [nfcUid, setNfcUid] = useState("");
 
+  const { t } = useTranslation();
+
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const fetchUsers = useCallback(async () => {
@@ -113,7 +116,7 @@ export default function NfcAssignmentPage() {
       const res = await api.get(`/smart-attendance/users?${params}`);
       if (res.data?.success) setUsers(res.data.data);
     } catch {
-      toast.error("Failed to load users");
+      toast.error(t("failed_to_load_users"));
     } finally {
       setLoading(false);
     }
@@ -129,7 +132,7 @@ export default function NfcAssignmentPage() {
 
   const handleAssign = async () => {
     if (!selectedUser || !nfcUid.trim()) {
-      toast.error("Please enter an NFC tag UID");
+      toast.error(t("please_enter_nfc_tag_uid"));
       return;
     }
     setAssigningId(selectedUser.id);
@@ -144,7 +147,7 @@ export default function NfcAssignmentPage() {
         fetchUsers();
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || "Failed to assign NFC tag";
+      const msg = err.response?.data?.message || t("failed_to_assign_nfc_tag");
       toast.error(msg);
     } finally {
       setAssigningId(null);
@@ -159,7 +162,7 @@ export default function NfcAssignmentPage() {
         fetchUsers();
       }
     } catch {
-      toast.error("Failed to remove NFC tag");
+      toast.error(t("failed_to_remove_nfc_tag"));
     }
   };
 
@@ -183,8 +186,8 @@ export default function NfcAssignmentPage() {
                 <Nfc className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">NFC Tag Assignment</CardTitle>
-                <p className="text-[11px] text-gray-500 mt-1">Assign NFC tags to students, teachers, and staff for tap-and-go attendance</p>
+                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("nfc_tag_assignment")}</CardTitle>
+                <p className="text-[11px] text-gray-500 mt-1">{t("assign_nfc_tags_description")}</p>
               </div>
             </div>
           </CardHeader>
@@ -201,12 +204,12 @@ export default function NfcAssignmentPage() {
               <Smartphone className="h-4 w-4" />
             </span>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-sm font-bold text-slate-800 leading-none">Users</CardTitle>
+              <CardTitle className="text-sm font-bold text-slate-800 leading-none">{t("users")}</CardTitle>
             </div>
             <div className="relative w-full sm:w-56">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by name, ID..."
+                placeholder={t("search_by_name_id")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 h-8 text-[11px]"
@@ -214,13 +217,13 @@ export default function NfcAssignmentPage() {
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="h-8 w-32 text-[11px]">
-                <SelectValue placeholder="All Roles" />
+                <SelectValue placeholder={t("all_roles")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="Student">Students</SelectItem>
-                <SelectItem value="Teacher">Teachers</SelectItem>
-                <SelectItem value="Staff">Staff</SelectItem>
+                <SelectItem value="all">{t("all_roles")}</SelectItem>
+                <SelectItem value="Student">{t("students")}</SelectItem>
+                <SelectItem value="Teacher">{t("teachers")}</SelectItem>
+                <SelectItem value="Staff">{t("staff")}</SelectItem>
               </SelectContent>
             </Select>
           </CardHeader>
@@ -228,12 +231,12 @@ export default function NfcAssignmentPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50/50">
-                  <TableHead className="text-[11px]">Name</TableHead>
-                  <TableHead className="text-[11px]">Role</TableHead>
-                  <TableHead className="text-[11px]">ID / Admission No</TableHead>
-                  <TableHead className="text-[11px]">NFC UID</TableHead>
-                  <TableHead className="text-[11px]">Status</TableHead>
-                  <TableHead className="text-[11px] text-right">Actions</TableHead>
+                  <TableHead className="text-[11px]">{t("name")}</TableHead>
+                  <TableHead className="text-[11px]">{t("role")}</TableHead>
+                  <TableHead className="text-[11px]">{t("id_admission_no")}</TableHead>
+                  <TableHead className="text-[11px]">{t("nfc_uid")}</TableHead>
+                  <TableHead className="text-[11px]">{t("status")}</TableHead>
+                  <TableHead className="text-[11px] text-right">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -241,7 +244,7 @@ export default function NfcAssignmentPage() {
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                       <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      {searchQuery ? "No matching users found." : "Type a search to find users."}
+                      {searchQuery ? t("no_matching_users_found") : t("type_search_to_find_users")}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -264,11 +267,11 @@ export default function NfcAssignmentPage() {
                       <TableCell>
                         {user.has_nfc ? (
                           <span className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-xs font-medium">
-                            <CheckCircle className="h-3 w-3" /> Assigned
+                            <CheckCircle className="h-3 w-3" /> {t("assigned")}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-xs font-medium">
-                            <AlertCircle className="h-3 w-3" /> Not Assigned
+                            <AlertCircle className="h-3 w-3" /> {t("not_assigned")}
                           </span>
                         )}
                       </TableCell>
@@ -281,7 +284,7 @@ export default function NfcAssignmentPage() {
                               onClick={() => handleRemove(user.id)}
                               className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 px-2 text-[11px]"
                             >
-                              <Trash2 className="h-3.5 w-3.5" /> Remove
+                              <Trash2 className="h-3.5 w-3.5" /> {t("remove")}
                             </Button>
                           ) : (
                             <Button
@@ -290,7 +293,7 @@ export default function NfcAssignmentPage() {
                               onClick={() => openAssignDialog(user)}
                               className="h-7 px-3 text-[11px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white"
                             >
-                              <Plus className="h-3.5 w-3.5" /> Assign
+                              <Plus className="h-3.5 w-3.5" /> {t("assign")}
                             </Button>
                           )}
                         </div>
@@ -310,15 +313,15 @@ export default function NfcAssignmentPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Nfc className="h-5 w-5 text-purple-600" />
-              Assign NFC Tag
+              {t("assign_nfc_tag")}
             </DialogTitle>
             <DialogDescription>
-              Enter the NFC tag UID for <strong>{selectedUser?.name}</strong>.
+              {t("enter_nfc_tag_uid_for")} <strong>{selectedUser?.name}</strong>.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">NFC Tag UID</label>
+              <label className="text-sm font-medium">{t("nfc_tag_uid")}</label>
               <div className="flex gap-2">
                 <Input
                   placeholder="e.g. 04:5A:6B:C2:1D:3E:8F:12"
@@ -330,27 +333,27 @@ export default function NfcAssignmentPage() {
                   variant="outline"
                   size="icon"
                   onClick={simulateNfcScan}
-                  title="Simulate NFC Scan"
+                  title={t("simulate_nfc_scan")}
                 >
                   <Smartphone className="h-4 w-4" />
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Tap "Simulate" to generate a random UID for testing, or enter one manually.
+                {t("tap_simulate_description")}
               </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("cancel")}</Button>
             <Button
               onClick={handleAssign}
               disabled={assigningId !== null || !nfcUid.trim()}
               className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white"
             >
               {assigningId !== null ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Assigning...</>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("assigning")}</>
               ) : (
-                "Assign Tag"
+                {t("assign_tag")}
               )}
             </Button>
           </DialogFooter>

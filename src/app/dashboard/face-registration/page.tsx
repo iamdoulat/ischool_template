@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Camera, Save, RefreshCw, UserCheck, Search, Loader2 } from "lucide-react";
+import { Camera, Save, RefreshCw, UserCheck, Search, Loader2, ScanFace } from "lucide-react";
 import api from "@/lib/api";
 import * as faceapi from "face-api.js";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useImageUrl } from "@/lib/image-url";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface User {
   id: number;
@@ -23,23 +24,24 @@ interface User {
 }
 
 export default function FaceRegistrationPage() {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
+
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("Student");
-  
+
   const [isModelsLoaded, setIsModelsLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   const [descriptor, setDescriptor] = useState<Float32Array | null>(null);
   const getImageUrl = useImageUrl();
-  
+
   const fetchUsers = useCallback(async () => {
     try {
       const response = await api.get(`/api/v1/face-recognition/users?role=${roleFilter}`);
@@ -48,17 +50,17 @@ export default function FaceRegistrationPage() {
       setFilteredUsers(data);
     } catch (error) {
       console.error("Error fetching users:", error);
-      toast.error("Failed to load users");
+      toast.error(t("failed_to_load_users"));
     }
-  }, [roleFilter]);
+  }, [roleFilter, t]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
   useEffect(() => {
-    const filtered = users.filter((u) => 
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const filtered = users.filter((u) =>
+      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredUsers(filtered);
@@ -76,16 +78,16 @@ export default function FaceRegistrationPage() {
         setIsModelsLoaded(true);
       } catch (error) {
         console.error("Error loading face models:", error);
-        toast.error("Failed to load AI models");
+        toast.error(t("failed_to_load_ai_models"));
       }
     };
-    
+
     loadModels();
-  }, []);
+  }, [t]);
 
   const startVideo = async () => {
     if (!isModelsLoaded) {
-      toast.error("Models are still loading...");
+      toast.error(t("models_still_loading"));
       return;
     }
 
@@ -97,7 +99,7 @@ export default function FaceRegistrationPage() {
       }
     } catch (error) {
       console.error("Error accessing webcam:", error);
-      toast.error("Could not access webcam. Please check permissions.");
+      toast.error(t("could_not_access_webcam"));
     }
   };
 
@@ -110,7 +112,7 @@ export default function FaceRegistrationPage() {
       setIsVideoPlaying(false);
       setDescriptor(null);
       setIsDetecting(false);
-      
+
       if (canvasRef.current) {
         const context = canvasRef.current.getContext('2d');
         if (context) {
@@ -134,19 +136,19 @@ export default function FaceRegistrationPage() {
       }
 
       const detection = await faceapi.detectSingleFace(
-        videoRef.current, 
+        videoRef.current,
         new faceapi.TinyFaceDetectorOptions()
       ).withFaceLandmarks().withFaceDescriptor();
 
       if (canvasRef.current) {
         const context = canvasRef.current.getContext('2d');
         context?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        
+
         if (detection) {
           const resizedDetections = faceapi.resizeResults(detection, displaySize);
           faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
           faceapi.draw.drawFaceLandmarks(canvasRef.current, resizedDetections);
-          
+
           // Auto-capture descriptor if we found one
           setDescriptor(detection.descriptor);
         } else {
@@ -154,19 +156,19 @@ export default function FaceRegistrationPage() {
         }
       }
     }, 100);
-    
+
     // store interval id if we need to clean it up when unmounting
     return () => clearInterval(interval);
   };
 
   const handleSaveFace = async () => {
     if (!selectedUser) {
-      toast.error("Please select a user first");
+      toast.error(t("please_select_user_first"));
       return;
     }
-    
+
     if (!descriptor) {
-      toast.error("No face detected. Please ensure your face is clearly visible.");
+      toast.error(t("no_face_detected"));
       return;
     }
 
@@ -176,21 +178,21 @@ export default function FaceRegistrationPage() {
         user_id: selectedUser.id,
         face_descriptor: Array.from(descriptor) // Convert Float32Array to regular array for JSON
       });
-      
-      toast.success(`Face successfully registered for ${selectedUser.name}`);
-      
+
+      toast.success(t("face_registered_for", { name: selectedUser.name }));
+
       // Update local state to reflect registration
       setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, face_descriptor: Array.from(descriptor) } : u));
-      
+
       if (selectedUser.id === selectedUser.id) {
         setSelectedUser({ ...selectedUser, face_descriptor: Array.from(descriptor) });
       }
-      
+
       // Stop video after success
       stopVideo();
     } catch (error) {
       console.error("Error saving face:", error);
-      toast.error("Failed to register face. Please try again.");
+      toast.error(t("failed_to_register_face"));
     } finally {
       setIsSaving(false);
     }
@@ -204,32 +206,37 @@ export default function FaceRegistrationPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Face Registration</h2>
-        <p className="text-muted-foreground">
-          Register facial biometrics for students and staff for the smart attendance terminal.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+            <ScanFace className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("face_registration")}</h1>
+            <p className="text-[11px] text-gray-500 mt-1">{t("enroll_facial_biometrics")}</p>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
+
         {/* Left Column: User Selection */}
         <Card className="md:col-span-1 shadow-sm border-0 ring-1 ring-border/50">
           <CardHeader>
-            <CardTitle className="text-lg">Select Person</CardTitle>
+            <CardTitle className="text-lg">{t("select_person")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            
+
             <div className="space-y-2">
-              <Label>Role</Label>
+              <Label>{t("role")}</Label>
               <Select value={roleFilter} onValueChange={(val) => { setRoleFilter(val); setSelectedUser(null); }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Role" />
+                  <SelectValue placeholder={t("select_role")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Student">Student</SelectItem>
-                  <SelectItem value="Teacher">Teacher</SelectItem>
-                  <SelectItem value="Staff">Staff</SelectItem>
+                  <SelectItem value="Student">{t("student")}</SelectItem>
+                  <SelectItem value="Teacher">{t("teacher")}</SelectItem>
+                  <SelectItem value="Staff">{t("staff")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -237,7 +244,7 @@ export default function FaceRegistrationPage() {
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search name or email..."
+                placeholder={t("search_name_or_email")}
                 className="pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -247,7 +254,7 @@ export default function FaceRegistrationPage() {
             <div className="mt-4 border rounded-md h-[400px] overflow-y-auto bg-muted/20 p-2 space-y-2">
               {filteredUsers.length === 0 ? (
                 <div className="flex justify-center items-center h-full text-muted-foreground text-sm">
-                  No users found
+                  {t("no_users_found")}
                 </div>
               ) : (
                 filteredUsers.map((user) => (
@@ -264,10 +271,10 @@ export default function FaceRegistrationPage() {
                     </Avatar>
                     <div className="flex-1 overflow-hidden">
                       <div className="font-medium text-sm truncate">{user.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">{user.email || 'No email'}</div>
+                      <div className="text-xs text-muted-foreground truncate">{user.email || t("no_email")}</div>
                     </div>
                     {user.face_descriptor && (
-                      <div className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" title="Face Registered" />
+                      <div className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" title={t("face_registered")} />
                     )}
                   </div>
                 ))
@@ -280,23 +287,23 @@ export default function FaceRegistrationPage() {
         {/* Right Column: Camera & Registration */}
         <Card className="md:col-span-2 shadow-sm border-0 ring-1 ring-border/50">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Face Scanner</CardTitle>
+            <CardTitle className="text-lg">{t("face_scanner")}</CardTitle>
             <div className="flex gap-2">
               <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${isModelsLoaded ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                 {isModelsLoaded ? (
-                  <>AI Models Ready</>
+                  <>{t("ai_models_ready")}</>
                 ) : (
-                  <><Loader2 className="h-3 w-3 animate-spin" /> Loading Models...</>
+                  <><Loader2 className="h-3 w-3 animate-spin" /> {t("loading_models")}</>
                 )}
               </span>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            
+
             {!selectedUser ? (
               <div className="h-[400px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground bg-muted/10">
                 <UserCheck className="h-12 w-12 mb-4 opacity-50" />
-                <p>Please select a user from the list first to register their face.</p>
+                <p>{t("please_select_user_from_list")}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -308,12 +315,12 @@ export default function FaceRegistrationPage() {
                     </Avatar>
                     <div>
                       <h3 className="font-semibold">{selectedUser.name}</h3>
-                      <p className="text-sm text-muted-foreground">{selectedUser.role} • {selectedUser.face_descriptor ? 'Already Registered (Will Overwrite)' : 'Not Registered'}</p>
+                      <p className="text-sm text-muted-foreground">{selectedUser.role} • {selectedUser.face_descriptor ? t("already_registered_will_overwrite") : t("not_registered")}</p>
                     </div>
                   </div>
                   {selectedUser.face_descriptor && (
                     <div className="text-green-600 font-medium text-sm flex items-center gap-1 bg-green-50 px-3 py-1 rounded-full">
-                      <UserCheck className="h-4 w-4" /> Enrolled
+                      <UserCheck className="h-4 w-4" /> {t("enrolled")}
                     </div>
                   )}
                 </div>
@@ -322,34 +329,34 @@ export default function FaceRegistrationPage() {
                   {!isVideoPlaying ? (
                     <div className="text-center text-white/70 p-6 flex flex-col items-center">
                       <Camera className="h-12 w-12 mb-2 opacity-50" />
-                      <p>Webcam is off</p>
-                      <Button 
-                        variant="secondary" 
-                        size="sm" 
+                      <p>{t("webcam_is_off")}</p>
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         className="mt-4"
                         onClick={startVideo}
                         disabled={!isModelsLoaded}
                       >
-                        Start Camera
+                        {t("start_camera")}
                       </Button>
                     </div>
                   ) : (
                     <>
-                      <video 
+                      <video
                         ref={videoRef}
                         autoPlay
                         muted
                         onPlay={handleVideoPlay}
                         className="w-full h-full object-cover"
                       />
-                      <canvas 
+                      <canvas
                         ref={canvasRef}
                         className="absolute top-0 left-0 w-full h-full object-cover"
                       />
                       <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-                         <Button variant="destructive" size="sm" onClick={stopVideo}>Stop Camera</Button>
+                         <Button variant="destructive" size="sm" onClick={stopVideo}>{t("stop_camera")}</Button>
                       </div>
-                      
+
                       {/* Scanning Overlay Indicator */}
                       {isDetecting && (
                         <div className="absolute top-4 right-4">
@@ -361,31 +368,31 @@ export default function FaceRegistrationPage() {
                 </div>
 
                 <div className="flex justify-center mt-6">
-                  <Button 
+                  <Button
                     onClick={handleSaveFace}
                     disabled={!descriptor || isSaving || !isVideoPlaying}
                     className="w-full max-w-md bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white font-medium"
                     size="lg"
                   >
                     {isSaving ? (
-                      <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Saving Face Data...</>
+                      <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t("saving_face_data")}</>
                     ) : (
-                      <><Save className="mr-2 h-5 w-5" /> Register Face for {selectedUser.name}</>
+                      <><Save className="mr-2 h-5 w-5" /> {t("register_face_for", { name: selectedUser.name })}</>
                     )}
                   </Button>
                 </div>
-                
+
                 {isVideoPlaying && !descriptor && (
                   <p className="text-center text-sm text-amber-600 mt-2">
-                    Looking for a face... Please position yourself clearly in front of the camera.
+                    {t("looking_for_face")}
                   </p>
                 )}
                 {isVideoPlaying && descriptor && (
                   <p className="text-center text-sm text-green-600 mt-2 font-medium">
-                    Face detected! Ready to register.
+                    {t("face_detected_ready")}
                   </p>
                 )}
-                
+
               </div>
             )}
 

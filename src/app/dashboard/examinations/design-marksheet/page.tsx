@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,7 +78,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function DesignMarksheetPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [templates, setTemplates] = useState<Marksheet[]>([]);
     const [loading, setLoading] = useState(false);
@@ -146,7 +148,7 @@ export default function DesignMarksheetPage() {
             setTemplates(response.data.data || []);
             setTotalEntries(response.data.total || 0);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch templates", variant: "destructive" });
+            tt.error("failed_to_fetch_templates");
         } finally {
             setLoading(false);
         }
@@ -154,7 +156,7 @@ export default function DesignMarksheetPage() {
 
     const handleSave = async () => {
         if (!formData.name) {
-            toast({ title: "Validation Error", description: "Template name is required", variant: "destructive" });
+            tt.error("template_name_is_required");
             return;
         }
 
@@ -162,15 +164,15 @@ export default function DesignMarksheetPage() {
         try {
             if (editMode && selectedId) {
                 await api.put(`/examination/marksheet-templates/${selectedId}`, formData);
-                toast({ title: "Success", description: "Template updated successfully" });
+                tt.success("template_updated_successfully");
             } else {
                 await api.post('/examination/marksheet-templates', formData);
-                toast({ title: "Success", description: "Template created successfully" });
+                tt.success("template_created_successfully");
             }
             resetForm();
             fetchTemplates();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to save template", variant: "destructive" });
+            tt.error("failed_to_save_template");
         } finally {
             setSubmitting(false);
         }
@@ -189,10 +191,10 @@ export default function DesignMarksheetPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/examination/marksheet-templates/${deleteId}`);
-            toast({ title: "Success", description: "Template deleted successfully" });
+            tt.success("template_deleted_successfully");
             fetchTemplates();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to delete template", variant: "destructive" });
+            tt.error("failed_to_delete_template");
         } finally {
             setDeleteId(null);
         }
@@ -244,10 +246,10 @@ export default function DesignMarksheetPage() {
                             </span>
                             <div>
                                 <h2 className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {editMode ? "Edit Marksheet" : "Add Marksheet"}
+                                    {editMode ? t("edit_marksheet") : t("add_marksheet")}
                                 </h2>
                                 <p className="text-[11px] text-gray-500 mt-1">
-                                    {editMode ? "Update template configuration" : "Create a new marksheet template"}
+                                    {editMode ? t("update_template_configuration") : t("create_new_marksheet_template")}
                                 </p>
                             </div>
                         </div>
@@ -255,7 +257,7 @@ export default function DesignMarksheetPage() {
                         <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                    Template Name <span className="text-red-500">*</span>
+                                    {t("template_name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     value={formData.name}
@@ -266,7 +268,7 @@ export default function DesignMarksheetPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Exam Name</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_name")}</Label>
                                 <Input
                                     value={formData.exam_name}
                                     onChange={(e) => setFormData({...formData, exam_name: e.target.value})}
@@ -275,7 +277,7 @@ export default function DesignMarksheetPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">School Name</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("school_name")}</Label>
                                 <Input
                                     value={formData.school_name}
                                     onChange={(e) => setFormData({...formData, school_name: e.target.value})}
@@ -285,14 +287,14 @@ export default function DesignMarksheetPage() {
 
                             {/* Toggles Section */}
                             <div className="pt-4 border-t border-dashed border-gray-100 space-y-4">
-                                <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4">Display Configurations</h3>
+                                <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4">{t("display_configurations")}</h3>
                                 {[
-                                    { key: "show_name", label: "Student Name" },
-                                    { key: "show_father_name", label: "Father Name" },
-                                    { key: "show_roll_no", label: "Roll Number" },
-                                    { key: "show_photo", label: "Student Photo" },
-                                    { key: "show_class", label: "Class & Section" },
-                                    { key: "show_status", label: "Pass/Fail Status" }
+                                    { key: "show_name", label: t("student_name") },
+                                    { key: "show_father_name", label: t("father_name") },
+                                    { key: "show_roll_no", label: t("roll_number") },
+                                    { key: "show_photo", label: t("student_photo") },
+                                    { key: "show_class", label: t("class_and_section") },
+                                    { key: "show_status", label: t("pass_fail_status") }
                                 ].map((item) => (
                                     <div key={item.key} className="flex items-center justify-between group">
                                         <Label className="text-[11px] font-bold text-gray-600 cursor-pointer group-hover:text-indigo-600 transition-colors">{item.label}</Label>
@@ -307,13 +309,13 @@ export default function DesignMarksheetPage() {
 
                             {/* File Upload Placeholders */}
                             <div className="pt-4 border-t border-dashed border-gray-100 space-y-4">
-                                <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em]">Assets & Media</h3>
-                                {["Header Image", "Background Image"].map((label) => (
+                                <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em]">{t("assets_and_media")}</h3>
+                                {[t("header_image"), t("background_image")].map((label) => (
                                     <div key={label} className="space-y-2">
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase">{label}</Label>
                                         <div className="border-2 border-dashed border-gray-100 rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-all bg-gray-50/20 group">
                                             <Upload className="h-6 w-6 text-gray-300 mb-2 group-hover:text-indigo-400 transition-colors" />
-                                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Upload Asset</span>
+                                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{t("upload_asset")}</span>
                                         </div>
                                     </div>
                                 ))}
@@ -323,7 +325,7 @@ export default function DesignMarksheetPage() {
                         <div className="p-6 border-t border-gray-50 bg-gray-50/30 rounded-b-2xl flex gap-2 justify-end">
                             {editMode && (
                                 <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5">
-                                    Cancel
+                                    {t("cancel")}
                                 </Button>
                             )}
                             <Button
@@ -331,7 +333,7 @@ export default function DesignMarksheetPage() {
                                 disabled={submitting}
                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
                             >
-                                {submitting ? "Saving..." : editMode ? "Update Template" : "Save Template"}
+                                {submitting ? t("saving") : editMode ? t("update_template") : t("save_template")}
                             </Button>
                         </div>
                     </div>
@@ -346,8 +348,8 @@ export default function DesignMarksheetPage() {
                                     <FileBadge className="h-5 w-5" />
                                 </span>
                                 <div>
-                                    <h2 className="text-base font-bold tracking-tight text-slate-800 leading-none">Marksheet Templates</h2>
-                                    <p className="text-[11px] text-gray-500 mt-1">{totalEntries} template{totalEntries === 1 ? "" : "s"} configured</p>
+                                    <h2 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("marksheet_templates")}</h2>
+                                    <p className="text-[11px] text-gray-500 mt-1">{t("x_templates_configured", { count: totalEntries })}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -387,7 +389,7 @@ export default function DesignMarksheetPage() {
                                 <div className="relative w-full md:w-72">
                                     <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
                                     <Input
-                                        placeholder="Search templates..."
+                                        placeholder={t("search_templates")}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
@@ -399,10 +401,10 @@ export default function DesignMarksheetPage() {
                                 <Table>
                                     <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                                         <TableRow className="hover:bg-transparent border-gray-50">
-                                            <TableHead className="py-4 px-6">Certificate Name</TableHead>
-                                            <TableHead className="py-4 px-6">Design Status</TableHead>
-                                            <TableHead className="py-4 px-6">Assets</TableHead>
-                                            <TableHead className="py-4 px-6 text-right">Action</TableHead>
+                                            <TableHead className="py-4 px-6">{t("certificate_name")}</TableHead>
+                                            <TableHead className="py-4 px-6">{t("design_status")}</TableHead>
+                                            <TableHead className="py-4 px-6">{t("assets")}</TableHead>
+                                            <TableHead className="py-4 px-6 text-right">{t("action")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -411,7 +413,7 @@ export default function DesignMarksheetPage() {
                                         ) : templates.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                                    No data found
+                                                    {t("no_data_found")}
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
@@ -420,24 +422,24 @@ export default function DesignMarksheetPage() {
                                                     <TableCell className="py-4 px-6">
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-indigo-600 uppercase tracking-tight">{item.name}</span>
-                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">System ID: {item.id}</span>
+                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{t("system_id")}: {item.id}</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6">
                                                         {item.is_active ? (
                                                             <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full font-bold text-[9px] border border-emerald-100 flex items-center gap-1.5 w-fit">
-                                                                <FileCheck className="h-3 w-3" /> ACTIVE
+                                                                <FileCheck className="h-3 w-3" /> {t("active")}
                                                             </span>
                                                         ) : (
                                                             <span className="bg-gray-50 text-gray-400 px-3 py-1 rounded-full font-bold text-[9px] border border-gray-100 flex items-center gap-1.5 w-fit">
-                                                                <Settings2 className="h-3 w-3" /> DRAFT
+                                                                <Settings2 className="h-3 w-3" /> {t("draft")}
                                                             </span>
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6">
                                                         <div className="flex gap-2">
                                                             {item.background_image ? (
-                                                                <div className="h-8 w-8 bg-indigo-50 rounded-lg border border-indigo-100 flex items-center justify-center" title="Has Background">
+                                                                <div className="h-8 w-8 bg-indigo-50 rounded-lg border border-indigo-100 flex items-center justify-center" title={t("has_background")}>
                                                                     <ImageIcon className="h-4 w-4 text-indigo-500" />
                                                                 </div>
                                                             ) : (
@@ -469,7 +471,7 @@ export default function DesignMarksheetPage() {
 
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
                                 <div>
-                                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries
+                                    {t("showing_x_to_y_of_z", { from: ((currentPage - 1) * itemsPerPage) + 1, to: Math.min(currentPage * itemsPerPage, totalEntries), total: totalEntries })}
                                 </div>
                                 <div className="flex gap-2">
                                     <Button
@@ -500,15 +502,15 @@ export default function DesignMarksheetPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Design Template</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("delete_design_template")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            Are you sure you want to delete this marksheet design? This will permanently remove all configuration settings and associated asset links.
+                            {t("delete_marksheet_design_confirmation")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            Yes, Delete Template
+                            {t("yes_delete_template")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

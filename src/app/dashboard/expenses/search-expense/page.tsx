@@ -12,6 +12,7 @@ import api from "@/lib/api";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface ExpenseRecord {
     id: string;
@@ -39,6 +40,7 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function SearchExpensePage() {
+    const { t } = useTranslation();
     const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchType, setSearchType] = useState("all");
@@ -46,12 +48,26 @@ export default function SearchExpensePage() {
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
 
+    const searchTypeOptions = [
+        { value: "all", label: t("all") },
+        { value: "today", label: t("today") },
+        { value: "this-week", label: t("this_week") },
+        { value: "last-week", label: t("last_week") },
+        { value: "this-month", label: t("this_month") },
+        { value: "last-month", label: t("last_month") },
+        { value: "last-3-months", label: t("last_3_months") },
+        { value: "last-6-months", label: t("last_6_months") },
+        { value: "last-12-months", label: t("last_12_months") },
+        { value: "this-year", label: t("this_year") },
+        { value: "last-year", label: t("last_year") },
+        { value: "period", label: t("period") },
+    ];
+
     const handleSearch = async (type: 'period' | 'keyword') => {
         if (type === 'period' && searchType === 'period' && (!startDate || !endDate)) {
-            toast.error("Please select start and end dates");
+            toast.error(t("please_select_start_and_end_dates"));
             return;
         }
-
         try {
             setLoading(true);
             const params: Record<string, string> = {};
@@ -64,14 +80,13 @@ export default function SearchExpensePage() {
             } else {
                 params.keyword = keyword;
             }
-
             const res = await api.get("expense/expenses", { params });
             if (res.data?.status === "Success") {
                 setExpenses(res.data.data);
             }
         } catch (error) {
             console.error("Error searching expenses:", error);
-            toast.error("Search failed");
+            toast.error(t("search_failed"));
         } finally {
             setLoading(false);
         }
@@ -85,8 +100,8 @@ export default function SearchExpensePage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Search expenses by period or keyword</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("search_expenses_by_period_or_keyword")}</p>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -95,25 +110,16 @@ export default function SearchExpensePage() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="search-type" className="text-xs font-semibold text-gray-600">
-                                    Search Type <span className="text-red-500">*</span>
+                                    {t("search_type")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select value={searchType} onValueChange={setSearchType}>
                                     <SelectTrigger id="search-type" className="h-10 rounded-md border-gray-200 focus:ring-2 focus:ring-indigo-500/20">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All</SelectItem>
-                                        <SelectItem value="today">Today</SelectItem>
-                                        <SelectItem value="this-week">This Week</SelectItem>
-                                        <SelectItem value="last-week">Last Week</SelectItem>
-                                        <SelectItem value="this-month">This Month</SelectItem>
-                                        <SelectItem value="last-month">Last Month</SelectItem>
-                                        <SelectItem value="last-3-months">Last 3 Months</SelectItem>
-                                        <SelectItem value="last-6-months">Last 6 Months</SelectItem>
-                                        <SelectItem value="last-12-months">Last 12 Months</SelectItem>
-                                        <SelectItem value="this-year">This Year</SelectItem>
-                                        <SelectItem value="last-year">Last Year</SelectItem>
-                                        <SelectItem value="period">Period</SelectItem>
+                                        {searchTypeOptions.map((opt) => (
+                                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -121,11 +127,11 @@ export default function SearchExpensePage() {
                             {searchType === 'period' && (
                                 <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                     <div className="space-y-1">
-                                        <Label className="text-[10px] font-bold uppercase text-gray-400">Start Date</Label>
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400">{t("start_date")}</Label>
                                         <DatePicker value={startDate} onChange={(val) => setStartDate(val)} />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label className="text-[10px] font-bold uppercase text-gray-400">End Date</Label>
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400">{t("end_date")}</Label>
                                         <DatePicker value={endDate} onChange={(val) => setEndDate(val)} />
                                     </div>
                                 </div>
@@ -138,7 +144,7 @@ export default function SearchExpensePage() {
                                     className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-10 text-sm font-bold rounded-full shadow-lg active:scale-95 transition-all gap-2"
                                 >
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                    Search
+                                    {t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -147,11 +153,11 @@ export default function SearchExpensePage() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="search-text" className="text-xs font-semibold text-gray-600">
-                                    Search By Keyword <span className="text-red-500">*</span>
+                                    {t("search_by_keyword")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     id="search-text"
-                                    placeholder="Search By Expense, Invoice..."
+                                    placeholder={t("search_by_expense_invoice")}
                                     value={keyword}
                                     onChange={(e) => setKeyword(e.target.value)}
                                     className="h-10 rounded-md border-gray-200 focus:ring-2 focus:ring-indigo-500/20"
@@ -164,7 +170,7 @@ export default function SearchExpensePage() {
                                     className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-10 text-sm font-bold rounded-full shadow-lg active:scale-95 transition-all gap-2"
                                 >
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                    Search
+                                    {t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -178,8 +184,8 @@ export default function SearchExpensePage() {
                         <Search className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Expense List</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{expenses.length} result{expenses.length === 1 ? "" : "s"} found</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("expense_list")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("x_results_found", { count: expenses.length })}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -187,11 +193,11 @@ export default function SearchExpensePage() {
                         <Table>
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow>
-                                    <TableHead className="font-semibold text-gray-600">Name</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Invoice Number</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Expense Head</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Date</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Amount</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("name")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("invoice_number")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("expense_head")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("date")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("amount")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -204,8 +210,8 @@ export default function SearchExpensePage() {
                                                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-2 border border-gray-100">
                                                     <Search className="h-8 w-8" strokeWidth={1.5} />
                                                 </div>
-                                                <div className="text-sm font-semibold text-gray-600 italic">No data available in table</div>
-                                                <div className="text-xs text-indigo-500 font-medium">Add new record or search with different criteria.</div>
+                                                <div className="text-sm font-semibold text-gray-600 italic">{t("no_data_available_in_table")}</div>
+                                                <div className="text-xs text-indigo-500 font-medium">{t("add_new_record_or_search_different_criteria")}</div>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -226,19 +232,13 @@ export default function SearchExpensePage() {
 
                     <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2 border-t">
                         <div>
-                            Showing {expenses.length > 0 ? 1 : 0} to {expenses.length} of {expenses.length} entries
+                            {t("showing_x_to_y_of_z", { from: expenses.length > 0 ? 1 : 0, to: expenses.length, total: expenses.length })}
                         </div>
                         <div className="flex gap-1">
                             <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm" disabled>
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button
-                                variant="default"
-                                size="sm"
-                                className="h-8 w-8 p-0 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md font-bold"
-                            >
-                                1
-                            </Button>
+                            <Button variant="default" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md font-bold">1</Button>
                             <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm" disabled>
                                 <ChevronRight className="h-4 w-4" />
                             </Button>

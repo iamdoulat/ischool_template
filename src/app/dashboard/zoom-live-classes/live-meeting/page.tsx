@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,6 +54,8 @@ export default function LiveMeetingPage() {
         api_used: "Global"
     });
 
+    const { t } = useTranslation();
+
     // Dropdown criteria
     const [criteria, setCriteria] = useState<{ staff: any[] }>({ staff: [] });
 
@@ -97,7 +100,7 @@ export default function LiveMeetingPage() {
             }
         } catch (error) {
             console.error("Failed to fetch meetings", error);
-            toast.error("Failed to load meetings");
+            toast.error(t("Failed to load meetings"));
         } finally {
             setLoading(false);
         }
@@ -105,7 +108,7 @@ export default function LiveMeetingPage() {
 
     const handleSave = async () => {
         if (!formData.title || !formData.date_time) {
-            toast.error("Required fields missing");
+            toast.error(t("Required fields missing"));
             return;
         }
 
@@ -115,17 +118,17 @@ export default function LiveMeetingPage() {
         try {
             if (editMode && selectedId) {
                 await api.put(`/conference/live-meetings/${selectedId}`, payload);
-                toast.success("Live meeting updated successfully");
+                toast.success(t("Live meeting updated successfully"));
             } else {
                 await api.post('/conference/live-meetings', payload);
-                toast.success("Live meeting scheduled successfully");
+                toast.success(t("Live meeting scheduled successfully"));
             }
             setOpen(false);
             resetForm();
             fetchMeetings();
         } catch (error) {
             console.error("Failed to save meeting", error);
-            toast.error("Failed to save meeting");
+            toast.error(t("Failed to save meeting"));
         } finally {
             setSubmitting(false);
         }
@@ -148,11 +151,11 @@ export default function LiveMeetingPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/conference/live-meetings/${deleteId}`);
-            toast.success("Live meeting expunged successfully");
+            toast.success(t("Live meeting expunged successfully"));
             fetchMeetings();
         } catch (error) {
             console.error("Failed to delete", error);
-            toast.error("Failed to expunge live meeting");
+            toast.error(t("Failed to expunge live meeting"));
         } finally {
             setDeleteId(null);
         }
@@ -226,8 +229,8 @@ export default function LiveMeetingPage() {
                             <Video className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Live Meeting</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">Host Zoom meetings with staff</p>
+                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("Live Meeting")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("Host Zoom meetings with staff")}</p>
                         </div>
                     </div>
                     <Button
@@ -235,7 +238,7 @@ export default function LiveMeetingPage() {
                         className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-full shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
                     >
                         <Plus className="h-3.5 w-3.5" />
-                        Add
+                        {t("Add")}
                     </Button>
                 </div>
             </div>
@@ -248,7 +251,7 @@ export default function LiveMeetingPage() {
                     <div className="relative w-full md:w-64">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                         <Input
-                            placeholder="Search"
+                            placeholder={t("Search")}
                             value={searchTerm}
                             onChange={(e) => {
                                 setSearchTerm(e.target.value);
@@ -287,13 +290,13 @@ export default function LiveMeetingPage() {
                     <Table className="min-w-[1000px]">
                         <TableHeader className="bg-transparent border-b border-gray-100">
                             <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                <TableHead className="py-3 px-4">Meeting Title <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Description <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Date Time <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Api Used <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Created By <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Total Join <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4 text-right">Action</TableHead>
+                                <TableHead className="py-3 px-4">{t("Meeting Title")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("Description")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("Date Time")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("Api Used")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("Created By")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("Total Join")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 text-right">{t("Action")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -310,7 +313,7 @@ export default function LiveMeetingPage() {
                             ) : meetings.length === 0 ? (
                                 <TableRow className="hover:bg-transparent h-64">
                                     <TableCell colSpan={7} className="text-center py-12 text-gray-400 font-bold uppercase text-[10px] tracking-widest">
-                                        No virtual meeting sessions scheduled.
+                                        {t("No virtual meeting sessions scheduled.")}
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -331,21 +334,21 @@ export default function LiveMeetingPage() {
                                                 <Button 
                                                     onClick={() => handleOpenJoinList(item)}
                                                     className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                                                    title="View Join List"
+                                                    title={t("View Join List")}
                                                 >
                                                     <List className="h-3.5 w-3.5" />
                                                 </Button>
                                                 <Button 
                                                     onClick={() => handleEdit(item)}
                                                     className="bg-emerald-500 hover:bg-emerald-600 text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                                                    title="Edit Meeting"
+                                                    title={t("Edit Meeting")}
                                                 >
                                                     <Pencil className="h-3 w-3" />
                                                 </Button>
                                                 <Button 
                                                     onClick={() => setDeleteId(item.id)}
                                                     className="bg-rose-500 hover:bg-rose-600 text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                                                    title="Delete Meeting"
+                                                    title={t("Delete Meeting")}
                                                 >
                                                     <Trash2 className="h-3 w-3" />
                                                 </Button>
@@ -361,8 +364,11 @@ export default function LiveMeetingPage() {
                 {/* Footer Controls */}
                 <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
                     <div>
-                        Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                        {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                        {t("showing_x_to_y_of_z", {
+                            from: totalEntries > 0 ? startIndex + 1 : 0,
+                            to: Math.min(startIndex + sizeNum, totalEntries),
+                            total: totalEntries
+                        })}
                     </div>
 
                     {totalEntries > 0 && (
@@ -411,7 +417,7 @@ export default function LiveMeetingPage() {
                     <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
                         <DialogHeader>
                             <DialogTitle className="text-white text-sm font-semibold tracking-tight">
-                                {editMode ? "Edit Live Meeting" : "Add Live Meeting"}
+                                {editMode ? t("Edit Live Meeting") : t("Add Live Meeting")}
                             </DialogTitle>
                         </DialogHeader>
                         <button 
@@ -427,11 +433,11 @@ export default function LiveMeetingPage() {
                         
                         {/* Title */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Meeting Title <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("Meeting Title")} <span className="text-red-500">*</span></Label>
                             <Input
                                 value={formData.title}
                                 onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                placeholder="Enter title"
+                                placeholder={t("Enter title")}
                                 className="h-9 border-gray-200 focus-visible:ring-indigo-500 rounded text-xs shadow-none w-full"
                             />
                         </div>
@@ -439,7 +445,7 @@ export default function LiveMeetingPage() {
                         <div className="grid grid-cols-2 gap-4">
                             {/* Date Time */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">Date Time <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-medium text-gray-700">{t("Date Time")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="datetime-local"
                                     value={formData.date_time}
@@ -450,7 +456,7 @@ export default function LiveMeetingPage() {
 
                             {/* Duration */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">Duration (Minutes) <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-medium text-gray-700">{t("Duration (Minutes)")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="number"
                                     value={formData.duration}
@@ -462,7 +468,7 @@ export default function LiveMeetingPage() {
 
                         {/* API Used */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Api Used</Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("Api Used")}</Label>
                             <Select value={formData.api_used} onValueChange={(val) => setFormData({...formData, api_used: val})}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs rounded text-gray-700">
                                     <SelectValue placeholder="Global" />
@@ -476,11 +482,11 @@ export default function LiveMeetingPage() {
 
                         {/* Description / Agenda */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Description</Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("Description")}</Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                placeholder="Meeting Agenda"
+                                placeholder={t("Meeting Agenda")}
                                 className="min-h-[100px] border-gray-200 focus-visible:ring-indigo-500 rounded text-xs shadow-none resize-none w-full p-2"
                             />
                         </div>
@@ -494,14 +500,14 @@ export default function LiveMeetingPage() {
                             onClick={() => setOpen(false)}
                             className="h-8.5 px-4 font-semibold text-gray-500 border-gray-200 hover:bg-gray-100 rounded cursor-pointer"
                         >
-                            Cancel
+                            {t("Cancel")}
                         </Button>
                         <Button 
                             onClick={handleSave}
                             disabled={submitting}
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-5 h-8.5 font-bold rounded shadow transition-all active:scale-95 border-0 cursor-pointer"
                         >
-                            Save
+                            {t("Save")}
                         </Button>
                     </div>
 
@@ -515,7 +521,7 @@ export default function LiveMeetingPage() {
                     {/* Header */}
                     <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
                         <DialogHeader>
-                            <DialogTitle className="text-white text-sm font-semibold tracking-tight">Join List</DialogTitle>
+                            <DialogTitle className="text-white text-sm font-semibold tracking-tight">{t("Join List")}</DialogTitle>
                         </DialogHeader>
                         <button 
                             onClick={() => setJoinModalOpen(false)} 
@@ -530,7 +536,7 @@ export default function LiveMeetingPage() {
                         <div className="relative w-full md:w-48">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search..."
+                                placeholder={t("Search...")}
                                 value={joinSearchTerm}
                                 onChange={(e) => setJoinSearchTerm(e.target.value)}
                                 className="pl-8 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
@@ -567,15 +573,15 @@ export default function LiveMeetingPage() {
                             <Table className="min-w-[700px]">
                                 <TableHeader className="bg-transparent border-b border-gray-100">
                                     <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-2.5 px-4">Staff / Student <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                        <TableHead className="py-2.5 px-4 text-right">Last Join</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("Staff / Student")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                        <TableHead className="py-2.5 px-4 text-right">{t("Last Join")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredJoinList.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={2} className="text-center py-8 text-gray-400 uppercase text-[10px] tracking-wider">
-                                                No session join records matching search filter.
+                                                {t("No session join records matching search filter.")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -597,7 +603,11 @@ export default function LiveMeetingPage() {
                         {/* Modal Footer pagination */}
                         <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                             <div>
-                                Showing 1 to {filteredJoinList.length} of {filteredJoinList.length} entries
+                                {t("showing_x_to_y_of_z", {
+                                    from: filteredJoinList.length > 0 ? 1 : 0,
+                                    to: filteredJoinList.length,
+                                    total: filteredJoinList.length
+                                })}
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <button className="h-7 w-7 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl active:scale-95 border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none" disabled>
@@ -620,15 +630,15 @@ export default function LiveMeetingPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="max-w-[450px] p-6 bg-white border border-gray-200 shadow-2xl rounded text-gray-700 text-xs">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-gray-800 text-sm font-semibold tracking-tight">Expunge Administrative Session</AlertDialogTitle>
+                        <AlertDialogTitle className="text-gray-800 text-sm font-semibold tracking-tight">{t("Expunge Administrative Session")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-gray-500 text-xs leading-relaxed mt-2">
-                            Are you sure you want to permanently delete this virtual meeting? This action will invalidate all join protocols and analytical records associated with this session.
+                            {t("Are you sure you want to permanently delete this virtual meeting? This action will invalidate all join protocols and analytical records associated with this session.")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6 gap-2">
-                        <AlertDialogCancel className="h-8.5 px-4 font-semibold text-gray-500 border-gray-200 hover:bg-gray-100 rounded cursor-pointer">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-8.5 px-4 font-semibold text-gray-500 border-gray-200 hover:bg-gray-100 rounded cursor-pointer">{t("Cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 text-white h-8.5 px-4 font-bold rounded shadow transition-all active:scale-95 border-0 cursor-pointer">
-                            Confirm Expunge
+                            {t("Confirm Expunge")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

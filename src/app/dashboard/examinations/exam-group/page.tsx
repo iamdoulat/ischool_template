@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,7 +94,8 @@ interface StudentRow {
 }
 
 export default function ExamGroupPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [groups, setGroups] = useState<ExamGroup[]>([]);
     const [loading, setLoading] = useState(false);
@@ -224,7 +226,7 @@ export default function ExamGroupPage() {
             setGroups(response.data.data || []);
             setTotalEntries(response.data.total || 0);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch exam groups", variant: "destructive" });
+            tt.error("failed_to_fetch_exam_groups");
         } finally {
             setLoading(false);
         }
@@ -232,7 +234,7 @@ export default function ExamGroupPage() {
 
     const handleSave = async () => {
         if (!formData.name || !formData.exam_type) {
-            toast({ title: "Validation Error", description: "Name and Exam Type are required", variant: "destructive" });
+            tt.error("name_and_exam_type_required");
             return;
         }
 
@@ -240,15 +242,15 @@ export default function ExamGroupPage() {
         try {
             if (editMode && selectedId) {
                 await api.put(`/examination/exam-groups/${selectedId}`, formData);
-                toast({ title: "Success", description: "Exam group updated successfully" });
+                tt.success("exam_group_updated_successfully");
             } else {
                 await api.post('/examination/exam-groups', formData);
-                toast({ title: "Success", description: "Exam group created successfully" });
+                tt.success("exam_group_created_successfully");
             }
             resetForm();
             fetchGroups();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to save exam group", variant: "destructive" });
+            tt.error("failed_to_save_exam_group");
         } finally {
             setSubmitting(false);
         }
@@ -268,10 +270,10 @@ export default function ExamGroupPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/examination/exam-groups/${deleteId}`);
-            toast({ title: "Success", description: "Exam group deleted successfully" });
+            tt.success("exam_group_deleted_successfully");
             fetchGroups();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to delete exam group", variant: "destructive" });
+            tt.error("failed_to_delete_exam_group");
         } finally {
             setDeleteId(null);
         }
@@ -289,7 +291,7 @@ export default function ExamGroupPage() {
             const response = await api.get(`/examination/exam-groups/${group.id}`);
             setManagingGroup(response.data);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch exam group details", variant: "destructive" });
+            tt.error("failed_to_fetch_exam_group_details");
         } finally {
             setLoading(false);
         }
@@ -316,22 +318,22 @@ export default function ExamGroupPage() {
 
     const handleSaveExam = async () => {
         if (!addExamForm.name || !managingGroup) {
-            toast({ title: "Validation Error", description: "Name is required", variant: "destructive" });
+            tt.error("name_is_required");
             return;
         }
         if (!addExamForm.session) {
-            toast({ title: "Validation Error", description: "Session is required", variant: "destructive" });
+            tt.error("session_is_required");
             return;
         }
 
         setSubmitting(true);
         try {
             await api.post("/examination/exams", { ...addExamForm, exam_group_id: managingGroup.id });
-            toast({ title: "Success", description: "Exam created successfully" });
+            tt.success("exam_created_successfully");
             setAddExamOpen(false);
             handleManageExams(managingGroup); // refresh
         } catch (error) {
-            toast({ title: "Error", description: "Failed to create exam", variant: "destructive" });
+            tt.error("failed_to_create_exam");
         } finally {
             setSubmitting(false);
         }
@@ -354,11 +356,11 @@ export default function ExamGroupPage() {
                 exam_group_id: managingGroup.id,
                 exam_ids: selectedExams,
             });
-            toast({ title: "Success", description: "Exams linked successfully" });
+            tt.success("exams_linked_successfully");
             setLinkExamOpen(false);
             handleManageExams(managingGroup); // refresh
         } catch (error) {
-            toast({ title: "Error", description: "Failed to link exams", variant: "destructive" });
+            tt.error("failed_to_link_exams");
         } finally {
             setSubmitting(false);
         }
@@ -387,7 +389,7 @@ export default function ExamGroupPage() {
 
     const handleSearchStudents = async () => {
         if (!assignFilters.class_id || !assignFilters.section_id) {
-            toast({ title: "Error", description: "Please select Class and Section", variant: "destructive" });
+            tt.error("please_select_class_and_section");
             return;
         }
 
@@ -424,7 +426,7 @@ export default function ExamGroupPage() {
             setSelectedStudents(mappedStudents.filter((s) => s.assigned).map((s) => s.id));
         } catch (error) {
             console.error("Failed to fetch students", error);
-            toast({ title: "Error", description: "Failed to fetch students", variant: "destructive" });
+            tt.error("failed_to_fetch_students");
         } finally {
             setAssignLoading(false);
         }
@@ -449,10 +451,10 @@ export default function ExamGroupPage() {
         try {
             // Mock API call
             await new Promise(resolve => setTimeout(resolve, 500));
-            toast({ title: "Success", description: "Students assigned to exam successfully" });
+            tt.success("students_assigned_to_exam_successfully");
             setAssignStudentOpen(false);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to assign students", variant: "destructive" });
+            tt.error("failed_to_assign_students");
         } finally {
             setSubmitting(false);
         }
@@ -482,10 +484,10 @@ export default function ExamGroupPage() {
         setSubmitting(true);
         try {
             await new Promise(resolve => setTimeout(resolve, 500));
-            toast({ title: "Success", description: "Exam subjects saved successfully" });
+            tt.success("exam_subjects_saved_successfully");
             setExamSubjectOpen(false);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to save exam subjects", variant: "destructive" });
+            tt.error("failed_to_save_exam_subjects");
         } finally {
             setSubmitting(false);
         }
@@ -496,7 +498,7 @@ export default function ExamGroupPage() {
             <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
                 {/* Back navigation */}
                 <Button variant="ghost" onClick={() => setManagingGroup(null)} className="-ml-3 text-gray-500 hover:text-indigo-600 gap-2 font-bold text-[11px] uppercase tracking-widest">
-                    <ArrowLeft className="h-4 w-4" /> Back to Groups
+                    <ArrowLeft className="h-4 w-4" /> {t("back_to_groups")}
                 </Button>
 
                 {/* Header Section */}
@@ -507,16 +509,16 @@ export default function ExamGroupPage() {
                                 <FolderKanban className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Exam Group: {managingGroup.name}</CardTitle>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("exam_group")}: {managingGroup.name}</CardTitle>
                                 <p className="text-[11px] text-gray-500 mt-1">{managingGroup.exam_type}{managingGroup.description ? ` · ${managingGroup.description}` : ""}</p>
                             </div>
                         </div>
                         <div className="flex gap-2">
                             <Button variant="outline" onClick={handleOpenLinkExam} className="font-bold text-[11px] uppercase tracking-widest gap-2">
-                                <Link className="h-4 w-4" /> Link Exam
+                                <Link className="h-4 w-4" /> {t("link_exam")}
                             </Button>
                             <Button variant="default" onClick={handleOpenAddExam} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] font-bold text-[11px] uppercase tracking-widest gap-2 text-white border-0 shadow-md">
-                                <Plus className="h-4 w-4" /> Add Exam
+                                <Plus className="h-4 w-4" /> {t("add_exam")}
                             </Button>
                         </div>
                     </CardHeader>
@@ -529,21 +531,21 @@ export default function ExamGroupPage() {
                             <FileStack className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Linked Exams</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{managingGroup.exams?.length || 0} exams in this group</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("linked_exams")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_exams_in_this_group", { count: managingGroup.exams?.length || 0 })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
                         <Table>
                             <TableHeader className="bg-gray-50/50">
                                 <TableRow>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Name</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Session</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">Subjects Included</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">Publish Exam</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">Publish Result</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Description</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("name")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("session")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">{t("subjects_included")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">{t("publish_exam")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">{t("publish_result")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("description")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -552,7 +554,7 @@ export default function ExamGroupPage() {
                                 ) : !managingGroup.exams || managingGroup.exams.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={7} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                            No data found
+                                            {t("no_data_found")}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -570,25 +572,25 @@ export default function ExamGroupPage() {
                                             <TableCell>{exam.description || "-"}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <Button size="icon" variant="ghost" title="Assign / View Student" onClick={() => handleOpenAssignStudent(exam.id)} className="h-8 w-8 text-blue-500 hover:text-white hover:bg-blue-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("assign_view_student")} onClick={() => handleOpenAssignStudent(exam.id)} className="h-8 w-8 text-blue-500 hover:text-white hover:bg-blue-500 rounded-lg">
                                                         <Users className="h-4 w-4" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title="Exam Subject" onClick={() => handleOpenExamSubject(exam)} className="h-8 w-8 text-indigo-500 hover:text-white hover:bg-indigo-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("exam_subject")} onClick={() => handleOpenExamSubject(exam)} className="h-8 w-8 text-indigo-500 hover:text-white hover:bg-indigo-500 rounded-lg">
                                                         <BookOpen className="h-4 w-4" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title="Exam Marks" className="h-8 w-8 text-purple-500 hover:text-white hover:bg-purple-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("exam_marks")} className="h-8 w-8 text-purple-500 hover:text-white hover:bg-purple-500 rounded-lg">
                                                         <FileDigit className="h-4 w-4" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title="Teacher Remarks" className="h-8 w-8 text-pink-500 hover:text-white hover:bg-pink-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("teacher_remarks")} className="h-8 w-8 text-pink-500 hover:text-white hover:bg-pink-500 rounded-lg">
                                                         <MessageSquare className="h-4 w-4" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title="Generate Rank" className="h-8 w-8 text-amber-500 hover:text-white hover:bg-amber-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("generate_rank")} className="h-8 w-8 text-amber-500 hover:text-white hover:bg-amber-500 rounded-lg">
                                                         <Trophy className="h-4 w-4" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title="Edit Exam" className="h-8 w-8 text-amber-500 hover:text-white hover:bg-amber-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("edit_exam")} className="h-8 w-8 text-amber-500 hover:text-white hover:bg-amber-500 rounded-lg">
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title="Delete Exam" className="h-8 w-8 text-red-500 hover:text-white hover:bg-red-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("delete_exam")} className="h-8 w-8 text-red-500 hover:text-white hover:bg-red-500 rounded-lg">
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -605,13 +607,13 @@ export default function ExamGroupPage() {
                 <Dialog open={addExamOpen} onOpenChange={setAddExamOpen}>
                     <DialogContent className="max-w-3xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden bg-white">
                         <DialogHeader className="p-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative">
-                            <DialogTitle className="text-lg font-normal">Exam</DialogTitle>
+                            <DialogTitle className="text-lg font-normal">{t("exam")}</DialogTitle>
                         </DialogHeader>
 
                         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-1.5 md:col-span-2">
-                                    <Label className="text-sm font-normal text-gray-600">Exam <span className="text-red-500">*</span></Label>
+                                    <Label className="text-sm font-normal text-gray-600">{t("exam")} <span className="text-red-500">*</span></Label>
                                     <Input
                                         value={addExamForm.name}
                                         onChange={(e) => setAddExamForm({ ...addExamForm, name: e.target.value })}
@@ -619,7 +621,7 @@ export default function ExamGroupPage() {
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-sm font-normal text-gray-600">Session <span className="text-red-500">*</span></Label>
+                                    <Label className="text-sm font-normal text-gray-600">{t("session")} <span className="text-red-500">*</span></Label>
                                     <Select value={addExamForm.session} onValueChange={(val) => setAddExamForm({ ...addExamForm, session: val })}>
                                         <SelectTrigger className="h-9 border-gray-300 rounded shadow-sm focus:ring-indigo-500">
                                             <SelectValue placeholder="2026-27" />
@@ -635,29 +637,29 @@ export default function ExamGroupPage() {
                             <div className="flex items-center gap-6">
                                 <div className="flex items-center gap-2">
                                     <input type="checkbox" id="publish" checked={addExamForm.is_published} onChange={(e) => setAddExamForm({ ...addExamForm, is_published: e.target.checked })} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                                    <Label htmlFor="publish" className="text-sm font-normal text-gray-600 cursor-pointer">Publish</Label>
+                                    <Label htmlFor="publish" className="text-sm font-normal text-gray-600 cursor-pointer">{t("publish")}</Label>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <input type="checkbox" id="publish_result" checked={addExamForm.is_result_published} onChange={(e) => setAddExamForm({ ...addExamForm, is_result_published: e.target.checked })} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                                    <Label htmlFor="publish_result" className="text-sm font-normal text-gray-600 cursor-pointer">Publish Result</Label>
+                                    <Label htmlFor="publish_result" className="text-sm font-normal text-gray-600 cursor-pointer">{t("publish_result")}</Label>
                                 </div>
                                 <div className="flex items-center gap-4 ml-2">
                                     <div className="flex items-center gap-2">
                                         <input type="radio" id="admit_card" name="roll_no_type" value="admit_card" checked={addExamForm.roll_no_type === 'admit_card'} onChange={(e) => setAddExamForm({ ...addExamForm, roll_no_type: e.target.value })} className="border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                                        <Label htmlFor="admit_card" className="text-sm font-normal text-gray-600 cursor-pointer">Admit Card Roll No.</Label>
+                                        <Label htmlFor="admit_card" className="text-sm font-normal text-gray-600 cursor-pointer">{t("admit_card_roll_no")}</Label>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <input type="radio" id="profile" name="roll_no_type" value="profile" checked={addExamForm.roll_no_type === 'profile'} onChange={(e) => setAddExamForm({ ...addExamForm, roll_no_type: e.target.value })} className="border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                                        <Label htmlFor="profile" className="text-sm font-normal text-gray-600 cursor-pointer">Profile Roll No</Label>
+                                        <Label htmlFor="profile" className="text-sm font-normal text-gray-600 cursor-pointer">{t("profile_roll_no")}</Label>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-sm font-normal text-gray-600">Marksheet Template <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm font-normal text-gray-600">{t("marksheet_template")} <span className="text-red-500">*</span></Label>
                                 <Select value={addExamForm.marksheet_template} onValueChange={(val) => setAddExamForm({ ...addExamForm, marksheet_template: val })}>
                                     <SelectTrigger className="h-9 border-gray-300 rounded shadow-sm focus:ring-indigo-500 w-full">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="template1">Template 1</SelectItem>
@@ -667,14 +669,14 @@ export default function ExamGroupPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-sm font-normal text-gray-600">Description</Label>
+                                <Label className="text-sm font-normal text-gray-600">{t("description")}</Label>
                                 <Textarea value={addExamForm.description} onChange={(e) => setAddExamForm({ ...addExamForm, description: e.target.value })} className="min-h-[80px] border-gray-300 rounded shadow-sm focus:ring-indigo-500 p-3" />
                             </div>
                         </div>
 
                         <DialogFooter className="p-4 border-t border-gray-200 flex justify-end">
                             <Button onClick={handleSaveExam} disabled={submitting} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity text-white h-9 px-6 rounded shadow">
-                                {submitting ? "Saving..." : "Save"}
+                                {submitting ? t("saving") : t("save")}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -684,7 +686,7 @@ export default function ExamGroupPage() {
                 <Dialog open={linkExamOpen} onOpenChange={setLinkExamOpen}>
                     <DialogContent className="max-w-[500px] rounded-lg border-0 shadow-2xl p-0 overflow-hidden bg-white">
                         <DialogHeader className="p-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative">
-                            <DialogTitle className="text-lg font-normal">Link Exam</DialogTitle>
+                            <DialogTitle className="text-lg font-normal">{t("link_exam")}</DialogTitle>
                         </DialogHeader>
 
                         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
@@ -693,13 +695,13 @@ export default function ExamGroupPage() {
                                     <thead className="bg-[#f3f4f6]">
                                         <tr className="border-b border-gray-200">
                                             <th className="py-2.5 px-3 w-10"></th>
-                                            <th className="py-2.5 px-3 text-left font-semibold text-gray-700">Exam</th>
-                                            <th className="py-2.5 px-3 text-left font-semibold text-gray-700 w-32">Weightage</th>
+                                            <th className="py-2.5 px-3 text-left font-semibold text-gray-700">{t("exam")}</th>
+                                            <th className="py-2.5 px-3 text-left font-semibold text-gray-700 w-32">{t("weightage")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {availableExams.length === 0 ? (
-                                            <tr><td colSpan={3} className="text-center py-6 text-gray-400 italic">No available exams found</td></tr>
+                                            <tr><td colSpan={3} className="text-center py-6 text-gray-400 italic">{t("no_available_exams_found")}</td></tr>
                                         ) : (
                                             availableExams.map((exam) => (
                                                 <tr key={exam.id} className="border-b border-gray-100 hover:bg-gray-50/50">
@@ -719,9 +721,9 @@ export default function ExamGroupPage() {
                         </div>
 
                         <DialogFooter className="p-4 border-t border-gray-200 flex justify-end gap-2 bg-white">
-                            <Button onClick={() => setExamWeightages({})} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity text-white h-9 px-4 rounded shadow">Reset Link Exam</Button>
+                            <Button onClick={() => setExamWeightages({})} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity text-white h-9 px-4 rounded shadow">{t("reset_link_exam")}</Button>
                             <Button onClick={handleLinkExams} disabled={submitting} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity text-white h-9 px-6 rounded shadow">
-                                {submitting ? "Saving..." : "Save"}
+                                {submitting ? t("saving") : t("save")}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -731,17 +733,17 @@ export default function ExamGroupPage() {
                 <Dialog open={assignStudentOpen} onOpenChange={setAssignStudentOpen}>
                     <DialogContent className="max-w-[1000px] rounded border-0 shadow-2xl p-0 overflow-hidden bg-white">
                         <DialogHeader className="p-3 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative">
-                            <DialogTitle className="text-sm font-medium">Exam Students</DialogTitle>
+                            <DialogTitle className="text-sm font-medium">{t("exam_students")}</DialogTitle>
                         </DialogHeader>
 
                         <div className="p-4 space-y-4">
                             {/* Filters */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <Label className="text-[11px] font-medium text-gray-700">Class <span className="text-red-500">*</span></Label>
+                                    <Label className="text-[11px] font-medium text-gray-700">{t("class")} <span className="text-red-500">*</span></Label>
                                     <Select value={assignFilters.class_id} onValueChange={(v) => setAssignFilters({...assignFilters, class_id: v, section_id: ""})}>
                                         <SelectTrigger className="h-9 border-gray-200 shadow-none">
-                                            <SelectValue placeholder="Select Class" />
+                                            <SelectValue placeholder={t("select_class")} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {classes.map(c => (
@@ -751,10 +753,10 @@ export default function ExamGroupPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-[11px] font-medium text-gray-700">Section <span className="text-red-500">*</span></Label>
+                                    <Label className="text-[11px] font-medium text-gray-700">{t("section")} <span className="text-red-500">*</span></Label>
                                     <Select disabled={!assignFilters.class_id} value={assignFilters.section_id} onValueChange={(v) => setAssignFilters({...assignFilters, section_id: v})}>
                                         <SelectTrigger className="h-9 border-gray-200 shadow-none">
-                                            <SelectValue placeholder="Select Section" />
+                                            <SelectValue placeholder={t("select_section")} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {sections.map(s => (
@@ -768,7 +770,7 @@ export default function ExamGroupPage() {
                             <div className="flex justify-end border-b border-gray-100 pb-4">
                                 <Button onClick={handleSearchStudents} disabled={assignLoading} className="h-8 px-4 bg-[#6366F1] hover:bg-indigo-600 text-white rounded text-xs gap-1.5 shadow-none">
                                     <Search className="h-3.5 w-3.5" />
-                                    {assignLoading ? "Searching..." : "Search"}
+                                    {assignLoading ? t("searching") : t("search")}
                                 </Button>
                             </div>
 
@@ -786,21 +788,21 @@ export default function ExamGroupPage() {
                                                         disabled={assignStudents.length === 0}
                                                         className="rounded border-gray-300 text-[#6366F1] focus:ring-[#6366F1]"
                                                     />
-                                                    <span>All</span>
+                                                    <span>{t("all")}</span>
                                                 </div>
                                             </th>
-                                            <th className="py-2.5 px-3 font-semibold text-gray-700">Admission No</th>
-                                            <th className="py-2.5 px-3 font-semibold text-gray-700">Student Name</th>
-                                            <th className="py-2.5 px-3 font-semibold text-gray-700">Father Name</th>
-                                            <th className="py-2.5 px-3 font-semibold text-gray-700">Category</th>
-                                            <th className="py-2.5 px-3 font-semibold text-gray-700">Gender</th>
+                                            <th className="py-2.5 px-3 font-semibold text-gray-700">{t("admission_no")}</th>
+                                            <th className="py-2.5 px-3 font-semibold text-gray-700">{t("student_name")}</th>
+                                            <th className="py-2.5 px-3 font-semibold text-gray-700">{t("father_name")}</th>
+                                            <th className="py-2.5 px-3 font-semibold text-gray-700">{t("category")}</th>
+                                            <th className="py-2.5 px-3 font-semibold text-gray-700">{t("gender")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {assignLoading ? (
                                             <TableSkeleton rows={5} cols={6} />
                                         ) : assignStudents.length === 0 ? (
-                                            <tr><td colSpan={6} className="text-center py-8 text-gray-400 italic border-b border-gray-50">Please select class and section to search students</td></tr>
+                                            <tr><td colSpan={6} className="text-center py-8 text-gray-400 italic border-b border-gray-50">{t("please_select_class_and_section_to_search_students")}</td></tr>
                                         ) : (
                                             assignStudents.map((student) => (
                                                 <tr key={student.id} className="border-b border-gray-50 hover:bg-gray-50/50">
@@ -827,7 +829,7 @@ export default function ExamGroupPage() {
 
                         <DialogFooter className="p-4 border-t border-gray-100 flex justify-end bg-white">
                             <Button onClick={handleSaveAssignStudents} disabled={submitting || assignStudents.length === 0} className="bg-[#6366F1] hover:bg-indigo-600 text-white h-8 px-6 rounded text-xs shadow-none">
-                                {submitting ? "Saving..." : "Save"}
+                                {submitting ? t("saving") : t("save")}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -837,7 +839,7 @@ export default function ExamGroupPage() {
                 <Dialog open={examSubjectOpen} onOpenChange={setExamSubjectOpen}>
                     <DialogContent showCloseButton={false} className="sm:max-w-[1600px] w-[98vw] max-h-[90vh] rounded border-0 shadow-2xl p-0 gap-0 overflow-hidden bg-white">
                         <DialogHeader className="p-3 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative">
-                            <DialogTitle className="text-sm font-medium">Add Exam Subject</DialogTitle>
+                            <DialogTitle className="text-sm font-medium">{t("add_exam_subject")}</DialogTitle>
                             <button onClick={() => setExamSubjectOpen(false)} className="absolute top-2.5 right-3 text-white/80 hover:text-white transition-colors">
                                 <X className="h-5 w-5" />
                             </button>
@@ -847,11 +849,11 @@ export default function ExamGroupPage() {
                             {/* Top Info */}
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
-                                    <h4 className="text-xs font-bold text-gray-800">Exam</h4>
+                                    <h4 className="text-xs font-bold text-gray-800">{t("exam")}</h4>
                                     <p className="text-xs text-gray-600 mt-1">{examSubjectData.exam?.name}</p>
                                 </div>
                                 <div>
-                                    <h4 className="text-xs font-bold text-gray-800">Exam Group</h4>
+                                    <h4 className="text-xs font-bold text-gray-800">{t("exam_group")}</h4>
                                     <p className="text-xs text-gray-600 mt-1">{examSubjectData.group?.name}</p>
                                 </div>
                             </div>
@@ -860,7 +862,7 @@ export default function ExamGroupPage() {
                             <div className="flex justify-end">
                                 <Button onClick={handleAddExamSubjectRow} className="bg-[#6366F1] hover:bg-indigo-600 text-white h-8 px-4 rounded text-xs gap-1.5 shadow-none font-normal">
                                     <Plus className="h-3.5 w-3.5" />
-                                    Add Exam Subject
+                                    {t("add_exam_subject")}
                                 </Button>
                             </div>
 
@@ -869,14 +871,14 @@ export default function ExamGroupPage() {
                                 <table className="w-full text-[11px] text-left">
                                     <thead className="bg-white border-b border-gray-200">
                                         <tr>
-                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '130px'}}>Subject <span className="text-red-500">*</span></th>
-                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '130px'}}>Date <span className="text-red-500">*</span></th>
-                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '120px'}}>Start Time <span className="text-red-500">*</span></th>
-                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '90px'}}>Duration <span className="text-red-500">*</span></th>
-                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '100px'}}>Credit Hours <span className="text-red-500">*</span></th>
-                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '90px'}}>Room No. <span className="text-red-500">*</span></th>
-                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '110px'}}>Marks (Max..) <span className="text-red-500">*</span></th>
-                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '110px'}}>Marks (Min..) <span className="text-red-500">*</span></th>
+                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '130px'}}>{t("subject")} <span className="text-red-500">*</span></th>
+                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '130px'}}>{t("date")} <span className="text-red-500">*</span></th>
+                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '120px'}}>{t("start_time")} <span className="text-red-500">*</span></th>
+                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '90px'}}>{t("duration")} <span className="text-red-500">*</span></th>
+                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '100px'}}>{t("credit_hours")} <span className="text-red-500">*</span></th>
+                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '90px'}}>{t("room_no")} <span className="text-red-500">*</span></th>
+                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '110px'}}>{t("marks_max")} <span className="text-red-500">*</span></th>
+                                            <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '110px'}}>{t("marks_min")} <span className="text-red-500">*</span></th>
                                             <th className="py-2.5 px-2 w-10 text-center"></th>
                                         </tr>
                                     </thead>
@@ -886,11 +888,11 @@ export default function ExamGroupPage() {
                                                 <td className="py-2 px-1.5">
                                                     <Select value={row.subject} onValueChange={(val) => handleUpdateExamSubjectRow(row.id, "subject", val)}>
                                                         <SelectTrigger className="h-9 border-gray-200 shadow-none text-xs w-full bg-white rounded-sm">
-                                                            <SelectValue placeholder="Select" />
+                                                            <SelectValue placeholder={t("select")} />
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             {academicSubjects.length === 0 ? (
-                                                                <SelectItem value="none" disabled>No subjects available</SelectItem>
+                                                                <SelectItem value="none" disabled>{t("no_subjects_available")}</SelectItem>
                                                             ) : (
                                                                 academicSubjects.map((sub) => (
                                                                     <SelectItem key={sub.id} value={sub.id.toString()}>
@@ -936,7 +938,7 @@ export default function ExamGroupPage() {
 
                         <DialogFooter className="p-4 border-t border-gray-100 flex justify-end bg-white">
                             <Button onClick={handleSaveExamSubjects} disabled={submitting || examSubjectRows.length === 0} className="bg-[#6366F1] hover:bg-indigo-600 text-white h-8 px-6 rounded text-xs shadow-none">
-                                {submitting ? "Saving..." : "Save"}
+                                {submitting ? t("saving") : t("save")}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -957,16 +959,16 @@ export default function ExamGroupPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {editMode ? "Edit Exam Group" : "Add Exam Group"}
+                                    {editMode ? t("edit_exam_group") : t("add_exam_group")}
                                 </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{editMode ? "Update group details" : "Create a new exam group"}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{editMode ? t("update_group_details") : t("create_new_exam_group")}</p>
                             </div>
                         </CardHeader>
 
                         <CardContent className="p-6 space-y-6 flex-1">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                    Name <span className="text-red-500">*</span>
+                                    {t("name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     value={formData.name}
@@ -978,28 +980,28 @@ export default function ExamGroupPage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                    Exam Type <span className="text-red-500">*</span>
+                                    {t("exam_type")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select value={formData.exam_type} onValueChange={(val) => setFormData({...formData, exam_type: val})}>
                                     <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                        <SelectValue placeholder="Select Exam Type" />
+                                        <SelectValue placeholder={t("select_exam_type")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="General Purpose (Pass/Fail)">General Purpose (Pass/Fail)</SelectItem>
-                                        <SelectItem value="School Based Grading System">School Based Grading System</SelectItem>
-                                        <SelectItem value="College Based Grading System">College Based Grading System</SelectItem>
-                                        <SelectItem value="GPA Grading System">GPA Grading System</SelectItem>
-                                        <SelectItem value="Average Passing">Average Passing</SelectItem>
+                                        <SelectItem value="General Purpose (Pass/Fail)">{t("general_purpose_pass_fail")}</SelectItem>
+                                        <SelectItem value="School Based Grading System">{t("school_based_grading_system")}</SelectItem>
+                                        <SelectItem value="College Based Grading System">{t("college_based_grading_system")}</SelectItem>
+                                        <SelectItem value="GPA Grading System">{t("gpa_grading_system")}</SelectItem>
+                                        <SelectItem value="Average Passing">{t("average_passing")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Description</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("description")}</Label>
                                 <Textarea
                                     value={formData.description}
                                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                    placeholder="Provide additional details..."
+                                    placeholder={t("provide_additional_details")}
                                     className="min-h-[120px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none resize-none"
                                 />
                             </div>
@@ -1008,7 +1010,7 @@ export default function ExamGroupPage() {
                         <div className="p-6 border-t border-gray-50 bg-gray-50/30 rounded-b-2xl flex gap-2 justify-end">
                             {editMode && (
                                 <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5">
-                                    Cancel
+                                    {t("cancel")}
                                 </Button>
                             )}
                             <Button
@@ -1016,7 +1018,7 @@ export default function ExamGroupPage() {
                                 disabled={submitting}
                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
                             >
-                                {submitting ? "Processing..." : editMode ? "Update Group" : "Save Group"}
+                                {submitting ? t("processing") : editMode ? t("update_group") : t("save_group")}
                             </Button>
                         </div>
                     </Card>
@@ -1031,8 +1033,8 @@ export default function ExamGroupPage() {
                                     <LayoutList className="h-5 w-5" />
                                 </span>
                                 <div>
-                                    <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Exam Group Registry</CardTitle>
-                                    <p className="text-[11px] text-gray-500 mt-1">{totalEntries} groups</p>
+                                    <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("exam_group_registry")}</CardTitle>
+                                    <p className="text-[11px] text-gray-500 mt-1">{t("x_groups", { count: totalEntries })}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -1061,7 +1063,7 @@ export default function ExamGroupPage() {
                                 <div className="relative w-full md:w-72">
                                     <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
                                     <Input
-                                        placeholder="Search groups..."
+                                        placeholder={t("search_groups")}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
@@ -1073,10 +1075,10 @@ export default function ExamGroupPage() {
                                 <Table>
                                     <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                                         <TableRow className="hover:bg-transparent border-gray-50">
-                                            <TableHead className="py-4 px-6">Group Name</TableHead>
-                                            <TableHead className="py-4 px-6 text-center">Exams</TableHead>
-                                            <TableHead className="py-4 px-6">Grading System</TableHead>
-                                            <TableHead className="py-4 px-6 text-right">Action</TableHead>
+                                            <TableHead className="py-4 px-6">{t("group_name")}</TableHead>
+                                            <TableHead className="py-4 px-6 text-center">{t("exams")}</TableHead>
+                                            <TableHead className="py-4 px-6">{t("grading_system")}</TableHead>
+                                            <TableHead className="py-4 px-6 text-right">{t("action")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1085,7 +1087,7 @@ export default function ExamGroupPage() {
                                         ) : groups.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                                    No data found
+                                                    {t("no_data_found")}
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
@@ -1094,12 +1096,12 @@ export default function ExamGroupPage() {
                                                     <TableCell className="py-4 px-6">
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-indigo-600 uppercase tracking-tight">{group.name}</span>
-                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter truncate max-w-[200px]">{group.description || "No description provided"}</span>
+                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter truncate max-w-[200px]">{group.description || t("no_description_provided")}</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6 text-center">
                                                         <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold text-[10px] border border-indigo-100 flex items-center gap-1.5 w-fit mx-auto">
-                                                            <FileStack className="h-3 w-3" /> {group.exams_count} EXAMS
+                                                            <FileStack className="h-3 w-3" /> {group.exams_count} {t("exams")}
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6 font-medium">
@@ -1130,7 +1132,7 @@ export default function ExamGroupPage() {
 
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
                                 <div>
-                                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries
+                                    {t("showing_x_to_y_of_z", { from: ((currentPage - 1) * itemsPerPage) + 1, to: Math.min(currentPage * itemsPerPage, totalEntries), total: totalEntries })}
                                 </div>
                                 <div className="flex gap-2">
                                     <Button
@@ -1161,15 +1163,15 @@ export default function ExamGroupPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Exam Group</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("delete_exam_group")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            Are you sure you want to delete this exam group? This will permanently remove all associated exams and examination data linked to this group.
+                            {t("delete_exam_group_confirmation")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            Yes, Delete Group
+                            {t("yes_delete_group")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

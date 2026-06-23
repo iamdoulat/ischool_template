@@ -39,6 +39,8 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -69,6 +71,8 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 
 export default function AssignVehiclePage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
@@ -96,7 +100,7 @@ export default function AssignVehiclePage() {
             setAvailableVehicles(vehiclesRes.data.data);
             setAssignments(assignmentsRes.data.data.filter((r: any) => r.vehicles && r.vehicles.length > 0));
         } catch (error) {
-            toast("error", "Failed to load mapping data");
+            tt.error("failed_to_load_mapping_data");
         } finally {
             setFetching(false);
         }
@@ -114,17 +118,17 @@ export default function AssignVehiclePage() {
 
     const handleSave = async () => {
         if (!selectedRouteId || selectedVehicleIds.length === 0) {
-            toast("error", "Please select route and at least one vehicle");
+            toast("error", t("select_route_and_vehicle"));
             return;
         }
         setLoading(true);
         try {
             await api.post("/transport/route-vehicles", { route_id: selectedRouteId, vehicle_ids: selectedVehicleIds });
-            toast("success", isEditing ? "Assignment updated successfully" : "Vehicles assigned successfully");
+            tt.success(isEditing ? "assignment_updated_successfully" : "vehicles_assigned_successfully");
             resetForm();
             fetchData();
         } catch (error) {
-            toast("error", "Failed to save assignment");
+            tt.error("failed_to_save_assignment");
         } finally {
             setLoading(false);
         }
@@ -138,13 +142,13 @@ export default function AssignVehiclePage() {
     };
 
     const handleDelete = async (routeId: number) => {
-        if (!confirm("Are you sure you want to remove all vehicle assignments for this route?")) return;
+        if (!confirm(t("delete_assignment_confirmation"))) return;
         try {
             await api.delete(`/transport/route-vehicles/${routeId}`);
-            toast("success", "Assignments removed successfully");
+            tt.success("assignments_removed_successfully");
             fetchData();
         } catch (error) {
-            toast("error", "Failed to remove assignments");
+            tt.error("failed_to_remove_assignments");
         }
     };
 
@@ -173,15 +177,15 @@ export default function AssignVehiclePage() {
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(filteredAssignments.map(a => `${a.title}\t${a.vehicles.map(v => v.vehicle_no).join(', ')}`).join('\n'));
-        toast("success", "Data copied to clipboard");
+        tt.success("data_copied_to_clipboard");
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: copyToClipboard, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: exportToExcel, title: "Excel" },
-        { Icon: FileText, onClick: exportToPDF, title: "PDF" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: copyToClipboard, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: exportToExcel, title: t("excel") },
+        { Icon: FileText, onClick: exportToPDF, title: t("pdf") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     return (
@@ -194,20 +198,20 @@ export default function AssignVehiclePage() {
                             <Bus className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{isEditing ? "Update Assignment" : "Assign Vehicle On Route"}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Map vehicles to a route</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{isEditing ? t("update_assignment") : t("assign_vehicle_on_route")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("map_vehicles_to_route")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Route <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("route")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedRouteId} onValueChange={setSelectedRouteId} disabled={isEditing}>
-                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Route" /></SelectTrigger>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select_route")} /></SelectTrigger>
                                 <SelectContent>{routes.map((r) => <SelectItem key={r.id} value={r.id.toString()}>{r.title}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-3">
-                            <Label className="text-xs font-semibold text-gray-600">Vehicle <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("vehicle")} <span className="text-red-500">*</span></Label>
                             <div className="space-y-2.5 ml-1 max-h-60 overflow-y-auto custom-scrollbar pr-2">
                                 {availableVehicles.map((v) => (
                                     <div key={v.id} className="flex items-center space-x-2.5 group cursor-pointer">
@@ -218,9 +222,9 @@ export default function AssignVehiclePage() {
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
-                            {isEditing && <Button variant="outline" onClick={resetForm} className="h-9 px-6 rounded-full text-xs font-bold">Cancel</Button>}
+                            {isEditing && <Button variant="outline" onClick={resetForm} className="h-9 px-6 rounded-full text-xs font-bold">{t("cancel")}</Button>}
                             <Button disabled={loading} onClick={handleSave} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
-                                <Save className="h-4 w-4" /> {loading ? "Saving..." : "Save"}
+                                <Save className="h-4 w-4" /> {loading ? t("saving") : t("save")}
                             </Button>
                         </div>
                     </CardContent>
@@ -233,13 +237,13 @@ export default function AssignVehiclePage() {
                             <Bus className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Vehicle Route List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{filteredAssignments.length} assignment{filteredAssignments.length === 1 ? "" : "s"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("vehicle_route_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{filteredAssignments.length} {filteredAssignments.length === 1 ? t("assignment").toLowerCase() : t("assignments").toLowerCase()}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                            <Input placeholder="Search..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="h-9 text-xs w-full md:w-64" />
+                            <Input placeholder={t("search")} value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="h-9 text-xs w-full md:w-64" />
                             <div className="flex items-center gap-2">
                                 <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
                                     <SelectTrigger className="w-[70px] h-9 text-xs"><SelectValue /></SelectTrigger>
@@ -263,24 +267,24 @@ export default function AssignVehiclePage() {
                             <Table className="min-w-[600px]">
                                 <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Route <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Vehicle <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                        <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("route")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("vehicle")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                        <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {fetching ? (
                                         <SkeletonRows rows={6} cols={TABLE_COLS} />
                                     ) : paginatedAssignments.length === 0 ? (
-                                        <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No assignments found</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_assignments_found")}</TableCell></TableRow>
                                     ) : paginatedAssignments.map((assignment) => (
                                         <TableRow key={assignment.id} className="text-xs hover:bg-gray-50/60 transition-colors">
                                             <TableCell className="py-3 text-gray-700 font-medium">{assignment.title}</TableCell>
                                             <TableCell className="py-3 text-gray-500 italic">{assignment.vehicles.map(v => v.vehicle_no).join(", ")}</TableCell>
                                             <TableCell className="py-3 text-right">
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <Button onClick={() => handleEdit(assignment)} size="sm" title="Edit" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-4 w-4" /></Button>
-                                                    <Button onClick={() => handleDelete(assignment.id)} size="sm" title="Delete" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-4 w-4" /></Button>
+                                                    <Button onClick={() => handleEdit(assignment)} size="sm" title={t("edit")} className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-4 w-4" /></Button>
+                                                    <Button onClick={() => handleDelete(assignment.id)} size="sm" title={t("delete")} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-4 w-4" /></Button>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -290,7 +294,7 @@ export default function AssignVehiclePage() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                            <div>Showing {filteredAssignments.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredAssignments.length)} of {filteredAssignments.length} entries</div>
+                            <div>{t("showing_x_to_y_of_z", { from: filteredAssignments.length === 0 ? 0 : startIndex + 1, to: Math.min(startIndex + itemsPerPage, filteredAssignments.length), total: filteredAssignments.length })}</div>
                             <div className="flex gap-1 items-center">
                                 <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (

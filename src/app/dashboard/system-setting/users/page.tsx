@@ -43,15 +43,18 @@ import {
     Key,
     RefreshCw,
     PlusCircle,
-    Upload
+    Upload,
+    Users
 } from "lucide-react";
 import api from "@/lib/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useImageUrl } from "@/lib/image-url";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function UsersPage() {
+    const { t } = useTranslation();
     const [users, setUsers] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState("Student");
     const [limit, setLimit] = useState("50");
@@ -198,7 +201,7 @@ export default function UsersPage() {
             resetParentForm();
             fetchUsers();
         } catch (error: any) {
-            alert(error.response?.data?.message || "Failed to create parent user");
+            alert(error.response?.data?.message || t("failed_to_create_parent_user"));
         } finally {
             setSavingParent(false);
         }
@@ -356,7 +359,7 @@ export default function UsersPage() {
             setEditingUserId(null);
             fetchUsers();
         } catch (error: any) {
-            alert(error.response?.data?.message || "Failed to update parent");
+            alert(error.response?.data?.message || t("failed_to_update_parent"));
         } finally {
             setSavingEdit(false);
         }
@@ -405,11 +408,11 @@ export default function UsersPage() {
 
     const handleAdminResetPassword = async () => {
         if (!newPassword || newPassword.length < 8) {
-            alert("Password must be at least 8 characters");
+            alert(t("password_must_be_at_least_8_characters"));
             return;
         }
         if (newPassword !== confirmPassword) {
-            alert("Passwords do not match");
+            alert(t("passwords_do_not_match"));
             return;
         }
 
@@ -419,12 +422,12 @@ export default function UsersPage() {
                 new_password: newPassword,
                 new_password_confirmation: confirmPassword
             });
-            alert(`Password for ${selectedUser.name} reset successfully`);
+            alert(t("password_for") + " " + selectedUser.name + " " + t("reset_successfully"));
             setResetDialogOpen(false);
             setNewPassword("");
             setConfirmPassword("");
         } catch (error: any) {
-            alert(error.response?.data?.message || "Failed to reset password");
+            alert(error.response?.data?.message || t("failed_to_reset_password"));
         } finally {
             setIsResetting(false);
         }
@@ -434,8 +437,16 @@ export default function UsersPage() {
         <div className="p-4 bg-gray-50/10 min-h-screen font-sans space-y-4">
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden min-h-[600px] flex flex-col">
                 {/* Header with Tabs */}
-                <div className="flex flex-col md:flex-row justify-between items-center px-4 py-2 border-b border-gray-100">
-                    <h1 className="text-[16px] font-medium text-gray-700">Users</h1>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Users className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("users")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("manage_system_users_and_access")}</p>
+                        </div>
+                    </div>
 
                     <Tabs value={activeTab} className="w-full md:w-auto" onValueChange={setActiveTab}>
                         <TabsList className="bg-transparent border-b-0 h-10 p-0 space-x-6">
@@ -445,7 +456,7 @@ export default function UsersPage() {
                                     value={role}
                                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-2 pb-2 h-full shadow-none bg-transparent capitalize"
                                 >
-                                    {role}
+                                    {t(role.toLowerCase())}
                                 </TabsTrigger>
                             ))}
                         </TabsList>
@@ -465,12 +476,12 @@ export default function UsersPage() {
                             className="h-8 text-[12px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-3 gap-1.5"
                         >
                             <PlusCircle className="h-3.5 w-3.5" />
-                            Add Parent
+                            {t("add_parent")}
                         </Button>
                     )}
                     <div className="relative w-full md:w-64">
                         <Input
-                            placeholder={`Search ${activeTab.toLowerCase()}...`}
+                            placeholder={t("search")}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="h-8 text-[12px] pl-3 border-gray-200 shadow-none rounded bg-gray-50/50 focus:bg-white transition-colors"
@@ -479,7 +490,7 @@ export default function UsersPage() {
 
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-[12px] text-gray-500 font-medium">Rows:</span>
+                            <span className="text-[12px] text-gray-500 font-medium">{t("rows")}:</span>
                             <Select value={limit} onValueChange={setLimit}>
                                 <SelectTrigger className="h-7 w-16 text-[12px] border-gray-200 shadow-none rounded">
                                     <SelectValue />
@@ -506,44 +517,57 @@ export default function UsersPage() {
                 {/* Content Area */}
                 <div className="flex-1 overflow-auto">
                     {loading ? (
-                        <div className="flex items-center justify-center h-64">
-                            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                        <div className="p-4 space-y-2">
+                            {/* Header row skeleton */}
+                            <div className="flex gap-4 px-2 py-3 border-b border-gray-100">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <div key={i} className="h-3 flex-1 rounded bg-gray-200/60 animate-pulse" />
+                                ))}
+                            </div>
+                            {/* Body rows */}
+                            {Array.from({ length: 8 }).map((_, r) => (
+                                <div key={r} className="flex gap-4 px-2 py-3 border-b border-gray-50 items-center">
+                                    {Array.from({ length: 6 }).map((_, c) => (
+                                        <div key={c} className="h-3 flex-1 rounded bg-gray-200/50 animate-pulse" style={{ width: `${50 + ((r * 5 + c * 7) % 40)}%` }} />
+                                    ))}
+                                </div>
+                            ))}
                         </div>
                     ) : users.length === 0 ? (
-                        <div className="p-8 text-center text-gray-400 text-sm">No {activeTab.toLowerCase()} found.</div>
+                        <div className="p-8 text-center text-gray-400 text-sm">{t("no_records_found")}</div>
                     ) : (
                         <Table>
                             <TableHeader className="bg-gray-50/40 sticky top-0 z-10">
                                 <TableRow className="border-b border-gray-100 hover:bg-transparent text-[12px]">
                                     {activeTab === 'Student' ? (
                                         <>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600 w-10">Profile</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Student Name</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Admission No.</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Class</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Section</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Email</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Username</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Mobile Number</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600 w-10">{t("profile")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("student_name")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("admission_no")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("class")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("section")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("email")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("username")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("mobile_number")}</TableHead>
                                         </>
                                     ) : activeTab === 'Parent' ? (
                                         <>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600 w-10">Profile</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Guardian Name</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Student Name</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Guardian Phone</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Guardian Email</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Username</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600 w-10">{t("profile")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("guardian_name")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("student_name")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("guardian_phone")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("guardian_email")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("username")}</TableHead>
                                         </>
                                     ) : (
                                         <>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600 w-10">Profile</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Name</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Username</TableHead>
-                                            <TableHead className="h-10 px-4 font-bold text-gray-600">Role</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600 w-10">{t("profile")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("name")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("username")}</TableHead>
+                                            <TableHead className="h-10 px-4 font-bold text-gray-600">{t("role")}</TableHead>
                                         </>
                                     )}
-                                    <TableHead className="h-10 px-4 font-bold text-gray-600 text-right w-20">Action</TableHead>
+                                    <TableHead className="h-10 px-4 font-bold text-gray-600 text-right w-20">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -614,7 +638,7 @@ export default function UsersPage() {
                                                         size="icon"
                                                         className="h-7 w-7 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50"
                                                         onClick={() => openEditDialog(user)}
-                                                        title="Edit Parent"
+                                                        title={t("edit")}
                                                     >
                                                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                                             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -629,7 +653,7 @@ export default function UsersPage() {
                                                         setSelectedUser(user);
                                                         setResetDialogOpen(true);
                                                     }}
-                                                    title="Reset Password"
+                                                    title={t("reset_password")}
                                                 >
                                                     <Key className="h-3.5 w-3.5" />
                                                 </Button>
@@ -648,7 +672,7 @@ export default function UsersPage() {
                     {!loading && users.length > 0 && (
                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2 px-4 pb-4">
                             <div>
-                                Showing {from} to {to} of {total} entries
+                                {t("showing")} {from} {t("to")} {to} {t("of")} {total} {t("entries")}
                             </div>
                             <div className="flex gap-1">
                                 <Button
@@ -692,40 +716,40 @@ export default function UsersPage() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Key className="h-5 w-5 text-amber-500" />
-                            Reset Password
+                            {t("reset_password")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-1">
-                            <p className="text-sm font-medium text-gray-500">Resetting password for:</p>
+                            <p className="text-sm font-medium text-gray-500">{t("resetting_password_for")}:</p>
                             <p className="text-sm font-bold text-gray-900">{selectedUser?.name} ({selectedUser?.email || selectedUser?.username})</p>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="new-password">New Password</Label>
+                            <Label htmlFor="new-password">{t("new_password")}</Label>
                             <Input
                                 id="new-password"
                                 type="password"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
-                                placeholder="Enter at least 8 characters"
+                                placeholder={t("enter_at_least_8_characters")}
                                 className="h-10"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="confirm-password">Confirm Password</Label>
+                            <Label htmlFor="confirm-password">{t("confirm_password")}</Label>
                             <Input
                                 id="confirm-password"
                                 type="password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="Repeat the new password"
+                                placeholder={t("repeat_the_new_password")}
                                 className="h-10"
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setResetDialogOpen(false)} disabled={isResetting}>
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button
                             onClick={handleAdminResetPassword}
@@ -735,10 +759,10 @@ export default function UsersPage() {
                             {isResetting ? (
                                 <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Resetting...
+                                    {t("resetting")}
                                 </>
                             ) : (
-                                "Reset Password"
+                                t("reset_password")
                             )}
                         </Button>
                     </DialogFooter>
@@ -756,7 +780,7 @@ export default function UsersPage() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <PlusCircle className="h-5 w-5 text-indigo-500" />
-                            Add Parent
+                            {t("add_parent")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -787,13 +811,13 @@ export default function UsersPage() {
                                 </label>
                             </div>
                             <div className="text-[11px] text-muted-foreground">
-                                <p className="font-bold">Profile Photo</p>
+                                <p className="font-bold">{t("profile_photo")}</p>
                                 <p>100px x 100px (optional)</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Name <span className="text-red-500">*</span></Label>
+                                <Label>{t("name")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     value={parentFormData.name}
                                     onChange={(e) => setParentFormData(prev => ({ ...prev, name: e.target.value }))}
@@ -802,7 +826,7 @@ export default function UsersPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Email <span className="text-red-500">*</span></Label>
+                                <Label>{t("email")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     value={parentFormData.email}
                                     onChange={(e) => setParentFormData(prev => ({ ...prev, email: e.target.value }))}
@@ -813,7 +837,7 @@ export default function UsersPage() {
                         </div>
                         <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-2">
-                                <Label>Phone</Label>
+                                <Label>{t("phone")}</Label>
                                 <Input
                                     value={parentFormData.phone}
                                     onChange={(e) => setParentFormData(prev => ({ ...prev, phone: e.target.value }))}
@@ -822,7 +846,7 @@ export default function UsersPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Username</Label>
+                                <Label>{t("username")}</Label>
                                 <div className="flex gap-1.5">
                                     <Input
                                         value={parentFormData.username}
@@ -838,14 +862,14 @@ export default function UsersPage() {
                                         className="h-9 w-9 shrink-0"
                                         onClick={fetchParentUsername}
                                         disabled={generatingParentUsername}
-                                        title="Generate username"
+                                        title={t("generate_username")}
                                     >
                                         <RefreshCw className={`h-4 w-4 ${generatingParentUsername ? 'animate-spin' : ''}`} />
                                     </Button>
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Guardian Name</Label>
+                                <Label>{t("guardian_name")}</Label>
                                 <Input
                                     value={parentFormData.guardian_name}
                                     onChange={(e) => setParentFormData(prev => ({ ...prev, guardian_name: e.target.value }))}
@@ -856,7 +880,7 @@ export default function UsersPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Guardian Phone</Label>
+                                <Label>{t("guardian_phone")}</Label>
                                 <Input
                                     value={parentFormData.guardian_phone}
                                     onChange={(e) => setParentFormData(prev => ({ ...prev, guardian_phone: e.target.value }))}
@@ -867,27 +891,27 @@ export default function UsersPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Class</Label>
+                                <Label>{t("class")}</Label>
                                 <select
                                     value={selectedClassId}
                                     onChange={(e) => handleClassChange(e.target.value)}
                                     className="flex h-9 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-1.5 text-[12px] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:bg-card transition-all appearance-none cursor-pointer"
                                 >
-                                    <option value="">Select class</option>
+                                    <option value="">{t("select_class")}</option>
                                     {classes.map((c) => (
                                         <option key={c.id} value={c.id.toString()}>{c.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Section</Label>
+                                <Label>{t("section")}</Label>
                                 <select
                                     value={selectedSectionId}
                                     onChange={(e) => handleSectionChange(e.target.value)}
                                     className="flex h-9 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-1.5 text-[12px] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:bg-card transition-all appearance-none cursor-pointer"
                                     disabled={!selectedClassId}
                                 >
-                                    <option value="">Select section</option>
+                                    <option value="">{t("select_section")}</option>
                                     {sections.map((s) => (
                                         <option key={s.id} value={s.id.toString()}>{s.name}</option>
                                     ))}
@@ -895,14 +919,14 @@ export default function UsersPage() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label>Link to Student</Label>
+                            <Label>{t("link_to_student")}</Label>
                             <select
                                 value={selectedStudentId}
                                 onChange={(e) => handleStudentSelect(e.target.value)}
                                 className="flex h-9 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-1.5 text-[12px] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:bg-card transition-all appearance-none cursor-pointer"
                                 disabled={!selectedSectionId || loadingStudents}
                             >
-                                <option value="">{loadingStudents ? "Loading..." : "Select student"}</option>
+                                <option value="">{loadingStudents ? t("loading") : t("select_student")}</option>
                                 {students.map((s: any) => (
                                     <option key={s.id} value={s.id}>
                                         {s.name} {s.last_name || ""} ({s.admission_no || s.username || s.id})
@@ -913,7 +937,7 @@ export default function UsersPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setAddDialogOpen(false)} disabled={savingParent}>
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button
                             onClick={handleAddParentSave}
@@ -923,10 +947,10 @@ export default function UsersPage() {
                             {savingParent ? (
                                 <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Saving...
+                                    {t("saving")}
                                 </>
                             ) : (
-                                "Save Parent"
+                                t("save_parent")
                             )}
                         </Button>
                     </DialogFooter>
@@ -946,7 +970,7 @@ export default function UsersPage() {
                             <svg className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
-                            Edit Parent
+                            {t("edit_parent")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -977,13 +1001,13 @@ export default function UsersPage() {
                                 </label>
                             </div>
                             <div className="text-[11px] text-muted-foreground">
-                                <p className="font-bold">Profile Photo</p>
+                                <p className="font-bold">{t("profile_photo")}</p>
                                 <p>100px x 100px (optional)</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Name <span className="text-red-500">*</span></Label>
+                                <Label>{t("name")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     value={editFormData.name}
                                     onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
@@ -992,7 +1016,7 @@ export default function UsersPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Email <span className="text-red-500">*</span></Label>
+                                <Label>{t("email")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     value={editFormData.email}
                                     onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
@@ -1003,7 +1027,7 @@ export default function UsersPage() {
                         </div>
                         <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-2">
-                                <Label>Phone</Label>
+                                <Label>{t("phone")}</Label>
                                 <Input
                                     value={editFormData.phone}
                                     onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
@@ -1012,7 +1036,7 @@ export default function UsersPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Username</Label>
+                                <Label>{t("username")}</Label>
                                 <Input
                                     value={editFormData.username}
                                     onChange={(e) => setEditFormData(prev => ({ ...prev, username: e.target.value }))}
@@ -1021,7 +1045,7 @@ export default function UsersPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Guardian Name</Label>
+                                <Label>{t("guardian_name")}</Label>
                                 <Input
                                     value={editFormData.guardian_name}
                                     onChange={(e) => setEditFormData(prev => ({ ...prev, guardian_name: e.target.value }))}
@@ -1032,7 +1056,7 @@ export default function UsersPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Guardian Phone</Label>
+                                <Label>{t("guardian_phone")}</Label>
                                 <Input
                                     value={editFormData.guardian_phone}
                                     onChange={(e) => setEditFormData(prev => ({ ...prev, guardian_phone: e.target.value }))}
@@ -1043,27 +1067,27 @@ export default function UsersPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Class</Label>
+                                <Label>{t("class")}</Label>
                                 <select
                                     value={editSelectedClassId}
                                     onChange={(e) => handleEditClassChange(e.target.value)}
                                     className="flex h-9 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-1.5 text-[12px] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:bg-card transition-all appearance-none cursor-pointer"
                                 >
-                                    <option value="">Select class</option>
+                                    <option value="">{t("select_class")}</option>
                                     {editClasses.map((c) => (
                                         <option key={c.id} value={c.id.toString()}>{c.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Section</Label>
+                                <Label>{t("section")}</Label>
                                 <select
                                     value={editSelectedSectionId}
                                     onChange={(e) => handleEditSectionChange(e.target.value)}
                                     className="flex h-9 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-1.5 text-[12px] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:bg-card transition-all appearance-none cursor-pointer"
                                     disabled={!editSelectedClassId}
                                 >
-                                    <option value="">Select section</option>
+                                    <option value="">{t("select_section")}</option>
                                     {editSections.map((s) => (
                                         <option key={s.id} value={s.id.toString()}>{s.name}</option>
                                     ))}
@@ -1071,14 +1095,14 @@ export default function UsersPage() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label>Link to Student</Label>
+                            <Label>{t("link_to_student")}</Label>
                             <select
                                 value={editSelectedStudentId}
                                 onChange={(e) => setEditSelectedStudentId(e.target.value)}
                                 className="flex h-9 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-1.5 text-[12px] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:bg-card transition-all appearance-none cursor-pointer"
                                 disabled={!editSelectedSectionId || editLoadingStudents}
                             >
-                                <option value="">{editLoadingStudents ? "Loading..." : "Select student"}</option>
+                                <option value="">{editLoadingStudents ? t("loading") : t("select_student")}</option>
                                 {editStudents.map((s: any) => (
                                     <option key={s.id} value={s.id}>
                                         {s.name} {s.last_name || ""} ({s.admission_no || s.username || s.id})
@@ -1089,7 +1113,7 @@ export default function UsersPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={savingEdit}>
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button
                             onClick={handleEditParentSave}
@@ -1099,10 +1123,10 @@ export default function UsersPage() {
                             {savingEdit ? (
                                 <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Updating...
+                                    {t("updating")}
                                 </>
                             ) : (
-                                "Update Parent"
+                                t("update_parent")
                             )}
                         </Button>
                     </DialogFooter>

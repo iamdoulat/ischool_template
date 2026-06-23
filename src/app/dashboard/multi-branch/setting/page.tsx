@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Table,
@@ -65,6 +67,8 @@ function SkeletonRows({ rows = 5 }: { rows?: number }) {
 
 export default function SettingPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [branches, setBranches] = useState<Branch[]>([]);
     const [loading, setLoading] = useState(true);
@@ -91,7 +95,7 @@ export default function SettingPage() {
             setTotalEntries(response.data.total || 0);
             setLastPage(response.data.last_page || 1);
         } catch {
-            toast({ title: "Error", description: "Failed to fetch branches", variant: "destructive" });
+            tt.toast("error", "failed_to_fetch_branches");
         } finally {
             setLoading(false);
         }
@@ -104,23 +108,23 @@ export default function SettingPage() {
 
     const handleSave = async () => {
         if (!formData.branch_name || !formData.branch_url) {
-            toast({ title: "Validation", description: "All fields are required", variant: "destructive" });
+            toast({ title: t("validation"), description: t("all_fields_are_required"), variant: "destructive" });
             return;
         }
         setSubmitting(true);
         try {
             if (editMode && selectedId) {
                 await api.put(`/multi-branch/branches/${selectedId}`, formData);
-                toast({ title: "Success", description: "Branch updated" });
+                toast({ title: t("success"), description: t("branch_updated") });
             } else {
                 await api.post("/multi-branch/branches", formData);
-                toast({ title: "Success", description: "Branch created" });
+                toast({ title: t("success"), description: t("branch_created") });
             }
             setOpen(false);
             resetForm();
             fetchBranches(currentPage);
         } catch {
-            toast({ title: "Error", description: "Failed to save branch", variant: "destructive" });
+            tt.toast("error", "failed_to_save_branch");
         } finally {
             setSubmitting(false);
         }
@@ -137,10 +141,10 @@ export default function SettingPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/multi-branch/branches/${deleteId}`);
-            toast({ title: "Success", description: "Branch deleted" });
+            toast({ title: t("success"), description: t("branch_deleted") });
             fetchBranches(currentPage);
         } catch {
-            toast({ title: "Error", description: "Failed to delete branch", variant: "destructive" });
+            tt.toast("error", "failed_to_delete_branch");
         } finally {
             setDeleteId(null);
         }
@@ -154,7 +158,7 @@ export default function SettingPage() {
 
     const handleCopy = () => {
         navigator.clipboard.writeText(branches.map((b) => `${b.branch_name}\t${b.branch_url}`).join("\n"));
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        toast({ title: t("copied"), description: t("data_copied_to_clipboard") });
     };
     const handleExportCSV = () => {
         const rows = [["Branch Name", "Branch URL"], ...branches.map((b) => [b.branch_name, b.branch_url])];
@@ -166,10 +170,10 @@ export default function SettingPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
     ];
 
     const from = totalEntries === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
@@ -184,21 +188,21 @@ export default function SettingPage() {
                             <Globe className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Branch Settings</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{totalEntries} campus branch{totalEntries === 1 ? "" : "es"} registered</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("branch_settings")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{totalEntries} {t(totalEntries === 1 ? "campus_branch_registered" : "campus_branches_registered")}</p>
                         </div>
                     </div>
                     <Button onClick={() => { resetForm(); setOpen(true); }} className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                        <Plus className="h-4 w-4" /> Add Branch
+                        <Plus className="h-4 w-4" /> {t("add_branch")}
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {/* Toolbar */}
                     <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
                         <form onSubmit={(e) => { e.preventDefault(); setCurrentPage(1); fetchBranches(1); }} className="flex items-center gap-2 w-full md:w-auto">
-                            <Input placeholder="Search branches..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 h-9 text-xs w-full md:w-64" />
+                            <Input placeholder={t("search_branches")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 h-9 text-xs w-full md:w-64" />
                             <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                                <Search className="h-4 w-4" /> Search
+                                <Search className="h-4 w-4" /> {t("search")}
                             </Button>
                         </form>
                         <div className="flex items-center gap-2">
@@ -218,16 +222,16 @@ export default function SettingPage() {
                         <Table className="min-w-[560px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600">Branch Name</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Branch URL</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("branch_name")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("branch_url")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <SkeletonRows />
                                 ) : branches.length === 0 ? (
-                                    <TableRow><TableCell colSpan={TABLE_COLS} className="py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No branches found</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_branches_found")}</TableCell></TableRow>
                                 ) : branches.map((item) => (
                                     <TableRow key={item.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
                                         <TableCell className="py-3">
@@ -244,8 +248,8 @@ export default function SettingPage() {
                                         </TableCell>
                                         <TableCell className="py-3 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <Button onClick={() => handleEdit(item)} size="icon" title="Edit" className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-3.5 w-3.5" /></Button>
-                                                <Button onClick={() => setDeleteId(item.id)} size="icon" title="Delete" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                                <Button onClick={() => handleEdit(item)} size="icon" title={t("edit")} className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-3.5 w-3.5" /></Button>
+                                                <Button onClick={() => setDeleteId(item.id)} size="icon" title={t("delete")} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-3.5 w-3.5" /></Button>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -256,7 +260,7 @@ export default function SettingPage() {
 
                     {/* Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                        <div>Showing {from} to {to} of {totalEntries} entries</div>
+                        <div>{t("showing_x_to_y_of_z", { from, to, total: totalEntries })}</div>
                         <div className="flex gap-1 items-center">
                             <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                             {[...Array(lastPage)].map((_, i) => (
@@ -274,27 +278,27 @@ export default function SettingPage() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white"><Building2 className="h-4 w-4" /></span>
-                            {editMode ? "Edit Branch" : "Add Branch"}
+                            {editMode ? t("edit_branch") : t("add_branch")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Branch Name <span className="text-red-500">*</span></Label>
-                            <Input value={formData.branch_name} onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })} placeholder="e.g. Smart School - Campus Alpha" className="h-9 text-xs" />
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("branch_name")} <span className="text-red-500">*</span></Label>
+                            <Input value={formData.branch_name} onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })} placeholder={t("eg_smart_school_campus_alpha")} className="h-9 text-xs" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Branch URL <span className="text-red-500">*</span></Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("branch_url")} <span className="text-red-500">*</span></Label>
                             <div className="relative">
-                                <Input value={formData.branch_url} onChange={(e) => setFormData({ ...formData, branch_url: e.target.value })} placeholder="https://campus-alpha.ischool.io" className="h-9 text-xs pr-10" />
+                                <Input value={formData.branch_url} onChange={(e) => setFormData({ ...formData, branch_url: e.target.value })} placeholder={t("https_campus_alpha_ischool_io")} className="h-9 text-xs pr-10" />
                                 <LinkIcon className="absolute right-3 top-2.5 h-4 w-4 text-gray-300" />
                             </div>
-                            <p className="text-[10px] text-gray-400 italic">Include the full protocol (https://).</p>
+                            <p className="text-[10px] text-gray-400 italic">{t("include_the_full_protocol_https")}</p>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setOpen(false)} className="h-9 px-5 text-xs">Cancel</Button>
+                        <Button variant="outline" onClick={() => setOpen(false)} className="h-9 px-5 text-xs">{t("cancel")}</Button>
                         <Button onClick={handleSave} disabled={submitting} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}{editMode ? "Update" : "Save"}
+                            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}{editMode ? t("update") : t("save")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -304,12 +308,12 @@ export default function SettingPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Branch?</AlertDialogTitle>
-                        <AlertDialogDescription>This action cannot be undone. The branch will be permanently removed from the registry.</AlertDialogDescription>
+                        <AlertDialogTitle>{t("delete_branch")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("this_action_cannot_be_undone_the_branch_will_be_permanently_removed_from_the_registry")}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

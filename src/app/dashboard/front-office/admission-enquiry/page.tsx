@@ -28,7 +28,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -93,7 +94,8 @@ export default function AdmissionEnquiryPage() {
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingEnquiry, setEditingEnquiry] = useState<AdmissionEnquiry | null>(null);
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
 
     // Filters state
     const [filters, setFilters] = useState({
@@ -158,11 +160,11 @@ export default function AdmissionEnquiryPage() {
             setSelectedIds(new Set());
         } catch (error) {
             console.error("Error fetching enquiries:", error);
-            toast("error", "Failed to fetch enquiries.");
+            tt.error("failed_to_fetch_enquiries");
         } finally {
             setLoading(false);
         }
-    }, [filters, page, limit, debouncedSearch, toast]);
+    }, [filters, page, limit, debouncedSearch, tt]);
 
     const fetchClasses = useCallback(async () => {
         try {
@@ -198,11 +200,11 @@ export default function AdmissionEnquiryPage() {
 
     // Debounce the search box → server-side search, reset to first page
     useEffect(() => {
-        const t = setTimeout(() => {
+        const timer = setTimeout(() => {
             setDebouncedSearch(searchTerm);
             setPage(1);
         }, 400);
-        return () => clearTimeout(t);
+        return () => clearTimeout(timer);
     }, [searchTerm]);
 
     useEffect(() => {
@@ -217,7 +219,7 @@ export default function AdmissionEnquiryPage() {
 
     const handleSave = async () => {
         if (!formData.name || !formData.phone || !formData.date) {
-            toast("error", "Name, Phone and Date are required.");
+            tt.error("name_phone_date_required");
             return;
         }
 
@@ -225,17 +227,17 @@ export default function AdmissionEnquiryPage() {
         try {
             if (editingEnquiry) {
                 await api.put(`/admission-enquiries/${editingEnquiry.id}`, formData);
-                toast("success", "Enquiry updated successfully.");
+                tt.success("enquiry_updated_successfully");
             } else {
                 await api.post("/admission-enquiries", formData);
-                toast("success", "Enquiry added successfully.");
+                tt.success("enquiry_added_successfully");
             }
             setIsDialogOpen(false);
             setEditingEnquiry(null);
             resetForm();
             fetchEnquiries();
         } catch (error: any) {
-            toast("error", error.response?.data?.message || "Failed to save enquiry.");
+            tt.error(error.response?.data?.message || "failed_to_save_enquiry");
         } finally {
             setLoading(false);
         }
@@ -264,10 +266,10 @@ export default function AdmissionEnquiryPage() {
         setLoading(true);
         try {
             await api.delete(`/admission-enquiries/${id}`);
-            toast("success", "Enquiry deleted successfully.");
+            tt.success("enquiry_deleted_successfully");
             fetchEnquiries();
         } catch (error) {
-            toast("error", "Failed to delete enquiry.");
+            tt.error("failed_to_delete_enquiry");
         } finally {
             setLoading(false);
         }
@@ -279,10 +281,10 @@ export default function AdmissionEnquiryPage() {
         setLoading(true);
         try {
             await api.post("/admission-enquiries/bulk-delete", { ids: Array.from(selectedIds) });
-            toast("success", "Selected enquiries deleted successfully.");
+            tt.success("selected_enquiries_deleted");
             fetchEnquiries();
         } catch (error) {
-            toast("error", "Failed to delete selected enquiries.");
+            tt.error("failed_to_delete_selected_enquiries");
         } finally {
             setLoading(false);
         }
@@ -332,7 +334,7 @@ export default function AdmissionEnquiryPage() {
         if (enquiries.length === 0) return;
         const text = ["Name\tPhone\tSource\tDate\tStatus", ...enquiries.map(e => `${e.name}\t${e.phone}\t${e.source || "-"}\t${e.date}\t${e.status}`)].join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
@@ -348,7 +350,7 @@ export default function AdmissionEnquiryPage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Enquiries");
         XLSX.writeFile(workbook, "admission_enquiries.xlsx");
-        toast("success", "Excel file downloaded");
+        tt.success("excel_file_downloaded");
     };
 
     const exportToPDF = () => {
@@ -359,7 +361,7 @@ export default function AdmissionEnquiryPage() {
             body: enquiries.map(e => [e.name, e.phone, e.source || "-", e.date, e.status]),
         });
         doc.save("admission_enquiries.pdf");
-        toast("success", "PDF file downloaded");
+        tt.success("pdf_file_downloaded");
     };
 
     return (
@@ -371,9 +373,9 @@ export default function AdmissionEnquiryPage() {
                         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-lg">
                             <Users className="h-5 w-5" />
                         </span>
-                        Admission Enquiry
+                        {t("admission_enquiry")}
                     </h1>
-                    <p className="text-sm text-muted-foreground mt-1 ml-11">Manage and follow up on prospective admission leads</p>
+                    <p className="text-sm text-muted-foreground mt-1 ml-11">{t("manage_follow_up_admission_leads")}</p>
                 </div>
                 <Button
                     variant="outline"
@@ -383,7 +385,7 @@ export default function AdmissionEnquiryPage() {
                     disabled={loading}
                 >
                     <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
-                    Refresh
+                    {t("refresh")}
                 </Button>
             </div>
 
@@ -394,21 +396,21 @@ export default function AdmissionEnquiryPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter admission enquiries</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_admission_enquiries")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-6 gap-4 items-end">
                         <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Class</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("class")}</label>
                             <div className="relative">
                                 <select
                                     className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none cursor-pointer group-hover:border-indigo-200 transition-colors"
                                     value={filters.class_id}
                                     onChange={(e) => setFilters({ ...filters, class_id: e.target.value })}
                                 >
-                                    <option value="">Select</option>
+                                    <option value="">{t("select")}</option>
                                     {classes.map(cls => (
                                         <option key={cls.id} value={cls.id}>{cls.name}</option>
                                     ))}
@@ -418,14 +420,14 @@ export default function AdmissionEnquiryPage() {
                         </div>
 
                         <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Source</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("source")}</label>
                             <div className="relative">
                                 <select
                                     className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none cursor-pointer group-hover:border-indigo-200 transition-colors"
                                     value={filters.source}
                                     onChange={(e) => setFilters({ ...filters, source: e.target.value })}
                                 >
-                                    <option value="">Select</option>
+                                    <option value="">{t("select")}</option>
                                     {sources.map(src => (
                                         <option key={src.id} value={src.name}>{src.name}</option>
                                     ))}
@@ -435,7 +437,7 @@ export default function AdmissionEnquiryPage() {
                         </div>
 
                         <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Enquiry From Date</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("enquiry_from_date")}</label>
                             <div className="relative">
                                 <Input
                                     type="date"
@@ -447,7 +449,7 @@ export default function AdmissionEnquiryPage() {
                         </div>
 
                         <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Enquiry To Date</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("enquiry_to_date")}</label>
                             <div className="relative">
                                 <Input
                                     type="date"
@@ -459,20 +461,20 @@ export default function AdmissionEnquiryPage() {
                         </div>
 
                         <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Status</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("status")}</label>
                             <div className="relative">
                                 <select
                                     className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none cursor-pointer group-hover:border-indigo-200 transition-colors"
                                     value={filters.status}
                                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                                 >
-                                    <option value="">Select</option>
-                                    <option value="All">All</option>
-                                    <option value="Active">Active</option>
-                                    <option value="Passive">Passive</option>
-                                    <option value="Dead">Dead</option>
-                                    <option value="Won">Won</option>
-                                    <option value="Lost">Lost</option>
+                                    <option value="">{t("select")}</option>
+                                    <option value="All">{t("all")}</option>
+                                    <option value="Active">{t("active")}</option>
+                                    <option value="Passive">{t("passive")}</option>
+                                    <option value="Dead">{t("dead")}</option>
+                                    <option value="Won">{t("won")}</option>
+                                    <option value="Lost">{t("lost")}</option>
                                 </select>
                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                             </div>
@@ -481,7 +483,7 @@ export default function AdmissionEnquiryPage() {
                         <div className="flex justify-end">
                             <Button variant="gradient" className="h-10 px-8" onClick={() => { setPage(1); fetchEnquiries(); }} disabled={loading}>
                                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 text-white mr-2" />}
-                                Search
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
@@ -496,19 +498,19 @@ export default function AdmissionEnquiryPage() {
                             <Users className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Admission Enquiry</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{total} total enquir{total === 1 ? "y" : "ies"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("admission_enquiry")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("total_enquiries_count", { total })}</p>
                         </div>
                     </div>
                     <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingEnquiry(null); resetForm(); } }}>
                         <DialogTrigger asChild>
                             <Button variant="gradient" size="sm" className="h-9 px-6">
-                                <Plus className="h-4 w-4 mr-1" /> Add
+                                <Plus className="h-4 w-4 mr-1" /> {t("add")}
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl">
                             <div className="bg-[#4F39F6] px-6 py-4 flex items-center justify-between">
-                                <DialogTitle className="text-xl font-bold text-white">Admission Enquiry</DialogTitle>
+                                <DialogTitle className="text-xl font-bold text-white">{t("admission_enquiry")}</DialogTitle>
                                 <button
                                     onClick={() => setIsDialogOpen(false)}
                                     className="text-white/80 hover:text-white transition-colors"
@@ -520,7 +522,7 @@ export default function AdmissionEnquiryPage() {
                             <div className="p-6 space-y-6 bg-white overflow-y-auto max-h-[80vh]">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Name <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("name")} <span className="text-destructive">*</span></label>
                                         <Input
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
                                             value={formData.name}
@@ -529,7 +531,7 @@ export default function AdmissionEnquiryPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Phone <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("phone")} <span className="text-destructive">*</span></label>
                                         <Input
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
                                             value={formData.phone}
@@ -538,7 +540,7 @@ export default function AdmissionEnquiryPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Email</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("email")}</label>
                                         <Input
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
                                             value={formData.email || ""}
@@ -550,7 +552,7 @@ export default function AdmissionEnquiryPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Address</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("address")}</label>
                                         <Input
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
                                             value={formData.address || ""}
@@ -558,7 +560,7 @@ export default function AdmissionEnquiryPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Description</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("description")}</label>
                                         <Input
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
                                             value={formData.description || ""}
@@ -566,7 +568,7 @@ export default function AdmissionEnquiryPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Note</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("note")}</label>
                                         <Input
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
                                             value={formData.note || ""}
@@ -577,7 +579,7 @@ export default function AdmissionEnquiryPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Date <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("date")} <span className="text-destructive">*</span></label>
                                         <Input
                                             type="date"
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
@@ -586,7 +588,7 @@ export default function AdmissionEnquiryPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Next Follow Up Date <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("next_follow_up_date")} <span className="text-destructive">*</span></label>
                                         <Input
                                             type="date"
                                             className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
@@ -595,15 +597,15 @@ export default function AdmissionEnquiryPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Assigned</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("assigned")}</label>
                                         <div className="relative">
                                             <select
                                                 className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                                                 value={formData.assigned || ""}
                                                 onChange={(e) => setFormData({ ...formData, assigned: e.target.value })}
                                             >
-                                                <option value="">Select</option>
-                                                <option value="Staff 1">Staff 1</option>
+                                                <option value="">{t("select")}</option>
+                                                <option value="Staff 1">{t("staff")} 1</option>
                                             </select>
                                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                                         </div>
@@ -612,14 +614,14 @@ export default function AdmissionEnquiryPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pb-6">
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Reference</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("reference")}</label>
                                         <div className="relative">
                                             <select
                                                 className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                                                 value={formData.reference || ""}
                                                 onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
                                             >
-                                                <option value="">Select</option>
+                                                <option value="">{t("select")}</option>
                                                 {references.map(ref => (
                                                     <option key={ref.id} value={ref.name}>{ref.name}</option>
                                                 ))}
@@ -628,14 +630,14 @@ export default function AdmissionEnquiryPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Source <span className="text-destructive">*</span></label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("source")} <span className="text-destructive">*</span></label>
                                         <div className="relative">
                                             <select
                                                 className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                                                 value={formData.source || ""}
                                                 onChange={(e) => setFormData({ ...formData, source: e.target.value })}
                                             >
-                                                <option value="">Select</option>
+                                                <option value="">{t("select")}</option>
                                                 {sources.map(src => (
                                                     <option key={src.id} value={src.name}>{src.name}</option>
                                                 ))}
@@ -644,14 +646,14 @@ export default function AdmissionEnquiryPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Class</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("class")}</label>
                                         <div className="relative">
                                             <select
                                                 className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                                                 value={formData.class_id || ""}
                                                 onChange={(e) => setFormData({ ...formData, class_id: e.target.value ? parseInt(e.target.value) : null })}
                                             >
-                                                <option value="">Select</option>
+                                                <option value="">{t("select")}</option>
                                                 {classes.map(cls => (
                                                     <option key={cls.id} value={cls.id}>{cls.name}</option>
                                                 ))}
@@ -660,7 +662,7 @@ export default function AdmissionEnquiryPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Number Of Child</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("number_of_child")}</label>
                                         <Input
                                             type="number"
                                             min="1"
@@ -670,18 +672,18 @@ export default function AdmissionEnquiryPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Status</label>
+                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("status")}</label>
                                         <div className="relative">
                                             <select
                                                 className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                                                 value={formData.status}
                                                 onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                                             >
-                                                <option value="Active">Active</option>
-                                                <option value="Passive">Passive</option>
-                                                <option value="Dead">Dead</option>
-                                                <option value="Won">Won</option>
-                                                <option value="Lost">Lost</option>
+                                                <option value="Active">{t("active")}</option>
+                                                <option value="Passive">{t("passive")}</option>
+                                                <option value="Dead">{t("dead")}</option>
+                                                <option value="Won">{t("won")}</option>
+                                                <option value="Lost">{t("lost")}</option>
                                             </select>
                                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                                         </div>
@@ -692,7 +694,7 @@ export default function AdmissionEnquiryPage() {
                             <DialogFooter className="bg-slate-50/80 px-6 py-4 border-t border-slate-200">
                                 <Button variant="gradient" className="h-10 px-8 rounded-lg font-bold shadow-lg shadow-primary/20" onClick={handleSave} disabled={loading}>
                                     {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                                    Save
+                                    {t("save")}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -704,7 +706,7 @@ export default function AdmissionEnquiryPage() {
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search by name or phone"
+                                placeholder={t("search_by_name_or_phone")}
                                 className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -732,12 +734,12 @@ export default function AdmissionEnquiryPage() {
                                 </Select>
                             </div>
                             <div className="flex gap-1">
-                                <IconButton icon={Printer} onClick={() => window.print()} title="Print" />
-                                <IconButton icon={CopyIcon} onClick={exportToCopy} title="Copy" />
-                                <IconButton icon={TableIcon} onClick={exportToExcel} title="Excel" />
-                                <IconButton icon={FileText} onClick={exportToPDF} title="PDF" />
-                                <IconButton icon={Download} onClick={exportToExcel} title="Download" />
-                                <IconButton icon={Columns} title="Columns" />
+                                <IconButton icon={Printer} onClick={() => window.print()} title={t("print")} />
+                                <IconButton icon={CopyIcon} onClick={exportToCopy} title={t("copy")} />
+                                <IconButton icon={TableIcon} onClick={exportToExcel} title={t("excel")} />
+                                <IconButton icon={FileText} onClick={exportToPDF} title={t("pdf")} />
+                                <IconButton icon={Download} onClick={exportToExcel} title={t("download")} />
+                                <IconButton icon={Columns} title={t("columns")} />
                             </div>
                         </div>
                     </div>
@@ -755,14 +757,14 @@ export default function AdmissionEnquiryPage() {
                                             onChange={(e) => handleSelectAll(e.target.checked)}
                                         />
                                     </Th>
-                                    <Th>Name</Th>
-                                    <Th>Phone</Th>
-                                    <Th className="hidden lg:table-cell">Source</Th>
-                                    <Th className="hidden md:table-cell">Enquiry Date</Th>
-                                    <Th className="hidden xl:table-cell">Next Follow Up</Th>
-                                    <Th>Status</Th>
+                                    <Th>{t("name")}</Th>
+                                    <Th>{t("phone")}</Th>
+                                    <Th className="hidden lg:table-cell">{t("source")}</Th>
+                                    <Th className="hidden md:table-cell">{t("enquiry_date")}</Th>
+                                    <Th className="hidden xl:table-cell">{t("next_follow_up")}</Th>
+                                    <Th>{t("status")}</Th>
                                     <Th className="text-right flex items-center justify-end gap-2">
-                                        <span>Action</span>
+                                        <span>{t("action")}</span>
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
                                                 <button
@@ -771,21 +773,21 @@ export default function AdmissionEnquiryPage() {
                                                         "p-1 rounded transition-all shadow-sm active:scale-90",
                                                         selectedIds.size > 0 ? "bg-red-500 text-white hover:bg-red-600" : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
                                                     )}
-                                                    title="Delete Selected"
+                                                    title={t("delete_selected")}
                                                 >
                                                     <Trash2 className="h-3 w-3" />
                                                 </button>
                                             </AlertDialogTrigger>
                                             <AlertDialogContent>
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                    <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        This will permanently delete {selectedIds.size} selected enquiries.
+                                                        {t("permanently_delete_selected_enquiries", { count: selectedIds.size })}
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">Delete All</AlertDialogAction>
+                                                    <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">{t("delete_all")}</AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
@@ -823,22 +825,22 @@ export default function AdmissionEnquiryPage() {
                                             </Td>
                                             <Td className="text-right">
                                                 <div className="flex justify-end gap-1 px-2">
-                                                    <ActionBtn icon={Phone} className="bg-green-500" title={`Call ${item.phone}`} onClick={() => { if (item.phone) window.location.href = `tel:${item.phone}`; }} />
-                                                    <ActionBtn icon={Pencil} className="bg-indigo-500" onClick={() => handleEdit(item)} title="Edit" />
+                                                    <ActionBtn icon={Phone} className="bg-green-500" title={t("call_x", { phone: item.phone })} onClick={() => { if (item.phone) window.location.href = `tel:${item.phone}`; }} />
+                                                    <ActionBtn icon={Pencil} className="bg-indigo-500" onClick={() => handleEdit(item)} title={t("edit")} />
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
-                                                            <ActionBtn icon={X} className="bg-red-500" title="Delete" />
+                                                            <ActionBtn icon={X} className="bg-red-500" title={t("delete")} />
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
-                                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                                                                 <AlertDialogDescription>
-                                                                    This will permanently delete the enquiry for "{item.name}".
+                                                                    {t("permanently_delete_enquiry_for", { name: item.name })}
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
                                                             <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDelete(item.id)} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                                                                <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDelete(item.id)} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                                                             </AlertDialogFooter>
                                                         </AlertDialogContent>
                                                     </AlertDialog>
@@ -849,7 +851,7 @@ export default function AdmissionEnquiryPage() {
                                 ) : (
                                     <tr>
                                         <Td colSpan={8} className="text-center py-10">
-                                            {loading ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : "No enquiries found"}
+                                            {loading ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : t("no_enquiries_found")}
                                         </Td>
                                     </tr>
                                 )}
@@ -859,7 +861,7 @@ export default function AdmissionEnquiryPage() {
 
                     <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                            Showing {total > 0 ? ((page - 1) * limit) + 1 : 0} to {Math.min(page * limit, total)} of {total} entries
+                            {t("showing_x_to_y_of_z", { from: total > 0 ? ((page - 1) * limit) + 1 : 0, to: Math.min(page * limit, total), total })}
                         </p>
                         <div className="flex items-center gap-1.5 flex-wrap justify-center">
                             <Button

@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { useSettings } from "@/components/providers/settings-provider";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 type Subject = {
     id: number;
@@ -41,6 +42,7 @@ type ExamResult = {
 };
 
 export default function UserExaminationsResultPage() {
+    const { t } = useTranslation();
     const [results, setResults] = useState<ExamResult[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
@@ -53,10 +55,10 @@ export default function UserExaminationsResultPage() {
                 if (res.data.success) {
                     setResults(res.data.data ?? []);
                 } else {
-                    toast({ variant: "destructive", title: "Error", description: res.data.message || "Failed to load results." });
+                    toast({ variant: "destructive", title: t("error"), description: res.data.message || t("failed_to_load_results") });
                 }
             } catch {
-                toast({ variant: "destructive", title: "Error", description: "Failed to load exam results." });
+                toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_exam_results") });
             } finally {
                 setLoading(false);
             }
@@ -69,7 +71,7 @@ export default function UserExaminationsResultPage() {
             "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-bold text-white",
             result === "Pass" ? "bg-[#5cb85c]" : "bg-[#d9534f]"
         )}>
-            {result}
+            {t(result === "Pass" ? "pass" : "fail")}
         </span>
     );
 
@@ -84,7 +86,7 @@ export default function UserExaminationsResultPage() {
                     {settings.email && <p className="text-xs text-gray-600">{settings.email}</p>}
                 </div>
                 {settings.print_logo && (
-                    <img src={settings.print_logo} alt="School Logo" className="h-16 w-auto object-contain ml-4" />
+                    <img src={settings.print_logo} alt={t("school_logo")} className="h-16 w-auto object-contain ml-4" />
                 )}
             </div>
 
@@ -96,19 +98,19 @@ export default function UserExaminationsResultPage() {
                             <Award className="h-5 w-5" />
                         </span>
                         <div>
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Exam Result</h1>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("exam_result")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {loading ? "Loading results…" : `${results.length} published result${results.length === 1 ? "" : "s"}`}
+                                {loading ? t("loading_results") : `${results.length} published result${results.length === 1 ? "" : "s"}`}
                             </p>
                         </div>
                     </div>
                     <Button
                         onClick={() => window.print()}
-                        title="Print"
+                        title={t("print")}
                         className="h-9 shrink-0 ml-auto px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
                     >
                         <Printer className="h-4 w-4" />
-                        <span className="hidden sm:inline">Print</span>
+                        <span className="hidden sm:inline">{t("print")}</span>
                     </Button>
                 </div>
 
@@ -116,23 +118,23 @@ export default function UserExaminationsResultPage() {
                     {loading ? (
                         <div className="flex items-center justify-center py-20 text-gray-400 gap-2">
                             <Loader2 className="h-6 w-6 animate-spin" />
-                            <span>Loading results...</span>
+                            <span>{t("loading_results")}</span>
                         </div>
                     ) : results.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                             <FileText className="h-12 w-12 opacity-30 mb-3" />
-                            <p className="text-base font-semibold text-gray-500">No published exam results yet.</p>
-                            <p className="text-sm mt-1 text-gray-400">Results appear here once the school publishes them.</p>
+                            <p className="text-base font-semibold text-gray-500">{t("no_published_exam_results")}</p>
+                            <p className="text-sm mt-1 text-gray-400">{t("results_appear_here_once_published")}</p>
                         </div>
                     ) : (
                         results.map((exam) => {
-                            const valueCol = exam.is_grading ? "Grade" : "Result";
+                            const valueCol = exam.is_grading ? t("grade") : t("result");
                             const summaryTiles = [
-                                { icon: Percent, label: "Percentage", value: `${exam.summary.percentage}%`, color: "text-emerald-600" },
-                                { icon: Layers, label: "Division", value: exam.summary.division || "—", color: "text-sky-600" },
-                                ...(exam.summary.grade ? [{ icon: Award, label: "Grade", value: exam.summary.grade, color: "text-orange-600" }] : []),
-                                { icon: Sigma, label: "Grand Total", value: exam.summary.grand_total, color: "text-indigo-600" },
-                                { icon: Trophy, label: "Obtained", value: exam.summary.total_obtained, color: "text-violet-600" },
+                                { icon: Percent, label: t("percentage"), value: `${exam.summary.percentage}%`, color: "text-emerald-600" },
+                                { icon: Layers, label: t("division"), value: exam.summary.division || "—", color: "text-sky-600" },
+                                ...(exam.summary.grade ? [{ icon: Award, label: t("grade"), value: exam.summary.grade, color: "text-orange-600" }] : []),
+                                { icon: Sigma, label: t("grand_total"), value: exam.summary.grand_total, color: "text-indigo-600" },
+                                { icon: Trophy, label: t("obtained"), value: exam.summary.total_obtained, color: "text-violet-600" },
                             ];
                             return (
                                 <div key={exam.exam_id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm break-inside-avoid">
@@ -146,12 +148,12 @@ export default function UserExaminationsResultPage() {
                                         <Table className="min-w-[760px]">
                                             <TableHeader>
                                                 <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 border-b border-gray-200">
-                                                    <TableHead className="w-[220px] text-[10px] uppercase font-bold text-gray-600 py-3">Subject</TableHead>
-                                                    <TableHead className="text-center text-[10px] uppercase font-bold text-gray-600 py-3">Max Marks</TableHead>
-                                                    <TableHead className="text-center text-[10px] uppercase font-bold text-gray-600 py-3">Min Marks</TableHead>
-                                                    <TableHead className="text-center text-[10px] uppercase font-bold text-gray-600 py-3">Marks Obtained</TableHead>
+                                                    <TableHead className="w-[220px] text-[10px] uppercase font-bold text-gray-600 py-3">{t("subject")}</TableHead>
+                                                    <TableHead className="text-center text-[10px] uppercase font-bold text-gray-600 py-3">{t("max_marks")}</TableHead>
+                                                    <TableHead className="text-center text-[10px] uppercase font-bold text-gray-600 py-3">{t("min_marks")}</TableHead>
+                                                    <TableHead className="text-center text-[10px] uppercase font-bold text-gray-600 py-3">{t("marks_obtained")}</TableHead>
                                                     <TableHead className="text-center text-[10px] uppercase font-bold text-gray-600 py-3">{valueCol}</TableHead>
-                                                    <TableHead className="text-right text-[10px] uppercase font-bold text-gray-600 py-3 pr-6">Note</TableHead>
+                                                    <TableHead className="text-right text-[10px] uppercase font-bold text-gray-600 py-3 pr-6">{t("note")}</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -192,17 +194,17 @@ export default function UserExaminationsResultPage() {
                                                 </div>
                                                 <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-1.5">
                                                     <div className="flex items-center justify-between py-1 text-[12px]">
-                                                        <span className="text-gray-500">Max</span><span className="font-semibold text-gray-700">{s.max}</span>
+                                                        <span className="text-gray-500">{t("max")}</span><span className="font-semibold text-gray-700">{s.max}</span>
                                                     </div>
                                                     <div className="flex items-center justify-between py-1 text-[12px]">
-                                                        <span className="text-gray-500">Min</span><span className="font-semibold text-gray-700">{s.min}</span>
+                                                        <span className="text-gray-500">{t("min")}</span><span className="font-semibold text-gray-700">{s.min}</span>
                                                     </div>
                                                     <div className="flex items-center justify-between py-1 text-[12px]">
-                                                        <span className="text-gray-500">Obtained</span>
+                                                        <span className="text-gray-500">{t("obtained")}</span>
                                                         <span className={cn("font-bold", s.obtained === "Absent" ? "text-red-500 italic" : "text-gray-900")}>{s.obtained}</span>
                                                     </div>
                                                 </div>
-                                                {s.note && <p className="text-[11px] text-gray-500 mt-1.5">Note: {s.note}</p>}
+                                                {s.note && <p className="text-[11px] text-gray-500 mt-1.5">{t("note")}: {s.note}</p>}
                                             </div>
                                         ))}
                                     </div>
@@ -210,20 +212,20 @@ export default function UserExaminationsResultPage() {
                                     {/* Summary tiles */}
                                     <div className="border-t border-gray-200 bg-gray-50/50 p-3">
                                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-                                            {summaryTiles.map((t, i) => (
+                                            {summaryTiles.map((tile, i) => (
                                                 <div key={i} className="flex items-center gap-2.5 rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm">
-                                                    <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10", t.color)}>
-                                                        <t.icon className="h-4 w-4" />
+                                                    <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10", tile.color)}>
+                                                        <tile.icon className="h-4 w-4" />
                                                     </span>
                                                     <div className="min-w-0">
-                                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none">{t.label}</p>
-                                                        <p className={cn("text-[14px] font-bold mt-0.5", t.color)}>{t.value}</p>
+                                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none">{tile.label}</p>
+                                                        <p className={cn("text-[14px] font-bold mt-0.5", tile.color)}>{tile.value}</p>
                                                     </div>
                                                 </div>
                                             ))}
                                             <div className="flex items-center gap-2.5 rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm">
                                                 <div className="min-w-0">
-                                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none mb-1">Result</p>
+                                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none mb-1">{t("result")}</p>
                                                     <ResultPill result={exam.summary.result} />
                                                 </div>
                                             </div>

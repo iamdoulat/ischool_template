@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -73,7 +74,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function PrintMarksheetPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
 
@@ -118,7 +120,7 @@ export default function PrintMarksheetPage() {
             setClasses(classesRes.data.data || classesRes.data || []);
             setSections(sectionsRes.data.data || sectionsRes.data || []);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to load criteria data", variant: "destructive" });
+            tt.error("failed_to_load_criteria_data");
         } finally {
             setLoading(false);
         }
@@ -135,7 +137,7 @@ export default function PrintMarksheetPage() {
 
     const handleSearch = async () => {
         if (!selectedCriteria.school_class_id || !selectedCriteria.section_id || !selectedCriteria.exam_id) {
-            toast({ title: "Validation Error", description: "Please select all required fields", variant: "destructive" });
+            tt.error("please_select_all_required_fields");
             return;
         }
 
@@ -148,7 +150,7 @@ export default function PrintMarksheetPage() {
             setStudents(response.data || []);
             setSelectedIds([]);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch students", variant: "destructive" });
+            tt.error("failed_to_fetch_students");
         } finally {
             setSearching(false);
         }
@@ -173,9 +175,9 @@ export default function PrintMarksheetPage() {
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <Printer className="h-6 w-6 text-indigo-500" />
-                        Print Marksheet
+                        {t("print_marksheet")}
                     </h1>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Generate and print academic student reports</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{t("print_marksheet_subtitle")}</p>
                 </div>
             </div>
 
@@ -186,19 +188,19 @@ export default function PrintMarksheetPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Choose exam, class &amp; template to generate</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("choose_exam_class_template")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                Exam Group <span className="text-red-500">*</span>
+                                {t("exam_group")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedCriteria.exam_group_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_group_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Group" />
+                                    <SelectValue placeholder={t("select_group")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {examGroups.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name} ({g.exam_type})</SelectItem>)}
@@ -208,11 +210,11 @@ export default function PrintMarksheetPage() {
 
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                Exam <span className="text-red-500">*</span>
+                                {t("exam")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedCriteria.exam_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Exam" />
+                                    <SelectValue placeholder={t("select_exam")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {exams.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.name}</SelectItem>)}
@@ -222,11 +224,11 @@ export default function PrintMarksheetPage() {
 
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                Session <span className="text-red-500">*</span>
+                                {t("session")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedCriteria.session_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, session_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Session" />
+                                    <SelectValue placeholder={t("select_session")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.year}</SelectItem>)}
@@ -236,11 +238,11 @@ export default function PrintMarksheetPage() {
 
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                Class <span className="text-red-500">*</span>
+                                {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedCriteria.school_class_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, school_class_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Class" />
+                                    <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
@@ -250,11 +252,11 @@ export default function PrintMarksheetPage() {
 
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                Section <span className="text-red-500">*</span>
+                                {t("section")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedCriteria.section_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, section_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Section" />
+                                    <SelectValue placeholder={t("select_section")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
@@ -264,11 +266,11 @@ export default function PrintMarksheetPage() {
 
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                Template <span className="text-red-500">*</span>
+                                {t("template")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedCriteria.template_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, template_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Template" />
+                                    <SelectValue placeholder={t("select_template")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {templates.map(t => <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>)}
@@ -284,7 +286,7 @@ export default function PrintMarksheetPage() {
                             className="btn-gradient text-white px-10 h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex gap-2"
                         >
                             {searching ? <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" /> : <Search className="h-4 w-4" />}
-                            Search Students
+                            {t("search_students")}
                         </Button>
                     </div>
                 </CardContent>
@@ -298,13 +300,13 @@ export default function PrintMarksheetPage() {
                             <UserCircle className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{students.length} student{students.length === 1 ? "" : "s"} found</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_students_found", { count: students.length })}</p>
                         </div>
                     </div>
                     {selectedIds.length > 0 && (
                         <Button className="btn-gradient text-white h-10 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-indigo-100 flex gap-2">
-                            <Download className="h-3.5 w-3.5" /> Bulk Download ({selectedIds.length})
+                            <Download className="h-3.5 w-3.5" /> {t("bulk_download")} ({selectedIds.length})
                         </Button>
                     )}
                 </CardHeader>
@@ -320,13 +322,13 @@ export default function PrintMarksheetPage() {
                                             onCheckedChange={toggleSelectAll}
                                         />
                                     </TableHead>
-                                    <TableHead className="py-4 px-6">Admission No</TableHead>
-                                    <TableHead className="py-4 px-6">Student Name</TableHead>
-                                    <TableHead className="py-4 px-6">Father Name</TableHead>
-                                    <TableHead className="py-4 px-6">Date Of Birth</TableHead>
-                                    <TableHead className="py-4 px-6">Gender</TableHead>
-                                    <TableHead className="py-4 px-6">Mobile</TableHead>
-                                    <TableHead className="py-4 px-6 text-right">Action</TableHead>
+                                    <TableHead className="py-4 px-6">{t("admission_no")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("student_name")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("father_name")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("date_of_birth")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("gender")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("mobile")}</TableHead>
+                                    <TableHead className="py-4 px-6 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -335,7 +337,7 @@ export default function PrintMarksheetPage() {
                                 ) : students.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={8} className="h-32 text-center text-gray-400 text-sm italic">
-                                            Please select criteria and click search to view students.
+                                            {t("please_select_criteria_and_search")}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -371,7 +373,7 @@ export default function PrintMarksheetPage() {
                                                         size="icon"
                                                         variant="ghost"
                                                         className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md transition-all"
-                                                        title="Download Marksheet"
+                                                        title={t("download_marksheet")}
                                                     >
                                                         <Download className="h-4 w-4" />
                                                     </Button>
@@ -379,7 +381,7 @@ export default function PrintMarksheetPage() {
                                                         size="icon"
                                                         variant="ghost"
                                                         className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-all"
-                                                        title="Print Marksheet"
+                                                        title={t("print_marksheet")}
                                                     >
                                                         <Printer className="h-4 w-4" />
                                                     </Button>

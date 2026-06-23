@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,7 +81,8 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 }
 
 export default function LibraryMembersPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [members, setMembers] = useState<LibraryMember[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -101,7 +103,7 @@ export default function LibraryMembersPage() {
             });
         } catch (error) {
             console.error("Error fetching members:", error);
-            toast({ title: "Error", description: "Failed to fetch library members", variant: "destructive" });
+            tt.error("failed_to_fetch_library_members");
         } finally {
             setLoading(false);
         }
@@ -120,7 +122,7 @@ export default function LibraryMembersPage() {
     const handleCopy = () => {
         const text = members.map(m => `${m.user?.name}\t${m.member_id}\t${m.member_type}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        tt.success("data_copied_to_clipboard");
     };
 
     const handleExportCSV = () => {
@@ -154,8 +156,8 @@ export default function LibraryMembersPage() {
                         <Users className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Library Members</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? members.length} member{(pagination?.total ?? members.length) === 1 ? "" : "s"} registered</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("library_members")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("members_registered_count", { count: pagination?.total ?? members.length })}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -164,14 +166,14 @@ export default function LibraryMembersPage() {
                         <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search by name, member ID..."
+                                    placeholder={t("search_by_name_member_id")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-9 text-xs"
                                 />
                             </div>
                             <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                                <Search className="h-4 w-4" /> Search
+                                <Search className="h-4 w-4" /> {t("search")}
                             </Button>
                         </form>
 
@@ -209,13 +211,13 @@ export default function LibraryMembersPage() {
                         <Table className="min-w-[800px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Member ID <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Library Card No. <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Admission No <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Member Type <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Phone <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("member_id")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("library_card_no")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("admission_no")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("member_type")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("phone")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -224,7 +226,7 @@ export default function LibraryMembersPage() {
                                 ) : members.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                            No members found
+                                            {t("no_members_found")}
                                         </TableCell>
                                     </TableRow>
                                 ) : members.map((member) => (
@@ -237,7 +239,7 @@ export default function LibraryMembersPage() {
                                         <TableCell className="py-3 text-gray-500">{member.user?.phone || "-"}</TableCell>
                                         <TableCell className="py-3 text-right">
                                             <Link href={`/dashboard/library/member/issue/${member.member_id}`}>
-                                                <Button size="sm" className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all" title="Issue/Return">
+                                                <Button size="sm" className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all" title={t("issue_return")}>
                                                     <ArrowRightSquare className="h-4 w-4" />
                                                 </Button>
                                             </Link>
@@ -251,7 +253,7 @@ export default function LibraryMembersPage() {
                     {/* Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
                         <div>
-                            Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
+                            {t("showing_x_to_y_of_z", { from: pagination?.from || 0, to: pagination?.to || 0, total: pagination?.total || 0 })}
                         </div>
                         <div className="flex gap-1 items-center">
                             <Button

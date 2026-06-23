@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, X, ChevronLeft, ChevronRight, Loader2, Save, FileCode, Wallet, ListChecks } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -38,6 +39,7 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function IncomeHeadPage() {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState("");
     const [rowsPerPage, setRowsPerPage] = useState("50");
     const [incomeHeads, setIncomeHeads] = useState<IncomeHeadRecord[]>([]);
@@ -65,7 +67,7 @@ export default function IncomeHeadPage() {
             }
         } catch (error) {
             console.error("Error fetching income heads:", error);
-            toast.error("Failed to fetch income heads");
+            toast.error(t("failed_to_fetch_income_heads"));
         } finally {
             setLoading(false);
         }
@@ -78,7 +80,7 @@ export default function IncomeHeadPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.income_head) {
-            toast.error("Income Head is required");
+            toast.error(t("income_head_is_required"));
             return;
         }
 
@@ -87,20 +89,20 @@ export default function IncomeHeadPage() {
             if (editingId) {
                 const res = await api.put(`income/income-heads/${editingId}`, formData);
                 if (res.data?.status === "Success") {
-                    toast.success("Income Head updated successfully");
+                    toast.success(t("income_head_updated_successfully"));
                     setEditingId(null);
                 }
             } else {
                 const res = await api.post("income/income-heads", formData);
                 if (res.data?.status === "Success") {
-                    toast.success("Income Head saved successfully");
+                    toast.success(t("income_head_saved_successfully"));
                 }
             }
             setFormData({ income_head: "", description: "" });
             fetchIncomeHeads();
         } catch (error) {
             console.error("Error saving income head:", error);
-            toast.error("Failed to save income head");
+            toast.error(t("failed_to_save_income_head"));
         } finally {
             setSaving(false);
         }
@@ -115,23 +117,23 @@ export default function IncomeHeadPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this record?")) return;
+        if (!confirm(t("are_you_sure_delete_record"))) return;
 
         try {
             const res = await api.delete(`income/income-heads/${id}`);
             if (res.data?.status === "Success") {
-                toast.success("Income Head deleted successfully");
+                toast.success(t("income_head_deleted_successfully"));
                 fetchIncomeHeads();
             }
         } catch (error) {
             console.error("Error deleting income head:", error);
-            toast.error("Failed to delete income head");
+            toast.error(t("failed_to_delete_income_head"));
         }
     };
 
     const exportData = incomeHeads.map(item => ({
-        'Income Head': item.incomeHead,
-        'Description': item.description
+        [t("income_head")]: item.incomeHead,
+        [t("description")]: item.description
     }));
 
     const exportToExcel = () => {
@@ -139,7 +141,7 @@ export default function IncomeHeadPage() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "IncomeHeads");
         XLSX.writeFile(wb, "income_heads.xlsx");
-        toast.success("Exported to Excel");
+        toast.success(t("exported_to_excel"));
     };
 
     const exportToCSV = () => {
@@ -154,26 +156,26 @@ export default function IncomeHeadPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success("Exported to CSV");
+        toast.success(t("exported_to_csv"));
     };
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Income Head List", 14, 15);
+        doc.text(t("income_head_list"), 14, 15);
         autoTable(doc, {
-            head: [['Income Head', 'Description']],
+            head: [[t("income_head"), t("description")]],
             body: incomeHeads.map(item => [item.incomeHead, item.description]),
             startY: 20,
         });
         doc.save("income_heads.pdf");
-        toast.success("Exported to PDF");
+        toast.success(t("exported_to_pdf"));
     };
 
     const copyToClipboard = () => {
         const text = exportData.map(d => Object.values(d).join('\t')).join('\n');
         const header = Object.keys(exportData[0] || {}).join('\t');
         navigator.clipboard.writeText(header + '\n' + text);
-        toast.success("Copied to clipboard");
+        toast.success(t("copied_to_clipboard"));
     };
 
     const filteredData = incomeHeads.filter((item) =>
@@ -192,16 +194,16 @@ export default function IncomeHeadPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {editingId ? "Edit Income Head" : "Add Income Head"}
+                                {editingId ? t("edit_income_head") : t("add_income_head")}
                             </CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Create &amp; manage income heads</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("create_manage_income_heads")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="px-4 pb-4">
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="income-head" className="text-xs font-semibold text-gray-600">
-                                    Income Head <span className="text-red-500">*</span>
+                                    {t("income_head")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     id="income-head"
@@ -212,7 +214,7 @@ export default function IncomeHeadPage() {
 
                             <div className="space-y-2">
                                 <Label htmlFor="description" className="text-xs font-semibold text-gray-600">
-                                    Description
+                                    {t("description")}
                                 </Label>
                                 <Textarea
                                     id="description"
@@ -230,7 +232,7 @@ export default function IncomeHeadPage() {
                                     className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                                 >
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                    {editingId ? "Update" : "Save"}
+                                    {editingId ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </form>
@@ -244,8 +246,8 @@ export default function IncomeHeadPage() {
                             <ListChecks className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Income Head List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{incomeHeads.length} income head{incomeHeads.length === 1 ? "" : "s"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("income_head_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{incomeHeads.length} {t("income_head")}{incomeHeads.length === 1 ? "" : "s"}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="px-4 pb-4 space-y-4">
@@ -253,7 +255,7 @@ export default function IncomeHeadPage() {
                             <div className="flex w-full md:w-auto items-center gap-2">
                                 <div className="relative w-full md:w-64">
                                     <Input
-                                        placeholder="Search..."
+                                        placeholder={t("search") + "..."}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-3 pr-10"
@@ -315,9 +317,9 @@ export default function IncomeHeadPage() {
                             <Table>
                                 <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow>
-                                        <TableHead className="font-semibold text-gray-600">Income Head</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 w-full">Description</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("income_head")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 w-full">{t("description")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -326,7 +328,7 @@ export default function IncomeHeadPage() {
                                     ) : filteredData.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                                No data found
+                                                {t("no_data_found")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -361,7 +363,7 @@ export default function IncomeHeadPage() {
 
                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
                             <div>
-                                Showing 1 to {filteredData.length} of {incomeHeads.length} entries
+                                {t("showing_x_to_y_of_z", { from: 1, to: filteredData.length, total: incomeHeads.length })}
                             </div>
                             <div className="flex gap-1">
                                 <Button variant="outline" size="sm" className="h-7 w-7 rounded-[10px] p-0 shadow-sm bg-white border border-gray-200 text-gray-600" disabled><ChevronLeft className="h-4 w-4" /></Button>

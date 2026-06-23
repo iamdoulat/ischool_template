@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface OnlineExam {
     id: number;
@@ -44,6 +45,7 @@ interface OnlineExam {
 }
 
 export default function UserOnlineExamPage() {
+    const { t } = useTranslation();
     const [exams, setExams] = useState<OnlineExam[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"upcoming" | "closed">("upcoming");
@@ -73,7 +75,7 @@ export default function UserOnlineExamPage() {
             setCurrentPage(res.current_page || page);
         } catch (error) {
             console.error("Error fetching online exams:", error);
-            toast.error("Failed to load online exams");
+            toast.error(t("failed_to_load_online_exams"));
         } finally {
             setLoading(false);
         }
@@ -104,18 +106,18 @@ export default function UserOnlineExamPage() {
 
     const StatusBadge = ({ status }: { status: string }) => (
         <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold shadow-sm", getStatusStyle(status))}>
-            {status}
+            {t(status.toLowerCase())}
         </span>
     );
 
     const QuizBadge = ({ isQuiz }: { isQuiz: boolean }) => (
         isQuiz ? (
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                <CheckSquare className="h-3 w-3" /> Quiz
+                <CheckSquare className="h-3 w-3" /> {t("quiz")}
             </span>
         ) : (
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
-                <AlertCircle className="h-3 w-3" /> Exam
+                <AlertCircle className="h-3 w-3" /> {t("exam")}
             </span>
         )
     );
@@ -130,9 +132,9 @@ export default function UserOnlineExamPage() {
                         <ClipboardList className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Online Exam</h1>
+                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("online_exam")}</h1>
                         <p className="text-[11px] text-gray-500 mt-1">
-                            {totalEntries} {activeTab === "upcoming" ? "upcoming" : "closed"} exam{totalEntries === 1 ? "" : "s"}
+                            {totalEntries} {activeTab === "upcoming" ? t("upcoming") : t("closed")} exam{totalEntries === 1 ? "" : "s"}
                         </p>
                     </div>
                 </div>
@@ -140,8 +142,8 @@ export default function UserOnlineExamPage() {
                 {/* ── Tabs ── */}
                 <div className="flex border-b border-gray-200 px-2">
                     {[
-                        { key: "upcoming", label: "Upcoming Exams" },
-                        { key: "closed", label: "Closed Exam" },
+                        { key: "upcoming", label: t("upcoming_exams") },
+                        { key: "closed", label: t("completed_exams") },
                     ].map((t) => (
                         <button
                             key={t.key}
@@ -166,7 +168,7 @@ export default function UserOnlineExamPage() {
                         <div className="relative w-full md:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Search exams..."
+                                placeholder={t("search")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
@@ -187,11 +189,17 @@ export default function UserOnlineExamPage() {
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center gap-1 text-gray-400">
-                                {[Copy, FileSpreadsheet, FileBox, Printer].map((Icon, i) => (
+                                {[
+                                    { Icon: Copy, tooltip: t("copy") },
+                                    { Icon: FileSpreadsheet, tooltip: t("excel") },
+                                    { Icon: FileBox, tooltip: t("pdf") },
+                                    { Icon: Printer, tooltip: t("print") },
+                                ].map(({ Icon, tooltip }, i) => (
                                     <Button
                                         key={i}
                                         variant="ghost"
                                         size="icon"
+                                        title={tooltip}
                                         className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all"
                                     >
                                         <Icon className="h-3.5 w-3.5" />
@@ -206,15 +214,15 @@ export default function UserOnlineExamPage() {
                         <Table className="min-w-[1000px]">
                             <TableHeader className="bg-gray-50/80 border-b border-gray-100">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                    <TableHead className="py-3 px-4 h-auto">Exam <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Type</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Date From <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Date To <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Duration <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-center">Total Attempt</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-center">Attempted</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-center">Status</TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-right">Action</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("exam")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("type")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("date_from")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("date_to")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("duration")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-center">{t("total_attempt")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-center">{t("attempted")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-center">{t("status")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -223,7 +231,7 @@ export default function UserOnlineExamPage() {
                                         <TableCell colSpan={9} className="text-center py-12">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                                Loading online exams...
+                                                {t("loading")}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -232,7 +240,7 @@ export default function UserOnlineExamPage() {
                                         <TableCell colSpan={9} className="py-14 text-center">
                                             <div className="flex flex-col items-center text-gray-400">
                                                 <ClipboardList className="h-10 w-10 opacity-30 mb-2" />
-                                                <p className="text-[11px] font-bold uppercase tracking-widest">No exams available</p>
+                                                <p className="text-[11px] font-bold uppercase tracking-widest">{t("no_exams_available")}</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -250,9 +258,9 @@ export default function UserOnlineExamPage() {
                                             <TableCell className="py-3 px-4 text-right">
                                                 <Button
                                                     className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-7 px-2.5 rounded-lg text-[11px] font-bold shadow-sm transition-all active:scale-95 border-0"
-                                                    title="View Exam"
+                                                    title={t("view_exam")}
                                                 >
-                                                    <Eye className="h-3.5 w-3.5 mr-1" /> View
+                                                    <Eye className="h-3.5 w-3.5 mr-1" /> {t("view")}
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -266,12 +274,12 @@ export default function UserOnlineExamPage() {
                     <div className="lg:hidden">
                         {loading ? (
                             <div className="flex items-center justify-center gap-2 text-gray-400 py-12">
-                                <Loader2 className="h-4 w-4 animate-spin" /> Loading online exams...
+                                <Loader2 className="h-4 w-4 animate-spin" /> {t("loading")}
                             </div>
                         ) : exams.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                                 <ClipboardList className="h-12 w-12 opacity-30 mb-3" />
-                                <p className="font-bold uppercase text-[11px] tracking-widest">No exams available</p>
+                                <p className="font-bold uppercase text-[11px] tracking-widest">{t("no_exams_available")}</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -287,18 +295,18 @@ export default function UserOnlineExamPage() {
 
                                         {/* Meta grid */}
                                         <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-gray-600 border-t border-gray-100 pt-2.5">
-                                            <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />From: {item.dateFrom}</span>
-                                            <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />To: {item.dateTo}</span>
+                                            <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("from")}: {item.dateFrom}</span>
+                                            <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("to")}: {item.dateTo}</span>
                                             <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.duration}</span>
-                                            <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-indigo-400 shrink-0" />Attempts: {item.totalAttempt}</span>
-                                            <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-indigo-400 shrink-0" />Attempted: {item.attempted}</span>
+                                            <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("attempts")}: {item.totalAttempt}</span>
+                                            <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("attempted")}: {item.attempted}</span>
                                         </div>
 
                                         <Button
                                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-8 text-[11px] font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 border-0 w-full mt-1"
-                                            title="View Exam"
+                                            title={t("view_exam")}
                                         >
-                                            <Eye className="h-3.5 w-3.5" /> View Exam
+                                            <Eye className="h-3.5 w-3.5" /> {t("view_exam")}
                                         </Button>
                                     </div>
                                 ))}
@@ -309,8 +317,8 @@ export default function UserOnlineExamPage() {
                     {/* ── Pagination ── */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
-                            Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
+                            {Math.min(startIndex + sizeNum, totalEntries)} {t("of")} {totalEntries} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (

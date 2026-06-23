@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Table,
     TableBody,
@@ -50,6 +51,7 @@ interface ClassReport {
 }
 
 export default function LiveClassesReportPage() {
+    const { t } = useTranslation();
     const [classes, setClasses] = useState<any[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
     const [selectedSection, setSelectedSection] = useState("");
@@ -95,7 +97,7 @@ export default function LiveClassesReportPage() {
 
     const handleSearch = async () => {
         if (!selectedClass || !selectedSection) {
-            toast.error("Please select Class and Section");
+            toast.error(t("please_select_class_and_section"));
             return;
         }
 
@@ -119,7 +121,7 @@ export default function LiveClassesReportPage() {
             }
         } catch (error) {
             console.error("Failed to fetch reports", error);
-            toast.error("Failed to fetch live classes reports");
+            toast.error(t("failed_to_fetch_live_classes_reports"));
         } finally {
             setLoading(false);
         }
@@ -137,7 +139,7 @@ export default function LiveClassesReportPage() {
         if (item.staff) {
             list.push({
                 name: `${item.staff.name} ${item.staff.last_name ?? ''}`.trim(),
-                role: "Teacher",
+                role: t("teacher"),
                 id: item.staff.employee_id || item.created_by,
                 last_join: formatDateTime(item.date_time),
             });
@@ -145,7 +147,7 @@ export default function LiveClassesReportPage() {
         if (item.creator) {
             list.push({
                 name: `${item.creator.name} ${item.creator.last_name ?? ''}`.trim(),
-                role: item.creator.role || "Host",
+                role: item.creator.role || t("host"),
                 id: item.creator.id,
                 last_join: formatDateTime(item.date_time),
             });
@@ -194,8 +196,8 @@ export default function LiveClassesReportPage() {
                         <Video className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Live Classes Report</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter by class &amp; section to view attendance records</p>
+                        <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("live_classes_report")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_by_class_and_section_to_view_attendance_records")}</p>
                     </div>
                 </div>
 
@@ -203,10 +205,10 @@ export default function LiveClassesReportPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Class Dropdown */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Class <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("class")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs rounded text-gray-700">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded shadow-xl">
                                     {classes.map(c => (
@@ -218,14 +220,14 @@ export default function LiveClassesReportPage() {
 
                         {/* Section Dropdown */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Section <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("section")} <span className="text-red-500">*</span></Label>
                             <Select
                                 value={selectedSection}
                                 onValueChange={setSelectedSection}
                                 disabled={!selectedClass}
                             >
                                 <SelectTrigger className="h-9 border-gray-200 text-xs rounded text-gray-700">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded shadow-xl">
                                     {sections.map(s => (
@@ -242,7 +244,7 @@ export default function LiveClassesReportPage() {
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-6 h-9 text-xs font-bold rounded-full shadow-[0_4px_14px_rgba(99,102,241,0.3)] flex items-center gap-1.5 transition-all active:scale-95 border-0 cursor-pointer"
                         >
                             <Search className="h-3.5 w-3.5" />
-                            Search
+                            {t("search")}
                         </Button>
                     </div>
                 </div>
@@ -255,7 +257,7 @@ export default function LiveClassesReportPage() {
                         <List className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                        <h2 className="text-sm font-bold tracking-tight text-slate-800 leading-none">Results</h2>
+                        <h2 className="text-sm font-bold tracking-tight text-slate-800 leading-none">{t("results")}</h2>
                     </div>
                 </div>
 
@@ -277,8 +279,9 @@ export default function LiveClassesReportPage() {
                             </Table>
                         </div>
                     ) : reports.length === 0 ? (
-                        <div className="bg-[#e3f2fd] text-[#1e88e5] p-3 text-xs border border-[#bbdefb] rounded font-medium">
-                            No Record Found
+                            <div className="text-center py-12 text-gray-400">
+                                <List className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                                <p className="text-xs font-bold uppercase tracking-widest">{t("no_records_found")}</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -287,12 +290,12 @@ export default function LiveClassesReportPage() {
                                 <Table className="min-w-[1000px]">
                                     <TableHeader className="bg-transparent border-b border-gray-100">
                                         <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                            <TableHead className="py-3 px-4">Class Title <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                            <TableHead className="py-3 px-4">Description <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                            <TableHead className="py-3 px-4">Date Time <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                            <TableHead className="py-3 px-4">Created By <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                            <TableHead className="py-3 px-4 text-center">Total Join <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                            <TableHead className="py-3 px-4 text-right">Action</TableHead>
+                                            <TableHead className="py-3 px-4">{t("class_title")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                            <TableHead className="py-3 px-4">{t("description")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                            <TableHead className="py-3 px-4">{t("date_time")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                            <TableHead className="py-3 px-4">{t("created_by")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                            <TableHead className="py-3 px-4 text-center">{t("total_join")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                            <TableHead className="py-3 px-4 text-right">{t("action")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -304,7 +307,7 @@ export default function LiveClassesReportPage() {
                                                 <TableCell className="py-3 px-4 text-gray-600">
                                                     {item.creator
                                                         ? `${item.creator.name} ${item.creator.last_name ?? ''} (${item.creator.role} : ${item.creator.id})`
-                                                        : <span className="text-gray-400 italic">—</span>}
+                                                        : <span className="text-gray-400 italic">{t("em_dash")}</span>}
                                                 </TableCell>
                                                 <TableCell className="py-3 px-4 text-center text-gray-700 font-medium">{item.total_join}</TableCell>
                                                 <TableCell className="py-3 px-4 text-right">
@@ -312,7 +315,7 @@ export default function LiveClassesReportPage() {
                                                         <Button
                                                             onClick={() => handleOpenJoinList(item)}
                                                             className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95"
-                                                            title="View join list details"
+                                                            title={t("view_join_list_details")}
                                                         >
                                                             <List className="h-3.5 w-3.5" />
                                                         </Button>
@@ -327,8 +330,11 @@ export default function LiveClassesReportPage() {
                             {/* Footer */}
                             <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
                                 <div>
-                                    Showing {startIndex + 1} to{" "}
-                                    {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                                    {t("showing_x_to_y_of_z", {
+                                        from: startIndex + 1,
+                                        to: Math.min(startIndex + sizeNum, totalEntries),
+                                        total: totalEntries
+                                    })}
                                 </div>
 
                                 <div className="flex items-center gap-1.5">
@@ -376,7 +382,7 @@ export default function LiveClassesReportPage() {
                     {/* Header */}
                     <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
                         <DialogHeader>
-                            <DialogTitle className="text-white text-sm font-semibold tracking-tight">Join List</DialogTitle>
+                            <DialogTitle className="text-white text-sm font-semibold tracking-tight">{t("join_list")}</DialogTitle>
                         </DialogHeader>
                         <button 
                             onClick={() => setJoinModalOpen(false)} 
@@ -391,7 +397,7 @@ export default function LiveClassesReportPage() {
                         <div className="relative w-full md:w-48">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search..."
+                                placeholder={t("search_placeholder")}
                                 value={joinSearchTerm}
                                 onChange={(e) => setJoinSearchTerm(e.target.value)}
                                 className="pl-8 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
@@ -428,15 +434,15 @@ export default function LiveClassesReportPage() {
                             <Table className="min-w-[700px]">
                                 <TableHeader className="bg-transparent border-b border-gray-100">
                                     <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-2.5 px-4">Staff <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                        <TableHead className="py-2.5 px-4 text-right">Last Join</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("staff")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                        <TableHead className="py-2.5 px-4 text-right">{t("last_join")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredJoinList.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={2} className="text-center py-8 text-gray-400 uppercase text-[10px] tracking-wider">
-                                                No session join records matching search filter.
+                                                {t("no_session_join_records_matching_search_filter")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -458,7 +464,11 @@ export default function LiveClassesReportPage() {
                         {/* Modal Footer pagination */}
                         <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                             <div>
-                                Showing 1 to {filteredJoinList.length} of {filteredJoinList.length} entries
+                                {t("showing_x_to_y_of_z", {
+                                    from: 1,
+                                    to: filteredJoinList.length,
+                                    total: filteredJoinList.length
+                                })}
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <button className="h-7 w-7 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl active:scale-95 border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none" disabled>

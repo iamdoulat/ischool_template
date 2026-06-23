@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 
 // ─── Fees Types ───────────────────────────────────────────────────────────────
 interface FeePayment {
@@ -485,6 +486,7 @@ const fmt = (n: number) =>
   n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const StatusBadge = ({ status }: { status: string }) => {
+  const { t } = useTranslation();
   const map: Record<string, string> = {
     Paid: "bg-[#5cb85c] text-white",
     Unpaid: "bg-red-500 text-white",
@@ -492,7 +494,7 @@ const StatusBadge = ({ status }: { status: string }) => {
   };
   return (
     <span className={cn("px-2 py-0.5 text-[10px] font-bold rounded uppercase", map[status] ?? "bg-gray-400 text-white")}>
-      {status}
+      {t(status.toLowerCase())}
     </span>
   );
 };
@@ -552,15 +554,16 @@ function ExportToolbar({
   onPdf?: () => void;
   onPrint?: () => void;
 }) {
+  const { t } = useTranslation();
   const btn =
     "h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all";
   return (
     <div className="flex items-center gap-1 text-gray-500">
-      <Button onClick={onCopy} variant="ghost" size="icon" className={btn} title="Copy"><Copy className="h-3.5 w-3.5" /></Button>
-      <Button onClick={onExcel} variant="ghost" size="icon" className={btn} title="Export Excel"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-      <Button onClick={onPdf} variant="ghost" size="icon" className={btn} title="Export PDF"><FileText className="h-3.5 w-3.5" /></Button>
-      <Button onClick={onPrint} variant="ghost" size="icon" className={btn} title="Print"><Printer className="h-3.5 w-3.5" /></Button>
-      <Button variant="ghost" size="icon" className={btn} title="Columns"><Columns className="h-3.5 w-3.5" /></Button>
+      <Button onClick={onCopy} variant="ghost" size="icon" className={btn} title={t("copy")}><Copy className="h-3.5 w-3.5" /></Button>
+      <Button onClick={onExcel} variant="ghost" size="icon" className={btn} title={t("export_excel")}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+      <Button onClick={onPdf} variant="ghost" size="icon" className={btn} title={t("export_pdf")}><FileText className="h-3.5 w-3.5" /></Button>
+      <Button onClick={onPrint} variant="ghost" size="icon" className={btn} title={t("print")}><Printer className="h-3.5 w-3.5" /></Button>
+      <Button variant="ghost" size="icon" className={btn} title={t("columns")}><Columns className="h-3.5 w-3.5" /></Button>
     </div>
   );
 }
@@ -611,6 +614,7 @@ function InfoTile({
 
 // ─── Fees Tab Component ────────────────────────────────────────────────────────
 function FeesTab() {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<number[]>([]);
   const allIds = feesData.map((f) => f.id);
   const allChecked = selected.length === allIds.length;
@@ -632,22 +636,22 @@ function FeesTab() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2">
           <button className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm hover:opacity-90 active:scale-[0.98] transition-all">
-            <Printer className="h-3.5 w-3.5" /> Print Selected
+            <Printer className="h-3.5 w-3.5" /> {t("print_selected")}
           </button>
           <button className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm hover:opacity-90 active:scale-[0.98] transition-all">
-            <CreditCard className="h-3.5 w-3.5" /> Pay Selected
+            <CreditCard className="h-3.5 w-3.5" /> {t("pay_selected")}
           </button>
           <button className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm hover:opacity-90 active:scale-[0.98] transition-all">
-            <Building2 className="h-3.5 w-3.5" /> Offline Bank Payments
+            <Building2 className="h-3.5 w-3.5" /> {t("offline_bank_payments")}
           </button>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-600">
-          <span className="hidden sm:inline rounded-full bg-indigo-50 text-indigo-600 text-[11px] font-semibold px-3 py-1">Session 2026-27</span>
-          <span className="font-medium">Date: {new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</span>
+          <span className="hidden sm:inline rounded-full bg-indigo-50 text-indigo-600 text-[11px] font-semibold px-3 py-1">{t("session")} 2026-27</span>
+          <span className="font-medium">{t("date")}: {new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</span>
         </div>
       </div>
 
-      <PanelCard title="Fee Statement" subtitle="Session 2026-27" right={<ExportToolbar />}>
+      <PanelCard title={t("fee_statement")} subtitle={`${t("session")} 2026-27`} right={<ExportToolbar />}>
         {/* Desktop table */}
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-xs">
@@ -656,17 +660,17 @@ function FeesTab() {
                 <th className="w-8 px-2 py-2.5 text-center">
                   <input type="checkbox" checked={allChecked} onChange={toggleAll} className="rounded cursor-pointer accent-[#6366F1]" />
                 </th>
-                <th className="px-2 py-2.5 text-left font-bold text-gray-600 min-w-[160px]">Fees</th>
-                <th className="px-2 py-2.5 text-left font-bold text-gray-600 whitespace-nowrap">Due Date</th>
-                <th className="px-2 py-2.5 text-left font-bold text-gray-600">Status</th>
-                <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">Amount ($)</th>
-                <th className="px-2 py-2.5 text-left font-bold text-gray-600 whitespace-nowrap">Payment ID</th>
-                <th className="px-2 py-2.5 text-left font-bold text-gray-600">Mode</th>
-                <th className="px-2 py-2.5 text-left font-bold text-gray-600">Date</th>
-                <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">Discount ($)</th>
-                <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">Fine ($)</th>
-                <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">Paid ($)</th>
-                <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">Balance ($)</th>
+                <th className="px-2 py-2.5 text-left font-bold text-gray-600 min-w-[160px]">{t("fees")}</th>
+                <th className="px-2 py-2.5 text-left font-bold text-gray-600 whitespace-nowrap">{t("due_date")}</th>
+                <th className="px-2 py-2.5 text-left font-bold text-gray-600">{t("status")}</th>
+                <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("amount")} ($)</th>
+                <th className="px-2 py-2.5 text-left font-bold text-gray-600 whitespace-nowrap">{t("payment_id")}</th>
+                <th className="px-2 py-2.5 text-left font-bold text-gray-600">{t("mode")}</th>
+                <th className="px-2 py-2.5 text-left font-bold text-gray-600">{t("date")}</th>
+                <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("discount")} ($)</th>
+                <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("fine")} ($)</th>
+                <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("paid")} ($)</th>
+                <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("balance")} ($)</th>
               </tr>
             </thead>
             <tbody>
@@ -724,7 +728,7 @@ function FeesTab() {
               })}
               <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
                 <td></td>
-                <td className="px-2 py-2.5 text-sm font-bold text-gray-700" colSpan={3}>Grand Total</td>
+                <td className="px-2 py-2.5 text-sm font-bold text-gray-700" colSpan={3}>{t("grand_total")}</td>
                 <td className="px-2 py-2.5 text-right text-gray-800 whitespace-nowrap">
                   ${fmt(grandAmount)}{grandFine > 0 && <span className="text-orange-500 ml-1">+ {fmt(grandFine)}</span>}
                 </td>
@@ -750,19 +754,19 @@ function FeesTab() {
                 <StatusBadge status={fee.status} />
               </div>
               <div className="mt-2 rounded-lg bg-gray-50 border border-gray-100 px-3 py-1.5">
-                <MiniField label="Due Date" value={fee.dueDate} className="text-[#337ab7]" />
-                <MiniField label="Amount" value={<>{fmt(fee.amount)}{fee.fine > 0 && <span className="text-orange-500"> + {fmt(fee.fine)}</span>}</>} />
-                <MiniField label="Discount" value={fmt(fee.discount)} className={fee.discount > 0 ? "text-[#337ab7] font-semibold" : ""} />
-                <MiniField label="Fine" value={fmt(fee.fineAmount)} />
-                <MiniField label="Paid" value={fmt(fee.paidAmount)} />
-                <MiniField label="Balance" value={fmt(fee.balance)} className={fee.balance > 0 ? "text-red-600 font-bold" : "text-green-600"} />
+                <MiniField label={t("due_date")} value={fee.dueDate} className="text-[#337ab7]" />
+                <MiniField label={t("amount")} value={<>{fmt(fee.amount)}{fee.fine > 0 && <span className="text-orange-500"> + {fmt(fee.fine)}</span>}</>} />
+                <MiniField label={t("discount")} value={fmt(fee.discount)} className={fee.discount > 0 ? "text-[#337ab7] font-semibold" : ""} />
+                <MiniField label={t("fine")} value={fmt(fee.fineAmount)} />
+                <MiniField label={t("paid")} value={fmt(fee.paidAmount)} />
+                <MiniField label={t("balance")} value={fmt(fee.balance)} className={fee.balance > 0 ? "text-red-600 font-bold" : "text-green-600"} />
               </div>
               {fee.payments.length > 0 && (
                 <div className="mt-1.5 space-y-1">
                   {fee.payments.map((p) => (
                     <div key={p.id} className="flex items-center justify-between text-[11px] text-gray-500 pl-2">
                       <span className="text-[#337ab7]">↳ {p.paymentId} · {p.mode}</span>
-                      <span>{p.date} · Paid {fmt(p.paid)}</span>
+                      <span>{p.date} · {t("paid")} {fmt(p.paid)}</span>
                     </div>
                   ))}
                 </div>
@@ -771,12 +775,12 @@ function FeesTab() {
           ))}
           {/* Mobile grand total */}
           <div className="p-3.5 bg-gray-50">
-            <div className="text-sm font-bold text-gray-700 mb-1">Grand Total</div>
-            <MiniField label="Amount" value={<>${fmt(grandAmount)}{grandFine > 0 && <span className="text-orange-500"> + {fmt(grandFine)}</span>}</>} />
-            <MiniField label="Discount" value={`$${fmt(grandDiscount)}`} />
-            <MiniField label="Fine" value={`$${fmt(grandFineAmt)}`} />
-            <MiniField label="Paid" value={`$${fmt(grandPaid)}`} />
-            <MiniField label="Balance" value={`$${fmt(grandBalance)}`} className="text-red-600 font-bold" />
+            <div className="text-sm font-bold text-gray-700 mb-1">{t("grand_total")}</div>
+            <MiniField label={t("amount")} value={<>${fmt(grandAmount)}{grandFine > 0 && <span className="text-orange-500"> + {fmt(grandFine)}</span>}</>} />
+            <MiniField label={t("discount")} value={`$${fmt(grandDiscount)}`} />
+            <MiniField label={t("fine")} value={`$${fmt(grandFineAmt)}`} />
+            <MiniField label={t("paid")} value={`$${fmt(grandPaid)}`} />
+            <MiniField label={t("balance")} value={`$${fmt(grandBalance)}`} className="text-red-600 font-bold" />
           </div>
         </div>
       </PanelCard>
@@ -846,6 +850,7 @@ const examData: ExamData[] = [
 
 // ─── Exam Tab Component ────────────────────────────────────────────────────────
 function ExamTab() {
+  const { t } = useTranslation();
   const fmt = (n: number) => n.toFixed(2);
 
   const handleCopy = () => {
@@ -859,7 +864,7 @@ function ExamTab() {
       text += `Percentage: ${fmt(exam.summary.percentage)}\tRank: ${exam.summary.rank}\tResult: ${exam.summary.result}\tDivision: ${exam.summary.division}\tGrand Total: ${exam.summary.grandTotal}\tTotal Obtain: ${exam.summary.totalObtained}\n\n`;
     });
     navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+    toast.success(t("copied_to_clipboard"));
   };
 
   const handleExportExcel = () => {
@@ -878,7 +883,7 @@ function ExamTab() {
     a.href = url;
     a.download = `exam_report_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
-    toast.success("Exported to CSV");
+    toast.success(t("exported_to_csv"));
   };
 
   const handleExportPDF = () => {
@@ -892,7 +897,7 @@ function ExamTab() {
   return (
     <TabPanel>
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold text-gray-800">Examination Results</h2>
+        <h2 className="text-sm font-bold text-gray-800">{t("examination_results")}</h2>
         <ExportToolbar onCopy={handleCopy} onExcel={handleExportExcel} onPdf={handleExportPDF} onPrint={handlePrint} />
       </div>
 
@@ -903,12 +908,12 @@ function ExamTab() {
             <table className="w-full text-xs text-left">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50/80 text-gray-700">
-                  <th className="px-4 py-3 font-bold min-w-[150px]">Subject</th>
-                  <th className="px-4 py-3 font-bold min-w-[100px]">Max Marks</th>
-                  <th className="px-4 py-3 font-bold min-w-[100px]">Min Marks</th>
-                  <th className="px-4 py-3 font-bold min-w-[120px]">Marks Obtained</th>
-                  <th className="px-4 py-3 font-bold min-w-[100px]">{exam.type === "result" ? "Result" : "Grade"}</th>
-                  <th className="px-4 py-3 font-bold">Note</th>
+                  <th className="px-4 py-3 font-bold min-w-[150px]">{t("subject")}</th>
+                  <th className="px-4 py-3 font-bold min-w-[100px]">{t("max_marks")}</th>
+                  <th className="px-4 py-3 font-bold min-w-[100px]">{t("min_marks")}</th>
+                  <th className="px-4 py-3 font-bold min-w-[120px]">{t("marks_obtained")}</th>
+                  <th className="px-4 py-3 font-bold min-w-[100px]">{exam.type === "result" ? t("result") : t("grade")}</th>
+                  <th className="px-4 py-3 font-bold">{t("note")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -920,7 +925,7 @@ function ExamTab() {
                     <td className="px-4 py-2.5 font-semibold">{fmt(subj.obtained)}</td>
                     <td className="px-4 py-2.5">
                       {exam.type === "result" ? (
-                        <span className={cn("px-2 py-0.5 text-[10px] font-bold rounded text-white", subj.result === "Pass" ? "bg-[#5cb85c]" : "bg-red-500")}>{subj.result}</span>
+                        <span className={cn("px-2 py-0.5 text-[10px] font-bold rounded text-white", subj.result === "Pass" ? "bg-[#5cb85c]" : "bg-red-500")}>{t((subj.result || "").toLowerCase())}</span>
                       ) : (
                         <span className="font-semibold text-gray-700">{subj.grade}</span>
                       )}
@@ -945,10 +950,10 @@ function ExamTab() {
                   )}
                 </div>
                 <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-1">
-                  <MiniField label="Max" value={fmt(subj.maxMarks)} />
-                  <MiniField label="Min" value={fmt(subj.minMarks)} />
-                  <MiniField label="Obtained" value={fmt(subj.obtained)} className="text-gray-900 font-bold" />
-                  {subj.note && <MiniField label="Note" value={subj.note} />}
+                  <MiniField label={t("max")} value={fmt(subj.maxMarks)} />
+                  <MiniField label={t("min")} value={fmt(subj.minMarks)} />
+                  <MiniField label={t("obtained")} value={fmt(subj.obtained)} className="text-gray-900 font-bold" />
+                  {subj.note && <MiniField label={t("note")} value={subj.note} />}
                 </div>
               </div>
             ))}
@@ -956,12 +961,12 @@ function ExamTab() {
 
           {/* Summary footer */}
           <div className="bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10 px-4 py-3 border-t border-gray-200 text-[12px] sm:text-[13px] font-bold text-[#333333] grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between gap-x-6 gap-y-2">
-            <span>Percentage : {fmt(exam.summary.percentage)}</span>
-            <span>Rank : {exam.summary.rank}</span>
-            <span className="flex items-center gap-1.5">Result : <span className="bg-[#5cb85c] text-white px-2 py-0.5 text-[11px] rounded">{exam.summary.result}</span></span>
-            <span>Division : {exam.summary.division}</span>
-            <span>Grand Total : {exam.summary.grandTotal}</span>
-            <span>Total Obtain : {exam.summary.totalObtained}</span>
+            <span>{t("percentage")} : {fmt(exam.summary.percentage)}</span>
+            <span>{t("rank")} : {exam.summary.rank}</span>
+            <span className="flex items-center gap-1.5">{t("result")} : <span className="bg-[#5cb85c] text-white px-2 py-0.5 text-[11px] rounded">{t(exam.summary.result.toLowerCase())}</span></span>
+            <span>{t("division")} : {exam.summary.division}</span>
+            <span>{t("grand_total")} : {exam.summary.grandTotal}</span>
+            <span>{t("total_obtain")} : {exam.summary.totalObtained}</span>
           </div>
         </PanelCard>
       ))}
@@ -1088,6 +1093,7 @@ const cbseExamData: CbseExamData[] = [
 
 // ─── CBSE Exam Tab Component ──────────────────────────────────────────────────
 function CbseExamTab() {
+  const { t } = useTranslation();
   const handleCopy = () => {
     let text = "";
     cbseExamData.forEach(exam => {
@@ -1100,7 +1106,7 @@ function CbseExamTab() {
       text += `Total Marks: ${exam.summary.totalObtained}/${exam.summary.totalMax}\tPercentage: ${exam.summary.percentage}%\tGrade: ${exam.summary.grade}\tRank: ${exam.summary.rank}\n\n`;
     });
     navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+    toast.success(t("copied_to_clipboard"));
   };
 
   const handleExportExcel = () => {
@@ -1120,7 +1126,7 @@ function CbseExamTab() {
     a.href = url;
     a.download = `cbse_exam_report_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
-    toast.success("Exported to CSV");
+    toast.success(t("exported_to_csv"));
   };
 
   const handleExportPDF = () => {
@@ -1134,7 +1140,7 @@ function CbseExamTab() {
   return (
     <TabPanel>
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold text-gray-800">CBSE Examinations</h2>
+        <h2 className="text-sm font-bold text-gray-800">{t("cbse_examinations")}</h2>
         <ExportToolbar onCopy={handleCopy} onExcel={handleExportExcel} onPdf={handleExportPDF} onPrint={handlePrint} />
       </div>
 
@@ -1145,7 +1151,7 @@ function CbseExamTab() {
             <table className="w-full text-[13px] text-center border-collapse">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50/80 text-[#333]">
-                  <th className="px-4 py-3 font-bold min-w-[150px] text-left border-r border-gray-100">Subject</th>
+                  <th className="px-4 py-3 font-bold min-w-[150px] text-left border-r border-gray-100">{t("subject")}</th>
                   <th className="px-4 py-2 font-bold min-w-[120px] border-r border-gray-100">
                     <div>{exam.headers.theory.title}</div>
                     {exam.headers.theory.subTitle && <div className="text-[11px] font-normal text-gray-500">{exam.headers.theory.subTitle}</div>}
@@ -1160,7 +1166,7 @@ function CbseExamTab() {
                       {exam.headers.assignment.subTitle && <div className="text-[11px] font-normal text-gray-500">{exam.headers.assignment.subTitle}</div>}
                     </th>
                   )}
-                  <th className="px-4 py-3 font-bold min-w-[80px]">Total</th>
+                  <th className="px-4 py-3 font-bold min-w-[80px]">{t("total")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1176,10 +1182,10 @@ function CbseExamTab() {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50/80 font-bold text-[#333] text-[12px] border-t border-gray-200">
-                  <td className="px-4 py-2.5 text-left border-r border-gray-100">Total : {exam.summary.totalObtained}/{exam.summary.totalMax}</td>
-                  <td colSpan={exam.headers.assignment ? 2 : 1} className="px-4 py-2.5 text-left border-r border-gray-100">Percentage : {exam.summary.percentage}%</td>
-                  <td className="px-4 py-2.5 text-left border-r border-gray-100">Grade : <span className="text-indigo-600">{exam.summary.grade}</span></td>
-                  <td className="px-4 py-2.5 text-left">Rank : {exam.summary.rank}</td>
+                  <td className="px-4 py-2.5 text-left border-r border-gray-100">{t("total")} : {exam.summary.totalObtained}/{exam.summary.totalMax}</td>
+                  <td colSpan={exam.headers.assignment ? 2 : 1} className="px-4 py-2.5 text-left border-r border-gray-100">{t("percentage")} : {exam.summary.percentage}%</td>
+                  <td className="px-4 py-2.5 text-left border-r border-gray-100">{t("grade")} : <span className="text-indigo-600">{exam.summary.grade}</span></td>
+                  <td className="px-4 py-2.5 text-left">{t("rank")} : {exam.summary.rank}</td>
                 </tr>
               </tfoot>
             </table>
@@ -1194,17 +1200,17 @@ function CbseExamTab() {
                   <MiniField label={exam.headers.theory.title} value={subj.theory} />
                   <MiniField label={exam.headers.practical.title} value={subj.practical} />
                   {exam.headers.assignment && <MiniField label={exam.headers.assignment.title} value={subj.assignment || "N/A"} />}
-                  <MiniField label="Total" value={subj.total} className="font-bold text-gray-900" />
+                  <MiniField label={t("total")} value={subj.total} className="font-bold text-gray-900" />
                 </div>
               </div>
             ))}
             {/* Mobile summary */}
             <div className="p-3.5 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
               <div className="text-[12px] font-bold text-gray-700 grid grid-cols-2 gap-x-4 gap-y-1">
-                <span>Total: {exam.summary.totalObtained}/{exam.summary.totalMax}</span>
-                <span>Percentage: {exam.summary.percentage}%</span>
-                <span>Grade: <span className="text-indigo-600">{exam.summary.grade}</span></span>
-                <span>Rank: {exam.summary.rank}</span>
+                <span>{t("total")}: {exam.summary.totalObtained}/{exam.summary.totalMax}</span>
+                <span>{t("percentage")}: {exam.summary.percentage}%</span>
+                <span>{t("grade")}: <span className="text-indigo-600">{exam.summary.grade}</span></span>
+                <span>{t("rank")}: {exam.summary.rank}</span>
               </div>
             </div>
           </div>
@@ -1269,6 +1275,7 @@ const getAttendanceColor = (status: string) => {
 
 // ─── Attendance Tab Component ──────────────────────────────────────────────────
 function AttendanceTab() {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
 
   const handleCopy = () => {
@@ -1277,7 +1284,7 @@ function AttendanceTab() {
       text += `${i + 1}\t` + attendanceMonths.map(m => row[m] || "").join("\t") + "\n";
     });
     navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+    toast.success(t("copied_to_clipboard"));
   };
 
   const handleExportExcel = () => {
@@ -1291,7 +1298,7 @@ function AttendanceTab() {
     a.href = url;
     a.download = `attendance_report_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
-    toast.success("Exported to CSV");
+    toast.success(t("exported_to_csv"));
   };
 
   const handlePrint = () => window.print();
@@ -1301,11 +1308,11 @@ function AttendanceTab() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { title: "Total Present", value: "28", color: "from-green-500 to-emerald-400", icon: "P", textColor: "text-green-700" },
-          { title: "Total Late", value: "5", color: "from-yellow-400 to-orange-400", icon: "L", textColor: "text-yellow-700" },
-          { title: "Total Absent", value: "8", color: "from-red-500 to-rose-400", icon: "A", textColor: "text-red-700" },
-          { title: "Total Half Day", value: "4", color: "from-sky-400 to-blue-500", icon: "F", textColor: "text-sky-700" },
-          { title: "Total Holiday", value: "7", color: "from-purple-400 to-indigo-500", icon: "H", textColor: "text-purple-700" },
+          { title: t("total_present"), value: "28", color: "from-green-500 to-emerald-400", icon: "P", textColor: "text-green-700" },
+          { title: t("total_late"), value: "5", color: "from-yellow-400 to-orange-400", icon: "L", textColor: "text-yellow-700" },
+          { title: t("total_absent"), value: "8", color: "from-red-500 to-rose-400", icon: "A", textColor: "text-red-700" },
+          { title: t("total_half_day"), value: "4", color: "from-sky-400 to-blue-500", icon: "F", textColor: "text-sky-700" },
+          { title: t("total_holiday"), value: "7", color: "from-purple-400 to-indigo-500", icon: "H", textColor: "text-purple-700" },
         ].map((card, i) => (
           <div key={i} className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
             <div className={`h-1.5 w-full bg-gradient-to-r ${card.color}`} />
@@ -1321,16 +1328,16 @@ function AttendanceTab() {
       </div>
 
       <PanelCard
-        title="Attendance Record"
+        title={t("attendance_record")}
         right={
           <div className="flex flex-col items-end gap-1">
             <div className="text-[10px] font-bold text-gray-500 flex flex-wrap gap-x-2">
-              <span className="text-green-600">P=Present</span>
-              <span className="text-gray-500">E=Late w/ Excuse</span>
-              <span className="text-yellow-500">L=Late</span>
-              <span className="text-red-500">A=Absent</span>
-              <span className="text-gray-500">H=Holiday</span>
-              <span className="text-sky-500">F=Half Day</span>
+              <span className="text-green-600">P={t("present")}</span>
+              <span className="text-gray-500">E={t("late_with_excuse")}</span>
+              <span className="text-yellow-500">L={t("late")}</span>
+              <span className="text-red-500">A={t("absent")}</span>
+              <span className="text-gray-500">H={t("holiday")}</span>
+              <span className="text-sky-500">F={t("half_day")}</span>
             </div>
           </div>
         }
@@ -1341,7 +1348,7 @@ function AttendanceTab() {
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
-              placeholder="Search"
+              placeholder={t("search")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8 h-8 w-full text-[13px] border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-100 transition-all"
@@ -1361,7 +1368,7 @@ function AttendanceTab() {
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/80 text-[#333]">
                 <th className="px-3 py-2.5 font-bold min-w-[90px] border-r border-gray-100 whitespace-nowrap sticky left-0 bg-gray-50 z-10">
-                  Date <ArrowUpDown className="inline h-3 w-3 opacity-30 ml-1" />
+                  {t("date")} <ArrowUpDown className="inline h-3 w-3 opacity-30 ml-1" />
                 </th>
                 {attendanceMonths.map(m => (
                   <th key={m} className="px-2 py-2.5 font-bold min-w-[70px] border-r border-gray-100 whitespace-nowrap">{m}</th>
@@ -1385,7 +1392,7 @@ function AttendanceTab() {
 
         {/* Footer */}
         <div className="flex justify-between items-center text-[11px] text-gray-500 px-4 py-3 border-t border-gray-100">
-          <span>Showing 1 to 31 of 31 entries</span>
+          <span>{t("showing")} 1 {t("to")} 31 {t("of")} 31 {t("entries")}</span>
           <div className="flex gap-1 items-center">
             <button className="h-7 w-7 bg-white text-gray-400 rounded-[10px] border border-gray-200 flex items-center justify-center disabled:opacity-40" disabled>&lt;</button>
             <button className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] flex items-center justify-center font-bold rounded-[10px] shadow-sm">1</button>
@@ -1410,22 +1417,23 @@ const documentsData: DocumentItem[] = [
 
 // ─── Documents Tab Component ──────────────────────────────────────────────────
 function DocumentsTab() {
+  const { t } = useTranslation();
   const handleDownload = (doc: DocumentItem) => {
-    toast.success(`Downloading ${doc.fileName}`);
+    toast.success(`${t("downloading")} ${doc.fileName}`);
   };
 
   return (
     <TabPanel>
       <PanelCard
-        title="Documents"
-        subtitle="Upload and manage student documents"
+        title={t("documents")}
+        subtitle={t("upload_manage_documents")}
         right={
           <div className="flex gap-2">
             <button className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm hover:opacity-90 active:scale-[0.98] transition-all whitespace-nowrap">
-              <Upload className="h-3.5 w-3.5" /> Upload
+              <Upload className="h-3.5 w-3.5" /> {t("upload")}
             </button>
             <button className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all whitespace-nowrap">
-              <Upload className="h-3.5 w-3.5 text-indigo-500" /> Google Drive
+              <Upload className="h-3.5 w-3.5 text-indigo-500" /> {t("google_drive")}
             </button>
           </div>
         }
@@ -1437,9 +1445,9 @@ function DocumentsTab() {
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/80 text-[#333]">
                 <th className="px-4 py-3 text-left font-bold min-w-[120px] border-r border-gray-100">#</th>
-                <th className="px-4 py-3 text-left font-bold border-r border-gray-100">Title</th>
-                <th className="px-4 py-3 text-left font-bold border-r border-gray-100">File Name</th>
-                <th className="px-4 py-3 text-right font-bold w-[90px]">Action</th>
+                <th className="px-4 py-3 text-left font-bold border-r border-gray-100">{t("title")}</th>
+                <th className="px-4 py-3 text-left font-bold border-r border-gray-100">{t("file_name")}</th>
+                <th className="px-4 py-3 text-right font-bold w-[90px]">{t("action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1457,7 +1465,7 @@ function DocumentsTab() {
                     <button
                       onClick={() => handleDownload(doc)}
                       className="inline-flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm active:scale-[0.98] transition-all"
-                      title="Download"
+                      title={t("download")}
                     >
                       <Download className="h-3.5 w-3.5" />
                     </button>
@@ -1491,7 +1499,7 @@ function DocumentsTab() {
         {documentsData.length === 0 && (
           <div className="py-12 text-center text-gray-400">
             <FileText className="h-10 w-10 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">No documents uploaded yet.</p>
+            <p className="text-sm">{t("no_documents_uploaded")}</p>
           </div>
         )}
       </PanelCard>
@@ -1513,13 +1521,14 @@ const timelineData: TimelineEntry[] = [
 
 // ─── Timeline Tab Component ───────────────────────────────────────────────────
 function TimelineTab() {
+  const { t } = useTranslation();
   return (
     <TabPanel>
-      <PanelCard title="Student Timeline" subtitle="Activity log and announcements">
+      <PanelCard title={t("student_timeline")} subtitle={t("activity_log_announcements")}>
         {timelineData.length === 0 && (
           <div className="py-12 text-center text-gray-400">
             <Clock className="h-10 w-10 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">No timeline entries yet.</p>
+            <p className="text-sm">{t("no_timeline_entries")}</p>
           </div>
         )}
 
@@ -1584,6 +1593,7 @@ const behaviourData: BehaviourEntry[] = [
 
 // ─── Student Behaviour Tab Component ──────────────────────────────────────────
 function StudentBehaviourTab() {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
 
   const handleCopy = () => {
@@ -1592,7 +1602,7 @@ function StudentBehaviourTab() {
       text += `${b.title}\t${b.point}\t${b.date}\t${b.description}\t${b.assignBy}\n`;
     });
     navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+    toast.success(t("copied_to_clipboard"));
   };
 
   const handleExportExcel = () => {
@@ -1606,7 +1616,7 @@ function StudentBehaviourTab() {
     a.href = url;
     a.download = `student_behaviour_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
-    toast.success("Exported to CSV");
+    toast.success(t("exported_to_csv"));
   };
 
   const handlePrint = () => window.print();
@@ -1619,14 +1629,14 @@ function StudentBehaviourTab() {
   return (
     <TabPanel>
       <PanelCard
-        title="Student Behaviour"
-        subtitle="Behaviour points and conduct records"
+        title={t("student_behaviour")}
+        subtitle={t("behaviour_points_conduct_records")}
         right={
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
-                placeholder="Search…"
+                placeholder={t("search")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8 h-8 w-44 text-[12px] border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-100 transition-all"
@@ -1642,12 +1652,12 @@ function StudentBehaviourTab() {
           <table className="w-full text-[13px] border-collapse">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/80 text-[#333]">
-                <th className="px-4 py-3 text-left font-bold min-w-[130px] border-r border-gray-100 whitespace-nowrap">Title <ArrowUpDown className="inline h-3 w-3 opacity-30 ml-1" /></th>
-                <th className="px-4 py-3 text-center font-bold w-[80px] border-r border-gray-100">Points</th>
-                <th className="px-4 py-3 text-left font-bold w-[110px] border-r border-gray-100">Date</th>
-                <th className="px-4 py-3 text-left font-bold border-r border-gray-100">Description</th>
-                <th className="px-4 py-3 text-center font-bold w-[90px] border-r border-gray-100">Assigned By</th>
-                <th className="px-4 py-3 text-center font-bold w-[70px]">Action</th>
+                <th className="px-4 py-3 text-left font-bold min-w-[130px] border-r border-gray-100 whitespace-nowrap">{t("title")} <ArrowUpDown className="inline h-3 w-3 opacity-30 ml-1" /></th>
+                <th className="px-4 py-3 text-center font-bold w-[80px] border-r border-gray-100">{t("points")}</th>
+                <th className="px-4 py-3 text-left font-bold w-[110px] border-r border-gray-100">{t("date")}</th>
+                <th className="px-4 py-3 text-left font-bold border-r border-gray-100">{t("description")}</th>
+                <th className="px-4 py-3 text-center font-bold w-[90px] border-r border-gray-100">{t("assigned_by")}</th>
+                <th className="px-4 py-3 text-center font-bold w-[70px]">{t("action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1665,7 +1675,7 @@ function StudentBehaviourTab() {
                     <td className="px-4 py-2.5 border-r border-gray-100 text-gray-600 text-[12px] leading-relaxed">{b.description}</td>
                     <td className="px-4 py-2.5 text-center border-r border-gray-100 text-gray-500">{b.assignBy || "—"}</td>
                     <td className="px-4 py-2.5 text-center">
-                      <button className="inline-flex items-center justify-center h-7 w-7 bg-gradient-to-br from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white rounded-full shadow-sm transition-all active:scale-95" title="View">
+                      <button className="inline-flex items-center justify-center h-7 w-7 bg-gradient-to-br from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white rounded-full shadow-sm transition-all active:scale-95" title={t("view")}>
                         <PlayCircle className="h-3.5 w-3.5" />
                       </button>
                     </td>
@@ -1673,7 +1683,7 @@ function StudentBehaviourTab() {
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="py-10 text-center text-gray-400 text-sm">No records found.</td></tr>
+                <tr><td colSpan={6} className="py-10 text-center text-gray-400 text-sm">{t("no_records")}</td></tr>
               )}
             </tbody>
           </table>
@@ -1697,13 +1707,13 @@ function StudentBehaviourTab() {
             );
           })}
           {filtered.length === 0 && (
-            <div className="py-10 text-center text-gray-400 text-sm">No records found.</div>
+            <div className="py-10 text-center text-gray-400 text-sm">{t("no_records")}</div>
           )}
         </div>
 
         {/* Footer */}
         <div className="flex justify-between items-center text-[11px] text-gray-500 px-4 py-3 border-t border-gray-100">
-          <span>Showing 1 to {filtered.length} of {filtered.length} entries</span>
+          <span>{t("showing")} 1 {t("to")} {filtered.length} {t("of")} {filtered.length} {t("entries")}</span>
           <div className="flex gap-1 items-center">
             <button className="h-7 w-7 bg-white text-gray-400 rounded-[10px] border border-gray-200 flex items-center justify-center disabled:opacity-40" disabled>&lt;</button>
             <button className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] flex items-center justify-center font-bold rounded-[10px] shadow-sm">1</button>
@@ -1720,6 +1730,7 @@ type TabId = "Profile" | "Fees" | "Exam" | "CBSE Examination" | "Attendance" | "
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function UserProfilePage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
@@ -1764,8 +1775,20 @@ export default function UserProfilePage() {
   }
 
   const { basic, profileTab } = data || mockUserProfileData;
+  const customFields: { id: number; name: string; type: string; value: string }[] = data?.customFields || [];
 
   const TABS: TabId[] = ["Profile", "Fees", "Exam", "CBSE Examination", "Attendance", "Documents", "Timeline", "Student Behaviour"];
+
+  const tabLabels: Record<TabId, string> = {
+    "Profile": "profile",
+    "Fees": "fees",
+    "Exam": "exam",
+    "CBSE Examination": "cbse_examination",
+    "Attendance": "attendance",
+    "Documents": "documents",
+    "Timeline": "timeline",
+    "Student Behaviour": "student_behaviour",
+  };
 
   const TabButton = ({ tab }: { tab: TabId }) => (
     <button
@@ -1777,7 +1800,7 @@ export default function UserProfilePage() {
           : "text-gray-500 hover:text-gray-700"
       )}
     >
-      {tab}
+      {t(tabLabels[tab])}
       {activeTab === tab && (
         <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1]" />
       )}
@@ -1798,36 +1821,38 @@ export default function UserProfilePage() {
     </div>
   );
 
-  const GuardianRow = ({ title, name, phone, occupation, address, email, relation, image }: any) => (
+  const GuardianRow = ({ title, titleKey, name, phone, occupation, address, email, relation, image }: any) => {
+    const tt = t(titleKey);
+    return (
     <div className="flex border-b border-gray-100 last:border-0 py-3 relative">
       <div className="flex-1 pr-24">
         <div className="flex mb-1">
-          <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{title} Name</div>
+          <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("name")}</div>
           <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{name || "-"}</div>
         </div>
         {email !== undefined && (
           <div className="flex mb-1">
-            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{title} Email</div>
+            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("email")}</div>
             <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{email || "-"}</div>
           </div>
         )}
         {relation !== undefined && (
           <div className="flex mb-1">
-            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{title} Relation</div>
+            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("relation")}</div>
             <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{relation || "-"}</div>
           </div>
         )}
         <div className="flex mb-1">
-          <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{title} Phone</div>
+          <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("phone")}</div>
           <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{phone || "-"}</div>
         </div>
         <div className="flex mb-1">
-          <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{title} Occupation</div>
+          <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("occupation")}</div>
           <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{occupation || "-"}</div>
         </div>
         {address !== undefined && (
           <div className="flex">
-            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{title} Address</div>
+            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("address")}</div>
             <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{address || "-"}</div>
           </div>
         )}
@@ -1838,12 +1863,13 @@ export default function UserProfilePage() {
         ) : (
           <>
             <User className="w-8 h-8 opacity-50 mb-1" />
-            <span className="text-[8px] uppercase font-bold text-center leading-none">No Image<br />Available</span>
+            <span className="text-[8px] uppercase font-bold text-center leading-none">{t("no_image")}<br />{t("available")}</span>
           </>
         )}
       </div>
     </div>
   );
+  };
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 items-start p-4 lg:p-6 animate-in fade-in duration-500">
@@ -1871,23 +1897,23 @@ export default function UserProfilePage() {
 
           <div className="p-0">
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
-              <span className="text-sm font-semibold text-gray-700">Class</span>
+              <span className="text-sm font-semibold text-gray-700">{t("class")}</span>
               <span className="text-sm text-sky-500 font-medium">{basic.class}</span>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
-              <span className="text-sm font-semibold text-gray-700">Section</span>
+              <span className="text-sm font-semibold text-gray-700">{t("section")}</span>
               <span className="text-sm text-sky-500 font-medium">{basic.section}</span>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
-              <span className="text-sm font-semibold text-gray-700">Gender</span>
+              <span className="text-sm font-semibold text-gray-700">{t("gender")}</span>
               <span className="text-sm text-sky-500 font-medium">{basic.gender}</span>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
-              <span className="text-sm font-semibold text-gray-700">RTE</span>
+              <span className="text-sm font-semibold text-gray-700">{t("rte")}</span>
               <span className="text-sm text-sky-500 font-medium">{basic.rte}</span>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
-              <span className="text-sm font-semibold text-gray-700">Barcode</span>
+              <span className="text-sm font-semibold text-gray-700">{t("barcode")}</span>
               <div className="flex flex-col items-center">
                 <svg className="h-6 w-24" viewBox="0 0 100 30" preserveAspectRatio="none">
                   <rect x="0" y="0" width="3" height="30" fill="black" />
@@ -1919,7 +1945,7 @@ export default function UserProfilePage() {
               </div>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
-              <span className="text-sm font-semibold text-gray-700">QR Code</span>
+              <span className="text-sm font-semibold text-gray-700">{t("qr_code")}</span>
               <div className="h-8 w-8 bg-white border border-gray-300 p-0.5">
                 {qrDataUrl ? (
                   <img src={qrDataUrl} alt="QR Code" className="h-full w-full object-contain" />
@@ -1931,12 +1957,12 @@ export default function UserProfilePage() {
               </div>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
-              <span className="text-sm font-semibold text-gray-700">Behaviour Score</span>
+              <span className="text-sm font-semibold text-gray-700">{t("behaviour_score")}</span>
               <span className="text-sm text-sky-500 font-medium">{basic.behaviourScore}</span>
             </div>
             <div className="p-4">
               <button className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-sm font-semibold px-4 py-2.5 rounded-[10px] hover:opacity-90 transition-opacity active:scale-[0.98]">
-                <Download className="h-4 w-4" /> Download Resume
+                <Download className="h-4 w-4" /> {t("download_resume")}
               </button>
             </div>
           </div>
@@ -1961,68 +1987,80 @@ export default function UserProfilePage() {
               {/* Basic Details */}
               <div className="flex items-center gap-2 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10 px-4 py-2.5 rounded-lg mb-4">
                 <span className="w-1 h-4 rounded-full bg-gradient-to-b from-[#FF9800] to-[#6366F1]" />
-                <h3 className="text-sm font-bold text-gray-800">Basic Details</h3>
+                <h3 className="text-sm font-bold text-gray-800">{t("basic_details")}</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
-                <InfoTile icon={Calendar} label="Admission Date" value={profileTab.basicDetails.admissionDate} />
-                <InfoTile icon={Cake} label="Date Of Birth" value={profileTab.basicDetails.dateOfBirth} />
-                <InfoTile icon={Tag} label="Category" value={profileTab.basicDetails.category} />
-                <InfoTile icon={Phone} label="Mobile Number" value={profileTab.basicDetails.mobileNumber} />
-                <InfoTile icon={Users} label="Caste" value={profileTab.basicDetails.caste} />
-                <InfoTile icon={BookOpen} label="Religion" value={profileTab.basicDetails.religion} />
-                <InfoTile icon={Mail} label="Email" value={profileTab.basicDetails.email} />
-                <InfoTile icon={HeartPulse} label="Medical History" value={profileTab.basicDetails.medicalHistory} />
-                <InfoTile icon={StickyNote} label="Note" value={profileTab.basicDetails.note} />
+                <InfoTile icon={Calendar} label={t("admission_date")} value={profileTab.basicDetails.admissionDate} />
+                <InfoTile icon={Cake} label={t("date_of_birth")} value={profileTab.basicDetails.dateOfBirth} />
+                <InfoTile icon={Tag} label={t("category")} value={profileTab.basicDetails.category} />
+                <InfoTile icon={Phone} label={t("mobile_number")} value={profileTab.basicDetails.mobileNumber} />
+                <InfoTile icon={Users} label={t("caste")} value={profileTab.basicDetails.caste} />
+                <InfoTile icon={BookOpen} label={t("religion")} value={profileTab.basicDetails.religion} />
+                <InfoTile icon={Mail} label={t("email")} value={profileTab.basicDetails.email} />
+                <InfoTile icon={HeartPulse} label={t("medical_history")} value={profileTab.basicDetails.medicalHistory} />
+                <InfoTile icon={StickyNote} label={t("note")} value={profileTab.basicDetails.note} />
               </div>
 
               {/* Address Details */}
-              <SectionHeader title="Address Details" />
+              <SectionHeader title={t("address_details")} />
               <div className="px-4">
-                <DetailRow label="Current Address" value={profileTab.addressDetails.currentAddress} />
-                <DetailRow label="Permanent Address" value={profileTab.addressDetails.permanentAddress} />
+                <DetailRow label={t("current_address")} value={profileTab.addressDetails.currentAddress} />
+                <DetailRow label={t("permanent_address")} value={profileTab.addressDetails.permanentAddress} />
               </div>
 
               {/* Parent Guardian Detail */}
-              <SectionHeader title="Parent Guardian Detail" />
+              <SectionHeader title={t("parent_guardian_detail")} />
               <div className="px-4">
-                <GuardianRow title="Father" {...profileTab.parentGuardianDetails.father} />
-                <GuardianRow title="Mother" {...profileTab.parentGuardianDetails.mother} />
-                <GuardianRow title="Guardian" {...profileTab.parentGuardianDetails.guardian} />
+                <GuardianRow titleKey="father" {...profileTab.parentGuardianDetails.father} />
+                <GuardianRow titleKey="mother" {...profileTab.parentGuardianDetails.mother} />
+                <GuardianRow titleKey="guardian" {...profileTab.parentGuardianDetails.guardian} />
               </div>
 
               {/* Transport Details */}
-              <SectionHeader title="Transport Details" />
+              <SectionHeader title={t("transport_details")} />
               <div className="px-4">
-                <DetailRow label="Pick-up Point" value={profileTab.transportDetails.pickupPoint} />
-                <DetailRow label="Route" value={profileTab.transportDetails.route} />
-                <DetailRow label="Vehicle Number" value={profileTab.transportDetails.vehicleNumber} />
-                <DetailRow label="Driver Name" value={profileTab.transportDetails.driverName} />
-                <DetailRow label="Driver Contact" value={profileTab.transportDetails.driverContact} />
+                <DetailRow label={t("pickup_point")} value={profileTab.transportDetails.pickupPoint} />
+                <DetailRow label={t("route")} value={profileTab.transportDetails.route} />
+                <DetailRow label={t("vehicle_number")} value={profileTab.transportDetails.vehicleNumber} />
+                <DetailRow label={t("driver_name")} value={profileTab.transportDetails.driverName} />
+                <DetailRow label={t("driver_contact")} value={profileTab.transportDetails.driverContact} />
               </div>
 
               {/* Hostel Details */}
-              <SectionHeader title="Hostel Details" />
+              <SectionHeader title={t("hostel_details")} />
               <div className="px-4">
-                <DetailRow label="Hostel" value={profileTab.hostelDetails.hostel} />
-                <DetailRow label="Room No." value={profileTab.hostelDetails.roomNo} />
-                <DetailRow label="Room Type" value={profileTab.hostelDetails.roomType} />
+                <DetailRow label={t("hostel")} value={profileTab.hostelDetails.hostel} />
+                <DetailRow label={t("room_no")} value={profileTab.hostelDetails.roomNo} />
+                <DetailRow label={t("room_type")} value={profileTab.hostelDetails.roomType} />
               </div>
 
               {/* Miscellaneous Details */}
-              <SectionHeader title="Miscellaneous Details" />
+              <SectionHeader title={t("miscellaneous_details")} />
               <div className="px-4 mb-4">
-                <DetailRow label="Blood Group" value={profileTab.miscellaneousDetails.bloodGroup} />
-                <DetailRow label="House" value={profileTab.miscellaneousDetails.house} />
-                <DetailRow label="Height" value={profileTab.miscellaneousDetails.height} />
-                <DetailRow label="Weight" value={profileTab.miscellaneousDetails.weight} />
-                <DetailRow label="Measurement Date" value={profileTab.miscellaneousDetails.measurementDate} />
-                <DetailRow label="Previous School Details" value={profileTab.miscellaneousDetails.previousSchoolDetails} />
-                <DetailRow label="National Identification Number" value={profileTab.miscellaneousDetails.nationalIdentificationNumber} />
-                <DetailRow label="Local Identification Number" value={profileTab.miscellaneousDetails.localIdentificationNumber} />
-                <DetailRow label="Bank Account Number" value={profileTab.miscellaneousDetails.bankAccountNumber} />
-                <DetailRow label="Bank Name" value={profileTab.miscellaneousDetails.bankName} />
-                <DetailRow label="IFSC Code" value={profileTab.miscellaneousDetails.ifscCode} />
+                <DetailRow label={t("blood_group")} value={profileTab.miscellaneousDetails.bloodGroup} />
+                <DetailRow label={t("house")} value={profileTab.miscellaneousDetails.house} />
+                <DetailRow label={t("height")} value={profileTab.miscellaneousDetails.height} />
+                <DetailRow label={t("weight")} value={profileTab.miscellaneousDetails.weight} />
+                <DetailRow label={t("measurement_date")} value={profileTab.miscellaneousDetails.measurementDate} />
+                <DetailRow label={t("previous_school_details")} value={profileTab.miscellaneousDetails.previousSchoolDetails} />
+                <DetailRow label={t("national_identification_number")} value={profileTab.miscellaneousDetails.nationalIdentificationNumber} />
+                <DetailRow label={t("local_identification_number")} value={profileTab.miscellaneousDetails.localIdentificationNumber} />
+                <DetailRow label={t("bank_account_number")} value={profileTab.miscellaneousDetails.bankAccountNumber} />
+                <DetailRow label={t("bank_name")} value={profileTab.miscellaneousDetails.bankName} />
+                <DetailRow label={t("ifsc_code")} value={profileTab.miscellaneousDetails.ifscCode} />
               </div>
+
+              {/* Custom Fields (configured in System Setting → Custom Fields) */}
+              {customFields.length > 0 && (
+                <>
+                  <SectionHeader title={t("custom_fields")} />
+                  <div className="px-4 mb-4">
+                    {customFields.map((field) => (
+                      <DetailRow key={field.id} label={field.name} value={field.value} />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

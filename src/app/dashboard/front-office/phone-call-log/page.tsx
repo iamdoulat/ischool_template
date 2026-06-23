@@ -22,7 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     Dialog,
     DialogContent,
@@ -63,7 +64,8 @@ interface PhoneCallLog {
 }
 
 export default function PhoneCallLogPage() {
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
     const [logs, setLogs] = useState<PhoneCallLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -119,11 +121,11 @@ export default function PhoneCallLogPage() {
             }
         } catch (error) {
             console.error("Error fetching phone call logs:", error);
-            toast("error", "Failed to load phone call logs");
+            tt.error("failed_to_load_phone_call_logs");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, page, limit, toast]);
+    }, [searchQuery, page, limit, tt]);
 
     useEffect(() => {
         fetchLogs();
@@ -134,18 +136,18 @@ export default function PhoneCallLogPage() {
         try {
             if (isEdit && editId) {
                 await api.put(`/phone-call-logs/${editId}`, formData);
-                toast("success", "Phone call log updated successfully");
+                tt.success("phone_call_log_updated_successfully");
             } else {
                 await api.post("/phone-call-logs", formData);
-                toast("success", "Phone call log added successfully");
+                tt.success("phone_call_log_added_successfully");
             }
             fetchLogs();
             resetForm();
         } catch (error) {
             console.error("Error saving phone call log:", error);
             const err = error as { response?: { data?: { message?: string } } };
-            const message = err.response?.data?.message || "Failed to save phone call log";
-            toast("error", message);
+            const message = err.response?.data?.message || "failed_to_save_phone_call_log";
+            tt.error(message);
         }
     };
 
@@ -153,26 +155,26 @@ export default function PhoneCallLogPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/phone-call-logs/${deleteId}`);
-            toast("success", "Phone call log deleted successfully");
+            tt.success("phone_call_log_deleted_successfully");
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
             fetchLogs();
         } catch (error) {
             console.error("Error deleting phone call log:", error);
-            toast("error", "Failed to delete phone call log");
+            tt.error("failed_to_delete_phone_call_log");
         }
     };
 
     const handleBulkDelete = async () => {
         try {
             await api.post("/phone-call-logs/bulk-delete", { ids: selectedIds });
-            toast("success", `${selectedIds.length} logs deleted successfully`);
+            tt.success("logs_deleted_successfully", { count: selectedIds.length });
             setIsBulkDeleteDialogOpen(false);
             setSelectedIds([]);
             fetchLogs();
         } catch (error) {
             console.error("Error bulk deleting logs:", error);
-            toast("error", "Failed to delete selected logs");
+            tt.error("failed_to_delete_selected_logs");
         }
     };
 
@@ -235,7 +237,7 @@ export default function PhoneCallLogPage() {
     const handleCopy = () => {
         const text = logs.map(l => `${l.name}\t${l.phone}\t${l.date}\t${l.call_type}`).join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const handlePrint = () => {
@@ -243,11 +245,11 @@ export default function PhoneCallLogPage() {
     };
 
     const handleExportExcel = () => {
-        toast("success", "Exporting to Excel...");
+        tt.success("exporting_to_excel");
     };
 
     const handleExportPDF = () => {
-        toast("success", "Exporting to PDF...");
+        tt.success("exporting_to_pdf");
     };
 
     return (
@@ -263,15 +265,15 @@ export default function PhoneCallLogPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {isEdit ? "Edit Phone Call Log" : "Add Phone Call Log"}
+                                    {isEdit ? t("edit_phone_call_log") : t("add_phone_call_log")}
                                 </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{isEdit ? "Update call record" : "Log a new call"}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{isEdit ? t("update_call_record") : t("log_a_new_call")}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-4">
                             <form onSubmit={handleSave} className="space-y-4">
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Name</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("name")}</label>
                                     <Input
                                         className="h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={formData.name || ""}
@@ -281,7 +283,7 @@ export default function PhoneCallLogPage() {
 
                                 <div className="space-y-1.5 group">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                                        Phone <span className="text-destructive">*</span>
+                                        {t("phone")} <span className="text-destructive">*</span>
                                     </label>
                                     <Input
                                         className="h-10 rounded-lg bg-muted/30 border-muted/50 transition-all hover:border-indigo-200"
@@ -293,7 +295,7 @@ export default function PhoneCallLogPage() {
 
                                 <div className="space-y-1.5 group">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                                        Date <span className="text-destructive">*</span>
+                                        {t("date")} <span className="text-destructive">*</span>
                                     </label>
                                     <div className="relative">
                                         <Input
@@ -307,7 +309,7 @@ export default function PhoneCallLogPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Description</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("description")}</label>
                                     <Textarea
                                         className="min-h-[80px] rounded-lg bg-muted/30 border-muted/50 resize-none"
                                         value={formData.description || ""}
@@ -316,7 +318,7 @@ export default function PhoneCallLogPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Next Follow Up Date</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("next_follow_up_date")}</label>
                                     <div className="relative">
                                         <Input
                                             type="date"
@@ -328,7 +330,7 @@ export default function PhoneCallLogPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Call Duration</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("call_duration")}</label>
                                     <Input
                                         className="h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={formData.call_duration || ""}
@@ -337,7 +339,7 @@ export default function PhoneCallLogPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Note</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("note")}</label>
                                     <Textarea
                                         className="min-h-[80px] rounded-lg bg-muted/30 border-muted/50 resize-none"
                                         value={formData.note || ""}
@@ -347,7 +349,7 @@ export default function PhoneCallLogPage() {
 
                                 <div className="space-y-3 group pb-2">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                                        Call Type <span className="text-destructive">*</span>
+                                        {t("call_type")} <span className="text-destructive">*</span>
                                     </label>
                                     <div className="flex gap-6 ml-1">
                                         <label className="flex items-center gap-2 cursor-pointer group/item">
@@ -358,7 +360,7 @@ export default function PhoneCallLogPage() {
                                                 checked={formData.call_type === "Incoming"}
                                                 onChange={() => setFormData({ ...formData, call_type: "Incoming" })}
                                             />
-                                            <span className="text-sm font-medium text-slate-600 group-hover/item:text-slate-900 transition-colors">Incoming</span>
+                                            <span className="text-sm font-medium text-slate-600 group-hover/item:text-slate-900 transition-colors">{t("incoming")}</span>
                                         </label>
                                         <label className="flex items-center gap-2 cursor-pointer group/item">
                                             <input
@@ -368,7 +370,7 @@ export default function PhoneCallLogPage() {
                                                 checked={formData.call_type === "Outgoing"}
                                                 onChange={() => setFormData({ ...formData, call_type: "Outgoing" })}
                                             />
-                                            <span className="text-sm font-medium text-slate-600 group-hover/item:text-slate-900 transition-colors">Outgoing</span>
+                                            <span className="text-sm font-medium text-slate-600 group-hover/item:text-slate-900 transition-colors">{t("outgoing")}</span>
                                         </label>
                                     </div>
                                 </div>
@@ -376,11 +378,11 @@ export default function PhoneCallLogPage() {
                                 <div className="flex justify-end gap-2 pt-2">
                                     {isEdit && (
                                         <Button type="button" variant="outline" className="h-10 px-6" onClick={resetForm}>
-                                            Cancel
+                                            {t("cancel")}
                                         </Button>
                                     )}
                                     <Button type="submit" variant="gradient" className="h-10 px-8">
-                                        Save
+                                        {t("save")}
                                     </Button>
                                 </div>
                             </form>
@@ -396,8 +398,8 @@ export default function PhoneCallLogPage() {
                                 <Phone className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Phone Call Log List</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{total} total log{total === 1 ? "" : "s"}</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("phone_call_log_list")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("total_logs_count", { total })}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
@@ -406,7 +408,7 @@ export default function PhoneCallLogPage() {
                                 <div className="relative w-full md:w-64">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search"
+                                        placeholder={t("search")}
                                         className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -438,7 +440,7 @@ export default function PhoneCallLogPage() {
                                         <IconButton icon={CopyIcon} onClick={handleCopy} />
                                         <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} />
                                         <IconButton icon={FileText} onClick={handleExportPDF} />
-                                        <IconButton icon={Download} onClick={() => toast("success", "Downloading...")} />
+                                        <IconButton icon={Download} onClick={() => tt.success("downloading")} />
                                         <IconButton icon={Columns} />
                                     </div>
                                 </div>
@@ -455,11 +457,11 @@ export default function PhoneCallLogPage() {
                                                     onCheckedChange={toggleSelectAll}
                                                 />
                                             </th>
-                                            <Th>Name</Th>
-                                            <Th>Phone</Th>
-                                            <Th>Date</Th>
-                                            <Th>Next Follow Up Date</Th>
-                                            <Th>Call Type</Th>
+                                            <Th>{t("name")}</Th>
+                                            <Th>{t("phone")}</Th>
+                                            <Th>{t("date")}</Th>
+                                            <Th>{t("next_follow_up_date")}</Th>
+                                            <Th>{t("call_type")}</Th>
                                             <th className="px-4 py-4 border-b border-muted/50 text-right">
                                                 <div className="flex justify-end pr-1 text-slate-700">
                                                     {selectedIds.length > 0 ? (
@@ -470,7 +472,7 @@ export default function PhoneCallLogPage() {
                                                             <Trash2 className="h-3.5 w-3.5 text-white" />
                                                         </button>
                                                     ) : (
-                                                        "ACTION"
+                                                        t("action")
                                                     )}
                                                 </div>
                                             </th>
@@ -479,11 +481,11 @@ export default function PhoneCallLogPage() {
                                     <tbody className="divide-y divide-muted/30">
                                         {loading ? (
                                             <tr>
-                                                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading logs...</td>
+                                                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">{t("loading_logs")}</td>
                                             </tr>
                                         ) : displayedLogs.length === 0 ? (
                                             <tr>
-                                                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No phone call logs found</td>
+                                                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">{t("no_phone_call_logs_found")}</td>
                                             </tr>
                                         ) : (
                                             displayedLogs.map((item) => (
@@ -522,7 +524,7 @@ export default function PhoneCallLogPage() {
 
                             <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                    Showing {total > 0 ? (page - 1) * limit + 1 : 0} to {Math.min(page * limit, total)} of {total} entries
+                                    {t("showing_x_to_y_of_z", { from: total > 0 ? (page - 1) * limit + 1 : 0, to: Math.min(page * limit, total), total })}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -581,14 +583,14 @@ export default function PhoneCallLogPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the phone call log.
+                            {t("permanently_delete_phone_call_log")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -596,14 +598,14 @@ export default function PhoneCallLogPage() {
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Bulk Delete Logs</AlertDialogTitle>
+                        <AlertDialogTitle>{t("bulk_delete_logs")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete {selectedIds.length} selected phone call logs? This action cannot be undone.
+                            {t("confirm_bulk_delete_logs", { count: selectedIds.length })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">Delete Selected</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">{t("delete_selected")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -613,27 +615,27 @@ export default function PhoneCallLogPage() {
                     <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-6">
                         <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
                             <Eye className="h-5 w-5" />
-                            Phone Call Log Details
+                            {t("phone_call_log_details")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="p-6">
                         <div className="grid grid-cols-2 gap-y-6 gap-x-8">
-                            <DetailItem label="Name" value={selectedLog?.name} />
-                            <DetailItem label="Phone" value={selectedLog?.phone} />
-                            <DetailItem label="Date" value={selectedLog?.date ? new Date(selectedLog.date).toLocaleDateString() : "-"} />
-                            <DetailItem label="Next Follow Up Date" value={selectedLog?.next_follow_up_date ? new Date(selectedLog.next_follow_up_date).toLocaleDateString() : "-"} />
-                            <DetailItem label="Call Duration" value={selectedLog?.call_duration} />
-                            <DetailItem label="Call Type" value={selectedLog?.call_type} isBadge />
+                            <DetailItem label={t("name")} value={selectedLog?.name} />
+                            <DetailItem label={t("phone")} value={selectedLog?.phone} />
+                            <DetailItem label={t("date")} value={selectedLog?.date ? new Date(selectedLog.date).toLocaleDateString() : "-"} />
+                            <DetailItem label={t("next_follow_up_date")} value={selectedLog?.next_follow_up_date ? new Date(selectedLog.next_follow_up_date).toLocaleDateString() : "-"} />
+                            <DetailItem label={t("call_duration")} value={selectedLog?.call_duration} />
+                            <DetailItem label={t("call_type")} value={selectedLog?.call_type} isBadge />
                             <div className="col-span-2 space-y-1">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Description</label>
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("description")}</label>
                                 <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px]">
-                                    {selectedLog?.description || "No description provided"}
+                                    {selectedLog?.description || t("no_description_provided")}
                                 </p>
                             </div>
                             <div className="col-span-2 space-y-1">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Note</label>
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("note")}</label>
                                 <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px]">
-                                    {selectedLog?.note || "No note provided"}
+                                    {selectedLog?.note || t("no_note_provided")}
                                 </p>
                             </div>
                         </div>
@@ -643,7 +645,7 @@ export default function PhoneCallLogPage() {
                                 variant="gradient"
                                 className="px-8 h-10 rounded-lg shadow-lg shadow-indigo-200 transition-all active:scale-95 text-white"
                             >
-                                Close
+                                {t("close")}
                             </Button>
                         </div>
                     </div>

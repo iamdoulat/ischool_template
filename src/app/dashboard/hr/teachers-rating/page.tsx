@@ -33,7 +33,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -65,7 +66,8 @@ interface Rating {
 }
 
 export default function TeachersRatingPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [ratings, setRatings] = useState<Rating[]>([]);
     const [loading, setLoading] = useState(true);
@@ -81,7 +83,7 @@ export default function TeachersRatingPage() {
             setRatings(response.data.data);
         } catch (error) {
             console.error("Error fetching ratings:", error);
-            toast("error", "Failed to load teacher ratings");
+            tt.error("failed_to_load_teacher_ratings");
         } finally {
             setLoading(false);
         }
@@ -94,21 +96,21 @@ export default function TeachersRatingPage() {
     const handleApprove = async (id: number) => {
         try {
             await api.put(`/hr/teacher-ratings/${id}/approve`);
-            toast("success", "Rating approved successfully");
+            tt.success("rating_approved_successfully");
             fetchData();
         } catch (error) {
-            toast("error", "Failed to approve rating");
+            tt.error("failed_to_approve_rating");
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this rating?")) return;
+        if (!confirm(t("are_you_sure_delete_rating"))) return;
         try {
             await api.delete(`/hr/teacher-ratings/${id}`);
-            toast("success", "Rating deleted successfully");
+            tt.success("rating_deleted_successfully");
             fetchData();
         } catch (error) {
-            toast("error", "Failed to delete rating");
+            tt.error("failed_to_delete_rating");
         }
     };
 
@@ -148,15 +150,15 @@ export default function TeachersRatingPage() {
             "Student Name": r.student_name
         })));
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Teacher Ratings");
+        XLSX.utils.book_append_sheet(wb, ws, t("teacher_ratings"));
         XLSX.writeFile(wb, "teacher_ratings.xlsx");
     };
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Teacher Ratings List", 14, 15);
+        doc.text(t("teacher_ratings_list"), 14, 15);
         autoTable(doc, {
-            head: [['Staff ID', 'Staff Name', 'Rating', 'Status', 'Student Name']],
+            head: [[t("staff_id"), t("staff_name"), t("rating"), t("status"), t("student_name")]],
             body: ratings.map(r => [r.staff_id, r.staff_name, r.rating, r.status, r.student_name]),
             startY: 20,
         });
@@ -166,7 +168,7 @@ export default function TeachersRatingPage() {
     const copyToClipboard = () => {
         const text = ratings.map(r => `${r.staff_id} - ${r.staff_name} (${r.rating}*): ${r.status}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast("success", "Data copied to clipboard");
+        tt.success("data_copied_to_clipboard");
     };
 
     return (
@@ -177,15 +179,15 @@ export default function TeachersRatingPage() {
                         <Star className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Teachers Rating</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{filteredRatings.length} rating{filteredRatings.length === 1 ? "" : "s"} found</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("teachers_rating")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("x_ratings_found", { count: filteredRatings.length })}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-4">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="relative w-full md:w-64">
                             <Input
-                                placeholder="Search by Staff ID, Name or Student..."
+                                placeholder={t("search_by_staff_id_name_or_student")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
@@ -235,13 +237,13 @@ export default function TeachersRatingPage() {
                         <Table>
                             <TableHeader className="bg-gray-50/50">
                                 <TableRow className="hover:bg-transparent border-gray-100">
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Staff ID</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Staff Name</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Rating</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Comment</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Status</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Student Name</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("staff_id")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("staff_name")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("rating")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("comment")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("status")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("student_name")}</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -249,7 +251,7 @@ export default function TeachersRatingPage() {
                                     <TableSkeleton rows={5} cols={7} />
                                 ) : paginatedData.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</TableCell>
+                                        <TableCell colSpan={7} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell>
                                     </TableRow>
                                 ) : (
                                     paginatedData.map((item) => (
@@ -263,7 +265,7 @@ export default function TeachersRatingPage() {
                                                     "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase",
                                                     item.status === "Pending" ? "bg-orange-500 text-white" : "bg-green-600 text-white"
                                                 )}>
-                                                    {item.status}
+                                                    {item.status === "Pending" ? t("pending") : t("approved")}
                                                 </span>
                                             </TableCell>
                                             <TableCell className="py-3.5 text-gray-500">{item.student_name || "—"}</TableCell>
@@ -276,7 +278,7 @@ export default function TeachersRatingPage() {
                                                             className="h-7 px-3 text-[9px] font-bold uppercase rounded shadow-sm flex items-center gap-1"
                                                         >
                                                             <CheckCircle className="h-3 w-3" />
-                                                            Approve
+                                                            {t("approve")}
                                                         </Button>
                                                     )}
                                                     <Button

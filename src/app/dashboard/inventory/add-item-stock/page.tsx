@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -102,7 +103,8 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 }
 
 export default function AddItemStockPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [stocks, setStocks] = useState<ItemStock[]>([]);
@@ -171,7 +173,7 @@ export default function AddItemStockPage() {
             });
         } catch (error) {
             console.error("Error fetching stocks:", error);
-            toast({ title: "Error", description: "Failed to fetch stocks", variant: "destructive" });
+            tt.error("failed_to_fetch_stocks");
         } finally {
             setLoading(false);
         }
@@ -198,7 +200,7 @@ export default function AddItemStockPage() {
 
     const handleSave = async () => {
         if (!formData.item_category_id || !formData.item_id || !formData.quantity || !formData.purchase_price) {
-            toast({ title: "Validation Error", description: "Please fill all required fields", variant: "destructive" });
+            tt.error("please_fill_all_required_fields");
             return;
         }
         const data = new FormData();
@@ -208,16 +210,16 @@ export default function AddItemStockPage() {
         try {
             if (isEditing && currentId) {
                 await api.post(`/inventory/item-stocks/${currentId}?_method=PUT`, data);
-                toast({ title: "Success", description: "Stock updated successfully" });
+                tt.success("stock_updated_successfully");
             } else {
                 await api.post('/inventory/item-stocks', data);
-                toast({ title: "Success", description: "Stock added successfully" });
+                tt.success("stock_added_successfully");
             }
             resetForm();
             fetchStocks();
         } catch (error) {
-            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Something went wrong";
-            toast({ title: "Error", description: message, variant: "destructive" });
+            console.error("Error saving stock:", error);
+            tt.error("something_went_wrong");
         } finally {
             setSaving(false);
         }
@@ -244,23 +246,23 @@ export default function AddItemStockPage() {
         if (!deleteStockId) return;
         try {
             await api.delete(`/inventory/item-stocks/${deleteStockId}`);
-            toast({ title: "Success", description: "Stock deleted successfully" });
+            tt.success("stock_deleted_successfully");
             setIsDeleteDialogOpen(false);
             setDeleteStockId(null);
             fetchStocks();
         } catch {
-            toast({ title: "Error", description: "Failed to delete stock", variant: "destructive" });
+            tt.error("failed_to_delete_stock");
         }
     };
 
     const handleCopy = () => {
         const text = stocks.map(s => `${s.item?.item_name}\t${s.item_category?.item_category}\t${s.quantity}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        tt.success("data_copied_to_clipboard");
     };
 
     const handleExportCSV = () => {
-        const headers = ["Item", "Category", "Supplier", "Store", "Quantity", "Price", "Date"];
+        const headers = [t("item"), t("category"), t("supplier"), t("store"), t("quantity"), t("price"), t("date")];
         const rows = stocks.map(s => [s.item?.item_name, s.item_category?.item_category, s.supplier?.item_supplier, s.store?.item_store, s.quantity, s.purchase_price, s.date]);
         const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -275,11 +277,11 @@ export default function AddItemStockPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     return (
@@ -292,67 +294,67 @@ export default function AddItemStockPage() {
                             <PackageSearch className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{isEditing ? "Edit Item Stock" : "Add Item Stock"}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{isEditing ? "Update stock entry" : "Record new stock entry"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{isEditing ? t("edit_item_stock") : t("add_item_stock")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{isEditing ? t("update_stock_entry") : t("record_new_stock_entry")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Item Category <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("item_category")} <span className="text-red-500">*</span></Label>
                             <Select value={formData.item_category_id} onValueChange={(val) => setFormData({ ...formData, item_category_id: val, item_id: "" })}>
-                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select")} /></SelectTrigger>
                                 <SelectContent>{categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Item <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("item")} <span className="text-red-500">*</span></Label>
                             <Select value={formData.item_id} onValueChange={(val) => setFormData({ ...formData, item_id: val })} disabled={!formData.item_category_id}>
-                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={formData.item_category_id ? "Select" : "Select Category First"} /></SelectTrigger>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={formData.item_category_id ? t("select") : t("select_category_first")} /></SelectTrigger>
                                 <SelectContent>{items.map(i => <SelectItem key={i.id} value={String(i.id)}>{i.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Supplier</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("supplier")}</Label>
                             <Select value={formData.item_supplier_id} onValueChange={(val) => setFormData({ ...formData, item_supplier_id: val })}>
-                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select")} /></SelectTrigger>
                                 <SelectContent>{suppliers.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Store</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("store")}</Label>
                             <Select value={formData.item_store_id} onValueChange={(val) => setFormData({ ...formData, item_store_id: val })}>
-                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select")} /></SelectTrigger>
                                 <SelectContent>{stores.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Quantity <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("quantity")} <span className="text-red-500">*</span></Label>
                             <Input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Purchase Price <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("purchase_price")} <span className="text-red-500">*</span></Label>
                             <Input value={formData.purchase_price} onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Date</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("date")}</Label>
                             <DatePicker value={formData.date} onChange={(val) => setFormData({ ...formData, date: val })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Attach Document</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("attach_document")}</Label>
                             <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-lg p-5 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors">
                                 <UploadCloud className="h-5 w-5 text-gray-400" />
-                                <span className="text-[10px] text-gray-400 font-medium text-center">{documentFile ? documentFile.name : "Drag and drop a file or click"}</span>
+                                <span className="text-[10px] text-gray-400 font-medium text-center">{documentFile ? documentFile.name : t("drag_and_drop_or_click")}</span>
                                 <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => setDocumentFile(e.target.files?.[0] || null)} />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Description</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("description")}</Label>
                             <Textarea className="resize-none" rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
                         </div>
                         <div className="flex justify-end pt-2 gap-2">
-                            {isEditing && <Button variant="outline" onClick={resetForm} className="h-9 px-6 rounded-full text-xs font-bold">Cancel</Button>}
+                            {isEditing && <Button variant="outline" onClick={resetForm} className="h-9 px-6 rounded-full text-xs font-bold">{t("cancel")}</Button>}
                             <Button onClick={handleSave} disabled={saving} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
-                                <Save className="h-4 w-4" /> {isEditing ? "Update" : "Save"}
+                                <Save className="h-4 w-4" /> {isEditing ? t("update") : t("save")}
                             </Button>
                         </div>
                     </CardContent>
@@ -365,16 +367,16 @@ export default function AddItemStockPage() {
                             <Boxes className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Item Stock List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? stocks.length} stock entr{(pagination?.total ?? stocks.length) === 1 ? "y" : "ies"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("item_stock_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? stocks.length} {t("stock_entries")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
                             <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
-                                <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 text-xs w-full md:w-64" />
+                                <Input placeholder={t("search_placeholder")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 text-xs w-full md:w-64" />
                                 <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                                    <Search className="h-4 w-4" /> Search
+                                    <Search className="h-4 w-4" /> {t("search")}
                                 </Button>
                             </form>
                             <div className="flex items-center gap-2">
@@ -401,21 +403,21 @@ export default function AddItemStockPage() {
                             <Table className="min-w-[1000px]">
                                 <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Item <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Category <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Supplier</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Store</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 text-right"><div className="flex items-center justify-end gap-1">Qty <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                        <TableHead className="font-semibold text-gray-600 text-right">Purchase Price</TableHead>
-                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Date <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                        <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("item")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("category")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("supplier")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("store")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 text-right"><div className="flex items-center justify-end gap-1">{t("qty")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                        <TableHead className="font-semibold text-gray-600 text-right">{t("purchase_price")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("date")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                        <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {loading ? (
                                         <SkeletonRows rows={6} cols={TABLE_COLS} />
                                     ) : stocks.length === 0 ? (
-                                        <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell></TableRow>
                                     ) : stocks.map((stock) => (
                                         <TableRow key={stock.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
                                             <TableCell className="py-3 text-gray-700 font-medium">{stock.item?.item_name}</TableCell>
@@ -438,7 +440,7 @@ export default function AddItemStockPage() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                            <div>Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries</div>
+                            <div>{t("showing_x_to_y_of_z", { from: (pagination?.from || 0).toString(), to: (pagination?.to || 0).toString(), total: (pagination?.total || 0).toString() })}</div>
                             <div className="flex gap-1 items-center">
                                 <Button variant="outline" size="sm" disabled={!pagination || pagination.current_page === 1} onClick={() => fetchStocks(pagination!.current_page - 1)} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                                 {[...Array(pagination?.last_page || 0)].map((_, i) => (
@@ -454,12 +456,12 @@ export default function AddItemStockPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent className="sm:max-w-[400px]">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Item Stock</AlertDialogTitle>
-                        <AlertDialogDescription>Are you sure you want to delete this stock entry? This action cannot be undone.</AlertDialogDescription>
+                        <AlertDialogTitle>{t("delete_item_stock")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("delete_item_stock_confirmation")}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600 text-white">Delete</AlertDialogAction>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600 text-white">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

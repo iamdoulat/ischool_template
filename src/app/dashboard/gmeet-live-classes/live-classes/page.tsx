@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { toast } from "sonner";
 import {
     Table,
@@ -62,6 +63,7 @@ interface GmeetClass {
 }
 
 export default function LiveClassesPage() {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState("");
     const [classes, setClasses] = useState<GmeetClass[]>([]);
     const [loading, setLoading] = useState(false);
@@ -132,7 +134,7 @@ export default function LiveClassesPage() {
             }
         } catch (error) {
             console.error("Failed to fetch live classes", error);
-            toast.error("Failed to load live classes");
+            toast.error(t("failed_to_load_live_classes"));
         } finally {
             setLoading(false);
         }
@@ -155,7 +157,7 @@ export default function LiveClassesPage() {
 
     const handleSave = async () => {
         if (!formData.title || !formData.date_time || !formData.class_id || !formData.section_id || !formData.staff_id || !formData.meeting_url) {
-            toast.error("All required fields (*) must be populated");
+            toast.error(t("all_required_fields_must_be_populated"));
             return;
         }
 
@@ -169,17 +171,17 @@ export default function LiveClassesPage() {
         try {
             if (editMode && selectedId) {
                 await api.put(`/conference/gmeet-classes/${selectedId}`, payload);
-                toast.success("Live class updated successfully");
+                toast.success(t("live_class_updated_successfully"));
             } else {
                 await api.post('/conference/gmeet-classes', payload);
-                toast.success("Live class scheduled successfully");
+                toast.success(t("live_class_scheduled_successfully"));
             }
             setOpen(false);
             resetForm();
             fetchClasses();
         } catch (error) {
             console.error("Failed to save live class", error);
-            toast.error("Failed to save live class session");
+            toast.error(t("failed_to_save_live_class_session"));
         } finally {
             setSubmitting(false);
         }
@@ -206,11 +208,11 @@ export default function LiveClassesPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/conference/gmeet-classes/${deleteId}`);
-            toast.success("Live class session deleted successfully");
+            toast.success(t("live_class_session_deleted_successfully"));
             fetchClasses();
         } catch (error) {
             console.error("Failed to delete live class", error);
-            toast.error("Failed to delete live class session");
+            toast.error(t("failed_to_delete_live_class_session"));
         } finally {
             setDeleteId(null);
         }
@@ -235,11 +237,11 @@ export default function LiveClassesPage() {
     const handleStatusChange = async (id: string, newStatus: string) => {
         try {
             await api.put(`/conference/gmeet-classes/${id}`, { status: newStatus });
-            toast.success("Status updated successfully");
+            toast.success(t("status_updated_successfully"));
             fetchClasses();
         } catch (error) {
             console.error("Failed to update status", error);
-            toast.error("Failed to update class status");
+            toast.error(t("failed_to_update_class_status"));
         }
     };
 
@@ -282,8 +284,8 @@ export default function LiveClassesPage() {
                             <Video className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Live Classes</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">Schedule &amp; manage Google Meet live classes</p>
+                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("live_classes")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("schedule_manage_google_meet_live_classes")}</p>
                         </div>
                     </div>
                     <Button
@@ -291,7 +293,7 @@ export default function LiveClassesPage() {
                         className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-full shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
                     >
                         <Plus className="h-3.5 w-3.5" />
-                        Add
+                        {t("add")}
                     </Button>
                 </div>
             </div>
@@ -303,7 +305,7 @@ export default function LiveClassesPage() {
                     <div className="relative w-full md:w-64">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                         <Input
-                            placeholder="Search..."
+                            placeholder={t("search")}
                             value={searchTerm}
                             onChange={(e) => {
                                 setSearchTerm(e.target.value);
@@ -315,7 +317,7 @@ export default function LiveClassesPage() {
 
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Rows</span>
+                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">{t("rows")}</span>
                             <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
                                 <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 shadow-none rounded font-semibold">
                                     <SelectValue placeholder="50" />
@@ -343,15 +345,15 @@ export default function LiveClassesPage() {
                     <Table className="min-w-[1300px]">
                         <TableHeader className="bg-transparent border-b border-gray-100">
                             <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                <TableHead className="py-3 px-4">Class Title <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Description <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Date Time <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4 text-center">Class Duration (Minutes)</TableHead>
-                                <TableHead className="py-3 px-4">Created By <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Created For <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Class <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4 text-center">Status <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4 text-right">Action</TableHead>
+                                <TableHead className="py-3 px-4">{t("class_title")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("description")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("date_time")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 text-center">{t("class_duration_minutes")}</TableHead>
+                                <TableHead className="py-3 px-4">{t("created_by")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("created_for")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("class")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 text-center">{t("status")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 text-right">{t("action")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -368,7 +370,7 @@ export default function LiveClassesPage() {
                             ) : classes.length === 0 ? (
                                 <TableRow className="hover:bg-transparent h-64">
                                     <TableCell colSpan={9} className="text-center py-12 text-gray-400 font-bold uppercase text-[10px] tracking-widest">
-                                        No live classes scheduled yet.
+                                        {t("no_live_classes_scheduled_yet")}
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -423,9 +425,9 @@ export default function LiveClassesPage() {
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded shadow-xl">
-                                                    <SelectItem value="awaited">Awaited</SelectItem>
-                                                    <SelectItem value="finished">Finished</SelectItem>
-                                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                                    <SelectItem value="awaited">{t("awaited")}</SelectItem>
+                                                    <SelectItem value="finished">{t("finished")}</SelectItem>
+                                                    <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>
@@ -436,18 +438,18 @@ export default function LiveClassesPage() {
                                                         if (item.meeting_url) {
                                                             window.open(item.meeting_url, '_blank');
                                                         } else {
-                                                            toast.error("No join meeting URL configured");
+                                                            toast.error(t("no_join_meeting_url_configured"));
                                                         }
                                                     }}
                                                     className="bg-[#4caf50] hover:bg-[#43a047] text-white px-2.5 h-6 text-[10px] font-bold rounded shadow-none flex items-center gap-1 transition-all active:scale-95"
                                                 >
                                                     <Video className="h-3 w-3" />
-                                                    Start
+                                                    {t("start")}
                                                 </Button>
                                                 <Button 
                                                     onClick={() => setDeleteId(item.id)}
                                                     className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95"
-                                                    title="Delete class"
+                                                    title={t("delete_class")}
                                                 >
                                                     <span className="font-bold text-[10px]">X</span>
                                                 </Button>
@@ -463,9 +465,8 @@ export default function LiveClassesPage() {
                 {/* Footer */}
                 <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
                     <div>
-                        Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                        {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
-                        {searchTerm && ` (filtered from ${totalEntries} total entries)`}
+                        {t("showing_x_to_y_of_z", { from: totalEntries > 0 ? startIndex + 1 : 0, to: Math.min(startIndex + sizeNum, totalEntries), total: totalEntries })}
+                        {searchTerm && ` (${t("filtered_from_total_entries", { total: totalEntries })})`}
                     </div>
 
                     {totalEntries > 0 && (
@@ -511,7 +512,7 @@ export default function LiveClassesPage() {
                     
                     {/* Header */}
                     <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
-                        <span>{editMode ? "Edit Live Class" : "Add Live Class"}</span>
+                        <span>{editMode ? t("edit_live_class") : t("add_live_class")}</span>
                         <button 
                             onClick={() => setOpen(false)} 
                             className="text-white/80 hover:text-white transition-colors cursor-pointer"
@@ -525,7 +526,7 @@ export default function LiveClassesPage() {
                         
                         {/* Class Title */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Class Title <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("class_title")} <span className="text-red-500">*</span></Label>
                             <Input 
                                 value={formData.title}
                                 onChange={(e) => setFormData({...formData, title: e.target.value})}
@@ -537,7 +538,7 @@ export default function LiveClassesPage() {
                         {/* Class Date & Duration */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">Class Date <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-medium text-gray-700">{t("class_date")} <span className="text-red-500">*</span></Label>
                                 <div className="relative">
                                     <Input 
                                         type="datetime-local"
@@ -550,7 +551,7 @@ export default function LiveClassesPage() {
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-medium text-gray-700">Class Duration (Minutes) <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-medium text-gray-700">{t("class_duration_minutes")} <span className="text-red-500">*</span></Label>
                                 <Input 
                                     type="number"
                                     value={formData.duration}
@@ -563,10 +564,10 @@ export default function LiveClassesPage() {
 
                         {/* Role Select */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Role <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("role")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedRole} onValueChange={(val) => { setSelectedRole(val); setFormData({...formData, staff_id: ""}); }}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs rounded shadow-none text-gray-700">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded shadow-xl">
                                     {uniqueRoles.map(role => (
@@ -578,10 +579,10 @@ export default function LiveClassesPage() {
 
                         {/* Staff Select */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Staff <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("staff")} <span className="text-red-500">*</span></Label>
                             <Select value={formData.staff_id} onValueChange={(val) => setFormData({...formData, staff_id: val})}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs rounded shadow-none text-gray-700">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded shadow-xl">
                                     {filteredStaff.map(s => (
@@ -593,10 +594,10 @@ export default function LiveClassesPage() {
 
                         {/* Class Select */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Class <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("class")} <span className="text-red-500">*</span></Label>
                             <Select value={formData.class_id} onValueChange={(val) => setFormData({...formData, class_id: val, section_id: ""})}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs rounded shadow-none text-gray-700">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded shadow-xl">
                                     {formCriteria.classes.map(c => (
@@ -608,10 +609,10 @@ export default function LiveClassesPage() {
 
                         {/* Section Select */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Section <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("section")} <span className="text-red-500">*</span></Label>
                             <Select value={formData.section_id} onValueChange={(val) => setFormData({...formData, section_id: val})}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs rounded shadow-none text-gray-700">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded shadow-xl">
                                     {formSections.map(s => (
@@ -624,7 +625,7 @@ export default function LiveClassesPage() {
                         {/* Gmeet URL */}
                         <div className="space-y-1">
                             <div className="flex justify-between items-center">
-                                <Label className="text-[11px] font-medium text-gray-700">Gmeet URL (How To Get <span className="text-[#7e57c2] hover:underline cursor-pointer font-bold" onClick={() => window.open('https://meet.google.com/', '_blank')}>Gmeet URL</span>? ) <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-medium text-gray-700">{t("gmeet_url")} ({t("how_to_get")} <span className="text-[#7e57c2] hover:underline cursor-pointer font-bold" onClick={() => window.open('https://meet.google.com/', '_blank')}>{t("gmeet_url")}</span>? ) <span className="text-red-500">*</span></Label>
                             </div>
                             <Input 
                                 value={formData.meeting_url}
@@ -636,7 +637,7 @@ export default function LiveClassesPage() {
 
                         {/* Description */}
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-gray-700">Description</Label>
+                            <Label className="text-[11px] font-medium text-gray-700">{t("description")}</Label>
                             <Textarea 
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
@@ -653,7 +654,7 @@ export default function LiveClassesPage() {
                             disabled={submitting}
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-5 h-8 text-[11px] font-bold rounded shadow-sm"
                         >
-                            {submitting ? "Saving..." : "Save"}
+                            {submitting ? t("saving") : t("save")}
                         </Button>
                     </div>
 
@@ -664,15 +665,15 @@ export default function LiveClassesPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="rounded bg-white">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete this scheduled live class session from the database.
+                            {t("permanently_delete_live_class_session")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded text-xs h-9">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="rounded text-xs h-9">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 rounded text-xs h-9 text-white">
-                            Delete
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -8,14 +8,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
     Card,
     CardContent,
-    CardHeader,
-    CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Loader2, CreditCard } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 const gateways = [
     "Paypal", "Stripe", "PayU", "CCAvenue", "InstaMojo", "Paystack",
@@ -87,6 +86,7 @@ function FormSkeleton() {
 }
 
 export default function PaymentMethodsPage() {
+    const { t } = useTranslation();
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState("Paypal");
     const [selectedGateway, setSelectedGateway] = useState("None");
@@ -121,7 +121,7 @@ export default function PaymentMethodsPage() {
                 setSettingsData(formattedData);
             }
         } catch (error) {
-            toast("error", "Failed to fetch Payment settings");
+            toast("error", t("failed_to_fetch_payment_settings"));
         } finally {
             setLoading(false);
         }
@@ -148,10 +148,10 @@ export default function PaymentMethodsPage() {
             const payload = { provider: providerKey, config: currentData.config, status: true };
             const res = await api.post('/system-setting/payment-settings', payload);
             if (res.data?.status === 'success') {
-                toast("success", `${activeTab} Configuration Saved`);
+                toast("success", `${activeTab} ${t("configuration_saved")}`);
             }
         } catch (error) {
-            toast("error", `Failed to save ${activeTab} configuration`);
+            toast("error", `${t("failed_to_save")} ${activeTab} ${t("configuration")}`);
         } finally {
             setSavingTab(false);
         }
@@ -163,10 +163,10 @@ export default function PaymentMethodsPage() {
             const payload = { provider: 'active_gateway', config: { selected: selectedGateway }, status: true };
             const res = await api.post('/system-setting/payment-settings', payload);
             if (res.data?.status === 'success') {
-                toast("success", `Active Gateway Saved As ${selectedGateway}`);
+                toast("success", `${t("active_gateway_saved_as")} ${selectedGateway}`);
             }
         } catch (error) {
-            toast("error", `Failed to save Active Gateway`);
+            toast("error", t("failed_to_save_active_gateway"));
         } finally {
             setSavingSelected(false);
         }
@@ -180,12 +180,18 @@ export default function PaymentMethodsPage() {
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans flex flex-col md:flex-row gap-6">
             {/* Left Column: Configuration Area */}
             <div className="flex-1 space-y-4">
-                <Card>
-                    <CardHeader className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] rounded-t-lg">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-gray-800 text-sm font-bold">Payment Methods</CardTitle>
+                <Card className="pt-0 overflow-hidden">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <CreditCard className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("payment_methods")}</h1>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("add_a_payment_method")}</p>
+                            </div>
                         </div>
-                    </CardHeader>
+                    </div>
                     <CardContent className="p-0 min-h-[500px]">
                         {/* Top Tabs */}
                         <div className="border-b border-gray-100 bg-white overflow-x-auto">
@@ -257,7 +263,7 @@ export default function PaymentMethodsPage() {
                                             <CreditCard className="h-10 w-10 text-indigo-400" />
                                         </div>
                                         <p className="text-xs text-center text-gray-400 font-bold uppercase tracking-wider leading-relaxed">
-                                            Configure {activeTab}
+                                            {t("configure")} {activeTab}
                                         </p>
                                     </div>
                                 </div>
@@ -271,7 +277,7 @@ export default function PaymentMethodsPage() {
                                 disabled={savingTab}
                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-10 h-10 text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5"
                             >
-                                {savingTab ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : "Save"}
+                                {savingTab ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("saving")}</> : t("save")}
                             </Button>
                         </div>
                     </CardContent>
@@ -280,10 +286,18 @@ export default function PaymentMethodsPage() {
 
             {/* Right Column: Gateway Selection Sidebar */}
             <div className="w-full md:w-64 space-y-2">
-                <Card>
-                    <CardHeader className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] rounded-t-lg">
-                        <CardTitle className="text-gray-800 text-[12px] font-bold uppercase">Select Gateway</CardTitle>
-                    </CardHeader>
+                <Card className="pt-0 overflow-hidden">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <CreditCard className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("select_gateway")}</h1>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("configured_payment_methods")}</p>
+                            </div>
+                        </div>
+                    </div>
                     <CardContent className="p-4">
                         <div className="flex-1 overflow-y-auto max-h-[60vh]">
                             <RadioGroup value={selectedGateway} onValueChange={setSelectedGateway} className="space-y-3">
@@ -315,7 +329,7 @@ export default function PaymentMethodsPage() {
                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-md w-full"
                             >
                                 {savingSelected ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : null}
-                                {savingSelected ? "..." : "Save Option"}
+                                {savingSelected ? "..." : t("save_option")}
                             </Button>
                         </div>
                     </CardContent>

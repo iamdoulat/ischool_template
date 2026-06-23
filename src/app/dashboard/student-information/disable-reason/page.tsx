@@ -20,7 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -65,7 +66,8 @@ export default function DisableReasonPage() {
     const [newReason, setNewReason] = useState("");
     const [editingReason, setEditingReason] = useState<DisableReason | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
 
     const fetchReasons = useCallback(async () => {
         setLoading(true);
@@ -75,11 +77,11 @@ export default function DisableReasonPage() {
             setSelectedIds(new Set());
         } catch (error) {
             console.error("Error fetching reasons:", error);
-            toast("error", "Failed to fetch disable reasons.");
+            tt.error("failed_to_fetch_disable_reasons");
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [tt]);
 
     useEffect(() => {
         fetchReasons();
@@ -87,7 +89,7 @@ export default function DisableReasonPage() {
 
     const handleSave = async () => {
         if (!newReason.trim()) {
-            toast("error", "Disable reason is required.");
+            tt.error("disable_reason_is_required");
             return;
         }
 
@@ -95,17 +97,17 @@ export default function DisableReasonPage() {
         try {
             if (editingReason) {
                 await api.put(`/disable-reasons/${editingReason.id}`, { reason: newReason });
-                toast("success", "Disable reason updated successfully.");
+                tt.success("disable_reason_updated_successfully");
             } else {
                 await api.post("/disable-reasons", { reason: newReason });
-                toast("success", "Disable reason added successfully.");
+                tt.success("disable_reason_added_successfully");
             }
             setNewReason("");
             setEditingReason(null);
             fetchReasons();
         } catch (error) {
             const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to save disable reason.";
-            toast("error", message);
+            tt.error(message);
         } finally {
             setLoading(false);
         }
@@ -115,10 +117,10 @@ export default function DisableReasonPage() {
         setLoading(true);
         try {
             await api.delete(`/disable-reasons/${id}`);
-            toast("success", "Disable reason deleted successfully.");
+            tt.success("disable_reason_deleted_successfully");
             fetchReasons();
         } catch (error) {
-            toast("error", "Failed to delete reason.");
+            tt.error("failed_to_delete_reason");
         } finally {
             setLoading(false);
         }
@@ -130,10 +132,10 @@ export default function DisableReasonPage() {
         setLoading(true);
         try {
             await api.post("/disable-reasons/bulk-delete", { ids: Array.from(selectedIds) });
-            toast("success", "Selected reasons deleted successfully.");
+            tt.success("selected_reasons_deleted_successfully");
             fetchReasons();
         } catch (error) {
-            toast("error", "Failed to delete selected reasons.");
+            tt.error("failed_to_delete_selected_reasons");
         } finally {
             setLoading(false);
         }
@@ -172,7 +174,7 @@ export default function DisableReasonPage() {
         if (reasons.length === 0) return;
         const text = ["Disable Reason\tID", ...reasons.map(r => `${r.reason}\t${r.id}`)].join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
@@ -181,7 +183,7 @@ export default function DisableReasonPage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Reasons");
         XLSX.writeFile(workbook, "disable_reasons.xlsx");
-        toast("success", "Excel file downloaded");
+        tt.success("excel_file_downloaded");
     };
 
     const exportToPDF = () => {
@@ -192,7 +194,7 @@ export default function DisableReasonPage() {
             body: reasons.map(r => [r.reason, r.id]),
         });
         doc.save("disable_reasons.pdf");
-        toast("success", "PDF file downloaded");
+        tt.success("pdf_file_downloaded");
     };
 
     return (
@@ -208,33 +210,33 @@ export default function DisableReasonPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {editingReason ? "Edit Disable Reason" : "Add Disable Reason"}
+                                    {editingReason ? t("edit_disable_reason") : t("add_disable_reason")}
                                 </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{editingReason ? "Update existing reason" : "Create a new disable reason"}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{editingReason ? t("update_existing_reason") : t("create_new_disable_reason")}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Disable Reason <span className="text-destructive">*</span>
+                                    {t("disable_reason")} <span className="text-destructive">*</span>
                                 </label>
                                 <Input
                                     className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all border-indigo-200"
                                     value={newReason}
                                     onChange={(e) => setNewReason(e.target.value)}
-                                    placeholder="Enter disable reason"
+                                    placeholder={t("enter_disable_reason")}
                                 />
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">
                                 {editingReason && (
                                     <Button variant="outline" className="h-10 px-6" onClick={() => { setEditingReason(null); setNewReason(""); }}>
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button variant="gradient" className="h-10 px-8" onClick={handleSave} disabled={loading}>
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                                    {editingReason ? "Update" : "Save"}
+                                    {editingReason ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </CardContent>
@@ -249,8 +251,8 @@ export default function DisableReasonPage() {
                                 <ShieldOff className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Disable Reason List</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{reasons.length} reasons</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("disable_reason_list")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("count_reasons", { count: reasons.length })}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
@@ -259,7 +261,7 @@ export default function DisableReasonPage() {
                                 <div className="relative w-full md:w-64">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search"
+                                        placeholder={t("search")}
                                         className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -267,12 +269,12 @@ export default function DisableReasonPage() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="flex gap-1">
-                                        <IconButton icon={Printer} onClick={() => window.print()} title="Print" />
-                                        <IconButton icon={Copy} onClick={exportToCopy} title="Copy" />
-                                        <IconButton icon={TableIcon} onClick={exportToExcel} title="Excel" />
-                                        <IconButton icon={FileText} onClick={exportToPDF} title="PDF" />
-                                        <IconButton icon={Download} onClick={exportToExcel} title="Download" />
-                                        <IconButton icon={Columns} title="Columns" />
+                                        <IconButton icon={Printer} onClick={() => window.print()} title={t("print")} />
+                                        <IconButton icon={Copy} onClick={exportToCopy} title={t("copy")} />
+                                        <IconButton icon={TableIcon} onClick={exportToExcel} title={t("excel")} />
+                                        <IconButton icon={FileText} onClick={exportToPDF} title={t("pdf")} />
+                                        <IconButton icon={Download} onClick={exportToExcel} title={t("download")} />
+                                        <IconButton icon={Columns} title={t("columns")} />
                                     </div>
                                 </div>
                             </div>
@@ -290,9 +292,9 @@ export default function DisableReasonPage() {
                                                     onChange={(e) => handleSelectAll(e.target.checked)}
                                                 />
                                             </Th>
-                                            <Th>Disable Reason</Th>
+                                            <Th>{t("disable_reason")}</Th>
                                             <Th className="text-right flex items-center justify-end gap-2">
-                                                <span>Action</span>
+                                                <span>{t("action")}</span>
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <button
@@ -301,21 +303,21 @@ export default function DisableReasonPage() {
                                                                 "p-1 rounded transition-all shadow-sm active:scale-90",
                                                                 selectedIds.size > 0 ? "bg-red-500 text-white hover:bg-red-600" : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
                                                             )}
-                                                            title="Delete Selected"
+                                                            title={t("delete_selected")}
                                                         >
                                                             <Trash2 className="h-3 w-3" />
                                                         </button>
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
                                                         <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                            <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                This will permanently delete {selectedIds.size} selected reasons. This action cannot be undone.
+                                                                {t("permanently_delete_selected_reasons", { count: selectedIds.size })}
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">Delete All</AlertDialogAction>
+                                                            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">{t("delete_all")}</AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>
@@ -327,7 +329,7 @@ export default function DisableReasonPage() {
                                             <TableSkeleton rows={5} cols={3} />
                                         ) : filteredReasons.length === 0 ? (
                                             <tr>
-                                                <td colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                                <td colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                             </tr>
                                         ) : (
                                             filteredReasons.map((item) => (
@@ -357,14 +359,14 @@ export default function DisableReasonPage() {
                                                                 </AlertDialogTrigger>
                                                                 <AlertDialogContent>
                                                                     <AlertDialogHeader>
-                                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                                                                         <AlertDialogDescription>
-                                                                            This will permanently delete the reason &quot;{item.reason}&quot;.
+                                                                            {t("permanently_delete_reason", { reason: item.reason })}
                                                                         </AlertDialogDescription>
                                                                     </AlertDialogHeader>
                                                                     <AlertDialogFooter>
-                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                        <AlertDialogAction onClick={() => handleDelete(item.id)} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                                                                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                                                        <AlertDialogAction onClick={() => handleDelete(item.id)} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                                                                     </AlertDialogFooter>
                                                                 </AlertDialogContent>
                                                             </AlertDialog>
@@ -380,7 +382,7 @@ export default function DisableReasonPage() {
                             {!loading && filteredReasons.length > 0 && (
                                 <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                        Showing 1 to {filteredReasons.length} of {filteredReasons.length} entries
+                                        {t("showing_x_to_y_of_z", { from: 1, to: filteredReasons.length, total: filteredReasons.length })}
                                     </p>
                                     <div className="flex items-center gap-2">
                                         <Button size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 active:scale-95 transition-all">

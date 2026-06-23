@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 
 interface Reminder {
     id: number;
@@ -38,7 +39,8 @@ export default function FeesReminderPage() {
     const [reminders, setReminders] = useState<Reminder[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
 
     useEffect(() => {
         fetchReminders();
@@ -48,8 +50,8 @@ export default function FeesReminderPage() {
         try {
             const response = await api.get("/fee-reminders");
             setReminders(response.data.data);
-        } catch (error) {
-            toast("error", "Failed to fetch fee reminders");
+        } catch {
+            tt.error("failed_to_fetch_fee_reminders");
         } finally {
             setLoading(false);
         }
@@ -68,10 +70,10 @@ export default function FeesReminderPage() {
         setSaving(true);
         try {
             await api.post("/fee-reminders/bulk-update", { reminders });
-            toast("success", "Fee reminders saved successfully");
+            tt.success("fee_reminders_saved_successfully");
             fetchReminders(); // Refresh data
-        } catch (error) {
-            toast("error", "Failed to save fee reminders");
+        } catch {
+            tt.error("failed_to_save_fee_reminders");
         } finally {
             setSaving(false);
         }
@@ -80,8 +82,8 @@ export default function FeesReminderPage() {
     return (
         <div className="p-6 space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight">Fees Reminder</h1>
-                <p className="text-muted-foreground">Configure automated fee reminder notifications for students and parents.</p>
+                <h1 className="text-3xl font-bold tracking-tight">{t("fees_reminder")}</h1>
+                <p className="text-muted-foreground">{t("configure_automated_fee_reminder_notifications")}</p>
             </div>
 
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
@@ -90,8 +92,8 @@ export default function FeesReminderPage() {
                         <BellRing className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Reminder Settings</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{reminders.length} reminder type{reminders.length === 1 ? '' : 's'}</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("reminder_settings")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{reminders.length} {t("reminder_types_count")}</p>
                     </div>
                 </CardHeader>
 
@@ -100,9 +102,9 @@ export default function FeesReminderPage() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-muted/20 bg-muted/10">
-                                    <th className="px-8 py-5 text-xs font-bold uppercase tracking-wider text-muted-foreground w-[150px]">Status</th>
-                                    <th className="px-8 py-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">Reminder Type</th>
-                                    <th className="px-8 py-5 text-xs font-bold uppercase tracking-wider text-muted-foreground w-[250px]">Days</th>
+                                    <th className="px-8 py-5 text-xs font-bold uppercase tracking-wider text-muted-foreground w-[150px]">{t("status")}</th>
+                                    <th className="px-8 py-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("reminder_type")}</th>
+                                    <th className="px-8 py-5 text-xs font-bold uppercase tracking-wider text-muted-foreground w-[250px]">{t("days")}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-muted/10">
@@ -110,7 +112,7 @@ export default function FeesReminderPage() {
                                     <TableSkeleton rows={5} cols={3} />
                                 ) : reminders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                        <td colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                     </tr>
                                 ) : reminders.map((reminder) => (
                                     <tr key={reminder.id} className="hover:bg-muted/5 transition-colors group">
@@ -129,7 +131,7 @@ export default function FeesReminderPage() {
                                                         reminder.is_active ? "text-primary" : "text-muted-foreground/50"
                                                     )}
                                                 >
-                                                    {reminder.is_active ? 'Active' : 'Inactive'}
+                                                    {reminder.is_active ? t("active") : t("inactive")}
                                                 </label>
                                             </div>
                                         </td>
@@ -139,10 +141,10 @@ export default function FeesReminderPage() {
                                                     "text-base font-bold tracking-tight",
                                                     reminder.is_active ? "text-foreground" : "text-muted-foreground"
                                                 )}>
-                                                    {reminder.type} Due Date Reminder
+                                                    {t("due_date_reminder", { type: reminder.type })}
                                                 </span>
                                                 <span className="text-xs text-muted-foreground/70 font-medium">
-                                                    Automatically notify when fees are {reminder.type.toLowerCase()} the due date.
+                                                    {t("auto_notify_fee_due_date", { type: reminder.type.toLowerCase() })}
                                                 </span>
                                             </div>
                                         </td>
@@ -162,7 +164,7 @@ export default function FeesReminderPage() {
                                                     "text-sm font-bold uppercase tracking-tighter",
                                                     reminder.is_active ? "text-muted-foreground" : "text-muted-foreground/30"
                                                 )}>
-                                                    Days
+                                                    {t("days_label")}
                                                 </span>
                                             </div>
                                         </td>
@@ -184,7 +186,7 @@ export default function FeesReminderPage() {
                             ) : (
                                 <Save className="h-5 w-5 group-hover/save:scale-110 transition-transform" />
                             )}
-                            {saving ? 'Saving...' : 'Save Configuration'}
+                            {saving ? t("saving") : t("save_configuration")}
                         </Button>
                     </div>
                 </CardContent>

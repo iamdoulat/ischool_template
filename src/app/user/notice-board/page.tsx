@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
 
 type Notice = {
@@ -51,6 +52,7 @@ const splitTo = (s: string | null) =>
     s ? s.split(",").map((x) => x.trim()).filter(Boolean) : [];
 
 export default function UserNoticeBoardPage() {
+    const { t } = useTranslation();
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<Notice | null>(null);
@@ -71,7 +73,7 @@ export default function UserNoticeBoardPage() {
                 setLastPage(raw?.last_page ?? 1);
                 setTotal(raw?.total ?? items.length);
             } catch {
-                toast({ variant: "destructive", title: "Error", description: "Failed to load notices." });
+                toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_notices") });
             } finally {
                 setLoading(false);
             }
@@ -107,16 +109,16 @@ export default function UserNoticeBoardPage() {
                             <Megaphone className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Notice Board</h1>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("notice_board")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {loading ? "Loading…" : `${total} published notice${total === 1 ? "" : "s"}`}
+                                {loading ? `${t("loading")}…` : `${total} ${total === 1 ? t("published_notice") : t("published_notices")}`}
                             </p>
                         </div>
                     </div>
                     <div className="relative w-40 sm:w-64 shrink-0">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                         <Input
-                            placeholder="Search notices..."
+                            placeholder={t("search_notices")}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-8 h-9 text-sm rounded-[10px] bg-white"
@@ -128,16 +130,16 @@ export default function UserNoticeBoardPage() {
                     {loading ? (
                         <div className="flex items-center justify-center py-20 gap-2 text-gray-400">
                             <Loader2 className="h-6 w-6 animate-spin" />
-                            <span>Loading notices...</span>
+                            <span>{t("loading_notices")}</span>
                         </div>
                     ) : visible.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                             <Bell className="h-12 w-12 opacity-30 mb-3" />
                             <p className="text-base font-medium text-gray-500">
-                                {searchTerm ? "No matching notices." : "No notices available."}
+                                {searchTerm ? t("no_matching_notices") : t("no_notices_available")}
                             </p>
                             <p className="text-sm mt-1">
-                                {searchTerm ? "Try a different search term." : "New announcements will appear here."}
+                                {searchTerm ? t("try_a_different_search_term") : t("new_announcements_will_appear_here")}
                             </p>
                         </div>
                     ) : (
@@ -191,7 +193,7 @@ export default function UserNoticeBoardPage() {
                                                 {formatDate(notice.notice_date || notice.publish_date)}
                                             </span>
                                             <span className="flex items-center gap-1 text-[11px] font-semibold text-[#6366F1] opacity-0 group-hover:opacity-100 transition-opacity">
-                                                Read <ArrowRight className="h-3 w-3" />
+                                                {t("read")} <ArrowRight className="h-3 w-3" />
                                             </span>
                                         </div>
                                     </button>
@@ -204,7 +206,7 @@ export default function UserNoticeBoardPage() {
                     {!loading && total > 0 && lastPage > 1 && (
                         <div className="flex items-center justify-between gap-3 mt-5">
                             <span className="text-[12px] text-gray-500">
-                                Page {page} of {lastPage} · {total} notice{total === 1 ? "" : "s"}
+                                {t("page")} {page} {t("of")} {lastPage} · {total} {total === 1 ? t("notice") : t("notices")}
                             </span>
                             <div className="flex items-center gap-1.5">
                                 <Button
@@ -212,14 +214,14 @@ export default function UserNoticeBoardPage() {
                                     disabled={page <= 1}
                                     className="h-8 px-3 gap-1 text-[12px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 disabled:opacity-40 transition-opacity"
                                 >
-                                    <ChevronLeft className="h-3.5 w-3.5" /> Prev
+                                    <ChevronLeft className="h-3.5 w-3.5" /> {t("prev")}
                                 </Button>
                                 <Button
                                     onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
                                     disabled={page >= lastPage}
                                     className="h-8 px-3 gap-1 text-[12px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 disabled:opacity-40 transition-opacity"
                                 >
-                                    Next <ChevronRight className="h-3.5 w-3.5" />
+                                    {t("next")} <ChevronRight className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
                         </div>
@@ -260,19 +262,19 @@ export default function UserNoticeBoardPage() {
                             {selected.notice_date && (
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    <span>Notice Date: <span className="font-medium text-gray-700">{formatDate(selected.notice_date)}</span></span>
+                                    <span>{t("notice_date")}: <span className="font-medium text-gray-700">{formatDate(selected.notice_date)}</span></span>
                                 </div>
                             )}
                             {selected.publish_date && (
                                 <div className="flex items-center gap-1.5">
                                     <Send className="h-3.5 w-3.5" />
-                                    <span>Published: <span className="font-medium text-gray-700">{formatDate(selected.publish_date)}</span></span>
+                                    <span>{t("published")}: <span className="font-medium text-gray-700">{formatDate(selected.publish_date)}</span></span>
                                 </div>
                             )}
                             {(selected.notify_to || selected.message_to) && (
                                 <div className="flex items-center gap-1.5">
                                     <Users className="h-3.5 w-3.5" />
-                                    <span>To: <span className="font-medium text-gray-700 capitalize">{selected.notify_to || selected.message_to}</span></span>
+                                    <span>{t("to")}: <span className="font-medium text-gray-700 capitalize">{selected.notify_to || selected.message_to}</span></span>
                                 </div>
                             )}
                         </div>
@@ -291,7 +293,7 @@ export default function UserNoticeBoardPage() {
                                 onClick={() => setSelected(null)}
                                 className="h-9 px-4 text-[13px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity"
                             >
-                                Close
+                                {t("close")}
                             </Button>
                         </div>
                     </div>

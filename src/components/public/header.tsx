@@ -21,44 +21,27 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useImageUrl } from "@/lib/image-url";
-import api from "@/lib/api";
+import { getPublicMenus, type PublicMenuItem as MenuItem } from "@/lib/public-menus";
 
-interface MenuItem {
-    id: number;
-    title: string;
-    is_external: boolean;
-    open_new_tab: boolean;
-    url?: string;
-    page?: string;
-    type: string;
-    parent_id?: number | null;
-    order: number;
-    sub_items?: MenuItem[];
+interface NavItem {
+    name: string;
+    href: string;
+    newTab?: boolean;
 }
 
 export function PublicHeader() {
     const { settings } = useSettings();
     const pathname = usePathname();
-    console.log("PublicHeader Settings:", settings);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [dynamicMenus, setDynamicMenus] = useState<MenuItem[]>([]);
     const getImageUrl = useImageUrl();
-    const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
 
     useEffect(() => {
-        const fetchMenus = async () => {
-            try {
-                const res = await api.get("front-cms/menus");
-                if (res.data?.status === "Success") {
-                    // Filter main menu items
-                    const mainMenus = res.data.data.filter((m: MenuItem) => m.type === "main");
-                    setDynamicMenus(mainMenus);
-                }
-            } catch (error) {
-                console.error("Failed to fetch menus", error);
-            }
-        };
-        fetchMenus();
+        let active = true;
+        getPublicMenus().then((menus) => {
+            if (active) setDynamicMenus(menus.filter((m) => m.type === "main"));
+        });
+        return () => { active = false; };
     }, []);
 
     const defaultNavItems = [
@@ -70,26 +53,36 @@ export function PublicHeader() {
         { name: "Contact Us", href: "/contact-us" },
     ];
 
-    const displayMenus = dynamicMenus.length > 0 ? [
-        { name: "Home", href: "/" },
-        ...dynamicMenus
-            .filter(m => m.title.toLowerCase() !== 'home')
-            .map(m => {
-                let href = '';
-                if (!!m.is_external) {
-                    href = m.url || '';
-                } else {
-                    const pageSlug = m.page === 'home' ? '' : (m.page === 'admission' ? 'online_admission' : (m.page || ''));
-                    href = pageSlug.startsWith('/') ? pageSlug : `/${pageSlug}`;
-                }
+    const displayMenus: NavItem[] = (() => {
+        const seen = new Set<string>();
+        const items: NavItem[] = dynamicMenus.length > 0 ? [
+            { name: "Home", href: "/" },
+            ...dynamicMenus
+                .filter(m => m.title.toLowerCase() !== 'home')
+                .map(m => {
+                    let href = '';
+                    if (!!m.is_external) {
+                        href = m.url || '';
+                    } else {
+                        const pageSlug = m.page === 'home' ? '' : (m.page === 'admission' ? 'online_admission' : (m.page || ''));
+                        href = pageSlug.startsWith('/') ? pageSlug : `/${pageSlug}`;
+                    }
 
-                return {
-                    name: m.title,
-                    href,
-                    newTab: !!m.open_new_tab
-                };
-            })
-    ] : defaultNavItems;
+                    return {
+                        name: m.title,
+                        href,
+                        newTab: !!m.open_new_tab
+                    };
+                })
+        ] : defaultNavItems;
+
+        // Deduplicate by name to avoid React duplicate-key warnings
+        return items.filter(item => {
+            if (seen.has(item.name)) return false;
+            seen.add(item.name);
+            return true;
+        });
+    })();
 
     return (
         <header className="w-full flex flex-col z-50 sticky top-0 bg-white shadow-md">
@@ -170,12 +163,12 @@ export function PublicHeader() {
                     {/* Desktop Menu */}
                     <nav className="hidden md:flex items-center gap-1">
                         {displayMenus.map((item) => {
-                            const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                            const isActive = item.href === '/' ? pathname === '/' : (!!item.href && item.href !== '#' && pathname.startsWith(item.href));
                             return (
                                 <Link
                                     key={item.name}
                                     href={item.href || '#'}
-                                    target={(item as any).newTab ? "_blank" : "_self"}
+                                    target={item.newTab ? "_blank" : "_self"}
                                     className={cn(
                                         "px-4 py-2 text-sm font-semibold rounded-md transition-all flex items-center",
                                         isActive
@@ -209,12 +202,12 @@ export function PublicHeader() {
                     <div className="md:hidden border-t bg-white absolute w-full left-0 shadow-lg animate-in slide-in-from-top-2">
                         <div className="flex flex-col p-4 space-y-2">
                             {displayMenus.map((item) => {
-                                const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                                const isActive = item.href === '/' ? pathname === '/' : (!!item.href && item.href !== '#' && pathname.startsWith(item.href));
                                 return (
                                     <Link
                                         key={item.name}
                                         href={item.href || '#'}
-                                        target={(item as any).newTab ? "_blank" : "_self"}
+                                        target={item.newTab ? "_blank" : "_self"}
                                         className={cn(
                                             "px-4 py-3 text-sm font-medium rounded-lg flex items-center",
                                             isActive

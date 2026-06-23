@@ -162,11 +162,16 @@ export default function LanguagesPage() {
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
 
             {/* Header Container */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                    <Languages className="h-5 w-5 text-primary" />
-                    {t("language_list")}
-                </h2>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Languages className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("language_list")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Manage system languages and translations</p>
+                    </div>
+                </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
@@ -214,14 +219,15 @@ export default function LanguagesPage() {
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="h-32 text-center">
-                                        <div className="flex flex-col items-center justify-center gap-2">
-                                            <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
-                                            <p className="text-[11px] text-gray-400 font-medium">Loading languages...</p>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
+                                Array.from({ length: 6 }).map((_, i) => (
+                                    <TableRow key={`sk-${i}`} className="border-b border-gray-50 h-14">
+                                        {Array.from({ length: 8 }).map((_, j) => (
+                                            <TableCell key={j} className="py-2 px-4">
+                                                <div className="h-3 rounded bg-gray-200/60 animate-pulse" style={{ width: `${45 + ((i * 5 + j * 9) % 40)}%` }} />
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
                             ) : filteredLanguages.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={8} className="h-32 text-center text-[11px] text-gray-400 font-medium">

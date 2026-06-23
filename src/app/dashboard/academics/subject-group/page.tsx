@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pencil, Trash2, Printer, Copy, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Loader2, Library } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -72,6 +74,8 @@ interface SubjectGroup {
 
 export default function SubjectGroupPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
 
     // Data states
     const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -116,7 +120,7 @@ export default function SubjectGroupPage() {
                 setSubjects(subRes.data.data?.data || subRes.data.data || []);
             } catch (error) {
                 console.error("Failed to load prerequisites", error);
-                toast("error", "Failed to load prerequisites");
+                tt.error("failed_to_load");
             }
         };
         fetchPrerequisites();
@@ -155,7 +159,7 @@ export default function SubjectGroupPage() {
             setTo(data.to || 0);
         } catch (error) {
             console.error("Error fetching subject groups:", error);
-            toast("error", "Failed to load subject groups");
+            tt.error("failed_to_load");
         } finally {
             setLoading(false);
         }
@@ -176,10 +180,10 @@ export default function SubjectGroupPage() {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!name.trim()) return toast("error", "Name is required");
-        if (!classId) return toast("error", "Class is required");
-        if (selectedSections.length === 0) return toast("error", "Select at least one section");
-        if (selectedSubjects.length === 0) return toast("error", "Select at least one subject");
+        if (!name.trim()) return tt.error("name_is_required");
+        if (!classId) return tt.error("class_is_required");
+        if (selectedSections.length === 0) return tt.error("select_at_least_one_section");
+        if (selectedSubjects.length === 0) return tt.error("select_at_least_one_subject");
 
         setSaving(true);
         const payload = {
@@ -193,17 +197,17 @@ export default function SubjectGroupPage() {
         try {
             if (editingId) {
                 await api.put(`/academics/subject-groups/${editingId}`, payload);
-                toast("success", "Subject Group updated successfully");
+                tt.success("updated_successfully");
             } else {
                 await api.post(`/academics/subject-groups`, payload);
-                toast("success", "Subject Group created successfully");
+                tt.success("created_successfully");
             }
             resetForm();
             fetchSubjectGroups(currentPage);
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
             console.error("Error saving subject group:", error);
-            toast("error", err.response?.data?.message || "Error saving subject group");
+            tt.error(err.response?.data?.message || "failed_to_save");
         } finally {
             setSaving(false);
         }
@@ -240,11 +244,11 @@ export default function SubjectGroupPage() {
         try {
             await api.delete(`/academics/subject-groups/${idToDelete}`);
             fetchSubjectGroups(currentPage);
-            toast("success", "Subject Group deleted successfully");
+            tt.success("deleted_successfully");
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
             console.error("Error deleting subject group:", error);
-            toast("error", err.response?.data?.message || "Failed to delete subject group");
+            tt.error(err.response?.data?.message || "failed_to_delete");
         } finally {
             setLoading(false);
             setIsDeleteDialogOpen(false);
@@ -255,16 +259,16 @@ export default function SubjectGroupPage() {
     // --- Export Functions ---
     const exportDataForTable = () => {
         return subjectGroups.map(group => ({
-            "Name": group.name,
-            "Class (Sections)": `${group.school_class?.name || ''} (${group.sections.map(s => s.name).join(', ')})`,
-            "Subjects": group.subjects.map(s => s.name).join(', ')
+            [t("name")]: group.name,
+            [t("class_sections")]: `${group.school_class?.name || ''} (${group.sections.map(s => s.name).join(', ')})`,
+            [t("subjects")]: group.subjects.map(s => s.name).join(', ')
         }));
     };
 
     const exportToCopy = () => {
-        const text = exportDataForTable().map(row => `${row.Name}\t${row["Class (Sections)"]}\t${row.Subjects}`).join("\n");
+        const text = exportDataForTable().map((row: Record<string, string>) => `${row[t("name")]}\t${row[t("class_sections")]}\t${row[t("subjects")]}`).join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
@@ -277,7 +281,7 @@ export default function SubjectGroupPage() {
     const exportToPDF = () => {
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [['Name', 'Class (Sections)', 'Subjects']],
+            head: [[t("name"), t("class_sections"), t("subjects")]],
             body: subjectGroups.map(group => [
                 group.name,
                 group.sections.map(s => `${group.school_class?.name || ''} - ${s.name}`).join('\n'),
@@ -295,11 +299,11 @@ export default function SubjectGroupPage() {
     const printTable = () => {
         const printWindow = window.open('', '', 'height=600,width=800');
         if (!printWindow) return;
-        printWindow.document.write('<html><head><title>Subject Group List</title>');
+        printWindow.document.write('<html><head><title>' + t("subject_group_list") + '</title>');
         printWindow.document.write('<style>table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; font-family: sans-serif; font-size: 13px; } th { background-color: #f2f2f2; }</style>');
         printWindow.document.write('</head><body>');
-        printWindow.document.write('<h2>Subject Group List</h2>');
-        printWindow.document.write('<table><thead><tr><th>Name</th><th>Class (Sections)</th><th>Subjects</th></tr></thead><tbody>');
+        printWindow.document.write('<h2>' + t("subject_group_list") + '</h2>');
+        printWindow.document.write('<table><thead><tr><th>' + t("name") + '</th><th>' + t("class_sections") + '</th><th>' + t("subjects") + '</th></tr></thead><tbody>');
         subjectGroups.forEach(group => {
             const sectionsRow = group.sections.map(s => `${group.school_class?.name || ''} - ${s.name}`).join('<br>');
             const subjectsRow = group.subjects.map(s => s.name).join('<br>');
@@ -327,16 +331,16 @@ export default function SubjectGroupPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {editingId ? "Edit Subject Group" : "Add Subject Group"}
+                                    {editingId ? t("edit_subject_group") : t("add_subject_group")}
                                 </CardTitle>
                                 <p className="text-[11px] text-gray-500 mt-1">
-                                    {selectedSubjects.length} subject{selectedSubjects.length === 1 ? '' : 's'} selected
+                                    {t("x_subjects_selected", { count: selectedSubjects.length })}
                                 </p>
                             </div>
                         </div>
                         {editingId && (
                             <Button type="button" variant="ghost" size="sm" onClick={resetForm} className="text-xs text-indigo-600">
-                                Cancel Edit
+                                {t("cancel_edit")}
                             </Button>
                         )}
                     </CardHeader>
@@ -344,7 +348,7 @@ export default function SubjectGroupPage() {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                                Name <span className="text-red-500">*</span>
+                                {t("name")} <span className="text-red-500">*</span>
                             </Label>
                             <Input
                                 id="name"
@@ -357,11 +361,11 @@ export default function SubjectGroupPage() {
 
                         <div className="space-y-2">
                             <Label className="text-sm font-medium text-gray-700">
-                                Class <span className="text-red-500">*</span>
+                                {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={classId} onValueChange={handleClassChange}>
                                 <SelectTrigger className="h-9 font-medium focus:ring-indigo-500">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => (
@@ -373,12 +377,12 @@ export default function SubjectGroupPage() {
 
                         <div className="space-y-2">
                             <Label className="text-sm font-medium text-gray-700">
-                                Sections <span className="text-red-500">*</span>
+                                {t("sections")} <span className="text-red-500">*</span>
                             </Label>
                             {!classId ? (
-                                <p className="text-xs text-gray-400 border border-dashed rounded p-2 text-center">Select a class first to see sections</p>
+                                <p className="text-xs text-gray-400 border border-dashed rounded p-2 text-center">{t("select_class_first_to_see_sections")}</p>
                             ) : sections.length === 0 ? (
-                                <p className="text-xs text-gray-400 border border-dashed rounded p-2 text-center">No sections available for this class</p>
+                                <p className="text-xs text-gray-400 border border-dashed rounded p-2 text-center">{t("no_sections_available_for_this_class")}</p>
                             ) : (
                                 <div className="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-[150px] overflow-y-auto">
                                     {sections.map(section => (
@@ -402,10 +406,10 @@ export default function SubjectGroupPage() {
 
                         <div className="space-y-3">
                             <Label className="text-sm font-medium text-gray-700">
-                                Subjects <span className="text-red-500">*</span>
+                                {t("subjects")} <span className="text-red-500">*</span>
                             </Label>
                             {subjects.length === 0 ? (
-                                <p className="text-xs text-gray-400 border border-dashed rounded p-2 text-center">No subjects available in system</p>
+                                <p className="text-xs text-gray-400 border border-dashed rounded p-2 text-center">{t("no_subjects_available_in_system")}</p>
                             ) : (
                                 <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar border rounded-md p-3">
                                     {subjects.map((subject) => (
@@ -432,7 +436,7 @@ export default function SubjectGroupPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="description" className="text-sm font-medium text-gray-700">
-                                Description
+                                {t("description")}
                             </Label>
                             <Textarea
                                 id="description"
@@ -449,7 +453,7 @@ export default function SubjectGroupPage() {
                                 className={`px-8 h-9 text-xs flex items-center gap-2 ${saveGradient}`}
                             >
                                 {saving && <Loader2 className="h-3 w-3 animate-spin" />}
-                                {editingId ? "Update" : "Save"}
+                                {editingId ? t("update") : t("save")}
                             </Button>
                         </div>
                     </CardContent>
@@ -464,8 +468,8 @@ export default function SubjectGroupPage() {
                             <Library className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Subject Group List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{total} total entr{total === 1 ? 'y' : 'ies'}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("subject_group_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: total })}</p>
                         </div>
                     </CardHeader>
 
@@ -473,7 +477,7 @@ export default function SubjectGroupPage() {
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500"
@@ -515,10 +519,10 @@ export default function SubjectGroupPage() {
                             <Table>
                                 <TableHeader className="bg-gray-50/50 text-[11px] uppercase">
                                     <TableRow className="hover:bg-transparent border-gray-100">
-                                        <TableHead className="font-bold text-gray-700 py-3">Name</TableHead>
-                                        <TableHead className="font-bold text-gray-700 py-3">Class (Section)</TableHead>
-                                        <TableHead className="font-bold text-gray-700 py-3">Subject</TableHead>
-                                        <TableHead className="font-bold text-gray-700 text-right py-3 w-[80px]">Action</TableHead>
+                                        <TableHead className="font-bold text-gray-700 py-3">{t("name")}</TableHead>
+                                        <TableHead className="font-bold text-gray-700 py-3">{t("class_section")}</TableHead>
+                                        <TableHead className="font-bold text-gray-700 py-3">{t("subject")}</TableHead>
+                                        <TableHead className="font-bold text-gray-700 text-right py-3 w-[80px]">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -526,7 +530,7 @@ export default function SubjectGroupPage() {
                                         <TableSkeleton rows={5} cols={4} />
                                     ) : subjectGroups.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                            <td colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                         </tr>
                                     ) : (
                                         subjectGroups.map((group) => (
@@ -580,7 +584,7 @@ export default function SubjectGroupPage() {
                         {total > 0 && (
                             <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
                                 <div>
-                                    Showing {from} to {to} of {total} entries
+                                    {t("showing_x_to_y_of_z", { from, to, total })}
                                 </div>
                                 <div className="flex gap-1">
                                     <Button
@@ -623,15 +627,15 @@ export default function SubjectGroupPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete the subject group. This action cannot be undone.
+                            {t("delete_subject_group_confirm_message")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                            Delete
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

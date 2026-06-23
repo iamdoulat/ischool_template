@@ -13,6 +13,7 @@ import { Search, Plus, Pencil, Copy, FileSpreadsheet, FileText, Printer, Columns
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { useImageUrl } from "@/lib/image-url";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Dialog,
     DialogContent,
@@ -68,6 +69,7 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 
 export default function ApproveLeavePage() {
     const getImageUrl = useImageUrl();
+    const { t } = useTranslation();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
@@ -185,7 +187,7 @@ export default function ApproveLeavePage() {
             }
         } catch (error) {
             console.error("Error fetching leaves:", error);
-            toast.error("Failed to load leave requests");
+            toast.error(t("failed_to_load_leave_requests"));
         } finally {
             setLoading(false);
         }
@@ -201,36 +203,36 @@ export default function ApproveLeavePage() {
                 admin_remark: adminRemark
             });
             if (response.data.success) {
-                toast.success(`Leave request ${status.toLowerCase()} successfully`);
+                toast.success(status === "Approved" ? t("leave_request_approved_successfully") : t("leave_request_disapproved_successfully"));
                 setStatusDialogOpen(false);
                 fetchLeaves();
             }
         } catch (error) {
             console.error("Error updating status:", error);
-            toast.error("Failed to update status");
+            toast.error(t("failed_to_update_status"));
         } finally {
             setUpdatingStatus(false);
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this leave request?")) return;
+        if (!confirm(t("confirm_delete_leave_request"))) return;
 
         try {
             const response = await api.delete(`/attendance/approve-leave/${id}`);
             if (response.data.success) {
-                toast.success("Leave request deleted successfully");
+                toast.success(t("leave_request_deleted_successfully"));
                 fetchLeaves();
             }
         } catch (error) {
             console.error("Error deleting leave:", error);
-            toast.error("Failed to delete leave request");
+            toast.error(t("failed_to_delete_leave_request"));
         }
     };
 
     const handleSaveLeave = async () => {
         if (!newLeaveStudent || !newLeaveType || !newLeaveApplyDate || !newLeaveFromDate || !newLeaveToDate || !newLeaveStatus) {
-            toast.error("Please fill all required fields");
+            toast.error(t("please_fill_all_required_fields"));
             return;
         }
 
@@ -245,7 +247,7 @@ export default function ApproveLeavePage() {
                     },
                 });
                 if (checkRes.data?.data?.exists) {
-                    toast.error("This student already has a leave application in the selected date range.");
+                    toast.error(t("student_already_has_leave_in_range"));
                     return;
                 }
             } catch {
@@ -278,7 +280,7 @@ export default function ApproveLeavePage() {
             }
 
             if (response.data.success) {
-                toast.success(editingLeaveId ? "Leave request updated successfully" : "Leave request created successfully");
+                toast.success(editingLeaveId ? t("leave_request_updated_successfully") : t("leave_request_created_successfully"));
                 setAddDialogOpen(false);
                 resetForm();
                 fetchLeaves();
@@ -286,7 +288,7 @@ export default function ApproveLeavePage() {
         } catch (error) {
             console.error("Error saving leave:", error);
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast.error(err?.response?.data?.message || "Failed to save leave request");
+            toast.error(err?.response?.data?.message || t("failed_to_save_leave_request"));
         } finally {
             setSavingLeave(false);
         }
@@ -329,11 +331,11 @@ export default function ApproveLeavePage() {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case "Approved":
-                return <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Approved</Badge>;
+                return <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">{t("approved")}</Badge>;
             case "Disapproved":
-                return <Badge className="bg-red-50 text-red-700 hover:bg-red-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Disapproved</Badge>;
+                return <Badge className="bg-red-50 text-red-700 hover:bg-red-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">{t("disapproved")}</Badge>;
             default:
-                return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Pending</Badge>;
+                return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">{t("pending")}</Badge>;
         }
     };
 
@@ -341,13 +343,13 @@ export default function ApproveLeavePage() {
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             {/* Top Bar */}
             <div className="flex items-center justify-between">
-                <h1 className="text-lg font-bold text-gray-800">Leave Management</h1>
+                <h1 className="text-lg font-bold text-gray-800">{t("leave_management")}</h1>
                 <Button
                     onClick={() => setAddDialogOpen(true)}
                     className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-6 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
                 >
                     <Plus className="h-4 w-4" />
-                    Apply Leave
+                    {t("apply_leave")}
                 </Button>
             </div>
 
@@ -358,17 +360,17 @@ export default function ApproveLeavePage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter leave requests by class &amp; section</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_leave_requests_by_class_section")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class</Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("class")}</Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
                                 <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                    <SelectValue placeholder="Select Class" />
+                                    <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(cls => (
@@ -379,10 +381,10 @@ export default function ApproveLeavePage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("section")}</Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
                                 <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                    <SelectValue placeholder="Select Section" />
+                                    <SelectValue placeholder={t("select_section")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(sec => (
@@ -400,7 +402,7 @@ export default function ApproveLeavePage() {
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
                         >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                            Search
+                            {t("search")}
                         </Button>
                     </div>
                 </CardContent>
@@ -413,15 +415,15 @@ export default function ApproveLeavePage() {
                         <CalendarCheck className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Approve Leave List</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{leaves.length} total entr{leaves.length === 1 ? 'y' : 'ies'}</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("approve_leave_list")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{leaves.length} {leaves.length === 1 ? t("total_entry") : t("total_entries")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                         <div className="relative w-full md:w-80">
                             <Input
-                                placeholder="Search by student name or admission no..."
+                                placeholder={t("search_by_student_name_or_admission")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onKeyUp={(e) => e.key === 'Enter' && fetchLeaves()}
@@ -455,15 +457,15 @@ export default function ApproveLeavePage() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/50">
-                                    <TableHead className="py-4 px-6 w-12">Avatar</TableHead>
-                                    <TableHead className="py-4 px-6">Student</TableHead>
-                                    <TableHead className="py-4 px-6">Class/Section</TableHead>
-                                    <TableHead className="py-4 px-6">Leave Type</TableHead>
-                                    <TableHead className="py-4 px-6">Apply Date</TableHead>
-                                    <TableHead className="py-4 px-6">Duration</TableHead>
-                                    <TableHead className="py-4 px-6">Status</TableHead>
-                                    <TableHead className="py-4 px-6">Attach Document</TableHead>
-                                    <TableHead className="py-4 px-6 text-right">Action</TableHead>
+                                    <TableHead className="py-4 px-6 w-12">{t("avatar")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("student")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("class_section")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("leave_type")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("apply_date")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("duration")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("status")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("attach_document")}</TableHead>
+                                    <TableHead className="py-4 px-6 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -472,7 +474,7 @@ export default function ApproveLeavePage() {
                                 ) : leaves.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={9} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                            No data found
+                                            {t("no_data_found")}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -494,7 +496,7 @@ export default function ApproveLeavePage() {
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex flex-col gap-0.5">
                                                     <span className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{item.user.name}</span>
-                                                    <span className="text-[10px] text-gray-400 font-medium">Adm: {item.user.admission_no}</span>
+                                                    <span className="text-[10px] text-gray-400 font-medium">{t("adm")}: {item.user.admission_no}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
@@ -518,7 +520,7 @@ export default function ApproveLeavePage() {
                                                         <Calendar className="h-3 w-3 text-gray-400" />
                                                         {new Date(item.leave_from).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })} - {new Date(item.leave_to).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}
                                                     </div>
-                                                    <span className="text-[10px] text-indigo-500 font-black uppercase tracking-wider">{item.days} days duration</span>
+                                                    <span className="text-[10px] text-indigo-500 font-black uppercase tracking-wider">{item.days} {t("days_duration")}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
@@ -552,7 +554,7 @@ export default function ApproveLeavePage() {
                                                                 size="sm"
                                                                 className="h-8 px-4 bg-gradient-to-r from-[#6366F1] to-[#4F46E5] hover:from-[#4F46E5] hover:to-[#4338CA] text-white rounded-full text-[10px] font-black uppercase shadow-md transition-all active:scale-95"
                                                             >
-                                                                Review
+                                                                {t("review")}
                                                             </Button>
                                                         )}
                                                         <Button
@@ -585,9 +587,9 @@ export default function ApproveLeavePage() {
                 <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden rounded-lg border-none shadow-2xl">
                     <div className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-8 text-white">
                         <DialogHeader>
-                            <DialogTitle className="text-lg font-black uppercase tracking-widest text-white/90">Review Request</DialogTitle>
+                            <DialogTitle className="text-lg font-black uppercase tracking-widest text-white/90">{t("review_request")}</DialogTitle>
                             <DialogDescription className="text-white/60 text-xs font-medium uppercase tracking-tight">
-                                Evaluate and process student leave application
+                                {t("evaluate_process_leave_application")}
                             </DialogDescription>
                         </DialogHeader>
                     </div>
@@ -597,17 +599,17 @@ export default function ApproveLeavePage() {
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-100">
                                     <div className="space-y-1">
-                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Student</span>
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">{t("student")}</span>
                                         <span className="text-xs font-bold text-gray-900 block">{selectedLeave.user.name}</span>
                                     </div>
                                     <div className="space-y-1">
-                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Class</span>
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">{t("class")}</span>
                                         <span className="text-xs font-bold text-gray-900 block">{selectedLeave.user.school_class.name} ({selectedLeave.user.section.name})</span>
                                     </div>
                                     <div className="col-span-2 space-y-1 pt-2 border-t border-gray-100 mt-2">
-                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Reason for Leave</span>
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">{t("reason_for_leave")}</span>
                                         <p className="text-xs text-gray-600 font-medium leading-relaxed bg-white p-3 rounded-lg border border-gray-50 shadow-sm italic">
-                                            &ldquo;{selectedLeave.reason || "No reason provided"}&rdquo;
+                                            &ldquo;{selectedLeave.reason || t("no_reason_provided")}&rdquo;
                                         </p>
                                     </div>
                                 </div>
@@ -615,10 +617,10 @@ export default function ApproveLeavePage() {
                                 <div className="space-y-3">
                                     <Label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
                                         <FileText className="h-3 w-3" />
-                                        Official Admin Remark
+                                        {t("official_admin_remark")}
                                     </Label>
                                     <Textarea
-                                        placeholder="Enter approval conditions or rejection reasons here..."
+                                        placeholder={t("enter_approval_or_rejection_reasons")}
                                         value={adminRemark}
                                         onChange={(e) => setAdminRemark(e.target.value)}
                                         className="min-h-[120px] text-xs border-gray-100 focus:ring-2 focus:ring-indigo-500/20 shadow-none resize-none rounded-lg bg-gray-50/50 p-4 transition-all"
@@ -635,7 +637,7 @@ export default function ApproveLeavePage() {
                                 className="flex-1 h-12 text-[10px] font-black uppercase text-red-500 border-red-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-all active:scale-95 shadow-sm"
                             >
                                 {updatingStatus ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
-                                Disapprove
+                                {t("disapprove")}
                             </Button>
                             <Button
                                 onClick={() => handleUpdateStatus("Approved")}
@@ -643,7 +645,7 @@ export default function ApproveLeavePage() {
                                 className="flex-1 h-12 text-[10px] font-black uppercase bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 border-none"
                             >
                                 {updatingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                Approve Request
+                                {t("approve_request")}
                             </Button>
                         </div>
                     </div>
@@ -657,16 +659,16 @@ export default function ApproveLeavePage() {
             }}>
                 <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-lg border-none shadow-2xl">
                     <div className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-4 text-white flex justify-between items-center">
-                        <DialogTitle className="text-sm font-medium">{editingLeaveId ? "Edit Leave" : "Add Leave"}</DialogTitle>
+                        <DialogTitle className="text-sm font-medium">{editingLeaveId ? t("edit_leave") : t("add_leave")}</DialogTitle>
                     </div>
 
                     <div className="p-6 space-y-4 bg-white max-h-[80vh] overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] text-gray-600">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] text-gray-600">{t("class")} <span className="text-red-500">*</span></Label>
                                 <Select value={newLeaveClass} onValueChange={setNewLeaveClass}>
                                     <SelectTrigger className="h-9 text-[12px] border-gray-200">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {classes.map(cls => (
@@ -677,10 +679,10 @@ export default function ApproveLeavePage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] text-gray-600">Section <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] text-gray-600">{t("section")} <span className="text-red-500">*</span></Label>
                                 <Select value={newLeaveSection} onValueChange={setNewLeaveSection} disabled={!newLeaveClass}>
                                     <SelectTrigger className="h-9 text-[12px] border-gray-200">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {newLeaveSections.map(sec => (
@@ -691,10 +693,10 @@ export default function ApproveLeavePage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] text-gray-600">Student <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] text-gray-600">{t("student")} <span className="text-red-500">*</span></Label>
                                 <Select value={newLeaveStudent} onValueChange={setNewLeaveStudent} disabled={!newLeaveSection}>
                                     <SelectTrigger className="h-9 text-[12px] border-gray-200">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {students.map(std => (
@@ -707,10 +709,10 @@ export default function ApproveLeavePage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] text-gray-600">Leave Type <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] text-gray-600">{t("leave_type")} <span className="text-red-500">*</span></Label>
                                 <Select value={newLeaveType} onValueChange={setNewLeaveType}>
                                     <SelectTrigger className="h-9 text-[12px] border-gray-200">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {leaveTypes.map(type => (
@@ -720,7 +722,7 @@ export default function ApproveLeavePage() {
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] text-gray-600">Apply Date <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] text-gray-600">{t("apply_date")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="date"
                                     value={newLeaveApplyDate}
@@ -732,7 +734,7 @@ export default function ApproveLeavePage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] text-gray-600">From Date <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] text-gray-600">{t("from_date")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="date"
                                     value={newLeaveFromDate}
@@ -741,7 +743,7 @@ export default function ApproveLeavePage() {
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] text-gray-600">To Date <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] text-gray-600">{t("to_date")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="date"
                                     value={newLeaveToDate}
@@ -753,7 +755,7 @@ export default function ApproveLeavePage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] text-gray-600">Reason</Label>
+                            <Label className="text-[11px] text-gray-600">{t("reason")}</Label>
                             <Textarea
                                 value={newLeaveReason}
                                 onChange={(e) => setNewLeaveReason(e.target.value)}
@@ -762,7 +764,7 @@ export default function ApproveLeavePage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] text-gray-600">Leave Status <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] text-gray-600">{t("leave_status")} <span className="text-red-500">*</span></Label>
                             <RadioGroup
                                 value={newLeaveStatus}
                                 onValueChange={setNewLeaveStatus}
@@ -770,27 +772,27 @@ export default function ApproveLeavePage() {
                             >
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="Pending" id="pending" />
-                                    <Label htmlFor="pending" className="text-[12px] font-normal cursor-pointer">Pending</Label>
+                                    <Label htmlFor="pending" className="text-[12px] font-normal cursor-pointer">{t("pending")}</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="Disapproved" id="disapprove" />
-                                    <Label htmlFor="disapprove" className="text-[12px] font-normal cursor-pointer">Disapprove</Label>
+                                    <Label htmlFor="disapprove" className="text-[12px] font-normal cursor-pointer">{t("disapprove")}</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="Approved" id="approve" />
-                                    <Label htmlFor="approve" className="text-[12px] font-normal cursor-pointer">Approve</Label>
+                                    <Label htmlFor="approve" className="text-[12px] font-normal cursor-pointer">{t("approve")}</Label>
                                 </div>
                             </RadioGroup>
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] text-gray-600">Attach Document</Label>
+                            <Label className="text-[11px] text-gray-600">{t("attach_document")}</Label>
                             <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:bg-gray-50 transition-colors relative">
                                 <div className="space-y-1 text-center">
                                     <UploadCloud className="mx-auto h-8 w-8 text-gray-400" />
                                     <div className="flex text-sm text-gray-600 justify-center">
                                         <label htmlFor="file-upload" className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                                            <span>Drag and drop a file here or click</span>
+                                            <span>{t("drag_and_drop_file_or_click")}</span>
                                             <input
                                                 id="file-upload"
                                                 name="file-upload"
@@ -806,7 +808,7 @@ export default function ApproveLeavePage() {
                                     </div>
                                     {newLeaveAttachment && (
                                         <p className="text-xs text-green-600 font-medium pt-2">
-                                            Selected: {newLeaveAttachment.name}
+                                            {t("selected")}: {newLeaveAttachment.name}
                                         </p>
                                     )}
                                 </div>
@@ -821,7 +823,7 @@ export default function ApproveLeavePage() {
                             variant="gradient"
                             className="min-w-[100px]"
                         >
-                            {savingLeave ? <Loader2 className="h-4 w-4 animate-spin" /> : "SAVE"}
+                            {savingLeave ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save")}
                         </Button>
                     </div>
                 </DialogContent>

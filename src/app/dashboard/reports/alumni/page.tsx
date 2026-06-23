@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Select,
     SelectContent,
@@ -64,6 +65,7 @@ function TableSkeleton({ cols }: { cols: number }) {
 }
 
 export default function AlumniReportPage() {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState("");
 
     // Criteria Lists
@@ -93,7 +95,7 @@ export default function AlumniReportPage() {
                 setSessions(response.data.sessions || []);
             } catch (error) {
                 console.error("Failed to fetch criteria", error);
-                toast.error("Failed to load criteria parameters");
+                toast.error(t("failed_to_load_criteria_parameters"));
             }
         };
         fetchCriteria();

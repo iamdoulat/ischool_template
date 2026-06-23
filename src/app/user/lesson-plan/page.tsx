@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface PlanItem {
     subject: string;
@@ -48,6 +49,7 @@ const TODAY_NAME = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]
 
 /* ── Single lesson card ── */
 function PlanCard({ plan, colors }: { plan: PlanItem; colors: typeof DAY_COLORS[string] }) {
+    const { t } = useTranslation();
     return (
         <div
             className={cn(
@@ -69,7 +71,7 @@ function PlanCard({ plan, colors }: { plan: PlanItem; colors: typeof DAY_COLORS[
                     {plan.room && (
                         <div className="flex items-start gap-1.5">
                             <Building className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                            <span className="leading-tight text-[11px] text-gray-600">Room {plan.room}</span>
+                            <span className="leading-tight text-[11px] text-gray-600">{t("room")} {plan.room}</span>
                         </div>
                     )}
                     {(plan.topic || plan.subTopic) && (
@@ -78,13 +80,13 @@ function PlanCard({ plan, colors }: { plan: PlanItem; colors: typeof DAY_COLORS[
                                 <div className="flex items-start gap-1.5">
                                     <FileText className="h-3 w-3 mt-0.5 shrink-0 text-gray-400" />
                                     <span className="leading-tight text-[10px] text-gray-500">
-                                        <span className="font-semibold text-gray-600">Topic:</span> {plan.topic}
+                                        <span className="font-semibold text-gray-600">{t("topic")}:</span> {plan.topic}
                                     </span>
                                 </div>
                             )}
                             {plan.subTopic && (
                                 <div className="text-[10px] text-gray-500 pl-[18px] leading-tight">
-                                    <span className="font-semibold text-gray-600">Sub:</span> {plan.subTopic}
+                                    <span className="font-semibold text-gray-600">{t("sub")}:</span> {plan.subTopic}
                                 </div>
                             )}
                         </div>
@@ -97,15 +99,17 @@ function PlanCard({ plan, colors }: { plan: PlanItem; colors: typeof DAY_COLORS[
 
 /* ── Empty-day placeholder ── */
 function EmptyDay() {
+    const { t } = useTranslation();
     return (
         <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-200 bg-gray-50/40 py-6 text-gray-400">
             <XCircle className="h-4 w-4 opacity-50" />
-            <span className="text-[11px] font-medium">Not Scheduled</span>
+            <span className="text-[11px] font-medium">{t("not_scheduled")}</span>
         </div>
     );
 }
 
 export default function UserLessonPlanPage() {
+    const { t } = useTranslation();
     const [data, setData] = useState<LessonPlanData | null>(null);
     const [loading, setLoading] = useState(true);
     const [weekOffset, setWeekOffset] = useState(0);
@@ -157,19 +161,19 @@ export default function UserLessonPlanPage() {
                             <CalendarRange className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Lesson Plan</h1>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("lesson_plan")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {loading ? "Loading schedule…" : `${totalPlans} lesson${totalPlans === 1 ? "" : "s"} this week`}
+                                {loading ? t("loading_schedule") : `${totalPlans} ${totalPlans === 1 ? t("lesson_this_week") : t("lessons_this_week")}`}
                             </p>
                         </div>
                     </div>
                     <Button
                         onClick={() => window.print()}
-                        title="Print"
+                        title={t("print")}
                         className="h-9 shrink-0 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
                     >
                         <Printer className="h-4 w-4" />
-                        <span className="hidden sm:inline">Print</span>
+                        <span className="hidden sm:inline">{t("print")}</span>
                     </Button>
                 </div>
 
@@ -179,7 +183,7 @@ export default function UserLessonPlanPage() {
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search subject or topic..."
+                                placeholder={t("search_subject_or_topic")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-8 h-9 text-[12px] border-gray-200 focus-visible:ring-indigo-500 rounded-[10px] shadow-none"
@@ -191,21 +195,21 @@ export default function UserLessonPlanPage() {
                                 onClick={() => setWeekOffset((p) => p - 1)}
                                 size="icon"
                                 className="h-9 w-9 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 transition-opacity active:scale-95 border-0"
-                                title="Previous week"
+                                title={t("previous_week")}
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <div className="flex items-center gap-1.5 px-3 h-9 rounded-[10px] bg-white border border-gray-200 min-w-[180px] justify-center">
                                 <CalendarDays className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
                                 <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">
-                                    {data ? `${data.weekStart} – ${data.weekEnd}` : "Loading…"}
+                                    {data ? `${data.weekStart} – ${data.weekEnd}` : t("loading")}
                                 </span>
                             </div>
                             <Button
                                 onClick={() => setWeekOffset((p) => p + 1)}
                                 size="icon"
                                 className="h-9 w-9 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 transition-opacity active:scale-95 border-0"
-                                title="Next week"
+                                title={t("next_week")}
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
@@ -214,9 +218,9 @@ export default function UserLessonPlanPage() {
                                     onClick={() => setWeekOffset(0)}
                                     variant="outline"
                                     className="h-9 px-3 rounded-[10px] text-[11px] font-semibold text-gray-600 border-gray-200"
-                                    title="Back to current week"
+                                    title={t("back_to_current_week")}
                                 >
-                                    Today
+                                    {t("today")}
                                 </Button>
                             )}
                         </div>
@@ -225,7 +229,7 @@ export default function UserLessonPlanPage() {
                     {loading ? (
                         <div className="flex items-center justify-center py-20 gap-2 text-gray-400">
                             <Loader2 className="h-6 w-6 animate-spin" />
-                            <span>Loading lesson plan...</span>
+                            <span>{t("loading_lesson_plan")}</span>
                         </div>
                     ) : (
                         <>
@@ -250,7 +254,7 @@ export default function UserLessonPlanPage() {
                                                     </span>
                                                     {isToday && (
                                                         <span className="text-[9px] px-1.5 py-px rounded-full text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] font-semibold">
-                                                            Today
+                                                            {t("today")}
                                                         </span>
                                                     )}
                                                 </div>
@@ -295,7 +299,7 @@ export default function UserLessonPlanPage() {
                                                     "text-[10px] mt-0.5 font-medium px-1.5 py-px rounded-full",
                                                     isToday ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white" : "text-gray-400"
                                                 )}>
-                                                    {isToday ? "Today" : `${count}`}
+                                                    {isToday ? t("today") : `${count}`}
                                                 </span>
                                             </button>
                                         );
@@ -307,7 +311,7 @@ export default function UserLessonPlanPage() {
                                         <span className="text-[13px] font-bold text-gray-700">{activeDay}</span>
                                         <span className="text-[11px] text-gray-400">{dayFor(activeDay)?.date || ""}</span>
                                         <span className="text-[11px] text-gray-400 ml-auto">
-                                            {activePlans.length} lesson{activePlans.length !== 1 ? "s" : ""}
+                                            {activePlans.length} {activePlans.length !== 1 ? t("lessons") : t("lesson")}
                                         </span>
                                     </div>
                                     {activePlans.length > 0 ? (
@@ -325,7 +329,7 @@ export default function UserLessonPlanPage() {
                             {/* ── Print: full weekly grid ── */}
                             <div className="hidden print:block p-4">
                                 <h2 className="text-base font-bold mb-3">
-                                    Lesson Plan — {data?.weekStart} to {data?.weekEnd}
+                                    {t("lesson_plan")} — {data?.weekStart} {t("to")} {data?.weekEnd}
                                 </h2>
                                 <table className="w-full border-collapse text-[11px]">
                                     <thead>
@@ -352,9 +356,9 @@ export default function UserLessonPlanPage() {
                                                                     <div key={i} className="border border-gray-200 rounded p-1.5">
                                                                         <p className="font-semibold">{p.subject}</p>
                                                                         <p className="text-gray-600">{p.time}</p>
-                                                                        {p.room && <p className="text-gray-500">Room: {p.room}</p>}
-                                                                        {p.topic && <p className="text-gray-500">Topic: {p.topic}</p>}
-                                                                        {p.subTopic && <p className="text-gray-500">Sub: {p.subTopic}</p>}
+                                                                        {p.room && <p className="text-gray-500">{t("room")}: {p.room}</p>}
+                                                                        {p.topic && <p className="text-gray-500">{t("topic")}: {p.topic}</p>}
+                                                                        {p.subTopic && <p className="text-gray-500">{t("sub")}: {p.subTopic}</p>}
                                                                     </div>
                                                                 ))}
                                                             </div>

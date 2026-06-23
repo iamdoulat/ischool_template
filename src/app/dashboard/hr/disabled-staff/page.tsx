@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface Staff {
     id: number;
@@ -109,6 +110,7 @@ function CardSkeleton({ count = 6 }: { count?: number }) {
 export default function DisabledStaffPage() {
     const router = useRouter();
     const { toast } = useToast();
+    const { t } = useTranslation();
     const [viewMode, setViewMode] = useState<"card" | "list">("card");
     const [staffList, setStaffList] = useState<Staff[]>([]);
     const [roles, setRoles] = useState<Role[]>([]);
@@ -200,8 +202,8 @@ export default function DisabledStaffPage() {
             const response = await api.put(`/hr/staff-directory/${idToUpdate}`, { active: true });
             if (response.data.status === "Success") {
                 toast({
-                    title: "Staff Member Enabled",
-                    description: `${staffToEnable.name} has been successfully enabled and restored to active status.`,
+                    title: t("staff_member_enabled"),
+                    description: t("x_has_been_enabled_restored", { name: staffToEnable.name }),
                 });
                 fetchStaff(keyword, selectedRole);
                 setEnableDialogOpen(false);
@@ -211,8 +213,8 @@ export default function DisabledStaffPage() {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
             console.error("Error enabling staff:", error);
             toast({
-                title: "Error",
-                description: err.response?.data?.message || "Failed to enable staff. Please try again.",
+                title: t("error"),
+                description: err.response?.data?.message || t("failed_to_enable_staff"),
                 variant: "destructive",
             });
             setEnableDialogOpen(false);
@@ -233,8 +235,8 @@ export default function DisabledStaffPage() {
 
             if (response.data.status === "Success") {
                 toast({
-                    title: "Success",
-                    description: "Staff deleted successfully!",
+                    title: t("success"),
+                    description: t("staff_deleted_successfully"),
                 });
                 fetchStaff(keyword, selectedRole);
                 setDeleteDialogOpen(false);
@@ -243,8 +245,8 @@ export default function DisabledStaffPage() {
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
             toast({
-                title: "Error",
-                description: err.response?.data?.message || "Failed to delete staff. Please try again.",
+                title: t("error"),
+                description: err.response?.data?.message || t("failed_to_delete_staff"),
                 variant: "destructive",
             });
         }
@@ -270,7 +272,7 @@ export default function DisabledStaffPage() {
             <div className="flex justify-between items-center">
                 <h1 className="flex items-center gap-2 text-xl font-medium text-gray-800">
                     <UserX className="h-6 w-6 text-[#6366F1]" />
-                    Disabled Staff
+                    {t("disabled_staff")}
                 </h1>
             </div>
 
@@ -281,8 +283,8 @@ export default function DisabledStaffPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter disabled staff by role or keyword</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_disabled_staff_by_role_or_keyword")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
@@ -290,14 +292,14 @@ export default function DisabledStaffPage() {
                         <div className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                                    Role
+                                    {t("role")}
                                 </Label>
                                 <Select value={selectedRole} onValueChange={setSelectedRole}>
                                     <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 transition-all rounded-lg">
-                                        <SelectValue placeholder="Select Role" />
+                                        <SelectValue placeholder={t("select_role")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Select">All Roles</SelectItem>
+                                        <SelectItem value="Select">{t("all_roles")}</SelectItem>
                                         {roles.map((role) => (
                                             <SelectItem key={role.name} value={role.name}>
                                                 {role.name}
@@ -308,7 +310,7 @@ export default function DisabledStaffPage() {
                             </div>
                             <div className="flex justify-end">
                                 <Button onClick={handleSearch} className={`${gradientBtn} gap-2 h-10 px-8 text-sm font-semibold`}>
-                                    <Search className="h-4 w-4" /> Search
+                                    <Search className="h-4 w-4" /> {t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -316,19 +318,19 @@ export default function DisabledStaffPage() {
                         <div className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                                    Search By Keyword
+                                    {t("search_by_keyword")}
                                 </Label>
                                 <Input
                                     value={keyword}
                                     onChange={(e) => setKeyword(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    placeholder="Search By Staff ID, Name, Role etc..."
+                                    placeholder={t("search_by_staff_id_name_role")}
                                     className="h-11 border-gray-200 text-sm focus-visible:ring-indigo-500 rounded-lg"
                                 />
                             </div>
                             <div className="flex justify-end">
                                 <Button onClick={handleSearch} className={`${gradientBtn} gap-2 h-10 px-8 text-sm font-semibold`}>
-                                    <Search className="h-4 w-4" /> Search
+                                    <Search className="h-4 w-4" /> {t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -344,8 +346,8 @@ export default function DisabledStaffPage() {
                             <UserX className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Disabled Staff</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{staffList.length} disabled {staffList.length === 1 ? "member" : "members"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("disabled_staff")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{staffList.length} {staffList.length === 1 ? t("disabled_member") : t("disabled_members")}</p>
                         </div>
                     </div>
                 </CardHeader>
@@ -357,20 +359,20 @@ export default function DisabledStaffPage() {
                                     value="card"
                                     className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-14 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all"
                                 >
-                                    <LayoutGrid className="h-4 w-4 mr-2" /> Card View
+                                    <LayoutGrid className="h-4 w-4 mr-2" /> {t("card_view")}
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="list"
                                     className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-14 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all"
                                 >
-                                    <ListIcon className="h-4 w-4 mr-2" /> List View
+                                    <ListIcon className="h-4 w-4 mr-2" /> {t("list_view")}
                                 </TabsTrigger>
                             </TabsList>
 
                             {/* Pagination Controls Top */}
                             {totalPages > 1 && (
                                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                                    <span className="mr-2 text-xs font-medium">Page {currentPage} of {totalPages}</span>
+                                    <span className="mr-2 text-xs font-medium">{`${t("page")} ${currentPage} ${t("of")} ${totalPages}`}</span>
                                     <Button
                                         variant="outline"
                                         size="icon"
@@ -426,18 +428,18 @@ export default function DisabledStaffPage() {
                                                         </h3>
                                                     </div>
                                                     <div className="text-[11px] font-bold text-red-500 mt-0.5">
-                                                        {person.staff_id || "N/A"} • Disabled
+                                                        {person.staff_id || t("not_available")} • {t("disabled")}
                                                     </div>
                                                 </div>
 
                                                 <div className="space-y-1 mt-2">
                                                     <div className="flex items-center gap-2 text-[10px] font-medium text-gray-500">
                                                         <Phone className="h-3 w-3 text-gray-400" />
-                                                        <span>{person.phone || "No phone"}</span>
+                                                        <span>{person.phone || t("no_phone")}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2 text-[10px] font-medium text-gray-500">
                                                         <MapPin className="h-3 w-3 text-gray-400" />
-                                                        <span className="truncate">{person.department || "General"}</span>
+                                                        <span className="truncate">{person.department || t("general")}</span>
                                                     </div>
                                                 </div>
 
@@ -462,14 +464,7 @@ export default function DisabledStaffPage() {
                                                                 className="cursor-pointer text-green-600 focus:text-green-600"
                                                             >
                                                                 <CheckCircle className="h-4 w-4 mr-2" />
-                                                                Enable Staff
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                        {hasPerm("human-resource.staff.edit") && (
-                                                            <DropdownMenuItem
-                                                                onClick={() => handleEdit(person.staff_id || person.id)}
-                                                                className="cursor-pointer"
-                                                            >
+                                                                {t("enable_staff")}
                                                                 <Edit className="h-4 w-4 mr-2" />
                                                                 Edit
                                                             </DropdownMenuItem>
@@ -492,7 +487,7 @@ export default function DisabledStaffPage() {
                             ) : (
                                 <div className="text-center py-20">
                                     <User className="h-12 w-12 text-gray-300 mx-auto mb-4 opacity-50" />
-                                    <p className="text-sm text-gray-500 font-medium">No disabled staff members found.</p>
+                                    <p className="text-sm text-gray-500 font-medium">{t("no_disabled_staff_found")}</p>
                                 </div>
                             )}
                         </TabsContent>
@@ -502,12 +497,12 @@ export default function DisabledStaffPage() {
                                 <table className="w-full">
                                     <thead className="bg-gray-50 border-b border-gray-200">
                                         <tr>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Staff ID</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Phone</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
-                                            <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("staff_id")}</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("name")}</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("role")}</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("phone")}</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("department")}</th>
+                                            <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">{t("actions")}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-100">
@@ -515,14 +510,14 @@ export default function DisabledStaffPage() {
                                             <TableSkeleton rows={5} cols={6} />
                                         ) : currentData.length === 0 ? (
                                             <tr>
-                                                <td colSpan={6} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                                <td colSpan={6} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                             </tr>
                                         ) : (
                                             currentData.map((person) => (
                                                 <tr key={person.id} className="hover:bg-gray-50 transition-colors group opacity-80 hover:opacity-100">
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm font-bold text-red-500">{person.staff_id || "N/A"}</div>
-                                                        <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase">Disabled</span>
+                                                        <div className="text-sm font-bold text-red-500">{person.staff_id || t("not_available")}</div>
+                                                        <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase">{t("disabled")}</span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <div className="flex items-center gap-3">
@@ -570,14 +565,7 @@ export default function DisabledStaffPage() {
                                                                             className="cursor-pointer text-green-600 focus:text-green-600"
                                                                         >
                                                                             <CheckCircle className="h-4 w-4 mr-2" />
-                                                                            Enable Staff
-                                                                        </DropdownMenuItem>
-                                                                    )}
-                                                                    {hasPerm("human-resource.staff.edit") && (
-                                                                        <DropdownMenuItem
-                                                                            onClick={() => handleEdit(person.staff_id || person.id)}
-                                                                            className="cursor-pointer"
-                                                                        >
+                                                                            {t("enable_staff")}
                                                                             <Edit className="h-4 w-4 mr-2" />
                                                                             Edit
                                                                         </DropdownMenuItem>
@@ -649,19 +637,19 @@ export default function DisabledStaffPage() {
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the staff member{" "}
-                            <span className="font-bold text-gray-900">{staffToDelete?.name}</span> (ID: {staffToDelete?.staff_id}) from the database.
+                            {t("delete_warning_prefix")}{" "}
+                            <span className="font-bold text-gray-900">{staffToDelete?.name}</span> ({t("id_colon")} {staffToDelete?.staff_id}) {t("from_the_database")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setStaffToDelete(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setStaffToDelete(null)}>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeleteConfirm}
                             className="bg-red-600 hover:bg-red-700 text-white"
                         >
-                            Delete
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -671,20 +659,20 @@ export default function DisabledStaffPage() {
             <AlertDialog open={enableDialogOpen} onOpenChange={setEnableDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Enable Staff Member?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("enable_staff_member_question")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to enable{" "}
+                            {t("are_you_sure_enable")}{" "}
                             <span className="font-bold text-gray-900">{staffToEnable?.name}</span>?
-                            They will regain access to the system and appear in the active staff directory.
+                            {t("they_will_regain_access")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setStaffToEnable(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setStaffToEnable(null)}>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleEnableConfirm}
                             className="bg-green-600 hover:bg-green-700 text-white"
                         >
-                            Enable
+                            {t("enable")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

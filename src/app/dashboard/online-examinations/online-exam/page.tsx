@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +52,8 @@ interface OnlineExam {
 }
 
 export default function OnlineExamPage() {
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [statusTab, setStatusTab] = useState("upcoming");
@@ -99,7 +103,7 @@ export default function OnlineExamPage() {
             setExams(response.data.data || []);
             setTotalEntries(response.data.total || 0);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch exams", variant: "destructive" });
+            tt.error("failed_to_fetch_exams");
         } finally {
             setLoading(false);
         }
@@ -107,22 +111,22 @@ export default function OnlineExamPage() {
 
     const handleSave = async () => {
         if (!formData.title || !formData.exam_from || !formData.exam_to) {
-            toast({ title: "Validation Error", description: "Please fill in all required fields", variant: "destructive" });
+            tt.error("please_fill_all_required_fields");
             return;
         }
 
         try {
             if (dialogMode === "edit" && selectedId) {
                 await api.put(`/online-examination/online-exams/${selectedId}`, formData);
-                toast({ title: "Success", description: "Exam updated successfully" });
+                tt.success("exam_updated_successfully");
             } else {
                 await api.post('/online-examination/online-exams', formData);
-                toast({ title: "Success", description: "Exam created successfully" });
+                tt.success("exam_created_successfully");
             }
             setIsDialogOpen(false);
             fetchExams();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to save exam", variant: "destructive" });
+            tt.error("failed_to_save_exam");
         }
     };
 
@@ -148,10 +152,10 @@ export default function OnlineExamPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/online-examination/online-exams/${deleteId}`);
-            toast({ title: "Success", description: "Exam deleted successfully" });
+            tt.success("exam_deleted_successfully");
             fetchExams();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to delete exam", variant: "destructive" });
+            tt.error("failed_to_delete_exam");
         } finally {
             setDeleteId(null);
         }
@@ -176,16 +180,18 @@ export default function OnlineExamPage() {
 
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
-            <div className="flex justify-between items-center bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
-                <div>
-                    <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
-                        <Laptop className="h-6 w-6 text-indigo-500" />
-                        Online Examinations
-                    </h1>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Manage digital tests, quizzes, and results</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Laptop className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("online_examinations")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("manage_digital_tests_quizzes_and_results")}</p>
+                    </div>
                 </div>
                 <Button onClick={openAddDialog} className="btn-gradient text-white gap-2 h-11 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full">
-                    <Plus className="h-4 w-4" /> Add Exam
+                    <Plus className="h-4 w-4" /> {t("add_exam")}
                 </Button>
             </div>
 
@@ -197,13 +203,13 @@ export default function OnlineExamPage() {
                                 value="upcoming"
                                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 pb-3 text-[11px] font-bold uppercase tracking-widest text-gray-400 data-[state=active]:text-indigo-600 transition-all"
                             >
-                                Upcoming Exams
+                                {t("upcoming_exams")}
                             </TabsTrigger>
                             <TabsTrigger
                                 value="closed"
                                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 pb-3 text-[11px] font-bold uppercase tracking-widest text-gray-400 data-[state=active]:text-indigo-600 transition-all"
                             >
-                                Closed Exams
+                                {t("closed_exams")}
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>
@@ -214,7 +220,7 @@ export default function OnlineExamPage() {
                         <div className="relative w-full md:w-72">
                             <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Search exams..."
+                                placeholder={t("search_exams")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
@@ -223,7 +229,7 @@ export default function OnlineExamPage() {
 
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-1.5 mr-3 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                                <span className="text-[11px] text-gray-400 font-bold uppercase tracking-tighter">Rows:</span>
+                                <span className="text-[11px] text-gray-400 font-bold uppercase tracking-tighter">{t("rows")}:</span>
                                 <span className="text-xs text-indigo-600 font-bold">50</span>
                                 <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                             </div>
@@ -251,14 +257,14 @@ export default function OnlineExamPage() {
                         <Table>
                             <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
                                 <TableRow className="hover:bg-transparent border-gray-50">
-                                    <TableHead className="py-4 px-6">Exam Title</TableHead>
-                                    <TableHead className="py-4 px-6 text-center">Quiz</TableHead>
-                                    <TableHead className="py-4 px-6">Questions</TableHead>
-                                    <TableHead className="py-4 px-6 text-center">Attempt</TableHead>
-                                    <TableHead className="py-4 px-6">Exam Period</TableHead>
-                                    <TableHead className="py-4 px-6">Duration</TableHead>
-                                    <TableHead className="py-4 px-6 text-center">Published</TableHead>
-                                    <TableHead className="py-4 px-6 text-right">Action</TableHead>
+                                    <TableHead className="py-4 px-6">{t("exam_title")}</TableHead>
+                                    <TableHead className="py-4 px-6 text-center">{t("quiz")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("questions")}</TableHead>
+                                    <TableHead className="py-4 px-6 text-center">{t("attempt")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("exam_period")}</TableHead>
+                                    <TableHead className="py-4 px-6">{t("duration")}</TableHead>
+                                    <TableHead className="py-4 px-6 text-center">{t("published")}</TableHead>
+                                    <TableHead className="py-4 px-6 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -267,14 +273,14 @@ export default function OnlineExamPage() {
                                         <TableCell colSpan={8} className="h-32 text-center text-gray-400">
                                             <div className="flex flex-col items-center justify-center space-y-2">
                                                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500" />
-                                                <p className="text-[10px] font-bold uppercase tracking-widest">Syncing Exams...</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest">{t("syncing_exams")}</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : exams.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={8} className="h-32 text-center text-gray-400 text-sm italic">
-                                            No {statusTab} exams found.
+                                            {t("no_exams_found", { status: statusTab })}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -283,15 +289,15 @@ export default function OnlineExamPage() {
                                             <TableCell className="py-4 px-6 font-bold text-gray-800 uppercase tracking-tight">{exam.title}</TableCell>
                                             <TableCell className="text-center">
                                                 {exam.is_quiz ? (
-                                                    <Badge className="bg-amber-500 hover:bg-amber-600 text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 border-0">YES</Badge>
+                                                    <Badge className="bg-amber-500 hover:bg-amber-600 text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 border-0">{t("yes")}</Badge>
                                                 ) : (
-                                                    <Badge variant="outline" className="text-gray-300 text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 border-gray-100">NO</Badge>
+                                                    <Badge variant="outline" className="text-gray-300 text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 border-gray-100">{t("no")}</Badge>
                                                 )}
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex flex-col gap-1">
-                                                    <span className="font-bold text-indigo-600 flex items-center gap-1.5"><ListOrdered className="h-3 w-3" /> {exam.questions_count} Total</span>
-                                                    <span className="text-[9px] text-gray-400 font-bold uppercase flex items-center gap-1.5"><FileSearch className="h-3 w-3" /> {exam.descriptive_questions_count} Descriptive</span>
+                                                    <span className="font-bold text-indigo-600 flex items-center gap-1.5"><ListOrdered className="h-3 w-3" /> {exam.questions_count} {t("total")}</span>
+                                                    <span className="text-[9px] text-gray-400 font-bold uppercase flex items-center gap-1.5"><FileSearch className="h-3 w-3" /> {exam.descriptive_questions_count} {t("descriptive")}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-center py-4 px-6">
@@ -309,27 +315,27 @@ export default function OnlineExamPage() {
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex flex-col items-center gap-2">
                                                     <div className="flex items-center gap-1.5">
-                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Exam:</span>
+                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">{t("exam")}:</span>
                                                         {exam.is_published ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-rose-300" />}
                                                     </div>
                                                     <div className="flex items-center gap-1.5">
-                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Result:</span>
+                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">{t("result")}:</span>
                                                         {exam.is_result_published ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-rose-300" />}
                                                     </div>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1.5 flex-wrap max-w-[200px] ml-auto opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                                                    <Button size="icon" variant="ghost" title="Assign Questions" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                    <Button size="icon" variant="ghost" title={t("assign_questions")} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
                                                         <Plus className="h-3.5 w-3.5" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title="Edit" onClick={() => handleEdit(exam)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                    <Button size="icon" variant="ghost" title={t("edit")} onClick={() => handleEdit(exam)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
                                                         <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title="View" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                    <Button size="icon" variant="ghost" title={t("view")} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
                                                         <Eye className="h-3.5 w-3.5" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title="Delete" onClick={() => setDeleteId(exam.id)} className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg shadow-md">
+                                                    <Button size="icon" variant="ghost" title={t("delete")} onClick={() => setDeleteId(exam.id)} className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg shadow-md">
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </div>
@@ -343,7 +349,11 @@ export default function OnlineExamPage() {
 
                     <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
                         <div>
-                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries
+                            {t("showing_x_to_y_of_z", {
+                                from: ((currentPage - 1) * itemsPerPage) + 1,
+                                to: Math.min(currentPage * itemsPerPage, totalEntries),
+                                total: totalEntries
+                            })}
                         </div>
                         <div className="flex gap-2">
                             <Button 
@@ -374,26 +384,26 @@ export default function OnlineExamPage() {
                     <DialogHeader className="p-6 btn-gradient text-white">
                         <DialogTitle className="text-xl font-bold uppercase tracking-widest flex items-center gap-3">
                             <Laptop className="h-6 w-6" />
-                            {dialogMode === "edit" ? "Edit Online Exam" : "Add Online Exam"}
+                            {dialogMode === "edit" ? t("edit_online_exam") : t("add_online_exam")}
                         </DialogTitle>
-                        <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-widest mt-1 opacity-80">Configure exam settings and publication parameters</p>
+                        <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-widest mt-1 opacity-80">{t("configure_exam_settings_and_publication_parameters")}</p>
                     </DialogHeader>
 
                     <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto bg-white">
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Exam Title <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    value={formData.title} 
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_title")} <span className="text-red-500">*</span></Label>
+                                <Input
+                                    value={formData.title}
                                     onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                    placeholder="e.g. Final Revision Test" 
+                                    placeholder={t("eg_final_revision_test")}
                                     className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
                             <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-lg border border-gray-50">
                                 <div className="space-y-1">
-                                    <Label className="text-[12px] font-bold text-gray-700 uppercase tracking-tight">Quiz Mode</Label>
-                                    <p className="text-[10px] text-gray-400 font-medium italic">Enable for rapid evaluation</p>
+                                    <Label className="text-[12px] font-bold text-gray-700 uppercase tracking-tight">{t("quiz_mode")}</Label>
+                                    <p className="text-[10px] text-gray-400 font-medium italic">{t("enable_for_rapid_evaluation")}</p>
                                 </div>
                                 <Switch 
                                     checked={formData.is_quiz} 
@@ -405,7 +415,7 @@ export default function OnlineExamPage() {
 
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Exam From <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_from")} <span className="text-red-500">*</span></Label>
                                 <Input 
                                     type="datetime-local"
                                     value={formData.exam_from} 
@@ -414,7 +424,7 @@ export default function OnlineExamPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Exam To <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_to")} <span className="text-red-500">*</span></Label>
                                 <Input 
                                     type="datetime-local"
                                     value={formData.exam_to} 
@@ -426,7 +436,7 @@ export default function OnlineExamPage() {
 
                         <div className="grid grid-cols-3 gap-6">
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Duration (HH:MM:SS)</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("duration_hh_mm_ss")}</Label>
                                 <Input 
                                     value={formData.duration} 
                                     onChange={(e) => setFormData({...formData, duration: e.target.value})}
@@ -434,7 +444,7 @@ export default function OnlineExamPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Max Attempts</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("max_attempts")}</Label>
                                 <Input 
                                     type="number"
                                     value={formData.attempt} 
@@ -443,7 +453,7 @@ export default function OnlineExamPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Passing %</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("passing_percentage")}</Label>
                                 <Input 
                                     type="number"
                                     value={formData.passing_percentage} 
@@ -456,8 +466,8 @@ export default function OnlineExamPage() {
                         <div className="grid grid-cols-2 gap-6">
                             <div className="flex items-center justify-between p-4 bg-emerald-50/30 rounded-lg border border-emerald-50">
                                 <div className="space-y-1">
-                                    <Label className="text-[12px] font-bold text-emerald-700 uppercase tracking-tight flex items-center gap-2"><CheckCircle2 className="h-3 w-3" /> Publish Exam</Label>
-                                    <p className="text-[10px] text-emerald-600/70 font-medium italic">Make exam visible to students</p>
+                                    <Label className="text-[12px] font-bold text-emerald-700 uppercase tracking-tight flex items-center gap-2"><CheckCircle2 className="h-3 w-3" /> {t("publish_exam")}</Label>
+                                    <p className="text-[10px] text-emerald-600/70 font-medium italic">{t("make_exam_visible_to_students")}</p>
                                 </div>
                                 <Switch 
                                     checked={formData.is_published} 
@@ -467,8 +477,8 @@ export default function OnlineExamPage() {
                             </div>
                             <div className="flex items-center justify-between p-4 bg-indigo-50/30 rounded-lg border border-indigo-50">
                                 <div className="space-y-1">
-                                    <Label className="text-[12px] font-bold text-indigo-700 uppercase tracking-tight flex items-center gap-2"><Trophy className="h-3 w-3" /> Publish Result</Label>
-                                    <p className="text-[10px] text-indigo-600/70 font-medium italic">Show marks after completion</p>
+                                    <Label className="text-[12px] font-bold text-indigo-700 uppercase tracking-tight flex items-center gap-2"><Trophy className="h-3 w-3" /> {t("publish_result")}</Label>
+                                    <p className="text-[10px] text-indigo-600/70 font-medium italic">{t("show_marks_after_completion")}</p>
                                 </div>
                                 <Switch 
                                     checked={formData.is_result_published} 
@@ -479,11 +489,11 @@ export default function OnlineExamPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Description</Label>
-                            <Textarea 
-                                value={formData.description} 
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("description")}</Label>
+                            <Textarea
+                                value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                placeholder="Enter exam instructions or details" 
+                                placeholder={t("enter_exam_instructions_or_details")}
                                 className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 p-4"
                             />
                         </div>
@@ -491,10 +501,10 @@ export default function OnlineExamPage() {
 
                     <DialogFooter className="p-6 bg-gray-50/50 flex justify-end gap-3">
                         <Button onClick={() => setIsDialogOpen(false)} variant="outline" className="h-11 px-8 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-200">
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button onClick={handleSave} className="btn-gradient text-white h-11 px-12 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-orange-200/50">
-                            {dialogMode === "edit" ? "Update Exam" : "Save Exam"}
+                            {dialogMode === "edit" ? t("update_exam") : t("save_exam")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -504,15 +514,15 @@ export default function OnlineExamPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Online Exam</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("delete_online_exam")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            Are you sure you want to delete this online exam? This action cannot be undone and will remove all student attempts associated with it.
+                            {t("are_you_sure_delete_online_exam")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            Yes, Delete Exam
+                            {t("yes_delete_exam")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

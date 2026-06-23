@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,8 +41,7 @@ import {
     Paperclip,
     FileText,
     Calendar,
-    Search,
-    Loader2
+    Search
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -93,7 +93,8 @@ interface ClassItem {
 }
 
 export default function SendEmailPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const ckeditorRef = useRef<{ insertText: (text: string) => void }>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -139,9 +140,9 @@ export default function SendEmailPage() {
             const response = await api.get('/communicate/email-templates');
             setTemplates(response.data.data || response.data);
         } catch {
-            toast({ title: "Error", description: "Failed to load email templates", variant: "destructive" });
+            tt.toast("error", "failed_to_load_email_templates");
         }
-    }, [toast]);
+    }, [tt]);
 
     const fetchUsersByRole = useCallback(async (role: string) => {
         setUsersLoading(true);
@@ -149,21 +150,21 @@ export default function SendEmailPage() {
             const response = await api.get(`/communicate/users-by-role/${role}`);
             setAllUsers(response.data?.data || response.data || []);
         } catch {
-            toast({ title: "Error", description: "Failed to load users", variant: "destructive" });
+            tt.toast("error", "failed_to_load_users");
             setAllUsers([]);
         } finally {
             setUsersLoading(false);
         }
-    }, [toast]);
+    }, [tt]);
 
     const fetchClasses = useCallback(async () => {
         try {
             const response = await api.get('/communicate/classes');
             setClasses(response.data?.data || response.data || []);
         } catch {
-            toast({ title: "Error", description: "Failed to load classes", variant: "destructive" });
+            tt.toast("error", "failed_to_load_classes");
         }
-    }, [toast]);
+    }, [tt]);
 
     const fetchStudentsByClass = useCallback(async (classId: string) => {
         setClassLoading(true);
@@ -171,12 +172,12 @@ export default function SendEmailPage() {
             const response = await api.get(`/communicate/students-by-class/${classId}`);
             setClassStudents(response.data?.data || response.data || []);
         } catch {
-            toast({ title: "Error", description: "Failed to load students", variant: "destructive" });
+            tt.toast("error", "failed_to_load_students");
             setClassStudents([]);
         } finally {
             setClassLoading(false);
         }
-    }, [toast]);
+    }, [tt]);
 
     const fetchBirthdayUsers = useCallback(async () => {
         setBirthdayLoading(true);
@@ -185,12 +186,12 @@ export default function SendEmailPage() {
             const response = await api.get('/communicate/birthday-users' + params);
             setBirthdayUsers(response.data?.data || response.data || []);
         } catch {
-            toast({ title: "Error", description: "Failed to load birthday users", variant: "destructive" });
+            tt.toast("error", "failed_to_load_birthday_users");
             setBirthdayUsers([]);
         } finally {
             setBirthdayLoading(false);
         }
-    }, [birthdayClassId, toast]);
+    }, [birthdayClassId, tt]);
 
     useEffect(() => {
         fetchTemplates();
@@ -226,7 +227,7 @@ export default function SendEmailPage() {
                     const file = new File([blob], filename, { type: blob.type });
                     setSelectedFile(file);
                 } catch {
-                    toast({ title: "Warning", description: "Could not load template attachment", variant: "destructive" });
+                    tt.toast("error", "could_not_load_template_attachment");
                 }
             }
         }
@@ -296,7 +297,7 @@ export default function SendEmailPage() {
     const handleTriggerSubmit = () => {
         const recipients = getRecipientsArray();
         if (!formData.title || !formData.message || recipients.length === 0) {
-            toast({ title: "Validation Error", description: "Please fill all required fields", variant: "destructive" });
+            tt.toast("error", "please_fill_all_required_fields");
             return;
         }
         setConfirmOpen(true);
@@ -317,10 +318,10 @@ export default function SendEmailPage() {
             await api.post('/communicate/send-email', data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            toast({ title: "Success", description: "Email queued for delivery" });
+            tt.success("email_queued_for_delivery");
             resetForm();
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to send email", variant: "destructive" });
+        } catch {
+            tt.toast("error", "failed_to_send_email");
         } finally {
             setSubmitting(false);
         }
@@ -341,20 +342,20 @@ export default function SendEmailPage() {
     };
 
     const roles = [
-        { id: "Student", label: "Students" },
-        { id: "Parent", label: "Guardians" },
-        { id: "Admin", label: "Admin" },
-        { id: "Teacher", label: "Teacher" },
-        { id: "Accountant", label: "Accountant" },
-        { id: "Librarian", label: "Librarian" },
-        { id: "Receptionist", label: "Receptionist" },
+        { id: "Student", label: t("students") },
+        { id: "Parent", label: t("guardians") },
+        { id: "Admin", label: t("admin") },
+        { id: "Teacher", label: t("teacher") },
+        { id: "Accountant", label: t("accountant") },
+        { id: "Librarian", label: t("librarian") },
+        { id: "Receptionist", label: t("receptionist") },
     ];
 
     const tabs = [
-        { id: "Group", label: "Group", Icon: Users },
-        { id: "Individual", label: "Individual", Icon: User },
-        { id: "Class", label: "Class", Icon: GraduationCap },
-        { id: "Today's Birthday", label: "Birthday", Icon: Cake }
+        { id: "Group", label: t("group"), Icon: Users },
+        { id: "Individual", label: t("individual"), Icon: User },
+        { id: "Class", label: t("class"), Icon: GraduationCap },
+        { id: "Today's Birthday", label: t("birthday"), Icon: Cake }
     ];
 
     const getRecipientCount = (): number => {
@@ -387,8 +388,8 @@ export default function SendEmailPage() {
                         <Mail className="h-5 w-5 text-indigo-500" />
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">Send Email</h1>
-                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5">Reach your community with professional emails</p>
+                        <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">{t("send_email")}</h1>
+                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5">{t("send_email_subtitle")}</p>
                     </div>
                 </div>
 
@@ -420,8 +421,8 @@ export default function SendEmailPage() {
                                 <Mail className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Compose Email</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">Send professional emails to your community</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("compose_email")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("compose_email_description")}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-8 space-y-8 relative overflow-hidden">
@@ -432,11 +433,11 @@ export default function SendEmailPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-2">
                                     <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                        <FileText className="h-3 w-3" /> Email Template
+                                        <FileText className="h-3 w-3" /> {t("email_template")}
                                     </Label>
                                     <Select value={formData.email_template_id} onValueChange={handleTemplateChange}>
                                         <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm focus:ring-indigo-500 rounded-lg shadow-none">
-                                            <SelectValue placeholder="Quick Templates" />
+                                            <SelectValue placeholder={t("quick_templates")} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {templates.map(t => (
@@ -448,12 +449,12 @@ export default function SendEmailPage() {
 
                                 <div className="space-y-2">
                                     <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                        Subject <span className="text-red-500">*</span>
+                                        {t("subject")} <span className="text-red-500">*</span>
                                     </Label>
                                     <Input
                                         value={formData.title}
                                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                        placeholder="Email subject line..."
+                                        placeholder={t("email_subject_placeholder")}
                                         className="h-11 border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-lg shadow-none"
                                     />
                                 </div>
@@ -461,7 +462,7 @@ export default function SendEmailPage() {
 
                             <div className="space-y-3">
                                 <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                    <Paperclip className="h-3.5 w-3.5" /> Attachment
+                                    <Paperclip className="h-3.5 w-3.5" /> {t("attachment")}
                                 </Label>
                                 <input
                                     type="file"
@@ -478,7 +479,7 @@ export default function SendEmailPage() {
                                 >
                                     <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-tight text-gray-500 group-hover:text-indigo-500 transition-colors">
                                         <CloudUpload className={cn("h-5 w-5 transition-transform", selectedFile ? "text-indigo-500 scale-110" : "group-hover:scale-110")} />
-                                        <span>{selectedFile ? selectedFile.name : "Drag and drop a file or click to browse"}</span>
+                                        <span>{selectedFile ? selectedFile.name : t("drag_and_drop_file")}</span>
                                     </div>
                                     {selectedFile && (
                                         <Button
@@ -487,7 +488,7 @@ export default function SendEmailPage() {
                                             onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
                                             className="h-6 px-2 text-[10px] text-rose-500 hover:text-rose-600 hover:bg-rose-50 mt-2 rounded-full"
                                         >
-                                            Remove File
+                                            {t("remove_file")}
                                         </Button>
                                     )}
                                 </div>
@@ -496,7 +497,7 @@ export default function SendEmailPage() {
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                     <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                        Message Body <span className="text-red-500">*</span>
+                                        {t("message_body")} <span className="text-red-500">*</span>
                                     </Label>
                                     <div className="flex items-center gap-1">
                                         <VariablePicker onSelect={handleVariableSelect} />
@@ -506,7 +507,7 @@ export default function SendEmailPage() {
                                             className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 hover:text-indigo-600 transition-colors uppercase tracking-wider"
                                         >
                                             <Code className="h-3 w-3" />
-                                            {showHtml ? "Visual" : "HTML"}
+                                            {showHtml ? t("visual") : t("html")}
                                         </button>
                                     </div>
                                 </div>
@@ -514,7 +515,7 @@ export default function SendEmailPage() {
                                     <textarea
                                         ref={textareaRef}
                                         className="w-full min-h-[250px] p-6 text-sm border border-gray-100 rounded-lg focus:outline-none resize-none bg-gray-50/30 leading-relaxed text-gray-700 placeholder:text-gray-300 font-mono"
-                                        placeholder="Compose your email message..."
+                                        placeholder={t("compose_email_message_placeholder")}
                                         value={formData.message}
                                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                                     />
@@ -523,7 +524,7 @@ export default function SendEmailPage() {
                                         ref={ckeditorRef}
                                         value={formData.message}
                                         onChange={(value) => setFormData({ ...formData, message: value })}
-                                        placeholder="Compose your email message..."
+                                        placeholder={t("compose_email_message_placeholder")}
                                     />
                                 )}
                             </div>
@@ -539,16 +540,16 @@ export default function SendEmailPage() {
                                 <Users className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Recipients</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">Select your target audience</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("recipients")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("select_target_audience")}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 min-h-[400px] flex flex-col">
                             <div className="flex items-center justify-between mb-6">
                                 <span className="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full font-bold uppercase">
-                                    {activeTab === "Today's Birthday" ? "Birthday" : activeTab}
+                                    {activeTab === "Today's Birthday" ? t("birthday") : t(activeTab)}
                                 </span>
-                                <span className="text-[10px] font-bold text-indigo-600">{getRecipientCount()} selected</span>
+                                <span className="text-[10px] font-bold text-indigo-600">{getRecipientCount()} {t("selected")}</span>
                             </div>
 
                             <div className="space-y-2 flex-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -585,7 +586,7 @@ export default function SendEmailPage() {
                                         <div className="flex gap-2">
                                             <Select value={userRoleFilter} onValueChange={(v) => { setUserRoleFilter(v); }}>
                                                 <SelectTrigger className="h-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none flex-1">
-                                                    <SelectValue placeholder="Role" />
+                                                    <SelectValue placeholder={t("select_role")} />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {roles.map(r => (
@@ -599,7 +600,7 @@ export default function SendEmailPage() {
                                             <Input
                                                 value={userSearch}
                                                 onChange={(e) => setUserSearch(e.target.value)}
-                                                placeholder="Search by name or email..."
+                                                placeholder={t("search_by_name_or_email")}
                                                 className="h-9 pl-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none"
                                             />
                                         </div>
@@ -607,7 +608,7 @@ export default function SendEmailPage() {
                                             {usersLoading ? (
                                                 <RecipientSkeleton rows={4} />
                                             ) : filteredUsers.length === 0 ? (
-                                                <p className="text-[11px] text-gray-400 text-center py-8">No users found</p>
+                                                <p className="text-[11px] text-gray-400 text-center py-8">{t("no_users_found")}</p>
                                             ) : (
                                                 filteredUsers.map(u => (
                                                     <div
@@ -639,7 +640,7 @@ export default function SendEmailPage() {
                                     <div className="space-y-3">
                                         <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setSelectedStudents(new Set()); fetchStudentsByClass(v); }}>
                                             <SelectTrigger className="h-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none">
-                                                <SelectValue placeholder="Select a class" />
+                                                <SelectValue placeholder={t("select_class")} />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {classes.map(c => (
@@ -653,7 +654,7 @@ export default function SendEmailPage() {
                                                 {classLoading ? (
                                                     <RecipientSkeleton rows={4} />
                                                 ) : classStudents.length === 0 ? (
-                                                    <p className="text-[11px] text-gray-400 text-center py-8">No students in this class</p>
+                                                    <p className="text-[11px] text-gray-400 text-center py-8">{t("no_students_in_this_class")}</p>
                                                 ) : (
                                                     classStudents.map(s => (
                                                         <div
@@ -672,7 +673,7 @@ export default function SendEmailPage() {
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-xs font-bold text-gray-700 truncate">
                                                                     {s.name} {s.last_name || ''}
-                                                                    {s.roll_no && <span className="text-gray-400 font-normal"> (Roll: {s.roll_no})</span>}
+                                                                    {s.roll_no && <span className="text-gray-400 font-normal"> ({t("roll")}: {s.roll_no})</span>}
                                                                 </p>
                                                                 <p className="text-[10px] text-gray-400 truncate">{s.email}</p>
                                                             </div>
@@ -689,10 +690,10 @@ export default function SendEmailPage() {
                                     <div className="space-y-3">
                                         <Select value={birthdayClassId} onValueChange={setBirthdayClassId}>
                                             <SelectTrigger className="h-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none">
-                                                <SelectValue placeholder="All Classes" />
+                                                <SelectValue placeholder={t("all_classes")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="all">All Classes</SelectItem>
+                                                <SelectItem value="all">{t("all_classes")}</SelectItem>
                                                 {classes.map(c => (
                                                     <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                                                 ))}
@@ -704,7 +705,7 @@ export default function SendEmailPage() {
                                             ) : birthdayUsers.length === 0 ? (
                                                 <div className="text-center py-12">
                                                     <Cake className="h-12 w-12 mx-auto text-gray-200 mb-3" />
-                                                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-tight">No birthdays today</p>
+                                                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-tight">{t("no_birthdays_today")}</p>
                                                 </div>
                                             ) : (
                                                 birthdayUsers.map(u => (
@@ -744,7 +745,7 @@ export default function SendEmailPage() {
                         <Label htmlFor="now" className={cn(
                             "text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-colors",
                             formData.send_type === 'now' ? "text-indigo-600" : "text-gray-400 group-hover:text-gray-600"
-                        )}>Send Now</Label>
+                        )}>{t("send_now")}</Label>
                     </div>
                     <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setFormData({ ...formData, send_type: 'schedule' })}>
                         <div className={cn(
@@ -757,7 +758,7 @@ export default function SendEmailPage() {
                         <Label htmlFor="schedule" className={cn(
                             "text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-colors",
                             formData.send_type === 'schedule' ? "text-indigo-600" : "text-gray-400 group-hover:text-gray-600"
-                        )}>Schedule Broadcast</Label>
+                        )}>{t("schedule_broadcast")}</Label>
                     </div>
                 </RadioGroup>
 
@@ -778,7 +779,7 @@ export default function SendEmailPage() {
                         disabled={submitting}
                         className="btn-gradient px-12 h-11 text-[11px] font-bold uppercase transition-all rounded-full shadow-2xl shadow-indigo-200 min-w-[200px]"
                     >
-                        {submitting ? "Queuing..." : formData.send_type === 'now' ? "Confirm & Send" : "Schedule Email"}
+                        {submitting ? t("sending") : formData.send_type === 'now' ? t("confirm_and_send") : t("schedule_email")}
                     </Button>
                 </div>
             </div>
@@ -787,16 +788,18 @@ export default function SendEmailPage() {
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">Confirm Email Dispatch</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("confirm_email_dispatch")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            You are about to {formData.send_type === 'now' ? 'send' : 'schedule'} an email broadcast to <span className="font-bold text-indigo-600">{getRecipientsArray().length} recipient(s)</span>.
-                            Are you sure you want to proceed?
+                            {formData.send_type === 'now'
+                                ? t("confirm_send_description", { count: getRecipientsArray().length })
+                                : t("confirm_schedule_description", { count: getRecipientsArray().length })
+                            }
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={executeSubmit} className="btn-gradient h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            {formData.send_type === 'now' ? 'Yes, Send Now' : 'Yes, Schedule'}
+                            {formData.send_type === 'now' ? t("yes_send_now") : t("yes_schedule")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useImageUrl } from "@/lib/image-url";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     CalendarDays, Calendar, MapPin, FolderOpen,
 } from "lucide-react";
@@ -32,6 +33,7 @@ function CardSkeleton() {
 }
 
 export default function UserEventsPage() {
+    const { t } = useTranslation();
     const resolvedGetImageUrl = useImageUrl();
     const resolveImg = (path: string | null) => {
         if (!path) return null;
@@ -48,7 +50,7 @@ export default function UserEventsPage() {
                 const res = await api.get("front-cms/events");
                 setEvents(res.data?.data ?? []);
             } catch {
-                toast.error("Failed to load events");
+                toast.error(t("failed_to_load_events"));
             } finally {
                 setLoading(false);
             }
@@ -65,8 +67,8 @@ export default function UserEventsPage() {
                             <CalendarDays className="h-5 w-5" />
                         </span>
                         <div>
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">School Events</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">Upcoming and recent school events</p>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("school_events")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("upcoming_and_recent_school_events")}</p>
                         </div>
                     </div>
                 </div>
@@ -79,7 +81,7 @@ export default function UserEventsPage() {
                     ) : events.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-3 py-16 text-gray-400">
                             <FolderOpen className="h-12 w-12 opacity-30" />
-                            <p className="text-[12px] font-semibold">No events found.</p>
+                            <p className="text-[12px] font-semibold">{t("no_events_found")}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

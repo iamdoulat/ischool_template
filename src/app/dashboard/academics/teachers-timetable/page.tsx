@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useMemo } from "react";
 
@@ -173,6 +175,8 @@ const DEFAULT_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "S
 
 export default function TeachersTimetablePage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const { settings } = useSettings();
 
     // Derived ordered days based on settings
@@ -217,7 +221,7 @@ export default function TeachersTimetablePage() {
                 setStaffList(teachers);
             } catch (error) {
                 console.error("Error fetching staff:", error);
-                toast("error", "Failed to load staff list");
+                tt.error("failed_to_load");
             } finally {
                 setLoading(false);
             }
@@ -227,7 +231,7 @@ export default function TeachersTimetablePage() {
 
     const handleSearch = async () => {
         if (!selectedStaffId) {
-            toast("error", "Please select a Teacher");
+            tt.error("please_select_a_teacher");
             return;
         }
 
@@ -244,10 +248,10 @@ export default function TeachersTimetablePage() {
                 entries: entries.filter((e: ApiTimetableEntry) => e.day === day)
             }));
             setTimetableData(grouped);
-            toast("success", "Timetable loaded");
+            tt.success("timetable_loaded");
         } catch (error) {
             console.error("Error searching timetable:", error);
-            toast("error", "Failed to fetch timetable");
+            tt.error("failed_to_fetch");
         } finally {
             setSearching(false);
         }
@@ -263,7 +267,7 @@ export default function TeachersTimetablePage() {
             <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-100 no-print">
                 <div className="flex items-center gap-2 text-[#6366f1]">
                     <Clock className="h-6 w-6" />
-                    <h1 className="text-xl font-medium text-gray-800">Teacher Time Table</h1>
+                    <h1 className="text-xl font-medium text-gray-800">{t("teacher_time_table")}</h1>
                 </div>
             </div>
 
@@ -274,19 +278,19 @@ export default function TeachersTimetablePage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{staffList.length} teacher{staffList.length === 1 ? '' : 's'} available</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("x_teachers_available", { count: staffList.length })}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-4">
                     <div className="flex flex-col space-y-2">
                         <Label htmlFor="teacher" className="text-xs font-semibold text-gray-600 uppercase">
-                            Teachers <span className="text-red-500">*</span>
+                            {t("teachers")} <span className="text-red-500">*</span>
                         </Label>
                         <div className="flex gap-2 max-w-2xl">
                             <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
                                 <SelectTrigger id="teacher" className="h-10 flex-1">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {staffList.map(s => (
@@ -300,7 +304,7 @@ export default function TeachersTimetablePage() {
                                 disabled={searching || loading}
                             >
                                 {searching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
-                                Search
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
@@ -315,8 +319,8 @@ export default function TeachersTimetablePage() {
                             <CalendarRange className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Teachers Timetable</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{totalEntries} scheduled entr{totalEntries === 1 ? 'y' : 'ies'}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("teachers_timetable")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_scheduled_entries", { count: totalEntries })}</p>
                         </div>
                     </div>
                     <Button
@@ -338,7 +342,7 @@ export default function TeachersTimetablePage() {
                                 {timetableData.map((dayData) => (
                                     <div key={dayData.day} className="flex-1 min-w-[220px]">
                                         <div className="bg-gray-50 py-2.5 px-3 text-left mb-3 rounded-t-lg border-b-2 border-indigo-500">
-                                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">{dayData.day}</span>
+                                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t(dayData.day.toLowerCase())}</span>
                                         </div>
                                         <div className="space-y-3 px-1">
                                             {dayData.entries.length > 0 ? (
@@ -348,8 +352,8 @@ export default function TeachersTimetablePage() {
                                                             <div className="flex items-start gap-2">
                                                                 <LayoutGrid className="h-3.5 w-3.5 text-indigo-500 mt-0.5" />
                                                                 <div>
-                                                                    <span className="font-bold text-gray-900 block">Class: {entry.school_class?.name}({entry.section?.name})</span>
-                                                                    <span className="text-gray-600 font-medium">Subject: {entry.subject?.name} ({entry.subject?.code})</span>
+                                                                    <span className="font-bold text-gray-900 block">{t("class")}: {entry.school_class?.name}({entry.section?.name})</span>
+                                                                    <span className="text-gray-600 font-medium">{t("subject")}: {entry.subject?.name} ({entry.subject?.code})</span>
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-2 pl-5">
@@ -358,7 +362,7 @@ export default function TeachersTimetablePage() {
                                                             </div>
                                                             <div className="flex items-center gap-2 pl-5">
                                                                 <MapPin className="h-3.5 w-3.5 text-green-500" />
-                                                                <span className="text-gray-700 font-medium">Room: {entry.room || "N/A"}</span>
+                                                                <span className="text-gray-700 font-medium">{t("room_no")}: {entry.room || t("n_a")}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -367,7 +371,7 @@ export default function TeachersTimetablePage() {
                                                 <div className="bg-gray-50/50 border border-dashed border-gray-200 rounded-lg p-4 text-center">
                                                     <div className="flex flex-col items-center justify-center gap-1.5 text-gray-400">
                                                         <AlertCircle className="h-5 w-5 opacity-50" />
-                                                        <span className="text-[10px] font-bold uppercase tracking-tighter">Not Scheduled</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-tighter">{t("not_scheduled")}</span>
                                                     </div>
                                                 </div>
                                             )}

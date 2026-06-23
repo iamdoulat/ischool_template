@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Card,
     CardContent,
@@ -16,6 +17,7 @@ import {
     FileSearch,
     ArrowRight,
     RefreshCw,
+    CreditCard,
     GraduationCap,
     Users,
     Zap,
@@ -59,16 +61,17 @@ interface Student {
 
 export default function OfflinePaymentPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
     const [submitting, setSubmitting] = useState<number | null>(null);
-    
+
     // Criteria State
     const [criteria, setCriteria] = useState<any[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
     const [selectedSection, setSelectedSection] = useState("");
     const [selectedStudent, setSelectedStudent] = useState("");
-    
+
     const [sections, setSections] = useState<any[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
@@ -121,7 +124,7 @@ export default function OfflinePaymentPage() {
 
     const handleSearch = async () => {
         if (!selectedStudent) {
-            toast({ title: "Validation Error", description: "Please identify a target student node before initiating lookup.", variant: "destructive" });
+            toast({ title: t("validation_error"), description: t("please_identify_target_student_before_lookup"), variant: "destructive" });
             return;
         }
 
@@ -129,9 +132,9 @@ export default function OfflinePaymentPage() {
         try {
             const response = await api.get('/online-course/offline-payments/search-courses');
             setCourses(response.data);
-            toast({ title: "Lookup Successful", description: "Available virtual assets synchronized with registry." });
+            toast({ title: t("lookup_successful"), description: t("available_virtual_assets_synchronized") });
         } catch (error) {
-            toast({ title: "Lookup Failure", description: "Failed to locate available course nodes.", variant: "destructive" });
+            toast({ title: t("lookup_failure"), description: t("failed_to_locate_course_nodes"), variant: "destructive" });
         } finally {
             setSearching(false);
         }
@@ -145,22 +148,32 @@ export default function OfflinePaymentPage() {
                 student_id: selectedStudent,
                 course_id: confirmId
             });
-            toast({ title: "Payment Recorded", description: "Offline transaction indexed and virtual asset assigned." });
+            toast({ title: t("payment_recorded"), description: t("offline_transaction_indexed_and_asset_assigned") });
         } catch (error) {
-            toast({ title: "Transaction Failed", description: "Failed to record offline payment protocol.", variant: "destructive" });
+            toast({ title: t("transaction_failed"), description: t("failed_to_record_offline_payment"), variant: "destructive" });
         } finally {
             setSubmitting(null);
             setConfirmId(null);
         }
     };
 
-    const currentStudentName = students.find(s => s.id.toString() === selectedStudent)?.name || "Target Student";
-    const currentCourseTitle = courses.find(c => c.id === confirmId)?.title || "Selected Asset";
+    const currentStudentName = students.find(s => s.id.toString() === selectedStudent)?.name || t("target_student");
+    const currentCourseTitle = courses.find(c => c.id === confirmId)?.title || t("selected_asset");
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 font-sans text-slate-800">
             {/* Title */}
-            <h1 className="text-2xl font-bold tracking-tight text-slate-800">Offline Payment</h1>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <CreditCard className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("offline_payment")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("record_manual_course_enrollment_payments")}</p>
+                    </div>
+                </div>
+            </div>
 
             {/* Select Criteria Card */}
             <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
@@ -168,21 +181,21 @@ export default function OfflinePaymentPage() {
                     <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
                         <GraduationCap className="h-5 w-5" />
                     </div>
-                    <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Registry Criteria</CardTitle>
+                    <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">{t("registry_criteria")}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-10 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-end">
                         <div className="space-y-3 group">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-indigo-500 transition-colors">
-                                Institutional Class <span className="text-destructive">*</span>
+                                {t("institutional_class")} <span className="text-destructive">*</span>
                             </label>
                             <div className="relative">
-                                <select 
+                                <select
                                     value={selectedClass}
                                     onChange={(e) => setSelectedClass(e.target.value)}
                                     className="flex h-14 w-full rounded-lg border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer shadow-sm"
                                 >
-                                    <option value="">Select Class Node</option>
+                                    <option value="">{t("select_class_node")}</option>
                                     {criteria.map(cls => <option key={cls.id} value={cls.id}>{cls.name}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -190,15 +203,15 @@ export default function OfflinePaymentPage() {
                         </div>
                         <div className="space-y-3 group">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-indigo-500 transition-colors">
-                                Academic Section <span className="text-destructive">*</span>
+                                {t("academic_section")} <span className="text-destructive">*</span>
                             </label>
                             <div className="relative">
-                                <select 
+                                <select
                                     value={selectedSection}
                                     onChange={(e) => setSelectedSection(e.target.value)}
                                     className="flex h-14 w-full rounded-lg border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer shadow-sm"
                                 >
-                                    <option value="">Select Section Node</option>
+                                    <option value="">{t("select_section_node")}</option>
                                     {sections.map(sec => <option key={sec.id} value={sec.id}>{sec.name}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -206,15 +219,15 @@ export default function OfflinePaymentPage() {
                         </div>
                         <div className="space-y-3 group">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-indigo-500 transition-colors">
-                                Target Student Node <span className="text-destructive">*</span>
+                                {t("target_student_node")} <span className="text-destructive">*</span>
                             </label>
                             <div className="relative">
-                                <select 
+                                <select
                                     value={selectedStudent}
                                     onChange={(e) => setSelectedStudent(e.target.value)}
                                     className="flex h-14 w-full rounded-lg border border-muted/50 bg-white px-6 py-2 text-[11px] font-black uppercase tracking-tight focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer shadow-sm"
                                 >
-                                    <option value="">Identify Student Node</option>
+                                    <option value="">{t("identify_student_node")}</option>
                                     {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.admission_no})</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -222,13 +235,13 @@ export default function OfflinePaymentPage() {
                         </div>
                     </div>
                     <div className="flex justify-end pt-8 border-t border-gray-50">
-                        <Button 
+                        <Button
                             onClick={handleSearch}
                             disabled={searching}
                             className="btn-gradient text-white px-12 h-14 text-[11px] font-black uppercase tracking-[0.2em] gap-3 shadow-2xl shadow-orange-200/50 active:scale-95 transition-all rounded-full group"
                         >
                             {searching ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5 group-hover:scale-110 transition-transform" />}
-                            Execute Nodal Lookup
+                            {t("execute_nodal_lookup")}
                         </Button>
                     </div>
                 </CardContent>
@@ -240,23 +253,23 @@ export default function OfflinePaymentPage() {
                     <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
                         <BookmarkCheck className="h-5 w-5" />
                     </div>
-                    <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">Available Virtual Assets</CardTitle>
+                    <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase">{t("available_virtual_assets")}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto relative min-h-[400px]">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-50/50 text-muted-foreground text-[10px] font-black uppercase tracking-[0.2em] border-y border-muted/20">
                                 <tr>
-                                    <th className="px-8 py-6">Course Title</th>
-                                    <th className="px-6 py-6 text-center">Sections</th>
-                                    <th className="px-6 py-6 text-center">Lessons</th>
-                                    <th className="px-6 py-6 text-center">Quizzes</th>
-                                    <th className="px-6 py-6 text-center">Exams</th>
-                                    <th className="px-6 py-6 text-center">Assignments</th>
-                                    <th className="px-6 py-6">Provider</th>
-                                    <th className="px-6 py-6 text-center">Original</th>
-                                    <th className="px-6 py-6 text-center">Commitment</th>
-                                    <th className="px-8 py-6 text-right">Commitment Action</th>
+                                    <th className="px-8 py-6">{t("course_title")}</th>
+                                    <th className="px-6 py-6 text-center">{t("sections")}</th>
+                                    <th className="px-6 py-6 text-center">{t("lessons")}</th>
+                                    <th className="px-6 py-6 text-center">{t("quizzes")}</th>
+                                    <th className="px-6 py-6 text-center">{t("exams")}</th>
+                                    <th className="px-6 py-6 text-center">{t("assignments")}</th>
+                                    <th className="px-6 py-6">{t("provider")}</th>
+                                    <th className="px-6 py-6 text-center">{t("original")}</th>
+                                    <th className="px-6 py-6 text-center">{t("commitment")}</th>
+                                    <th className="px-8 py-6 text-right">{t("commitment_action")}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -268,8 +281,8 @@ export default function OfflinePaymentPage() {
                                                     <FileSearch className="h-16 w-16 opacity-30" />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <p className="text-rose-500/60 font-black text-[10px] uppercase tracking-[0.3em] bg-rose-50 px-8 py-3 rounded-full border border-rose-100 shadow-sm">No analytical data available</p>
-                                                    <p className="text-[9px] uppercase font-black text-gray-400 tracking-tighter italic">Execute student lookup to populate available virtual asset nodes.</p>
+                                                    <p className="text-rose-500/60 font-black text-[10px] uppercase tracking-[0.3em] bg-rose-50 px-8 py-3 rounded-full border border-rose-100 shadow-sm">{t("no_analytical_data_available")}</p>
+                                                    <p className="text-[9px] uppercase font-black text-gray-400 tracking-tighter italic">{t("execute_student_lookup_to_populate_assets")}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -299,13 +312,13 @@ export default function OfflinePaymentPage() {
                                             <td className="px-6 py-6 text-center tabular-nums text-slate-400 line-through text-[11px] font-black opacity-50">${course.price.toFixed(2)}</td>
                                             <td className="px-6 py-6 text-center tabular-nums text-indigo-600 text-[13px] font-black">${course.current_price.toFixed(2)}</td>
                                             <td className="px-8 py-6 text-right">
-                                                <Button 
+                                                <Button
                                                     onClick={() => setConfirmId(course.id)}
                                                     disabled={submitting !== null}
                                                     className="h-10 px-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] gap-2 shadow-xl shadow-indigo-100 transition-all active:scale-95"
                                                 >
                                                     {submitting === course.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
-                                                    Commit
+                                                    {t("commit")}
                                                 </Button>
                                             </td>
                                         </tr>
@@ -318,7 +331,7 @@ export default function OfflinePaymentPage() {
                     {/* Pagination Footer */}
                     <div className="px-8 py-8 bg-slate-50/50 border-t border-muted/20 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">
-                            Displaying {courses.length > 0 ? 1 : 0} to {courses.length} of {courses.length} nodal assets
+                            {t("displaying_x_to_y_of_z_nodal_assets", { from: courses.length > 0 ? 1 : 0, to: courses.length, total: courses.length })}
                         </p>
                         <div className="flex items-center gap-3">
                             <Button variant="outline" size="icon" className="h-11 w-11 rounded-lg border-muted/50 text-muted-foreground hover:bg-white transition-all shadow-sm" disabled>
@@ -342,19 +355,19 @@ export default function OfflinePaymentPage() {
                         <div className="h-20 w-20 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-100 mb-8 shadow-inner transform rotate-3">
                             <ShieldCheck className="h-10 w-10" />
                         </div>
-                        <AlertDialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-tight leading-tight">Confirm Asset Commitment</AlertDialogTitle>
+                        <AlertDialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-tight leading-tight">{t("confirm_asset_commitment")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-4 font-medium">
-                            You are about to record an offline payment and assign <span className="text-indigo-600 font-black uppercase">"{currentCourseTitle}"</span> to <span className="text-slate-800 font-black uppercase">{currentStudentName}</span>. This protocol will update the institutional registry and grant nodal access to the curriculum assets.
+                            {t("offline_payment_commitment_description", { courseTitle: currentCourseTitle, studentName: currentStudentName })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-12 gap-4">
-                        <AlertDialogCancel className="h-14 px-10 rounded-full text-[10px] font-black uppercase tracking-widest border-gray-100 hover:bg-gray-50 transition-all">Discard Protocol</AlertDialogCancel>
-                        <AlertDialogAction 
-                            onClick={executeAssignment} 
+                        <AlertDialogCancel className="h-14 px-10 rounded-full text-[10px] font-black uppercase tracking-widest border-gray-100 hover:bg-gray-50 transition-all">{t("discard_protocol")}</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={executeAssignment}
                             className="bg-indigo-600 hover:bg-indigo-700 h-14 px-12 rounded-full text-[10px] font-black uppercase tracking-widest border-0 shadow-2xl shadow-indigo-200 active:scale-95 transition-all flex gap-3"
                         >
                             <Check className="h-4 w-4" />
-                            Commit Assignment
+                            {t("commit_assignment")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

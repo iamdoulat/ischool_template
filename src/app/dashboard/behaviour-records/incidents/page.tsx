@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     Card,
     CardContent,
@@ -60,7 +61,8 @@ interface Incident {
 }
 
 export default function IncidentsPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [incidents, setIncidents] = useState<Incident[]>([]);
     const [loading, setLoading] = useState(false);
@@ -101,7 +103,7 @@ export default function IncidentsPage() {
             setIncidents(response.data.data || []);
             setTotalEntries(response.data.total || 0);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch incident registry", variant: "destructive" });
+            tt.error("failed_to_fetch_incident_registry");
         } finally {
             setLoading(false);
         }
@@ -109,7 +111,7 @@ export default function IncidentsPage() {
 
     const handleSave = async () => {
         if (!formData.title) {
-            toast({ title: "Validation", description: "Incident title is required", variant: "destructive" });
+            tt.error("incident_title_is_required");
             return;
         }
 
@@ -117,16 +119,16 @@ export default function IncidentsPage() {
         try {
             if (editMode && selectedId) {
                 await api.put(`/behaviour/incidents/${selectedId}`, formData);
-                toast({ title: "Success", description: "Incident protocol updated" });
+                tt.success("incident_protocol_updated");
             } else {
                 await api.post('/behaviour/incidents', formData);
-                toast({ title: "Success", description: "New incident indexed" });
+                tt.success("new_incident_indexed");
             }
             setOpen(false);
             resetForm();
             fetchIncidents();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to save incident record", variant: "destructive" });
+            tt.error("failed_to_save_incident_record");
         } finally {
             setSubmitting(false);
         }
@@ -147,10 +149,10 @@ export default function IncidentsPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/behaviour/incidents/${deleteId}`);
-            toast({ title: "Success", description: "Incident protocol expunged" });
+            tt.success("incident_protocol_expunged");
             fetchIncidents();
         } catch (error) {
-            toast({ title: "Error", description: "Failed to delete incident", variant: "destructive" });
+            tt.error("failed_to_delete_incident");
         } finally {
             setDeleteId(null);
         }
@@ -171,8 +173,8 @@ export default function IncidentsPage() {
                             <ShieldAlert className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Incidents</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Manage behaviour incident types and their points</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("incidents")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("manage_behaviour_incident_types_and_their_points")}</p>
                         </div>
                     </div>
                     <Button
@@ -180,7 +182,7 @@ export default function IncidentsPage() {
                         className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all shrink-0"
                     >
                         <Plus className="h-4 w-4" />
-                        Add Incident
+                        {t("add_incident")}
                     </Button>
                 </CardHeader>
                 <CardContent className="p-5 space-y-4">
@@ -188,14 +190,14 @@ export default function IncidentsPage() {
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Search incidents..."
+                                placeholder={t("search_incidents")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-9 h-9 text-xs"
                             />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500 font-medium">Show</span>
+                            <span className="text-xs text-gray-500 font-medium">{t("show")}</span>
                             <Select value={itemsPerPage.toString()} onValueChange={(val) => setItemsPerPage(parseInt(val))}>
                                 <SelectTrigger className="h-9 w-[70px] text-xs">
                                     <SelectValue placeholder="50" />
@@ -214,10 +216,10 @@ export default function IncidentsPage() {
                         <Table className="min-w-[640px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600">Incident</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-center w-[110px]">Points</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Description</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right w-[100px]">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("incident")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center w-[110px]">{t("points")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("description")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right w-[100px]">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -235,8 +237,8 @@ export default function IncidentsPage() {
                                         <TableCell colSpan={4} className="px-4 py-14 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <FolderOpen className="h-10 w-10 opacity-30" />
-                                                <p className="text-xs font-semibold text-gray-500">No incidents found</p>
-                                                <p className="text-[11px] text-gray-400">Click &ldquo;Add Incident&rdquo; to create your first incident type.</p>
+                                                <p className="text-xs font-semibold text-gray-500">{t("no_incidents_found")}</p>
+                                                <p className="text-[11px] text-gray-400">{t("click_add_incident_to_create_your_first_incident_type")}</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -286,7 +288,11 @@ export default function IncidentsPage() {
 
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium">
                         <div>
-                            Showing {totalEntries === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalEntries)} of {totalEntries} entries
+                            {t("showing_x_to_y_of_z", {
+                                from: totalEntries === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1,
+                                to: Math.min(currentPage * itemsPerPage, totalEntries),
+                                total: totalEntries
+                            })}
                         </div>
                         <div className="flex gap-1 items-center">
                             <Button
@@ -320,30 +326,30 @@ export default function IncidentsPage() {
                                 <div className="h-10 w-10 rounded-lg bg-rose-500 flex items-center justify-center text-white shadow-lg shadow-rose-200">
                                     <ShieldAlert className="h-5 w-5" />
                                 </div>
-                                {editMode ? "Modify Protocol" : "Index New Protocol"}
+                                {editMode ? t("modify_protocol") : t("index_new_protocol")}
                             </DialogTitle>
                         </DialogHeader>
                     </div>
 
                     <div className="p-10 grid grid-cols-1 gap-8">
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Incident Classification <span className="text-red-500">*</span></Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">{t("incident_classification")} <span className="text-red-500">*</span></Label>
                             <Input
                                 value={formData.title}
                                 onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                placeholder="e.g. Harassment and bullying"
+                                placeholder={t("harassment_and_bullying_example")}
                                 className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-rose-500 shadow-none text-sm font-bold tracking-tight px-6"
                             />
                         </div>
 
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Point Value <span className="text-red-500">*</span></Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">{t("point_value")} <span className="text-red-500">*</span></Label>
                             <div className="flex items-center gap-4">
                                 <Input
                                     type="number"
                                     value={formData.point}
                                     onChange={(e) => setFormData({...formData, point: parseInt(e.target.value) || 0})}
-                                    placeholder="e.g. -10 or 20"
+                                    placeholder={t("negative_10_or_positive_20_example")}
                                     className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-rose-500 shadow-none text-sm font-bold tracking-tight px-6 flex-1"
                                 />
                                 <div className={cn(
@@ -354,16 +360,16 @@ export default function IncidentsPage() {
                                 </div>
                             </div>
                             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter italic px-2 leading-relaxed flex items-center gap-1">
-                                <Info className="h-3 w-3" /> Use negative values for infractions, positive for commendations.
+                                <Info className="h-3 w-3" /> {t("use_negative_for_infractions_positive_for_commendations")}
                             </p>
                         </div>
 
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Protocol Description</Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">{t("protocol_description")}</Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                placeholder="Describe this incident classification in detail..."
+                                placeholder={t("describe_this_incident_classification_in_detail")}
                                 rows={4}
                                 className="border-gray-100 bg-gray-50/50 rounded-lg focus:ring-rose-500 shadow-none text-sm font-bold tracking-tight px-6 py-4 resize-none"
                             />
@@ -371,14 +377,14 @@ export default function IncidentsPage() {
                     </div>
 
                     <div className="p-8 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-4">
-                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-12 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest">Discard</Button>
+                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-12 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest">{t("discard")}</Button>
                         <Button
                             onClick={handleSave}
                             disabled={submitting}
                             className="btn-gradient text-white px-12 h-12 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex gap-3 active:scale-95"
                         >
                             {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Commit Protocol
+                            {t("commit_protocol")}
                         </Button>
                     </div>
                 </DialogContent>
@@ -391,15 +397,15 @@ export default function IncidentsPage() {
                         <div className="h-16 w-16 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 mb-6 shadow-inner">
                             <ShieldCheck className="h-8 w-8 text-rose-400/50" />
                         </div>
-                        <AlertDialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-tight">Expunge Incident Protocol</AlertDialogTitle>
+                        <AlertDialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-tight">{t("expunge_incident_protocol")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-4">
-                            Are you sure you want to permanently de-index this incident classification? This action will remove it from all future behavioural tracking and reporting matrices.
+                            {t("permanently_deindex_incident_classification_confirmation")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-10 gap-4">
-                        <AlertDialogCancel className="h-12 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-100">Cancel Protocol</AlertDialogCancel>
+                        <AlertDialogCancel className="h-12 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-100">{t("cancel_protocol")}</AlertDialogCancel>
                         <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 h-12 px-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-0 shadow-xl shadow-rose-200 active:scale-95 transition-all">
-                            Confirm Expunge
+                            {t("confirm_expunge")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

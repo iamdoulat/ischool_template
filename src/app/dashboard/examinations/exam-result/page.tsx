@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,7 +83,8 @@ interface SessionItem {
 }
 
 export default function ExamResultPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
 
@@ -123,7 +125,7 @@ export default function ExamResultPage() {
             setSessions(criteriaRes.data.sessions || []);
             setClasses(classesRes.data.data || classesRes.data || []);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to load criteria", variant: "destructive" });
+            tt.error("failed_to_load_criteria");
         } finally {
             setLoading(false);
         }
@@ -150,7 +152,7 @@ export default function ExamResultPage() {
 
     const handleSearch = async () => {
         if (!selectedCriteria.exam_id || !selectedCriteria.school_class_id || !selectedCriteria.section_id) {
-            toast({ title: "Validation Error", description: "Please select all required fields", variant: "destructive" });
+            tt.error("please_select_all_required_fields");
             return;
         }
 
@@ -164,7 +166,7 @@ export default function ExamResultPage() {
             setStudents(response.data.students || []);
             setSubjects(response.data.subjects || []);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch results", variant: "destructive" });
+            tt.error("failed_to_fetch_results");
         } finally {
             setSearching(false);
         }
@@ -196,9 +198,9 @@ export default function ExamResultPage() {
                 <div>
                     <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
                         <Award className="h-6 w-6 text-indigo-500" />
-                        Exam Result
+                        {t("exam_result")}
                     </h1>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Institutional academic result repository</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{t("exam_result_subtitle")}</p>
                 </div>
             </div>
 
@@ -209,17 +211,17 @@ export default function ExamResultPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Choose exam, session, class &amp; section</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("choose_exam_session_class_section")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Exam Group <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_group")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedCriteria.exam_group_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_group_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Group" />
+                                    <SelectValue placeholder={t("select_group")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {examGroups.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
@@ -228,10 +230,10 @@ export default function ExamResultPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Exam <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedCriteria.exam_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, exam_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Exam" />
+                                    <SelectValue placeholder={t("select_exam")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {exams.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.name}</SelectItem>)}
@@ -240,10 +242,10 @@ export default function ExamResultPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Session <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("session")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedCriteria.session_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, session_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Session" />
+                                    <SelectValue placeholder={t("select_session")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>)}
@@ -252,10 +254,10 @@ export default function ExamResultPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Class <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("class")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedCriteria.school_class_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, school_class_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Class" />
+                                    <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
@@ -264,10 +266,10 @@ export default function ExamResultPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Section <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("section")} <span className="text-red-500">*</span></Label>
                             <Select value={selectedCriteria.section_id} onValueChange={(val) => setSelectedCriteria({...selectedCriteria, section_id: val})}>
                                 <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none">
-                                    <SelectValue placeholder="Select Section" />
+                                    <SelectValue placeholder={t("select_section")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
@@ -283,7 +285,7 @@ export default function ExamResultPage() {
                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-10 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
                             >
                             {searching ? <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" /> : <Search className="h-4 w-4" />}
-                            Retrieve Results
+                            {t("retrieve_results")}
                         </Button>
                     </div>
                 </CardContent>
@@ -297,8 +299,8 @@ export default function ExamResultPage() {
                             <FileBarChart className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Tabulation Record</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{filteredStudents.length} student{filteredStudents.length === 1 ? "" : "s"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("tabulation_record")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_students", { count: filteredStudents.length })}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-1 text-gray-400">
@@ -313,7 +315,7 @@ export default function ExamResultPage() {
                         <div className="relative w-full md:w-72">
                             <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Search by student name..."
+                                placeholder={t("search_by_student_name")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
@@ -325,8 +327,8 @@ export default function ExamResultPage() {
                         <Table>
                             <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-500">
                                 <TableRow className="hover:bg-transparent border-gray-50">
-                                    <TableHead className="py-4 px-6 min-w-[120px]">Admission No</TableHead>
-                                    <TableHead className="py-4 px-6 min-w-[150px]">Student Name</TableHead>
+                                    <TableHead className="py-4 px-6 min-w-[120px]">{t("admission_no")}</TableHead>
+                                    <TableHead className="py-4 px-6 min-w-[150px]">{t("student_name")}</TableHead>
                                     {subjects.map(subject => (
                                         <TableHead key={subject.id} className="py-4 px-6 min-w-[120px] text-center border-l border-gray-50">
                                             <div className="flex flex-col items-center">
@@ -335,8 +337,8 @@ export default function ExamResultPage() {
                                             </div>
                                         </TableHead>
                                     ))}
-                                    <TableHead className="py-4 px-6 min-w-[120px] text-center border-l border-indigo-50 bg-indigo-50/20">Grand Total</TableHead>
-                                    <TableHead className="py-4 px-6 min-w-[100px] text-center border-l border-gray-50 bg-indigo-50/20">Percent (%)</TableHead>
+                                    <TableHead className="py-4 px-6 min-w-[120px] text-center border-l border-indigo-50 bg-indigo-50/20">{t("grand_total")}</TableHead>
+                                    <TableHead className="py-4 px-6 min-w-[100px] text-center border-l border-gray-50 bg-indigo-50/20">{t("percent")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -345,7 +347,7 @@ export default function ExamResultPage() {
                                 ) : students.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={subjects.length + 4} className="h-32 text-center text-gray-400 text-sm italic">
-                                            Please select criteria and search to view results.
+                                            {t("please_select_criteria_and_search")}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -367,7 +369,7 @@ export default function ExamResultPage() {
                                                     <TableCell key={subject.id} className="py-4 px-6 text-center border-l border-gray-50">
                                                         {mark ? (
                                                             mark.is_absent ? (
-                                                                <span className="text-rose-500 font-bold text-[9px] uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100">Absent</span>
+                                                                <span className="text-rose-500 font-bold text-[9px] uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100">{t("absent")}</span>
                                                             ) : (
                                                                 <span className="font-bold text-gray-700">{mark.marks}</span>
                                                             )

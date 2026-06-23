@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useImageUrl } from "@/lib/image-url";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Newspaper, Calendar, FolderOpen,
 } from "lucide-react";
@@ -30,6 +31,7 @@ function CardSkeleton() {
 }
 
 export default function UserNewsPage() {
+    const { t } = useTranslation();
     const resolvedGetImageUrl = useImageUrl();
     const resolveImg = (path: string | null) => {
         if (!path) return null;
@@ -46,7 +48,7 @@ export default function UserNewsPage() {
                 const res = await api.get("front-cms/news");
                 setNews(res.data?.data ?? []);
             } catch {
-                toast.error("Failed to load news");
+                toast.error(t("failed_to_load_news"));
             } finally {
                 setLoading(false);
             }
@@ -63,8 +65,8 @@ export default function UserNewsPage() {
                             <Newspaper className="h-5 w-5" />
                         </span>
                         <div>
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">School News</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">Latest news and announcements</p>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("school_news")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("latest_news_and_announcements")}</p>
                         </div>
                     </div>
                 </div>
@@ -77,7 +79,7 @@ export default function UserNewsPage() {
                     ) : news.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-3 py-16 text-gray-400">
                             <FolderOpen className="h-12 w-12 opacity-30" />
-                            <p className="text-[12px] font-semibold">No news found.</p>
+                            <p className="text-[12px] font-semibold">{t("no_news_found")}</p>
                         </div>
                     ) : (
                         <div className="space-y-3">

@@ -14,14 +14,13 @@ import {
 import {
     Card,
     CardContent,
-    CardHeader,
-    CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { ExternalLink, Loader2, Send, CheckCircle2, XCircle, Smartphone } from "lucide-react";
+import { ExternalLink, Loader2, Send, CheckCircle2, XCircle, Smartphone, MessageCircle } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 
 const gatewaysConfig: Record<string, { providerName: string, fields: { key: string, label: string, type: string, options?: string[], optionLabels?: Record<string, string> }[], guideUrl?: string }> = {
     "Meta WhatsApp Official": {
@@ -77,6 +76,7 @@ function FormSkeleton() {
 }
 
 export default function WhatsappMessagingPage() {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState("Meta WhatsApp Official");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -106,7 +106,7 @@ export default function WhatsappMessagingPage() {
                 setSettingsData(formattedData);
             }
         } catch {
-            toast.error("Failed to load WhatsApp settings");
+            toast.error(t("failed_to_load"));
         } finally {
             setLoading(false);
         }
@@ -163,7 +163,7 @@ export default function WhatsappMessagingPage() {
 
     const handleTestMessage = async () => {
         if (!testPhone.trim()) {
-            toast.error("Enter a phone number to send the test message");
+            toast.error(t("enter_a_phone_number_to_send_the_test_message"));
             return;
         }
         setTesting(true);
@@ -200,12 +200,18 @@ export default function WhatsappMessagingPage() {
 
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
-            <Card>
-                <CardHeader className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] rounded-t-lg">
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="text-gray-800 text-sm font-bold">WhatsApp Gateway</CardTitle>
+            <Card className="pt-0 overflow-hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <MessageCircle className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("whatsapp_messaging")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("configure_whatsapp_messaging_providers")}</p>
+                        </div>
                     </div>
-                </CardHeader>
+                </div>
                 <CardContent className="p-0">
                     {/* Gateway Tabs */}
                     <div className="border-b border-gray-100 bg-white overflow-x-auto">
@@ -279,22 +285,22 @@ export default function WhatsappMessagingPage() {
                                     ))}
 
                                     <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 mt-6">
-                                        <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Status <span className="text-red-500">*</span></Label>
+                                        <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">{t("status")} <span className="text-red-500">*</span></Label>
                                         <div className="md:col-span-2">
                                             <Select value={currentData.status} onValueChange={(val) => handleStatusChange(providerKey, val)}>
                                                 <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
                                                     <SelectValue placeholder="Select" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="enabled">Enabled</SelectItem>
-                                                    <SelectItem value="disabled">Disabled</SelectItem>
+                                                    <SelectItem value="enabled">{t("enabled")}</SelectItem>
+                                                    <SelectItem value="disabled">{t("disabled")}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 pt-4 border-t border-gray-50">
-                                        <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">Test Message</Label>
+                                        <Label className="text-[11px] font-bold text-gray-500 text-right uppercase">{t("test_message")}</Label>
                                         <div className="md:col-span-2 space-y-2">
                                             <div className="flex gap-2">
                                                 <Input
@@ -322,7 +328,7 @@ export default function WhatsappMessagingPage() {
                                                     {testResult.message}
                                                 </div>
                                             )}
-                                            <p className="text-[9px] text-gray-400 italic">Save configuration before testing</p>
+                                            <p className="text-[9px] text-gray-400 italic">{t("save_configuration_before_testing")}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -340,10 +346,10 @@ export default function WhatsappMessagingPage() {
                                                     </div>
                                                     <div className="text-left">
                                                         <p className={cn("text-xs font-bold uppercase tracking-wider", isConfigured ? "text-green-700" : "text-gray-400")}>
-                                                            {isConfigured ? "Configured" : "Not Configured"}
+                                                            {isConfigured ? t("configured") : t("not_configured")}
                                                         </p>
                                                         <p className={cn("text-[10px] mt-0.5", isConfigured ? "text-green-500" : "text-gray-300")}>
-                                                            {currentData.status === "enabled" ? "Active" : "Disabled"}
+                                                            {currentData.status === "enabled" ? t("active") : t("disabled")}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -366,7 +372,7 @@ export default function WhatsappMessagingPage() {
                             disabled={saving}
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-10 h-10 text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5"
                         >
-                            {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : "Save"}
+                            {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("saving")}...</> : t("save")}
                         </Button>
                     </div>
                 </CardContent>

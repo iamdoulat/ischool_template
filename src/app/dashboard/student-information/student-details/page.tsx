@@ -40,7 +40,8 @@ import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { useImageUrl } from "@/lib/image-url";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -102,7 +103,8 @@ interface Student {
 }
 
 export default function StudentDetailsPage() {
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
     const router = useRouter();
     const getImageUrl = useImageUrl();
     const [viewMode, setViewMode] = useState<"list" | "details">("list");
@@ -145,7 +147,7 @@ export default function StudentDetailsPage() {
             setClasses(classesRes.data.data?.data || classesRes.data.data || []);
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
-            toast("error", "Failed to load classes");
+            tt.error("failed_to_load_classes");
         } finally {
             setFetchingPrereqs(false);
         }
@@ -162,12 +164,12 @@ export default function StudentDetailsPage() {
         setDeleting(true);
         try {
             await api.delete(`/students/${selectedStudent.id}`);
-            toast("success", "Student record deleted successfully");
+            tt.success("student_record_deleted_successfully");
             setDeleteDialogOpen(false);
             handleSearch(pagination.current_page);
         } catch (error) {
             console.error("Delete error:", error);
-            toast("error", "Failed to delete student record");
+            tt.error("failed_to_delete_student_record");
         } finally {
             setDeleting(false);
         }
@@ -210,16 +212,16 @@ export default function StudentDetailsPage() {
             }
         } catch (error) {
             console.error("Error fetching students:", error);
-            toast("error", "Failed to fetch students");
+            tt.error("failed_to_fetch_students");
         } finally {
             setLoading(false);
         }
     };
 
     const tableHeaders = [
-        "Avatar", "Admission No", "Student Name", "Roll No.", "Class",
-        "Father Name", "Date Of Birth", "Gender", "Category",
-        "Mobile Number", "Status", "Action"
+        t("avatar"), t("admission_no"), t("student_name"), t("roll_no"), t("class"),
+        t("father_name"), t("date_of_birth"), t("gender"), t("category"),
+        t("mobile_number"), t("status"), t("action")
     ];
 
     return (
@@ -231,8 +233,8 @@ export default function StudentDetailsPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter students by class, section &amp; status</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_students_by_class_section_status")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -241,7 +243,7 @@ export default function StudentDetailsPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Class <span className="text-destructive">*</span>
+                                    {t("class")} <span className="text-destructive">*</span>
                                 </label>
                                 <div className="relative">
                                     <select
@@ -252,7 +254,7 @@ export default function StudentDetailsPage() {
                                         }}
                                         className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     >
-                                        <option value="">Select Class</option>
+                                        <option value="">{t("select_class")}</option>
                                         {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                     </select>
                                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -260,7 +262,7 @@ export default function StudentDetailsPage() {
                             </div>
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Section
+                                    {t("section")}
                                 </label>
                                 <div className="relative">
                                     <select
@@ -268,7 +270,7 @@ export default function StudentDetailsPage() {
                                         onChange={(e) => setFilters(prev => ({ ...prev, section_id: e.target.value }))}
                                         className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     >
-                                        <option value="">Select Section</option>
+                                        <option value="">{t("select_section")}</option>
                                         {getClassSections(filters.school_class_id).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
                                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -276,7 +278,7 @@ export default function StudentDetailsPage() {
                             </div>
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Status
+                                    {t("status")}
                                 </label>
                                 <div className="relative">
                                     <select
@@ -284,9 +286,9 @@ export default function StudentDetailsPage() {
                                         onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
                                         className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                     >
-                                        <option value="">Select Status</option>
-                                        <option value="active">Active</option>
-                                        <option value="disabled">Disabled</option>
+                                        <option value="">{t("select_status")}</option>
+                                        <option value="active">{t("active")}</option>
+                                        <option value="disabled">{t("disabled")}</option>
                                     </select>
                                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 </div>
@@ -299,7 +301,7 @@ export default function StudentDetailsPage() {
                                         onClick={handleReset}
                                         disabled={loading}
                                     >
-                                        Reset
+                                        {t("reset")}
                                     </Button>
                                     <Button
                                         variant="gradient"
@@ -308,7 +310,7 @@ export default function StudentDetailsPage() {
                                         disabled={loading}
                                     >
                                         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                        Search
+                                        {t("search")}
                                     </Button>
                                 </div>
                             </div>
@@ -318,12 +320,12 @@ export default function StudentDetailsPage() {
                         <div className="space-y-4 border-l border-muted/50 pl-8 hidden md:block">
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Search By Keyword
+                                    {t("search_by_keyword")}
                                 </label>
                                 <div className="relative">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                     <Input
-                                        placeholder="Search By Student Name, Roll Number, etc."
+                                        placeholder={t("search_by_student_name_roll_number_etc")}
                                         value={filters.search}
                                         onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                                         className="h-11 pl-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all"
@@ -339,7 +341,7 @@ export default function StudentDetailsPage() {
                                         onClick={handleReset}
                                         disabled={loading}
                                     >
-                                        Reset
+                                        {t("reset")}
                                     </Button>
                                     <Button
                                         variant="gradient"
@@ -348,7 +350,7 @@ export default function StudentDetailsPage() {
                                         disabled={loading}
                                     >
                                         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                        Search
+                                        {t("search")}
                                     </Button>
                                 </div>
                             </div>
@@ -364,8 +366,8 @@ export default function StudentDetailsPage() {
                         <Users className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student Details</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{pagination.total} student{pagination.total === 1 ? "" : "s"} found</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_details")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{pagination.total} {pagination.total === 1 ? t("student_found") : t("students_found")}</p>
                     </div>
                 </CardHeader>
 
@@ -379,7 +381,7 @@ export default function StudentDetailsPage() {
                             )}
                         >
                             <LayoutList className="h-4 w-4" />
-                            List View
+                            {t("list_view")}
                             {viewMode === "list" && (
                                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full shadow-[0_-2px_8px_rgba(var(--primary),0.5)]" />
                             )}
@@ -392,7 +394,7 @@ export default function StudentDetailsPage() {
                             )}
                         >
                             <LayoutGrid className="h-4 w-4" />
-                            Details View
+                            {t("details_view")}
                             {viewMode === "details" && (
                                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full shadow-[0_-2px_8px_rgba(var(--primary),0.5)]" />
                             )}
@@ -466,7 +468,7 @@ export default function StudentDetailsPage() {
                                                             ? "bg-green-500/10 text-green-600 border-green-500/20"
                                                             : "bg-red-500/10 text-red-600 border-red-500/20"
                                                     )} variant="outline">
-                                                        {student.active ? "Active" : "Disabled"}
+                                                        {student.active ? t("active") : t("disabled")}
                                                     </Badge>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -561,17 +563,17 @@ export default function StudentDetailsPage() {
                                                     {student.name} {student.last_name}
                                                 </h3>
                                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest bg-muted/50 px-3 py-1 rounded-full inline-block">
-                                                    ADM: {student.admission_no}
+                                                    {t("adm_label")}: {student.admission_no}
                                                 </p>
                                             </div>
 
                                             <div className="w-full pt-4 grid grid-cols-2 gap-3">
                                                 <div className="bg-muted/30 p-2 rounded-lg text-center">
-                                                    <p className="text-[10px] font-black text-muted-foreground/60 uppercase">Class</p>
+                                                    <p className="text-[10px] font-black text-muted-foreground/60 uppercase">{t("class")}</p>
                                                     <p className="text-xs font-bold text-foreground line-clamp-1">{student.school_class?.name}</p>
                                                 </div>
                                                 <div className="bg-muted/30 p-2 rounded-lg text-center">
-                                                    <p className="text-[10px] font-black text-muted-foreground/60 uppercase">Roll No</p>
+                                                    <p className="text-[10px] font-black text-muted-foreground/60 uppercase">{t("roll_no")}</p>
                                                     <p className="text-xs font-bold text-foreground">{student.roll_no || "-"}</p>
                                                 </div>
                                             </div>
@@ -579,7 +581,7 @@ export default function StudentDetailsPage() {
                                             <div className="w-full space-y-2 pt-2 border-t border-muted/50">
                                                 <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px]">
                                                     <User className="h-3 w-3 text-primary/60" />
-                                                    <span className="line-clamp-1">F: {student.father_name || "-"}</span>
+                                                    <span className="line-clamp-1">{t("f_label")}: {student.father_name || "-"}</span>
                                                 </div>
                                                 <div className="flex items-center justify-between w-full">
                                                     <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px]">
@@ -592,12 +594,12 @@ export default function StudentDetailsPage() {
                                                             ? "bg-green-500/10 text-green-600"
                                                             : "bg-red-500/10 text-red-600"
                                                     )}>
-                                                        {student.active ? "Active" : "Disabled"}
+                                                        {student.active ? t("active") : t("disabled")}
                                                     </Badge>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px]">
                                                     <BadgeCheck className="h-3 w-3 text-primary/60" />
-                                                    <span className="line-clamp-1">Cat: {student.student_category?.category_name || student.category || "-"}</span>
+                                                    <span className="line-clamp-1">{t("cat_label")}: {student.student_category?.category_name || student.category || "-"}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -613,7 +615,7 @@ export default function StudentDetailsPage() {
                                 <div className="relative p-8 bg-muted/30 rounded-[2.5rem] border border-muted/50 shadow-inner group-hover:scale-105 transition-transform duration-500">
                                     <img
                                         src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png"
-                                        alt="No Data"
+                                        alt={t("no_data")}
                                         className="h-24 w-24 object-contain opacity-80 drop-shadow-2xl grayscale group-hover:grayscale-0 transition-all duration-500"
                                     />
                                     <div className="absolute -bottom-2 -right-2 p-3 bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-muted/50">
@@ -623,20 +625,20 @@ export default function StudentDetailsPage() {
                             </div>
                             <div className="space-y-2">
                                 <p className="font-black text-xl tracking-tight text-foreground uppercase">
-                                    No students found
+                                    {t("no_students_found")}
                                 </p>
                                 <p className="text-sm text-muted-foreground max-w-[320px] mx-auto leading-relaxed">
-                                    Click Search to show all students, or refine your filters above.
+                                    {t("click_search_to_show_all_students_or_refine_your_filters")}
                                 </p>
                             </div>
                             <div className="flex gap-3">
                                 <Button variant="outline" className="h-12 px-6 rounded-lg" onClick={handleReset}>
                                     <Search className="h-5 w-5" />
-                                    Try different criteria
+                                    {t("try_different_criteria")}
                                 </Button>
                                 <Button variant="gradient" className="h-12 px-8 rounded-lg" onClick={() => window.location.href = "/dashboard/student-information/student-admission"}>
                                     <Plus className="h-5 w-5" />
-                                    Add new record
+                                    {t("add_new_record")}
                                 </Button>
                             </div>
                         </div>
@@ -646,7 +648,7 @@ export default function StudentDetailsPage() {
                 {!loading && students.length > 0 && (
                     <div className="px-6 py-4 bg-muted/10 border-t border-muted/50 flex items-center justify-between">
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                            Showing {pagination.from} to {pagination.to} of {pagination.total} entries
+                            {t("showing_x_to_y_of_z", { from: pagination.from, to: pagination.to, total: pagination.total })}
                         </p>
                         <div className="flex items-center gap-2">
                             <Button
@@ -705,7 +707,7 @@ export default function StudentDetailsPage() {
                             </div>
                             <div className="text-center md:text-left space-y-3">
                                 <Badge variant="secondary" className="px-4 py-1.5 rounded-full bg-primary/10 text-primary border-primary/20 text-xs font-bold uppercase tracking-widest shadow-sm">
-                                    Student Profile
+                                    {t("student_profile")}
                                 </Badge>
                                 <DialogTitle className="text-4xl font-black tracking-tight text-foreground">
                                     {selectedStudent?.name} {selectedStudent?.last_name}
@@ -713,7 +715,7 @@ export default function StudentDetailsPage() {
                                 <div className="flex flex-wrap justify-center md:justify-start gap-4">
                                     <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
                                         <BadgeCheck className="h-4 w-4 text-primary" />
-                                        ADM: {selectedStudent?.admission_no}
+                                        {t("adm_label")}: {selectedStudent?.admission_no}
                                     </div>
                                     <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
                                         <GraduationCap className="h-4 w-4 text-indigo-500" />
@@ -728,36 +730,36 @@ export default function StudentDetailsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {/* Personal Info */}
                             <div className="space-y-6">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 px-1">Personal Details</h4>
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 px-1">{t("personal_details")}</h4>
                                 <div className="grid grid-cols-1 gap-4">
-                                    <InfoField label="Date of Birth" value={formatDate(selectedStudent?.dob)} icon={Calendar} />
-                                    <InfoField label="Gender" value={selectedStudent?.gender} icon={User} />
-                                    <InfoField label="Blood Group" value={selectedStudent?.blood_group || "-"} icon={BadgeCheck} />
-                                    <InfoField label="Religion" value={selectedStudent?.religion || "-"} icon={BadgeCheck} />
+                                    <InfoField label={t("date_of_birth")} value={formatDate(selectedStudent?.dob)} icon={Calendar} />
+                                    <InfoField label={t("gender")} value={selectedStudent?.gender} icon={User} />
+                                    <InfoField label={t("blood_group")} value={selectedStudent?.blood_group || "-"} icon={BadgeCheck} />
+                                    <InfoField label={t("religion")} value={selectedStudent?.religion || "-"} icon={BadgeCheck} />
                                 </div>
                             </div>
 
                             {/* Contact & Parent Info */}
                             <div className="space-y-6">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">Contact &amp; Guardian</h4>
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">{t("contact_and_guardian")}</h4>
                                 <div className="grid grid-cols-1 gap-4">
-                                    <InfoField label="Mobile Number" value={selectedStudent?.phone} icon={Phone} />
-                                    <InfoField label="Email Address" value={selectedStudent?.email || "-"} icon={Mail} />
-                                    <InfoField label="Father Name" value={selectedStudent?.father_name} icon={User} />
-                                    <InfoField label="Category" value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} />
+                                    <InfoField label={t("mobile_number")} value={selectedStudent?.phone} icon={Phone} />
+                                    <InfoField label={t("email_address")} value={selectedStudent?.email || "-"} icon={Mail} />
+                                    <InfoField label={t("father_name")} value={selectedStudent?.father_name} icon={User} />
+                                    <InfoField label={t("category")} value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} />
                                     <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
                                         <div className="p-2.5 bg-white rounded-lg shadow-sm border border-muted group-hover:scale-110 transition-transform">
                                             <BadgeCheck className="h-4 w-4 text-primary" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Status</p>
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("status")}</p>
                                             <Badge className={cn(
                                                 "mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border-none",
                                                 selectedStudent?.active
                                                     ? "bg-green-500/10 text-green-600"
                                                     : "bg-red-500/10 text-red-600"
                                             )}>
-                                                {selectedStudent?.active ? "Active" : "Disabled"}
+                                                {selectedStudent?.active ? t("active") : t("disabled")}
                                             </Badge>
                                         </div>
                                     </div>
@@ -768,7 +770,7 @@ export default function StudentDetailsPage() {
 
                     <DialogFooter className="p-6 bg-muted/20 border-t border-muted/50 flex flex-row gap-3">
                         <Button variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setViewDialogOpen(false)}>
-                            Close
+                            {t("close")}
                         </Button>
                         <Button
                             variant="gradient"
@@ -779,7 +781,7 @@ export default function StudentDetailsPage() {
                             }}
                         >
                             <Pencil className="h-4 w-4 mr-2" />
-                            Edit Profile
+                            {t("edit_profile")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -792,15 +794,15 @@ export default function StudentDetailsPage() {
                         <div className="mx-auto w-16 h-16 bg-red-100 rounded-lg flex items-center justify-center mb-4">
                             <Trash2 className="h-8 w-8 text-red-600" />
                         </div>
-                        <DialogTitle className="text-2xl font-black text-center tracking-tight">Delete Record?</DialogTitle>
+                        <DialogTitle className="text-2xl font-black text-center tracking-tight">{t("delete_record")}</DialogTitle>
                         <DialogDescription className="text-center pt-2 font-medium">
-                            Are you sure you want to delete <span className="text-foreground font-bold">{selectedStudent?.name} {selectedStudent?.last_name}</span>?
-                            <br />This action is permanent and cannot be undone.
+                            {t("are_you_sure_you_want_to_delete")} <span className="text-foreground font-bold">{selectedStudent?.name} {selectedStudent?.last_name}</span>?
+                            <br />{t("this_action_is_permanent_and_cannot_be_undone")}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="flex flex-row gap-3 p-6 mt-2">
                         <Button variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setDeleteDialogOpen(false)}>
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button
                             variant="destructive"
@@ -808,7 +810,7 @@ export default function StudentDetailsPage() {
                             onClick={handleDelete}
                             disabled={deleting}
                         >
-                            {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Delete Student"}
+                            {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : t("delete_student")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

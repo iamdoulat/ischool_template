@@ -17,7 +17,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -143,36 +142,39 @@ export default function EditAdmissionPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <Button 
-                        variant="ghost" 
-                        className="mb-2 -ml-2 text-muted-foreground hover:text-foreground"
-                        onClick={() => router.back()}
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to List
-                    </Button>
-                    <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                        Edit Admission Application
-                    </h1>
-                    <p className="text-muted-foreground font-medium flex items-center gap-2">
-                        Reference: <Badge variant="outline" className="font-bold border-primary/20 text-primary">{admission.reference_no}</Badge>
-                    </p>
-                </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <Button variant="outline" onClick={() => router.back()} className="flex-1 md:flex-none">
-                        Cancel
-                    </Button>
-                    <Button 
-                        form="edit-form"
-                        type="submit" 
-                        variant="gradient" 
-                        disabled={submitting}
-                        className="flex-1 md:flex-none min-w-[120px]"
-                    >
-                        {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Save Changes
-                    </Button>
+            <div className="space-y-2">
+                <Button
+                    variant="ghost"
+                    className="-ml-2 text-muted-foreground hover:text-foreground"
+                    onClick={() => router.back()}
+                >
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back to List
+                </Button>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <GraduationCap className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Edit Admission Application</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">Reference: {admission.reference_no}</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <Button variant="outline" onClick={() => router.back()} className="flex-1 md:flex-none">
+                            Cancel
+                        </Button>
+                        <Button
+                            form="edit-form"
+                            type="submit"
+                            variant="gradient"
+                            disabled={submitting}
+                            className="flex-1 md:flex-none min-w-[120px]"
+                        >
+                            {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            Save Changes
+                        </Button>
+                    </div>
                 </div>
             </div>
 

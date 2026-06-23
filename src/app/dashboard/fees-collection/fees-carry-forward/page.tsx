@@ -7,7 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 
@@ -58,7 +59,8 @@ export default function FeesCarryForwardPage() {
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
 
     useEffect(() => {
         fetchClasses();
@@ -88,7 +90,7 @@ export default function FeesCarryForwardPage() {
 
     const handleSearch = async () => {
         if (!selectedClass || !selectedSection) {
-            toast("error", "Please select Class and Section");
+            tt.error("please_select_class_and_section");
             return;
         }
 
@@ -108,11 +110,11 @@ export default function FeesCarryForwardPage() {
             })));
 
             if (data.length === 0) {
-                toast("info", "No students found with pending balances in the previous session.");
+                tt.info("no_students_found_with_pending_balances_in_previous_session");
             }
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Failed to fetch students");
+            tt.error(err.response?.data?.message || "failed_to_fetch_students");
         } finally {
             setLoading(false);
         }
@@ -132,7 +134,7 @@ export default function FeesCarryForwardPage() {
     const handleSave = async () => {
         const selectedStudents = students.filter(s => s.selected);
         if (selectedStudents.length === 0) {
-            toast("error", "Please select at least one student");
+            tt.error("please_select_at_least_one_student");
             return;
         }
 
@@ -144,10 +146,10 @@ export default function FeesCarryForwardPage() {
                     amount: s.balance,
                 }))
             });
-            toast("success", "Fees carried forward successfully");
+            tt.success("fees_carried_forward_successfully");
             handleSearch(); // Refresh list
         } catch (error) {
-            toast("error", "Failed to save carry forward");
+            tt.error("failed_to_save_carry_forward");
         } finally {
             setSaving(false);
         }
@@ -157,12 +159,12 @@ export default function FeesCarryForwardPage() {
         <div className="p-6 space-y-6 animate-in fade-in duration-500">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-bold tracking-tight">Fees Carry Forward</h1>
-                    <p className="text-muted-foreground">Transfer student fee balances from the previous session to the current one.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t("fees_carry_forward")}</h1>
+                    <p className="text-muted-foreground">{t("transfer_student_fee_balances_from_previous_session_to_current")}</p>
                 </div>
                 <Link href="/dashboard/fees-collection/fees-carry-forward/delete">
                     <Button variant="gradient" className="shrink-0 h-11 px-6 flex items-center gap-2">
-                        <Trash2 className="h-4 w-4" /> Delete Carry Forward
+                        <Trash2 className="h-4 w-4" /> {t("delete_carry_forward")}
                     </Button>
                 </Link>
             </div>
@@ -174,8 +176,8 @@ export default function FeesCarryForwardPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter students by class and section</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_students_by_class_and_section")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-8">
@@ -183,7 +185,7 @@ export default function FeesCarryForwardPage() {
                         {/* Class */}
                         <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 ml-1 transition-colors group-focus-within:text-primary">
-                                Class <span className="text-destructive font-black">*</span>
+                                {t("class")} <span className="text-destructive font-black">*</span>
                             </label>
                             <div className="relative">
                                 <select
@@ -191,7 +193,7 @@ export default function FeesCarryForwardPage() {
                                     onChange={handleClassChange}
                                     className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium text-muted-foreground"
                                 >
-                                    <option value="">Select Class</option>
+                                    <option value="">{t("select_class")}</option>
                                     {classes.map((c) => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
@@ -203,7 +205,7 @@ export default function FeesCarryForwardPage() {
                         {/* Section */}
                         <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 ml-1 transition-colors group-focus-within:text-primary">
-                                Section <span className="text-destructive font-black">*</span>
+                                {t("section")} <span className="text-destructive font-black">*</span>
                             </label>
                             <div className="relative">
                                 <select
@@ -211,7 +213,7 @@ export default function FeesCarryForwardPage() {
                                     onChange={(e) => setSelectedSection(e.target.value)}
                                     className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium text-muted-foreground"
                                 >
-                                    <option value="">Select Section</option>
+                                    <option value="">{t("select_section")}</option>
                                     {sections.map((s) => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
@@ -228,7 +230,7 @@ export default function FeesCarryForwardPage() {
                                 className="h-10 px-8 flex items-center gap-2 font-bold text-xs"
                             >
                                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 group-hover/btn:scale-110 transition-transform" />}
-                                {loading ? 'Searching...' : 'Search Students'}
+                                {loading ? t("searching") : t("search_students")}
                             </Button>
                         </div>
                     </div>
@@ -243,8 +245,8 @@ export default function FeesCarryForwardPage() {
                             <ArrowRightLeft className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Students with Pending Balances</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{students.length} student{students.length === 1 ? '' : 's'} with pending balances</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("students_with_pending_balances")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_students_with_pending_balances", { count: students.length })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
@@ -259,17 +261,17 @@ export default function FeesCarryForwardPage() {
                                                 className="h-4 w-4 rounded border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                             />
                                         </th>
-                                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Admission No</th>
-                                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Student Name</th>
-                                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground text-right">Pending Balance</th>
-                                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground text-center">Status</th>
+                                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("admission_no")}</th>
+                                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("student_name")}</th>
+                                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground text-right">{t("pending_balance")}</th>
+                                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground text-center">{t("status")}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-muted/10">
                                     {loading ? (
                                         <TableSkeleton rows={5} cols={5} />
                                     ) : students.length === 0 ? (
-                                        <tr><td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
+                                        <tr><td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td></tr>
                                     ) : (
                                         students.map((student) => (
                                             <tr key={student.id} className={cn(
@@ -297,15 +299,15 @@ export default function FeesCarryForwardPage() {
                                                 <td className="px-6 py-4 text-center">
                                                     {student.is_carried_forward ? (
                                                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-wider">
-                                                            <Check className="h-3 w-3" /> Done
+                                                            <Check className="h-3 w-3" /> {t("done")}
                                                         </span>
                                                     ) : student.balance === 0 ? (
                                                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-[9px] font-black uppercase tracking-wider">
-                                                            No Due
+                                                            {t("no_due")}
                                                         </span>
                                                     ) : (
                                                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 text-orange-500 text-[9px] font-black uppercase tracking-wider">
-                                                            Pending
+                                                            {t("pending")}
                                                         </span>
                                                     )}
                                                 </td>
@@ -324,7 +326,7 @@ export default function FeesCarryForwardPage() {
                                 className="h-10 px-8 flex items-center gap-2 font-bold text-xs"
                             >
                                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                                {saving ? 'Processing...' : 'Carry Forward Selected'}
+                                {saving ? t("processing") : t("carry_forward_selected")}
                             </Button>
                         </div>
                     </CardContent>
@@ -336,8 +338,8 @@ export default function FeesCarryForwardPage() {
                             <div className="flex flex-col items-center gap-4">
                                 <Info className="h-12 w-12 text-muted-foreground/30" />
                                 <div className="space-y-1">
-                                    <h3 className="font-bold text-xl text-muted-foreground">No Students Found</h3>
-                                    <p className="text-muted-foreground/70">Either no students exist in this class/section or everyone is clear.</p>
+                                    <h3 className="font-bold text-xl text-muted-foreground">{t("no_students_found")}</h3>
+                                    <p className="text-muted-foreground/70">{t("either_no_students_exist_in_this_class_section_or_everyone_is_clear")}</p>
                                 </div>
                             </div>
                         </CardContent>

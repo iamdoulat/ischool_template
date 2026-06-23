@@ -19,6 +19,8 @@ import {
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useImageUrl } from "@/lib/image-url";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 
 interface Banner {
     id: number;
@@ -43,6 +45,8 @@ function GridSkeleton() {
 
 export default function BannerImagesPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const resolveImg = useImageUrl();
 
     const [banners, setBanners] = useState<Banner[]>([]);
@@ -64,15 +68,15 @@ export default function BannerImagesPage() {
             const res = await api.get("front-cms/banners");
             setBanners(res.data?.data ?? []);
         } catch {
-            toast({ title: "Error", description: "Failed to load banners", variant: "destructive" });
+            tt.error("failed_to_load_banners");
         } finally { setLoading(false); }
-    }, [toast]);
+    }, [toast, tt]);
 
     useEffect(() => { fetchBanners(); }, [fetchBanners]);
 
     const handleSave = async () => {
         if (!form.image) {
-            toast({ title: "Validation", description: "Please select an image", variant: "destructive" }); return;
+            tt.error("please_select_an_image"); return;
         }
         setSaving(true);
         try {
@@ -80,10 +84,10 @@ export default function BannerImagesPage() {
             fd.append("title", form.title);
             fd.append("image", form.image);
             await api.post("front-cms/banners", fd, { headers: { "Content-Type": "multipart/form-data" } });
-            toast({ title: "Success", description: "Banner added" });
+            tt.success("banner_added");
             setOpen(false); setForm({ title: "", image: null }); fetchBanners();
         } catch {
-            toast({ title: "Error", description: "Failed to upload banner", variant: "destructive" });
+            tt.error("failed_to_upload_banner");
         } finally { setSaving(false); }
     };
 
@@ -91,10 +95,10 @@ export default function BannerImagesPage() {
         if (!deleteId) return;
         try {
             await api.delete(`front-cms/banners/${deleteId}`);
-            toast({ title: "Success", description: "Banner deleted" });
+            tt.success("banner_deleted");
             fetchBanners();
         } catch {
-            toast({ title: "Error", description: "Failed to delete banner", variant: "destructive" });
+            tt.error("failed_to_delete_banner");
         } finally { setDeleteId(null); }
     };
 
@@ -107,13 +111,13 @@ export default function BannerImagesPage() {
                             <ImageIcon className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold text-slate-800 leading-none">Banner Images</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Manage homepage banner slides (recommended: 1920×600px)</p>
+                            <CardTitle className="text-base font-bold text-slate-800 leading-none">{t("banner_images")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("manage_homepage_banner_slides")}</p>
                         </div>
                     </div>
                     <Button onClick={() => { setForm({ title: "", image: null }); setOpen(true); }}
                         className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all shrink-0">
-                        <Plus className="h-4 w-4" /> Add Banner
+                        <Plus className="h-4 w-4" /> {t("add_banner")}
                     </Button>
                 </CardHeader>
 
@@ -121,7 +125,7 @@ export default function BannerImagesPage() {
                     {loading ? <GridSkeleton /> : banners.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
                             <ImageIcon className="h-10 w-10 opacity-30" />
-                            <p className="text-xs font-medium">No banners found. Upload your first banner image.</p>
+                            <p className="text-xs font-medium">{t("no_banners_found")}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -137,7 +141,7 @@ export default function BannerImagesPage() {
 
                                     {/* Image */}
                                     <div className="h-32 bg-gray-50 flex items-center justify-center overflow-hidden relative">
-                                        <img src={getDisplayUrl(banner.image_path)} alt={banner.title || "Banner"}
+                                        <img src={getDisplayUrl(banner.image_path)} alt={banner.title || t("banner")}
                                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                             onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
                                         <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -146,7 +150,7 @@ export default function BannerImagesPage() {
                                     {/* Label */}
                                     <div className="bg-white p-2.5 border-t border-gray-50">
                                         <p className="text-[10px] font-bold text-gray-700 uppercase tracking-tight truncate">
-                                            {banner.title || "Untitled Banner"}
+                                            {banner.title || t("untitled_banner")}
                                         </p>
                                     </div>
                                 </div>
@@ -162,24 +166,24 @@ export default function BannerImagesPage() {
                     <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b">
                         <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
                             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm"><ImageIcon className="h-4 w-4" /></span>
-                            Add Banner Image
+                            {t("add_banner_image")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="p-5 space-y-4">
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-gray-600">Title (Optional)</Label>
-                            <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" placeholder="Banner title" />
+                            <Label className="text-xs font-semibold text-gray-600">{t("title_optional")}</Label>
+                            <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" placeholder={t("banner_title")} />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-gray-600">Image <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("image")} <span className="text-red-500">*</span></Label>
                             <Input type="file" accept="image/*" onChange={e => setForm({ ...form, image: e.target.files?.[0] ?? null })} className="h-9 text-xs" />
-                            <p className="text-[10px] text-gray-400">Recommended: 1920×600px. Max 2MB.</p>
+                            <p className="text-[10px] text-gray-400">{t("recommended_1920x600px_max_2mb")}</p>
                         </div>
                     </div>
                     <DialogFooter className="px-5 py-4 border-t bg-gray-50">
-                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-9 px-5 text-xs font-bold">Cancel</Button>
+                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-9 px-5 text-xs font-bold">{t("cancel")}</Button>
                         <Button onClick={handleSave} disabled={saving} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95">
-                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Upload Banner"}
+                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("upload_banner")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -189,12 +193,12 @@ export default function BannerImagesPage() {
             <AlertDialog open={!!deleteId} onOpenChange={o => { if (!o) setDeleteId(null); }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Banner</AlertDialogTitle>
-                        <AlertDialogDescription>This action cannot be undone. The banner will be permanently removed.</AlertDialogDescription>
+                        <AlertDialogTitle>{t("delete_banner")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("delete_banner_confirmation")}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

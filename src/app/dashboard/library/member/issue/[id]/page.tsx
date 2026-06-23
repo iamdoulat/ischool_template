@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, use } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,7 @@ import {
     ChevronLeft,
     ChevronRight,
     RotateCcw,
+    BookPlus,
 } from "lucide-react";
 import {
     Select,
@@ -136,7 +138,8 @@ function drawCode39Barcode(canvas: HTMLCanvasElement, text: string) {
 
 export default function MemberIssuePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const qrCanvasRef = useRef<HTMLCanvasElement>(null);
     const barcodeCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -164,7 +167,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                 const m = res.data.data;
                 setMember(m);
             })
-            .catch(() => toast({ title: "Error", description: "Failed to load member", variant: "destructive" }))
+            .catch(() => tt.error("failed_to_load_member"))
             .finally(() => setMemberLoading(false));
     }, [id]);
 
@@ -214,7 +217,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
 
     const handleIssueBook = async () => {
         if (!selectedBook || !dueDate) {
-            toast({ title: "Error", description: "Please select a book and due date", variant: "destructive" });
+            tt.error("please_select_book_and_due_date");
             return;
         }
         setSaving(true);
@@ -224,7 +227,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                 book_id: Number(selectedBook),
                 due_date: dueDate,
             });
-            toast({ title: "Success", description: "Book issued successfully" });
+            tt.success("book_issued_successfully");
             setSelectedBook("");
             setDueDate("");
             setCurrentPage(1);
@@ -240,12 +243,8 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
             const booksRes = await api.get("/library/books?no_paginate=true");
             const raw = booksRes.data.data ?? booksRes.data ?? [];
             setBooks(Array.isArray(raw) ? raw.filter((b: BookOption) => b.available > 0) : []);
-        } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.response?.data?.message || "Failed to issue book",
-                variant: "destructive",
-            });
+        } catch {
+            tt.error("failed_to_issue_book");
         } finally {
             setSaving(false);
         }
@@ -254,18 +253,14 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
     const handleReturnBook = async (issueId: number) => {
         try {
             await api.put(`/library/book-issues/${issueId}/return`);
-            toast({ title: "Success", description: "Book returned successfully" });
+            tt.success("book_returned_successfully");
             const res = await api.get(`/library/book-issues/member/${id}?page=${currentPage}&limit=${limit}`);
             setIssuedBooks(res.data.data ?? []);
             const booksRes = await api.get("/library/books?no_paginate=true");
             const raw = booksRes.data.data ?? booksRes.data ?? [];
             setBooks(Array.isArray(raw) ? raw.filter((b: BookOption) => b.available > 0) : []);
-        } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.response?.data?.message || "Failed to return book",
-                variant: "destructive",
-            });
+        } catch {
+            tt.error("failed_to_return_book");
         }
     };
 
@@ -277,7 +272,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
     const handleCopy = () => {
         const text = issuedBooks.map((b) => `${b.book.title}\t${b.book.book_number}\t${b.issue_date}\t${b.due_date}\t${b.return_date || "-"}`).join("\n");
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        tt.success("data_copied_to_clipboard");
     };
 
     const handleExportCSV = () => {
@@ -315,18 +310,18 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                             <div className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-100 mb-2 bg-gray-100 flex items-center justify-center text-2xl font-bold text-gray-400">
                                 {member?.user?.name?.charAt(0)?.toUpperCase() || "?"}
                             </div>
-                            <h2 className="text-sm font-bold text-gray-800">{member?.user?.name || "Loading..."}</h2>
+                            <h2 className="text-sm font-bold text-gray-800">{member?.user?.name || t("loading")}</h2>
                         </div>
 
                         <div className="p-0">
                             {[
-                                { label: "Member ID", value: member?.member_id || id },
-                                { label: "Library Card No.", value: member?.library_card_no || "-" },
-                                { label: member?.member_type === "student" ? "Admission No" : "Staff ID", value: member?.user?.admission_no || member?.user?.staff_id || "-" },
-                                { label: "Gender", value: member?.user?.gender || "-" },
-                                { label: "Member Type", value: member?.member_type ? (member.member_type.charAt(0).toUpperCase() + member.member_type.slice(1)) : "-" },
-                                { label: "Mobile Number", value: member?.user?.phone || "-", color: "text-indigo-400" },
-                                { label: "Class/Section", value: member?.user?.school_class ? `${member.user.school_class.class} (${member.user.section?.section || ""})` : "-", color: "text-indigo-400" },
+                                { label: t("member_id"), value: member?.member_id || id },
+                                { label: t("library_card_no"), value: member?.library_card_no || "-" },
+                                { label: member?.member_type === "student" ? t("admission_no") : t("staff_id"), value: member?.user?.admission_no || member?.user?.staff_id || "-" },
+                                { label: t("gender"), value: member?.user?.gender || "-" },
+                                { label: t("member_type"), value: member?.member_type ? (member.member_type.charAt(0).toUpperCase() + member.member_type.slice(1)) : "-" },
+                                { label: t("mobile_number"), value: member?.user?.phone || "-", color: "text-indigo-400" },
+                                { label: t("class_section"), value: member?.user?.school_class ? `${member.user.school_class.class} (${member.user.section?.section || ""})` : "-", color: "text-indigo-400" },
                             ].map((item, i) => (
                                 <div key={i} className="flex justify-between items-center py-2.5 px-4 border-b border-gray-50 last:border-0">
                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{item.label}</span>
@@ -337,13 +332,13 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                             {/* Barcode & QR */}
                             <div className="p-4 space-y-4">
                                 <div className="space-y-1">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Barcode</span>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("barcode")}</span>
                                     <div className="flex justify-center bg-white rounded border border-gray-100 p-2">
                                         <canvas ref={barcodeCanvasRef} />
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">QR Code</span>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("qr_code")}</span>
                                     <div className="flex justify-center">
                                         <canvas ref={qrCanvasRef} width={100} height={100} />
                                     </div>
@@ -357,18 +352,26 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                 <div className="flex-1 space-y-6">
                     {/* Issue Book Form */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="px-4 py-3 border-b border-gray-100">
-                            <h2 className="text-sm font-medium text-gray-800">Issue Book</h2>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                            <div className="flex items-center gap-2.5">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                    <BookPlus className="h-5 w-5" />
+                                </span>
+                                <div>
+                                    <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("issue_book")}</h1>
+                                    <p className="text-[11px] text-gray-500 mt-1">{t("lend_book_to_member")}</p>
+                                </div>
+                            </div>
                         </div>
                         <div className="p-4 space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">
-                                        Books <span className="text-red-500 font-bold">*</span>
+                                        {t("books")} <span className="text-red-500 font-bold">*</span>
                                     </Label>
                                     <Select value={selectedBook} onValueChange={setSelectedBook}>
                                         <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
-                                            <SelectValue placeholder={booksLoading ? "Loading..." : "Select"} />
+                                            <SelectValue placeholder={booksLoading ? t("loading") : t("select")} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {books.map((book) => (
@@ -381,7 +384,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                 </div>
                                 <div className="space-y-1.5">
                                     <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">
-                                        Due Return Date <span className="text-red-500 font-bold">*</span>
+                                        {t("due_return_date")} <span className="text-red-500 font-bold">*</span>
                                     </Label>
                                     <Input
                                         type="date"
@@ -398,7 +401,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                     disabled={saving || !selectedBook || !dueDate}
                                     className="btn-gradient px-6 h-8 text-[11px] font-bold uppercase"
                                 >
-                                    {saving ? "Saving..." : "Save"}
+                                    {saving ? t("saving") : t("save")}
                                 </Button>
                             </div>
                         </div>
@@ -407,7 +410,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                     {/* Book Issued List */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
                         <div className="flex justify-between items-center">
-                            <h2 className="text-sm font-medium text-gray-800">Book Issued</h2>
+                            <h2 className="text-sm font-medium text-gray-800">{t("book_issued")}</h2>
                         </div>
 
                         {/* Toolbar */}
@@ -415,14 +418,14 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                             <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-fit">
                                 <div className="relative w-full md:w-64">
                                     <Input
-                                        placeholder="Search"
+                                        placeholder={t("search")}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
                                     />
                                 </div>
                                 <Button type="submit" className="btn-gradient h-8 px-4 text-[11px] font-bold uppercase transition-all">
-                                    <Search className="h-3.5 w-3.5 mr-1" /> Search
+                                    <Search className="h-3.5 w-3.5 mr-1" /> {t("search")}
                                 </Button>
                             </form>
 
@@ -455,19 +458,19 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                             <Table className="min-w-[800px]">
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Book Title</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Book Number</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Issue Date</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Due Return Date</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Return Date</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("book_title")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("book_number")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("issue_date")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("due_return_date")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("return_date")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {issuedBooks.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center py-8 text-gray-400 text-xs">
-                                                {booksLoading ? "Loading..." : "No books issued yet"}
+                                                {booksLoading ? t("loading") : t("no_books_issued_yet")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -485,7 +488,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                                             variant="ghost"
                                                             onClick={() => handleReturnBook(book.id)}
                                                             className="h-7 w-7 btn-gradient text-white rounded-full shadow-md"
-                                                            title="Return Book"
+                                                            title={t("return_book")}
                                                         >
                                                             <RotateCcw className="h-3.5 w-3.5" />
                                                         </Button>
@@ -502,7 +505,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                         {pagination && (
                             <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                                 <div>
-                                    Showing {pagination.from || 0} to {pagination.to || 0} of {pagination.total || 0} entries
+                                    {t("showing_x_to_y_of_z", { from: pagination.from || 0, to: pagination.to || 0, total: pagination.total || 0 })}
                                 </div>
                                 <div className="flex gap-1 items-center">
                                     <Button

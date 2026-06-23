@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, ChevronLeft, ChevronRight, Loader2, Save, Trash2, FileCode, Receipt } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -38,6 +39,7 @@ interface ExpenseHeadRecord {
 }
 
 export default function ExpenseHeadPage() {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState("");
     const [rowsPerPage, setRowsPerPage] = useState("50");
     const [expenseHeads, setExpenseHeads] = useState<ExpenseHeadRecord[]>([]);
@@ -64,7 +66,7 @@ export default function ExpenseHeadPage() {
             }
         } catch (error) {
             console.error("Error fetching expense heads:", error);
-            toast.error("Failed to load expense heads");
+            toast.error(t("failed_to_load_expense_heads"));
         } finally {
             setLoading(false);
         }
@@ -77,7 +79,7 @@ export default function ExpenseHeadPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.expense_head) {
-            toast.error("Expense Head name is required");
+            toast.error(t("expense_head_name_is_required"));
             return;
         }
 
@@ -88,13 +90,13 @@ export default function ExpenseHeadPage() {
                 : await api.post("expense/expense-heads", formData);
 
             if (res.data?.status === "Success") {
-                toast.success(editingId ? "Expense Head updated successfully" : "Expense Head saved successfully");
+                toast.success(editingId ? t("expense_head_updated_successfully") : t("expense_head_saved_successfully"));
                 resetForm();
                 fetchExpenseHeads();
             }
         } catch (error) {
             console.error("Error saving expense head:", error);
-            toast.error("Failed to save expense head");
+            toast.error(t("failed_to_save_expense_head"));
         } finally {
             setSaving(false);
         }
@@ -114,17 +116,17 @@ export default function ExpenseHeadPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this expense head?")) return;
+        if (!confirm(t("are_you_sure_delete_expense_head"))) return;
 
         try {
             const res = await api.delete(`expense/expense-heads/${id}`);
             if (res.data?.status === "Success") {
-                toast.success("Expense Head deleted successfully");
+                toast.success(t("expense_head_deleted_successfully"));
                 fetchExpenseHeads();
             }
         } catch (error) {
             console.error("Error deleting expense head:", error);
-            toast.error("Failed to delete expense head");
+            toast.error(t("failed_to_delete_expense_head"));
         }
     };
 
@@ -140,9 +142,9 @@ export default function ExpenseHeadPage() {
     const exportToExcel = () => {
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "ExpenseHeads");
+        XLSX.utils.book_append_sheet(wb, ws, t("expense_heads"));
         XLSX.writeFile(wb, "expense_heads.xlsx");
-        toast.success("Exported to Excel");
+        toast.success(t("exported_to_excel"));
     };
 
     const exportToCSV = () => {
@@ -157,26 +159,26 @@ export default function ExpenseHeadPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success("Exported to CSV");
+        toast.success(t("exported_to_csv"));
     };
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Expense Head List", 14, 15);
+        doc.text(t("expense_head_list"), 14, 15);
         autoTable(doc, {
-            head: [['Expense Head', 'Description']],
+            head: [[t('expense_head'), t('description')]],
             body: filteredData.map(item => [item.expense_head, item.description]),
             startY: 20,
         });
         doc.save("expense_heads.pdf");
-        toast.success("Exported to PDF");
+        toast.success(t("exported_to_pdf"));
     };
 
     const copyToClipboard = () => {
         const text = exportData.map(d => Object.values(d).join('\t')).join('\n');
         const header = Object.keys(exportData[0] || {}).join('\t');
         navigator.clipboard.writeText(header + '\n' + text);
-        toast.success("Copied to clipboard");
+        toast.success(t("copied_to_clipboard"));
     };
 
     return (
@@ -191,10 +193,10 @@ export default function ExpenseHeadPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {editingId ? "Edit Expense Head" : "Add Expense Head"}
+                                {editingId ? t("edit_expense_head") : t("add_expense_head")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {editingId ? "Update the selected expense head" : "Create a new expense head"}
+                                {editingId ? t("update_expense_head") : t("create_expense_head")}
                             </p>
                         </div>
                     </CardHeader>
@@ -202,7 +204,7 @@ export default function ExpenseHeadPage() {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="expense-head" className="text-xs font-semibold text-gray-600">
-                                    Expense Head <span className="text-red-500">*</span>
+                                    {t("expense_head")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     id="expense-head"
@@ -213,7 +215,7 @@ export default function ExpenseHeadPage() {
 
                             <div className="space-y-2">
                                 <Label htmlFor="description" className="text-xs font-semibold text-gray-600">
-                                    Description
+                                    {t("description")}
                                 </Label>
                                 <Textarea
                                     id="description"
@@ -232,7 +234,7 @@ export default function ExpenseHeadPage() {
                                         onClick={resetForm}
                                         className="h-9 px-6 rounded-full text-xs font-bold"
                                     >
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button
@@ -241,7 +243,7 @@ export default function ExpenseHeadPage() {
                                     className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                                 >
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                    {editingId ? "Update" : "Save"}
+                                    {editingId ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </form>
@@ -255,8 +257,8 @@ export default function ExpenseHeadPage() {
                             <Receipt className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Expense Head List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{expenseHeads.length} expense head{expenseHeads.length === 1 ? "" : "s"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("expense_head_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_expense_heads", { count: expenseHeads.length })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -264,7 +266,7 @@ export default function ExpenseHeadPage() {
                             <div className="flex w-full md:w-auto items-center gap-2">
                                 <div className="relative w-full md:w-64">
                                     <Input
-                                        placeholder="Search..."
+                                        placeholder={t("search") + "..."}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-3 pr-10"
@@ -326,9 +328,9 @@ export default function ExpenseHeadPage() {
                             <Table className="w-full">
                                 <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow>
-                                        <TableHead className="font-semibold text-gray-600">Expense Head</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 w-full text-center">Description</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("expense_head")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 w-full text-center">{t("description")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -337,7 +339,7 @@ export default function ExpenseHeadPage() {
                                     ) : filteredData.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                                No data found
+                                                {t("no_data_found")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -372,7 +374,7 @@ export default function ExpenseHeadPage() {
 
                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
                             <div>
-                                Showing 1 to {filteredData.length} of {expenseHeads.length} entries
+                                {t("showing_x_to_y_of_z", { from: 1, to: filteredData.length, total: expenseHeads.length })}
                             </div>
                             <div className="flex gap-1">
                                 <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronLeft className="h-4 w-4" /></Button>

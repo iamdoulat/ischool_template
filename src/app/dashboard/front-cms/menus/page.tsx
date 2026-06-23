@@ -19,6 +19,8 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 interface MenuItem {
@@ -54,6 +56,8 @@ function MenuSkeleton() {
 
 export default function MenusPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [activeTab, setActiveTab] = useState<"main" | "bottom">("main");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -87,22 +91,22 @@ export default function MenusPage() {
         try {
             const res = await api.get("front-cms/menus");
             if (res.data?.status === "Success") setMenus(res.data.data);
-        } catch { toast({ title: "Error", description: "Failed to load menus", variant: "destructive" }); }
+        } catch { tt.error("failed_to_load_menus"); }
         finally { setLoading(false); }
     };
 
     const handleSave = async () => {
         if (!form.title) {
-            toast({ title: "Validation", description: "Title is required", variant: "destructive" }); return;
+            tt.error("title_is_required"); return;
         }
         setSaving(true);
         try {
             const payload = { ...form, type: activeTab };
             if (editingId) await api.put(`front-cms/menus/${editingId}`, payload);
             else await api.post("front-cms/menus", payload);
-            toast({ title: "Success", description: editingId ? "Menu item updated" : "Menu item added" });
+            tt.success(editingId ? "menu_item_updated" : "menu_item_added");
             handleCancel(); fetchMenus();
-        } catch { toast({ title: "Error", description: "Failed to save menu", variant: "destructive" }); }
+        } catch { tt.error("failed_to_save_menu"); }
         finally { setSaving(false); }
     };
 
@@ -125,11 +129,11 @@ export default function MenusPage() {
         setDeleting(true);
         try {
             await api.delete(`front-cms/menus/${deleteId}`);
-            toast({ title: "Success", description: "Menu item deleted" });
+            tt.success("menu_item_deleted");
             setDeleteId(null); fetchMenus();
         } catch (err) {
             const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-            toast({ title: "Error", description: msg || "Failed to delete", variant: "destructive" });
+            toast({ title: "Error", description: msg || t("failed_to_delete"), variant: "destructive" });
         } finally { setDeleting(false); }
     };
 
@@ -150,7 +154,7 @@ export default function MenusPage() {
                 items: updated.map(item => ({ id: item.id, order: item.order }))
             });
         } catch {
-            toast({ title: "Error", description: "Failed to save order", variant: "destructive" });
+            tt.error("failed_to_save_order");
             fetchMenus();
         }
     };
@@ -169,37 +173,37 @@ export default function MenusPage() {
                                     <Link className="h-5 w-5" />
                                 </span>
                                 <CardTitle className="text-base font-bold text-slate-800 leading-none">
-                                    {editingId ? "Edit Menu Item" : "Add Menu Item"}
+                                    {editingId ? t("edit_menu_item") : t("add_menu_item")}
                                 </CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent className="p-5 space-y-4">
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-semibold text-gray-600">Menu Item <span className="text-red-500">*</span></Label>
-                                <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" placeholder="Menu label" />
+                                <Label className="text-xs font-semibold text-gray-600">{t("menu_item")} <span className="text-red-500">*</span></Label>
+                                <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" placeholder={t("menu_label")} />
                             </div>
 
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between py-1">
-                                    <Label className="text-xs font-medium text-gray-600">External URL</Label>
+                                    <Label className="text-xs font-medium text-gray-600">{t("external_url")}</Label>
                                     <Switch checked={form.is_external} onCheckedChange={v => setForm({ ...form, is_external: v })} className="data-[state=checked]:bg-indigo-500" />
                                 </div>
                                 <div className="flex items-center justify-between py-1">
-                                    <Label className="text-xs font-medium text-gray-600">Open in New Tab</Label>
+                                    <Label className="text-xs font-medium text-gray-600">{t("open_in_new_tab")}</Label>
                                     <Switch checked={form.open_new_tab} onCheckedChange={v => setForm({ ...form, open_new_tab: v })} className="data-[state=checked]:bg-indigo-500" />
                                 </div>
                             </div>
 
                             {form.is_external ? (
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-semibold text-gray-600">External URL</Label>
+                                    <Label className="text-xs font-semibold text-gray-600">{t("external_url")}</Label>
                                     <Input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} className="h-9 text-xs" placeholder="https://" />
                                 </div>
                             ) : (
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-semibold text-gray-600">Page</Label>
+                                    <Label className="text-xs font-semibold text-gray-600">{t("page")}</Label>
                                     <Select value={form.page} onValueChange={v => setForm({ ...form, page: v })}>
-                                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a page" /></SelectTrigger>
+                                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select_a_page")} /></SelectTrigger>
                                         <SelectContent>
                                             {pages.map(p => (
                                                 <SelectItem key={p.id} value={p.url || p.title.toLowerCase().replace(/\s+/g, '-')}>{p.title}</SelectItem>
@@ -211,14 +215,14 @@ export default function MenusPage() {
 
                             {activeTab === "bottom" && (
                                 <div className="space-y-1.5 pt-2 border-t border-gray-100">
-                                    <Label className="text-xs font-semibold text-gray-600">Footer Column</Label>
+                                    <Label className="text-xs font-semibold text-gray-600">{t("footer_column")}</Label>
                                     <Select value={form.column.toString()} onValueChange={v => setForm({ ...form, column: parseInt(v) })}>
                                         <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="1">Column 1 (Logo & Bio)</SelectItem>
-                                            <SelectItem value="2">Column 2 (Quick Links)</SelectItem>
-                                            <SelectItem value="3">Column 3 (Information)</SelectItem>
-                                            <SelectItem value="4">Column 4 (Contact Us)</SelectItem>
+                                            <SelectItem value="1">{t("column_1_logo_and_bio")}</SelectItem>
+                                            <SelectItem value="2">{t("column_2_quick_links")}</SelectItem>
+                                            <SelectItem value="3">{t("column_3_information")}</SelectItem>
+                                            <SelectItem value="4">{t("column_4_contact_us")}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -226,10 +230,10 @@ export default function MenusPage() {
 
                             <div className="flex justify-end gap-2 pt-2">
                                 {editingId && (
-                                    <Button onClick={handleCancel} variant="outline" className="h-9 px-4 text-xs font-bold">Cancel</Button>
+                                    <Button onClick={handleCancel} variant="outline" className="h-9 px-4 text-xs font-bold">{t("cancel")}</Button>
                                 )}
                                 <Button onClick={handleSave} disabled={saving} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95">
-                                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : (editingId ? "Update" : "Save")}
+                                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : (editingId ? t("update") : t("save"))}
                                 </Button>
                             </div>
                         </CardContent>
@@ -244,14 +248,14 @@ export default function MenusPage() {
                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                                     <Menu className="h-5 w-5" />
                                 </span>
-                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Menu Items</CardTitle>
+                                <CardTitle className="text-base font-bold text-slate-800 leading-none">{t("menu_items")}</CardTitle>
                             </div>
                             <div className="flex bg-gray-100/80 p-0.5 rounded-lg border border-gray-200">
                                 <Button onClick={() => setActiveTab("main")} className={cn("h-7 px-4 text-[10px] font-bold uppercase rounded-md transition-all shadow-none", activeTab === "main" ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm" : "bg-transparent text-gray-400 hover:text-gray-600")}>
-                                    Main Menu
+                                    {t("main_menu")}
                                 </Button>
                                 <Button onClick={() => setActiveTab("bottom")} className={cn("h-7 px-4 text-[10px] font-bold uppercase rounded-md transition-all shadow-none", activeTab === "bottom" ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm" : "bg-transparent text-gray-400 hover:text-gray-600")}>
-                                    Bottom Menu
+                                    {t("bottom_menu")}
                                 </Button>
                             </div>
                         </CardHeader>
@@ -262,7 +266,7 @@ export default function MenusPage() {
                             ) : currentMenus.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
                                     <Menu className="h-8 w-8 opacity-30" />
-                                    <p className="text-xs font-medium">No menu items found.</p>
+                                    <p className="text-xs font-medium">{t("no_menu_items_found")}</p>
                                 </div>
                             ) : (
                                 <DragDropContext onDragEnd={handleDragEnd}>
@@ -284,7 +288,7 @@ export default function MenusPage() {
                                                                                 {activeTab === "bottom" && (
                                                                                     <span className="text-[8px] font-bold text-white bg-indigo-500 px-1.5 py-0.5 rounded uppercase">Col {item.column}</span>
                                                                                 )}
-                                                                                {!!item.is_external && <span className="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-semibold">External</span>}
+                                                                                {!!item.is_external && <span className="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-semibold">{t("external")}</span>}
                                                                             </div>
                                                                             <span className="text-[9px] text-indigo-400 font-medium truncate block max-w-[250px]">
                                                                                 {item.is_external ? item.url : `${frontendUrl.replace(/\/$/, '')}/${(item.page || '').replace(/^\//, '')}`}
@@ -339,7 +343,7 @@ export default function MenusPage() {
                             )}
 
                             <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-4 mt-4 border-t border-gray-100">
-                                <div>Showing {currentMenus.length} entries</div>
+                                <div>{t("showing_x_entries", { count: currentMenus.length })}</div>
                             </div>
                         </CardContent>
                     </Card>
@@ -350,19 +354,19 @@ export default function MenusPage() {
             <Dialog open={!!deleteId} onOpenChange={o => { if (!o) setDeleteId(null); }}>
                 <DialogContent className="sm:max-w-[400px] p-0 gap-0 overflow-hidden">
                     <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b">
-                        <DialogTitle className="text-base font-bold text-slate-800">Delete Menu Item</DialogTitle>
+                        <DialogTitle className="text-base font-bold text-slate-800">{t("delete_menu_item")}</DialogTitle>
                     </DialogHeader>
                     <div className="p-5 text-center space-y-3">
                         <div className="mx-auto w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
                             <Trash2 className="h-5 w-5 text-red-600" />
                         </div>
-                        <p className="text-sm text-gray-500">Are you sure you want to delete this menu item? This action cannot be undone.</p>
+                        <p className="text-sm text-gray-500">{t("delete_menu_item_confirmation")}</p>
                     </div>
                     <DialogFooter className="px-5 py-4 border-t bg-gray-50 gap-2">
-                        <Button variant="ghost" onClick={() => setDeleteId(null)} disabled={deleting} className="flex-1 h-9 text-xs font-bold">Cancel</Button>
+                        <Button variant="ghost" onClick={() => setDeleteId(null)} disabled={deleting} className="flex-1 h-9 text-xs font-bold">{t("cancel")}</Button>
                         <Button onClick={confirmDelete} disabled={deleting} className="flex-1 h-9 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg shadow-sm">
                             {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Delete Now
+                            {t("delete_now")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -5,7 +5,8 @@ import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
     Select,
@@ -61,7 +62,8 @@ interface CommunicationLog {
 }
 
 export default function EmailSmsLogPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [logs, setLogs] = useState<CommunicationLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -79,6 +81,7 @@ export default function EmailSmsLogPage() {
 
     useEffect(() => {
         fetchLogs(1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [perPage]);
 
     const fetchLogs = async (page: number = currentPage) => {
@@ -91,7 +94,7 @@ export default function EmailSmsLogPage() {
             setLastPage(response.data?.last_page || 1);
             setTotal(response.data?.total || 0);
         } catch {
-            toast({ title: "Error", description: "Failed to fetch logs", variant: "destructive" });
+            tt.toast("error", "failed_to_fetch_logs");
         } finally {
             setLoading(false);
         }
@@ -106,10 +109,10 @@ export default function EmailSmsLogPage() {
         const type = rawId.startsWith('email_') ? 'email' : rawId.startsWith('wa_') ? 'wa' : 'sms';
         try {
             await api.delete(`/communicate/logs/${numericId}?type=${type}`);
-            toast({ title: "Success", description: "Log deleted" });
+            tt.success("log_deleted");
             fetchLogs(currentPage);
         } catch {
-            toast({ title: "Error", description: "Failed to delete log", variant: "destructive" });
+            tt.toast("error", "failed_to_delete_log");
         }
     };
 
@@ -125,7 +128,7 @@ export default function EmailSmsLogPage() {
                 else smsIds.push(numericId);
             });
 
-            const promises: Promise<any>[] = [];
+            const promises: Promise<unknown>[] = [];
             if (emailIds.length > 0) {
                 promises.push(api.post('/communicate/logs/delete-bulk', { ids: emailIds, type: 'email' }));
             }
@@ -137,24 +140,24 @@ export default function EmailSmsLogPage() {
             }
             await Promise.all(promises);
 
-            toast({ title: "Success", description: `${selectedIds.size} log(s) deleted` });
+            tt.success("logs_deleted", { count: selectedIds.size });
             setSelectedIds(new Set());
             setDeleteConfirm(false);
             fetchLogs(1);
         } catch {
-            toast({ title: "Error", description: "Failed to delete logs", variant: "destructive" });
+            tt.toast("error", "failed_to_delete_logs");
         }
     };
 
     const handleDeleteAll = async () => {
         try {
             await api.post('/communicate/logs/delete-bulk', { type: 'all' });
-            toast({ title: "Success", description: "All logs cleared" });
+            tt.success("all_logs_cleared");
             setDeleteAllConfirm(false);
             setSelectedIds(new Set());
             fetchLogs(1);
         } catch {
-            toast({ title: "Error", description: "Failed to clear logs", variant: "destructive" });
+            tt.toast("error", "failed_to_clear_logs");
         }
     };
 
@@ -189,7 +192,7 @@ export default function EmailSmsLogPage() {
     const handleCopy = () => {
         const text = logs.map(l => `${l.title}\t${stripHtml(l.message)}\t${l.date}\t${l.scheduleDate}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        tt.success("data_copied_to_clipboard");
     };
 
     const handleExportCSV = () => {
@@ -208,12 +211,15 @@ export default function EmailSmsLogPage() {
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-indigo-50 rounded-lg">
-                        <Mail className="h-5 w-5 text-indigo-500" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Mail className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("email_sms_wa_logs")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("sent_message_history")}</p>
                     </div>
-                    <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">Email / SMS / WA Logs</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     {selectedIds.size > 0 && (
@@ -222,7 +228,7 @@ export default function EmailSmsLogPage() {
                             onClick={() => setDeleteConfirm(true)}
                             className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 gap-2 h-9 px-6 text-[10px] font-bold uppercase rounded-full border border-rose-100"
                         >
-                            <Trash2 className="h-4 w-4" /> Delete Selected ({selectedIds.size})
+                            <Trash2 className="h-4 w-4" /> {t("delete_selected")} ({selectedIds.size})
                         </Button>
                     )}
                     <Button
@@ -230,7 +236,7 @@ export default function EmailSmsLogPage() {
                         onClick={() => setDeleteAllConfirm(true)}
                         className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 gap-2 h-9 px-6 text-[10px] font-bold uppercase rounded-full border border-rose-100"
                     >
-                        <Trash2 className="h-4 w-4" /> Delete All
+                        <Trash2 className="h-4 w-4" /> {t("delete_all")}
                     </Button>
                 </div>
             </div>
@@ -242,32 +248,32 @@ export default function EmailSmsLogPage() {
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search logs..."
+                                placeholder={t("search_logs")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-9 h-9 text-xs border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg shadow-none"
                             />
                         </div>
                         <div className="flex bg-gray-50/80 rounded-lg border border-gray-100 p-0.5">
-                            {(["all", "email", "sms", "wa"] as const).map(t => (
+                            {(["all", "email", "sms", "wa"] as const).map(type => (
                                 <button
-                                    key={t}
-                                    onClick={() => setTypeFilter(t)}
+                                    key={type}
+                                    onClick={() => setTypeFilter(type)}
                                     className={cn(
                                         "px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all tracking-wider",
-                                        typeFilter === t
+                                        typeFilter === type
                                             ? "bg-indigo-500 text-white shadow-sm"
                                             : "text-gray-500 hover:text-gray-700"
                                     )}
                                 >
-                                    {t === "all" ? "All" : t === "email" ? "Email" : t === "wa" ? "WhatsApp" : "SMS"}
+                                    {type === "all" ? t("all") : type === "email" ? t("email") : type === "wa" ? t("whatsapp") : t("sms")}
                                 </button>
                             ))}
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-400 font-medium">Per page:</span>
+                            <span className="text-[10px] text-gray-400 font-medium">{t("per_page")}:</span>
                             <Select value={String(perPage)} onValueChange={(v) => setPerPage(Number(v))}>
                                 <SelectTrigger className="h-7 w-16 text-[10px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none px-2">
                                     <SelectValue />
@@ -281,16 +287,16 @@ export default function EmailSmsLogPage() {
                             </Select>
                         </div>
                         <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" onClick={handleCopy} title="Copy" className="h-7 w-7 hover:bg-gray-100 rounded">
+                            <Button variant="ghost" size="icon" onClick={handleCopy} title={t("copy")} className="h-7 w-7 hover:bg-gray-100 rounded">
                                 <Copy className="h-3.5 w-3.5 text-gray-500" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={handleExportCSV} title="CSV" className="h-7 w-7 hover:bg-gray-100 rounded">
+                            <Button variant="ghost" size="icon" onClick={handleExportCSV} title={t("csv")} className="h-7 w-7 hover:bg-gray-100 rounded">
                                 <FileSpreadsheet className="h-3.5 w-3.5 text-gray-500" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={handleExportCSV} title="Excel" className="h-7 w-7 hover:bg-gray-100 rounded">
+                            <Button variant="ghost" size="icon" onClick={handleExportCSV} title={t("excel")} className="h-7 w-7 hover:bg-gray-100 rounded">
                                 <FileText className="h-3.5 w-3.5 text-gray-500" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => window.print()} title="Print" className="h-7 w-7 hover:bg-gray-100 rounded">
+                            <Button variant="ghost" size="icon" onClick={() => window.print()} title={t("print")} className="h-7 w-7 hover:bg-gray-100 rounded">
                                 <Printer className="h-3.5 w-3.5 text-gray-500" />
                             </Button>
                         </div>
@@ -305,7 +311,7 @@ export default function EmailSmsLogPage() {
                         className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
                     />
                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                        {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select All"}
+                        {selectedIds.size > 0 ? `${selectedIds.size} ${t("selected")}` : t("select_all")}
                     </span>
                 </div>
 
@@ -318,8 +324,8 @@ export default function EmailSmsLogPage() {
                     ) : filteredLogs.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-300">
                             <MessageSquare className="h-16 w-16 opacity-20" />
-                            <p className="text-sm font-bold text-gray-400 uppercase tracking-tight mt-4">No logs found</p>
-                            <p className="text-[10px] text-gray-400 mt-1">No email, SMS, or WhatsApp logs have been recorded yet</p>
+                            <p className="text-sm font-bold text-gray-400 uppercase tracking-tight mt-4">{t("no_logs_found")}</p>
+                            <p className="text-[10px] text-gray-400 mt-1">{t("no_logs_recorded_yet")}</p>
                         </div>
                     ) : (
                         filteredLogs.map((log) => {
@@ -354,11 +360,11 @@ export default function EmailSmsLogPage() {
                                                         "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold",
                                                         log.isEmail ? "bg-indigo-100 text-indigo-700" : log.isWa ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"
                                                     )}>
-                                                        {log.isEmail ? "Email" : log.isWa ? "WhatsApp" : "SMS"}
+                                                        {log.isEmail ? t("email") : log.isWa ? t("whatsapp") : t("sms")}
                                                     </span>
                                                     {log.hasAttachment && (
                                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold">
-                                                            <Paperclip className="h-3 w-3" /> Attach
+                                                            <Paperclip className="h-3 w-3" /> {t("attachment")}
                                                         </span>
                                                     )}
                                                 </div>
@@ -366,15 +372,15 @@ export default function EmailSmsLogPage() {
                                                     {plainMessage.length > 200 ? plainMessage.slice(0, 200) + '...' : plainMessage}
                                                 </p>
                                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-gray-400 font-medium">
-                                                    <span>Sent: {log.date}</span>
+                                                    <span>{t("sent")}: {log.date}</span>
                                                     {log.scheduleDate && log.scheduleDate !== '-' && (
-                                                        <span>Scheduled: {log.scheduleDate}</span>
+                                                        <span>{t("scheduled")}: {log.scheduleDate}</span>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1.5 shrink-0">
-                                            <Button size="icon" variant="ghost" onClick={() => setViewLog(log)} className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md transition-all shadow-sm">
+                                            <Button size="icon" variant="ghost" onClick={() => setViewLog(log)} title={t("view")} className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md transition-all shadow-sm">
                                                 <Eye className="h-3.5 w-3.5" />
                                             </Button>
                                             <Button size="icon" variant="ghost" onClick={() => handleDelete(log.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-all shadow-sm">
@@ -392,7 +398,7 @@ export default function EmailSmsLogPage() {
                 {total > perPage && (
                     <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                         <p className="text-[11px] text-gray-400 font-medium">
-                            Showing {(currentPage - 1) * perPage + 1}-{Math.min(currentPage * perPage, total)} of {total} entries
+                            {t("showing_x_to_y_of_z", { from: (currentPage - 1) * perPage + 1, to: Math.min(currentPage * perPage, total), total })}
                         </p>
                         <div className="flex items-center gap-1.5">
                             <button
@@ -420,7 +426,7 @@ export default function EmailSmsLogPage() {
                                         className={cn(
                                             "w-8 h-8 text-[11px] font-bold rounded-lg transition-all",
                                             pageNum === currentPage
-                                                ? "bg-indigo-500 text-white shadow-md"
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md"
                                                 : "border border-gray-200 text-gray-600 hover:bg-gray-50"
                                         )}
                                     >
@@ -440,7 +446,7 @@ export default function EmailSmsLogPage() {
                 )}
                 {total <= perPage && total > 0 && (
                     <div className="flex items-center text-[11px] text-gray-400 font-medium pt-2 border-t border-gray-50">
-                        Showing all {total} entr{total === 1 ? 'y' : 'ies'}
+                        {t("showing_all_entries", { total })}
                     </div>
                 )}
             </div>
@@ -466,7 +472,7 @@ export default function EmailSmsLogPage() {
                                     "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold",
                                     viewLog.isEmail ? "bg-indigo-100 text-indigo-700" : viewLog.isWa ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"
                                 )}>
-                                    {viewLog.isEmail ? "Email" : viewLog.isWa ? "WhatsApp" : "SMS"}
+                                    {viewLog.isEmail ? t("email") : viewLog.isWa ? t("whatsapp") : t("sms")}
                                 </span>
                                 {viewLog.hasAttachment && viewLog.attachment && (
                                     <button
@@ -486,25 +492,25 @@ export default function EmailSmsLogPage() {
                                                 document.body.removeChild(link);
                                                 window.URL.revokeObjectURL(url);
                                             } catch {
-                                                toast({ title: "Error", description: "Failed to download attachment", variant: "destructive" });
+                                                tt.toast("error", "failed_to_download_attachment");
                                             }
                                         }}
                                         className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-semibold transition-colors cursor-pointer"
                                     >
-                                        <Paperclip className="h-3.5 w-3.5" /> Download Attachment
+                                        <Paperclip className="h-3.5 w-3.5" /> {t("download_attachment")}
                                     </button>
                                 )}
                             </div>
                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
-                                <span>Sent: {viewLog.date}</span>
+                                <span>{t("sent")}: {viewLog.date}</span>
                                 {viewLog.scheduleDate && viewLog.scheduleDate !== '-' && (
-                                    <span>Scheduled: {viewLog.scheduleDate}</span>
+                                    <span>{t("scheduled")}: {viewLog.scheduleDate}</span>
                                 )}
                             </div>
 
                             {viewLog.recipients && viewLog.recipients.length > 0 && (
                                 <div className="space-y-2">
-                                    <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Receivers</h4>
+                                    <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("receivers")}</h4>
                                     <div className="flex flex-wrap gap-1.5">
                                         {viewLog.recipients.map((r, i) => (
                                             <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 text-xs font-medium">
@@ -525,7 +531,7 @@ export default function EmailSmsLogPage() {
                     <div className="p-6 bg-gray-50/50 border-t border-gray-100">
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setViewLog(null)} className="h-10 text-[10px] uppercase font-bold rounded-full px-8 bg-white border-gray-200">
-                                Close
+                                {t("close")}
                             </Button>
                         </DialogFooter>
                     </div>
@@ -536,15 +542,15 @@ export default function EmailSmsLogPage() {
             <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
                 <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Selected Logs</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("delete_selected_logs")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            Are you sure you want to delete {selectedIds.size} selected log(s)? This action cannot be undone.
+                            {t("delete_selected_logs_confirm", { count: selectedIds.size })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDeleteSelected} className="bg-red-500 hover:bg-red-600 h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            Yes, Delete
+                            {t("yes_delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -554,15 +560,15 @@ export default function EmailSmsLogPage() {
             <AlertDialog open={deleteAllConfirm} onOpenChange={setDeleteAllConfirm}>
                 <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800 text-red-500">Clear All Logs</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800 text-red-500">{t("clear_all_logs")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            Are you absolutely sure you want to delete all email, SMS, and WhatsApp logs? This will also remove all attachments from storage. This action is permanent.
+                            {t("clear_all_logs_confirm")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDeleteAll} className="bg-red-500 hover:bg-red-600 h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            Yes, Clear All
+                            {t("yes_clear_all")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

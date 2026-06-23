@@ -16,7 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -63,7 +64,8 @@ interface Student {
 }
 
 export default function CollectFeesPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<Section[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
@@ -81,7 +83,7 @@ export default function CollectFeesPage() {
             ]);
             setClasses(classesRes.data.data.data || classesRes.data.data);
         } catch (error) {
-            toast("error", "Failed to fetch initial data");
+            tt.error("failed_to_fetch_initial_data");
         }
     }, [toast]);
 
@@ -113,17 +115,17 @@ export default function CollectFeesPage() {
             setStudents(Array.isArray(data) ? data : (data.data || []));
 
             if ((Array.isArray(data) ? data.length : data.data.length) === 0) {
-                toast("error", "No students found matching your criteria");
+                tt.error("no_students_found_matching_your_criteria");
             }
         } catch (error) {
-            toast("error", "Search failed. Please try again.");
+            tt.error("search_failed_please_try_again");
         } finally {
             setLoading(false);
         }
     };
     const exportTable = (format: 'excel' | 'csv' | 'pdf') => {
         if (students.length === 0) {
-            toast("error", "No data to export");
+            tt.error("no_data_to_export");
             return;
         }
 
@@ -154,7 +156,7 @@ export default function CollectFeesPage() {
 
     const printTable = () => {
         if (students.length === 0) {
-            toast("error", "No data to print");
+            tt.error("no_data_to_print");
             return;
         }
         window.print();
@@ -170,8 +172,8 @@ export default function CollectFeesPage() {
                             <Wallet className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Collect Fees</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{students.length} student{students.length === 1 ? '' : 's'} listed</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("collect_fees")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_students_listed", { count: students.length })}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -182,7 +184,7 @@ export default function CollectFeesPage() {
                             onClick={() => exportTable('excel')}
                         >
                             <FileSpreadsheet className="h-4 w-4 mr-2" />
-                            Excel
+                            {t("excel")}
                         </Button>
                         <Button
                             variant="outline"
@@ -191,7 +193,7 @@ export default function CollectFeesPage() {
                             onClick={() => exportTable('csv')}
                         >
                             <FileCode className="h-4 w-4 mr-2" />
-                            CSV
+                            {t("csv")}
                         </Button>
                         <Button
                             variant="outline"
@@ -200,7 +202,7 @@ export default function CollectFeesPage() {
                             onClick={() => exportTable('pdf')}
                         >
                             <FileText className="h-4 w-4 mr-2" />
-                            PDF
+                            {t("pdf")}
                         </Button>
                         <Button
                             variant="outline"
@@ -209,7 +211,7 @@ export default function CollectFeesPage() {
                             onClick={printTable}
                         >
                             <Printer className="h-4 w-4 mr-2" />
-                            Print
+                            {t("print")}
                         </Button>
                     </div>
                 </CardHeader>
@@ -222,8 +224,8 @@ export default function CollectFeesPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Search students to collect fees</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("search_students_to_collect_fees")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -231,7 +233,7 @@ export default function CollectFeesPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Class <span className="text-destructive">*</span>
+                                    {t("class")} <span className="text-destructive">*</span>
                                 </label>
                                 <div className="relative">
                                     <select
@@ -239,7 +241,7 @@ export default function CollectFeesPage() {
                                         onChange={handleClassChange}
                                         className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
                                     >
-                                        <option value="">Select Class</option>
+                                        <option value="">{t("select_class")}</option>
                                         {classes.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
@@ -249,7 +251,7 @@ export default function CollectFeesPage() {
                             </div>
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Section
+                                    {t("section")}
                                 </label>
                                 <div className="relative">
                                     <select
@@ -257,7 +259,7 @@ export default function CollectFeesPage() {
                                         onChange={(e) => setSectionId(e.target.value)}
                                         className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
                                     >
-                                        <option value="">Select Section</option>
+                                        <option value="">{t("select_section")}</option>
                                         {sections.map(s => (
                                             <option key={s.id} value={s.id}>{s.name}</option>
                                         ))}
@@ -272,10 +274,10 @@ export default function CollectFeesPage() {
                                     onClick={() => handleSearch('criteria')}
                                     disabled={loading}
                                 >
-                                    {loading ? "Searching..." : (
+                                    {loading ? t("searching") : (
                                         <>
                                             <Search className="h-4 w-4 mr-2" />
-                                            Search
+                                            {t("search")}
                                         </>
                                     )}
                                 </Button>
@@ -285,12 +287,12 @@ export default function CollectFeesPage() {
                         <div className="space-y-4 border-l border-muted/50 pl-8 hidden md:block">
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Search By Keyword
+                                    {t("search_by_keyword")}
                                 </label>
                                 <div className="relative">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                     <Input
-                                        placeholder="Search By Student Name, Roll Number Etc."
+                                        placeholder={t("search_by_student_name_roll_no_etc")}
                                         className="h-11 pl-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                         value={keyword}
                                         onChange={(e) => setKeyword(e.target.value)}
@@ -305,10 +307,10 @@ export default function CollectFeesPage() {
                                     onClick={() => handleSearch('keyword')}
                                     disabled={loading}
                                 >
-                                    {loading ? "Searching..." : (
+                                    {loading ? t("searching") : (
                                         <>
                                             <Search className="h-4 w-4 mr-2" />
-                                            Search
+                                            {t("search")}
                                         </>
                                     )}
                                 </Button>
@@ -324,8 +326,8 @@ export default function CollectFeesPage() {
                         <Wallet className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{students.length} student{students.length === 1 ? '' : 's'} found</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("x_students_found", { count: students.length })}</p>
                     </div>
                 </CardHeader>
 
@@ -334,8 +336,8 @@ export default function CollectFeesPage() {
                         <thead>
                             <tr className="bg-muted/30">
                                 {[
-                                    "Class", "Section", "Admission No", "Student Name",
-                                    "Father Name", "Date Of Birth", "Mobile No.", "Action"
+                                    t("class"), t("section"), t("admission_no"), t("student_name"),
+                                    t("father_name"), t("date_of_birth"), t("mobile_no"), t("action")
                                 ].map((header) => (
                                     <th key={header} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
                                         {header}
@@ -365,7 +367,7 @@ export default function CollectFeesPage() {
                                                     onClick={() => window.location.href = `/dashboard/fees-collection/collect-fees/student/${student.id}`}
                                                 >
                                                     <Wallet className="h-3 w-3 mr-2" />
-                                                    Collect Fee
+                                                    {t("collect_fee")}
                                                 </Button>
                                             </div>
                                         </td>
@@ -393,7 +395,7 @@ export default function CollectFeesPage() {
                             </div>
                             <div className="space-y-4">
                                 <p className="text-destructive font-semibold text-xs transition-colors">
-                                    No data available in table
+                                    {t("no_data_available_in_table")}
                                 </p>
                             </div>
                         </div>
@@ -402,7 +404,7 @@ export default function CollectFeesPage() {
 
                 <div className="px-6 py-4 bg-muted/10 border-t border-muted/50 flex items-center justify-between">
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                        Showing 0 to 0 of 0 entries
+                        {t("showing_x_to_y_of_z", { from: 0, to: 0, total: 0 })}
                     </p>
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all">

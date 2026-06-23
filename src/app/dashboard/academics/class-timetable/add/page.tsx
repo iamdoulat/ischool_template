@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +35,8 @@ interface DayData {
 
 export default function AddClassTimetablePage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const { settings } = useSettings();
 
     // Derived ordered days based on settings
@@ -104,7 +108,7 @@ export default function AddClassTimetablePage() {
                 setStaffList(teachers);
             } catch (error) {
                 console.error("Error fetching prerequisites:", error);
-                toast("error", "Failed to load prerequisite data");
+                tt.error("failed_to_load");
             } finally {
                 setLoading(false);
             }
@@ -132,7 +136,7 @@ export default function AddClassTimetablePage() {
 
     const handleSearch = async () => {
         if (!selectedClassId || !selectedSectionId || !selectedSubjectGroupId) {
-            toast("error", "Please select Class, Section and Subject Group");
+            tt.error("please_select_class_section_and_subject_group");
             return;
         }
 
@@ -161,10 +165,10 @@ export default function AddClassTimetablePage() {
             }, {});
 
             setDayData(newDayData);
-            toast("success", "Timetable data loaded");
+            tt.success("timetable_data_loaded");
         } catch (error) {
             console.error("Error fetching timetable data:", error);
-            toast("error", "Failed to load existing timetable");
+            tt.error("failed_to_load_existing_timetable");
         } finally {
             setSearching(false);
         }
@@ -212,13 +216,13 @@ export default function AddClassTimetablePage() {
 
     const applyQuickParams = () => {
         if (!quickParams.start_time) {
-            toast("error", "Please set a Start Time first");
+            tt.error("please_set_start_time_first");
             return;
         }
 
         const currentRows = dayData[currentDay] || [];
         if (currentRows.length === 0) {
-            toast("error", `No rows added for ${currentDay}. Add rows first.`);
+            tt.error("no_rows_added_for_day", { day: t(currentDay.toLowerCase()) });
             return;
         }
 
@@ -229,7 +233,7 @@ export default function AddClassTimetablePage() {
         const newRows = currentRows.map((row, index) => {
             const start = currentTime;
             const end = addMinutesToTime(start, duration);
-            
+
             // Prepare time for NEXT row
             currentTime = addMinutesToTime(end, interval);
 
@@ -245,12 +249,12 @@ export default function AddClassTimetablePage() {
             ...dayData,
             [currentDay]: newRows
         });
-        toast("success", `Time parameters applied to ${currentRows.length} periods in ${currentDay}`);
+        tt.success("time_parameters_applied", { count: currentRows.length, day: t(currentDay.toLowerCase()) });
     };
 
     const handleSave = async () => {
         if (!selectedClassId || !selectedSectionId || !selectedSubjectGroupId) {
-            toast("error", "Criteria missing");
+            tt.error("criteria_missing");
             return;
         }
 
@@ -267,7 +271,7 @@ export default function AddClassTimetablePage() {
             }));
 
             if (entries.some(e => !e.subject_id || !e.staff_id || !e.start_time || !e.end_time)) {
-                toast("error", "Please fill all fields for all rows in the current day");
+                tt.error("please_fill_all_fields_for_all_rows");
                 setSaving(false);
                 return;
             }
@@ -280,10 +284,10 @@ export default function AddClassTimetablePage() {
                 entries: entries
             });
 
-            toast("success", `Timetable for ${currentDay} saved successfully`);
+            tt.success("timetable_saved_successfully", { day: t(currentDay.toLowerCase()) });
         } catch (error) {
             console.error("Error saving timetable:", error);
-            toast("error", "Failed to save timetable");
+            tt.error("failed_to_save");
         } finally {
             setSaving(false);
         }
@@ -291,33 +295,40 @@ export default function AddClassTimetablePage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-2 text-[#6366f1]">
-                <Calendar className="h-6 w-6" />
-                <h1 className="text-2xl font-bold">Add Timetable Entry</h1>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Calendar className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("add_timetable_entry")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("build_weekly_class_period_schedules")}</p>
+                    </div>
+                </div>
             </div>
 
             {/* Select Criteria Section */}
             <Card>
                 <CardContent className="pt-6">
                     <div className="flex justify-between items-center mb-4 pb-2 border-b">
-                        <h2 className="text-lg font-medium text-gray-800">Select Criteria</h2>
+                        <h2 className="text-lg font-medium text-gray-800">{t("select_criteria")}</h2>
                         <Button
                             onClick={handleSearch}
                             className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-xs gap-2 shadow-md transition-all duration-300"
                             disabled={searching || loading}
                         >
                             {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                            Search
+                            {t("search")}
                         </Button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <Label className="text-xs font-semibold text-gray-600 uppercase">
-                                Class <span className="text-red-500">*</span>
+                                {t("class")} <span className="text-red-500">*</span>
                             </Label>
-                            <Select 
-                                value={selectedClassId} 
+                            <Select
+                                value={selectedClassId}
                                 onValueChange={(val) => {
                                     setSelectedClassId(val);
                                     setSelectedSectionId('');
@@ -326,7 +337,7 @@ export default function AddClassTimetablePage() {
                                 }}
                             >
                                 <SelectTrigger className="h-10">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
@@ -336,15 +347,15 @@ export default function AddClassTimetablePage() {
 
                         <div className="space-y-2">
                             <Label className="text-xs font-semibold text-gray-600 uppercase">
-                                Section <span className="text-red-500">*</span>
+                                {t("section")} <span className="text-red-500">*</span>
                             </Label>
-                            <Select 
-                                value={selectedSectionId} 
+                            <Select
+                                value={selectedSectionId}
                                 onValueChange={setSelectedSectionId}
                                 disabled={!selectedClassId}
                             >
                                 <SelectTrigger className="h-10">
-                                    <SelectValue placeholder={!selectedClassId ? "Select class first" : "Select"} />
+                                    <SelectValue placeholder={!selectedClassId ? t("select_class_first") : t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
@@ -354,11 +365,11 @@ export default function AddClassTimetablePage() {
 
                         <div className="space-y-2">
                             <Label className="text-xs font-semibold text-gray-600 uppercase">
-                                Subject Group <span className="text-red-500">*</span>
+                                {t("subject_group")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedSubjectGroupId} onValueChange={setSelectedSubjectGroupId}>
                                 <SelectTrigger className="h-10">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {subjectGroups.filter(sg => !selectedClassId || sg.school_class_id.toString() === selectedClassId).map(sg => (
@@ -374,10 +385,10 @@ export default function AddClassTimetablePage() {
             {/* Quick Params Section */}
             <Card>
                 <CardContent className="pt-6">
-                    <p className="text-sm text-gray-500 mb-4">Select parameter to generate time table quickly</p>
+                    <p className="text-sm text-gray-500 mb-4">{t("select_parameter_to_generate_timetable_quickly")}</p>
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Period Start Time *</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("period_start_time")} *</Label>
                             <Input
                                 type="time"
                                 value={quickParams.start_time}
@@ -386,7 +397,7 @@ export default function AddClassTimetablePage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Duration (minute) *</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("duration_minute")} *</Label>
                             <Input
                                 type="number"
                                 value={quickParams.duration}
@@ -395,7 +406,7 @@ export default function AddClassTimetablePage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Interval (minute) *</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("interval_minute")} *</Label>
                             <Input
                                 type="number"
                                 value={quickParams.interval}
@@ -404,19 +415,19 @@ export default function AddClassTimetablePage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Room No.</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("room_no")}</Label>
                             <Input
                                 value={quickParams.room}
                                 onChange={(e) => setQuickParams({ ...quickParams, room: e.target.value })}
                                 className="h-10"
-                                placeholder="e.g. 101"
+                                placeholder={t("e.g. 101")}
                             />
                         </div>
                         <Button
                             onClick={applyQuickParams}
                             className="bg-[#6366f1] hover:bg-[#5558dd] text-white h-10 gap-2"
                         >
-                            <Wand2 className="h-4 w-4" /> Apply
+                            <Wand2 className="h-4 w-4" /> {t("apply")}
                         </Button>
                     </div>
                 </CardContent>
@@ -433,7 +444,7 @@ export default function AddClassTimetablePage() {
                                     value={day}
                                     className="h-12 rounded-none px-6 border-b-2 border-transparent data-[state=active]:border-[#6366f1] data-[state=active]:bg-white data-[state=active]:shadow-none transition-all"
                                 >
-                                    {day}
+                                    {t(day.toLowerCase())}
                                 </TabsTrigger>
                             ))}
                         </TabsList>
@@ -441,7 +452,7 @@ export default function AddClassTimetablePage() {
                             onClick={() => addRow(currentDay)}
                             className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white h-8 text-xs gap-1 shadow-md"
                         >
-                            <Plus className="h-4 w-4" /> Add New
+                            <Plus className="h-4 w-4" /> {t("add_new")}
                         </Button>
                     </div>
 
@@ -451,19 +462,19 @@ export default function AddClassTimetablePage() {
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-gray-50 border-b text-gray-600 font-medium">
                                         <tr>
-                                            <th className="py-3 px-4">Subject</th>
-                                            <th className="py-3 px-4">Time From *</th>
-                                            <th className="py-3 px-4">Time To *</th>
-                                            <th className="py-3 px-4">Teacher</th>
-                                            <th className="py-3 px-4">Room No.</th>
-                                            <th className="py-3 px-4 w-10 text-center">Action</th>
+                                            <th className="py-3 px-4">{t("subject")}</th>
+                                            <th className="py-3 px-4">{t("time_from")} *</th>
+                                            <th className="py-3 px-4">{t("time_to")} *</th>
+                                            <th className="py-3 px-4">{t("teacher")}</th>
+                                            <th className="py-3 px-4">{t("room_no")}</th>
+                                            <th className="py-3 px-4 w-10 text-center">{t("action")}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
                                         {dayData[day]?.length === 0 ? (
                                             <tr>
                                                 <td colSpan={6} className="py-10 text-center text-gray-500">
-                                                    No entries added for {day}. Click "+ Add New" to start.
+                                                    {t("no_entries_added_for_day", { day: t(day.toLowerCase()) })}
                                                 </td>
                                             </tr>
                                         ) : (
@@ -472,7 +483,7 @@ export default function AddClassTimetablePage() {
                                                     <td className="py-2 px-4 whitespace-nowrap min-w-[200px]">
                                                         <Select value={row.subject_id} onValueChange={(v) => updateRow(day, row.id, "subject_id", v)}>
                                                             <SelectTrigger className="h-9">
-                                                                <SelectValue placeholder="Select" />
+                                                                <SelectValue placeholder={t("select")} />
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 {filteredSubjects.map((s: any) => (
@@ -500,7 +511,7 @@ export default function AddClassTimetablePage() {
                                                     <td className="py-2 px-4 whitespace-nowrap min-w-[200px]">
                                                         <Select value={row.staff_id} onValueChange={(v) => updateRow(day, row.id, "staff_id", v)}>
                                                             <SelectTrigger className="h-9">
-                                                                <SelectValue placeholder="Select" />
+                                                                <SelectValue placeholder={t("select")} />
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 {staffList.map((s: any) => (
@@ -514,7 +525,7 @@ export default function AddClassTimetablePage() {
                                                             value={row.room}
                                                             onChange={(e) => updateRow(day, row.id, "room", e.target.value)}
                                                             className="h-9"
-                                                            placeholder="Room"
+                                                            placeholder={t("room")}
                                                         />
                                                     </td>
                                                     <td className="py-2 px-4 text-center">
@@ -543,7 +554,7 @@ export default function AddClassTimetablePage() {
                             disabled={saving}
                         >
                             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Save Timetable
+                            {t("save_timetable")}
                         </Button>
                     </div>
                 </Tabs>

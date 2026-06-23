@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,7 +15,8 @@ import {
     EyeOff,
     Loader2,
     Copy,
-    Check
+    Check,
+    DatabaseBackup
 } from "lucide-react";
 import {
     Table,
@@ -39,6 +41,7 @@ interface BackupFile {
 }
 
 export default function BackupRestorePage() {
+    const { t } = useTranslation();
     const baseApiUrl = useBaseUrl();
     const apiRoot = `${baseApiUrl}/api/v1`;
     const [backups, setBackups] = useState<BackupFile[]>([]);
@@ -68,7 +71,7 @@ export default function BackupRestorePage() {
             }
         } catch (error) {
             console.error("Failed to fetch backups", error);
-            toast("error", "Failed to fetch backup history");
+            toast("error", t("failed_to_fetch_backup_history"));
         } finally {
             setLoading(false);
         }
@@ -95,14 +98,14 @@ export default function BackupRestorePage() {
             setCreating(true);
             const response = await api.post("/system-setting/backups");
             if (response.data.status === "Success") {
-                toast("success", "Backup created successfully");
+                toast("success", t("backup_created_successfully"));
                 fetchBackups();
             } else {
-                toast("error", response.data.message || "Failed to create backup");
+                toast("error", response.data.message || t("failed_to_create_backup"));
             }
         } catch (error: any) {
             console.error("Failed to create backup", error);
-            const errorMsg = error.response?.data?.message || "Failed to create backup";
+            const errorMsg = error.response?.data?.message || t("failed_to_create_backup");
             toast("error", errorMsg);
         } finally {
             setCreating(false);
@@ -120,12 +123,12 @@ export default function BackupRestorePage() {
             setConfirmLoading(true);
             const response = await api.delete(`/system-setting/backups/${confirmAction.id}`);
             if (response.data.status === "Success") {
-                toast("success", "Backup deleted successfully");
+                toast("success", t("backup_deleted_successfully"));
                 fetchBackups();
             }
         } catch (error) {
             console.error("Failed to delete backup", error);
-            toast("error", "Failed to delete backup");
+            toast("error", t("failed_to_delete_backup"));
         } finally {
             setConfirmLoading(false);
             setConfirmOpen(false);
@@ -143,14 +146,14 @@ export default function BackupRestorePage() {
         if (!targetId) return;
         try {
             setConfirmLoading(true);
-            toast("success", "Restoration started. Please wait...");
+            toast("success", t("restoration_started"));
             const response = await api.post(`/system-setting/backups/${targetId}/restore`);
             if (response.data.status === "Success") {
-                toast("success", "Database restored successfully");
+                toast("success", t("database_restored_successfully"));
             }
         } catch (error) {
             console.error("Failed to restore database", error);
-            toast("error", "Failed to restore database");
+            toast("error", t("failed_to_restore_database"));
         } finally {
             setConfirmLoading(false);
             setConfirmOpen(false);
@@ -171,7 +174,7 @@ export default function BackupRestorePage() {
 
     const handleUpload = async () => {
         if (!selectedFile) {
-            toast("error", "Please select a file first");
+            toast("error", t("please_select_a_file_first"));
             return;
         }
 
@@ -185,7 +188,7 @@ export default function BackupRestorePage() {
             });
 
             if (response.data.status === "Success") {
-                toast("success", "Backup uploaded successfully");
+                toast("success", t("backup_uploaded_successfully"));
                 setSelectedFile(null);
                 fetchBackups();
 
@@ -195,7 +198,7 @@ export default function BackupRestorePage() {
             }
         } catch (error) {
             console.error("Failed to upload backup", error);
-            toast("error", "Failed to upload backup");
+            toast("error", t("failed_to_upload_backup"));
         } finally {
             setUploading(false);
         }
@@ -206,11 +209,11 @@ export default function BackupRestorePage() {
             const response = await api.post("/system-setting/backups/cron-key/regenerate");
             if (response.data.status === "Success") {
                 setCronKey(response.data.cron_secret_key);
-                toast("success", "Cron secret key regenerated");
+                toast("success", t("cron_secret_key_regenerated"));
             }
         } catch (error) {
             console.error("Failed to regenerate cron key", error);
-            toast("error", "Failed to regenerate cron key");
+            toast("error", t("failed_to_regenerate_cron_key"));
         }
     };
 
@@ -219,32 +222,32 @@ export default function BackupRestorePage() {
         navigator.clipboard.writeText(cronCommand);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-        toast("success", "Cron command copied to clipboard");
+        toast("success", t("cron_command_copied_to_clipboard"));
     };
 
     const getConfirmData = () => {
         switch (confirmAction?.type) {
             case "delete":
                 return {
-                    title: "Delete Backup?",
-                    description: "This will permanently delete the backup file from the server history. This action cannot be undone.",
-                    confirmText: "Yes, Delete",
+                    title: t("delete_backup"),
+                    description: t("delete_backup_description"),
+                    confirmText: t("yes_delete"),
                     variant: "destructive" as const,
                     onConfirm: confirmDelete
                 };
             case "restore":
                 return {
-                    title: "Restore Database?",
-                    description: "RESTORE DATABASE? This will overwrite your current database with this backup. This is a critical action! Proceed with extreme caution.",
-                    confirmText: "Yes, Restore",
+                    title: t("restore_database"),
+                    description: t("restore_database_description"),
+                    confirmText: t("yes_restore"),
                     variant: "warning" as const,
                     onConfirm: () => confirmRestore()
                 };
             case "upload-restore":
                 return {
-                    title: "Restore Uploaded Backup?",
-                    description: "The backup has been uploaded. Do you want to RESTORE it now and overwrite your current database?",
-                    confirmText: "Yes, Restore Now",
+                    title: t("restore_uploaded_backup"),
+                    description: t("restore_uploaded_backup_description"),
+                    confirmText: t("yes_restore_now"),
                     variant: "warning" as const,
                     onConfirm: () => confirmRestore(confirmAction.id)
                 };
@@ -268,15 +271,23 @@ export default function BackupRestorePage() {
             <div className="lg:col-span-2 space-y-4">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                     {/* Header */}
-                    <div className="flex justify-between items-center p-4 border-b border-gray-50">
-                        <h2 className="text-[13px] font-medium text-gray-700">Backup History</h2>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <DatabaseBackup className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h2 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("backup_history")}</h2>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("backup_history_subtitle")}</p>
+                            </div>
+                        </div>
                         <Button
                             onClick={handleCreateBackup}
                             disabled={creating}
                             className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg gap-1.5 border-none"
                         >
                             {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                            Create Backup
+                            {t("create_backup")}
                         </Button>
                     </div>
 
@@ -286,8 +297,8 @@ export default function BackupRestorePage() {
                             <Table>
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="border-b border-gray-100 hover:bg-transparent">
-                                        <TableHead className="h-9 px-4 text-[11px] font-bold text-gray-600 uppercase">Backup Files</TableHead>
-                                        <TableHead className="h-9 px-4 text-[11px] font-bold text-gray-600 uppercase text-right w-[300px]">Action</TableHead>
+                                        <TableHead className="h-9 px-4 text-[11px] font-bold text-gray-600 uppercase">{t("backup_files")}</TableHead>
+                                        <TableHead className="h-9 px-4 text-[11px] font-bold text-gray-600 uppercase text-right w-[300px]">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -295,13 +306,13 @@ export default function BackupRestorePage() {
                                         <TableRow>
                                             <TableCell colSpan={2} className="text-center py-8">
                                                 <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
-                                                <p className="text-[11px] text-gray-400 mt-2 uppercase font-bold tracking-widest">Loading History...</p>
+                                                <p className="text-[11px] text-gray-400 mt-2 uppercase font-bold tracking-widest">{t("loading")}</p>
                                             </TableCell>
                                         </TableRow>
                                     ) : backups.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={2} className="text-center py-8 text-gray-400 text-[11px] uppercase font-bold">
-                                                No backups found
+                                                {t("no_backups_found")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -322,21 +333,21 @@ export default function BackupRestorePage() {
                                                             className="h-6 px-2 rounded bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white shadow-sm transition-all text-[9px] font-semibold uppercase gap-1 border-none"
                                                         >
                                                             <Download className="h-2.5 w-2.5" />
-                                                            Download
+                                                            {t("download")}
                                                         </Button>
                                                         <Button
                                                             onClick={() => handleRestore(file.id)}
                                                             className="h-6 px-2 rounded bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white shadow-sm transition-all text-[9px] font-semibold uppercase gap-1 border-none"
                                                         >
                                                             <RotateCcw className="h-2.5 w-2.5" />
-                                                            Restore
+                                                            {t("restore")}
                                                         </Button>
                                                         <Button
                                                             onClick={() => handleDelete(file.id)}
                                                             className="h-6 px-2 rounded bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white shadow-sm transition-all text-[9px] font-semibold uppercase gap-1 border-none"
                                                         >
                                                             <Trash2 className="h-2.5 w-2.5" />
-                                                            Delete
+                                                            {t("delete")}
                                                         </Button>
                                                     </div>
                                                 </TableCell>
@@ -355,7 +366,7 @@ export default function BackupRestorePage() {
                 {/* Upload Box */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                     <div className="border-b border-gray-50 p-4">
-                        <h2 className="text-[13px] font-medium text-gray-700">Upload From Local Directory</h2>
+                        <h2 className="text-[13px] font-medium text-gray-700">{t("upload_from_local_directory")}</h2>
                     </div>
 
                     <div className="p-4 space-y-4">
@@ -368,7 +379,7 @@ export default function BackupRestorePage() {
                             />
                             <CloudUpload className="h-8 w-8 text-gray-300 group-hover:text-indigo-400 transition-colors mb-2" />
                             <p className="text-[11px] text-gray-500 font-medium">
-                                {selectedFile ? selectedFile.name : "Drag and drop a file here or click"}
+                                {selectedFile ? selectedFile.name : t("drag_and_drop_a_file_here_or_click")}
                             </p>
                         </label>
 
@@ -379,7 +390,7 @@ export default function BackupRestorePage() {
                                 className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg gap-1.5 border-none"
                             >
                                 {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                                Upload
+                                {t("upload")}
                             </Button>
                         </div>
                     </div>
@@ -388,12 +399,12 @@ export default function BackupRestorePage() {
                 {/* Cron Key Box */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                     <div className="flex justify-between items-center p-4 border-b border-gray-50">
-                        <h2 className="text-[13px] font-medium text-gray-700">Cron Secret Key</h2>
+                        <h2 className="text-[13px] font-medium text-gray-700">{t("cron_secret_key")}</h2>
                         <Button
                             onClick={handleRegenerateKey}
                             className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg border-none"
                         >
-                            Regenerate
+                            {t("regenerate")}
                         </Button>
                     </div>
 
@@ -422,11 +433,11 @@ export default function BackupRestorePage() {
                 {/* Backup Schedule Box */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-4 border-b border-gray-50">
-                        <h2 className="text-[13px] font-medium text-gray-700">Backup Schedule Cron</h2>
+                        <h2 className="text-[13px] font-medium text-gray-700">{t("backup_schedule_cron")}</h2>
                     </div>
                     <div className="p-4 space-y-3">
                         <p className="text-[10px] text-gray-500 leading-relaxed uppercase font-bold tracking-tight">
-                            Use this command in your VPS cron tab to automate backups (e.g., daily at midnight):
+                            {t("backup_cron_instructions")}
                         </p>
                         <div className="bg-gray-900 rounded p-3 relative group">
                             <code className="text-gray-300 text-[10px] break-all block pr-8">

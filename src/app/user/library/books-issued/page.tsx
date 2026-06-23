@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Table, TableBody, TableCell, TableHead,
     TableHeader, TableRow,
@@ -41,6 +42,7 @@ const fmt = (d: string) => (d ? formatDate(d) : "—");
 type SortKey = keyof Omit<BookIssued, "id">;
 
 export default function UserBooksIssuedPage() {
+    const { t } = useTranslation();
     const [books, setBooks] = useState<BookIssued[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -57,10 +59,10 @@ export default function UserBooksIssuedPage() {
                 if (res.data.success) {
                     setBooks(res.data.data ?? []);
                 } else {
-                    toast({ variant: "destructive", title: "Error", description: res.data.message || "Failed to load books." });
+                    toast({ variant: "destructive", title: t("error"), description: res.data.message || t("failed_to_load_books") });
                 }
             } catch {
-                toast({ variant: "destructive", title: "Error", description: "Failed to load issued books." });
+                toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_issued_books") });
             } finally {
                 setLoading(false);
             }
@@ -106,10 +108,10 @@ export default function UserBooksIssuedPage() {
 
     const getStatusBadge = (b: BookIssued) => {
         if (b.returnDate)
-            return <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">Returned</Badge>;
+            return <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">{t("returned")}</Badge>;
         if (isOverdue(b))
-            return <Badge className="bg-red-100 text-red-600 border-red-200 hover:bg-red-100 gap-1"><AlertTriangle className="h-3 w-3" />Overdue</Badge>;
-        return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">Issued</Badge>;
+            return <Badge className="bg-red-100 text-red-600 border-red-200 hover:bg-red-100 gap-1"><AlertTriangle className="h-3 w-3" />{t("overdue")}</Badge>;
+        return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">{t("issued")}</Badge>;
     };
 
     const copyToClipboard = useCallback(() => {
@@ -117,28 +119,28 @@ export default function UserBooksIssuedPage() {
             [b.title, b.bookNumber, b.author, fmt(b.issueDate), fmt(b.dueReturnDate), b.returnDate ? fmt(b.returnDate) : "—"].join("\t")
         ).join("\n");
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied to clipboard" });
+        toast({ title: t("copied_to_clipboard") });
     }, [filtered, toast]);
 
     const exportToExcel = useCallback(() => {
         const ws = XLSX.utils.json_to_sheet(filtered.map(b => ({
-            "Book Title": b.title,
-            "Book Number": b.bookNumber,
-            "Author": b.author,
-            "Issue Date": fmt(b.issueDate),
-            "Due Return Date": fmt(b.dueReturnDate),
-            "Return Date": b.returnDate ? fmt(b.returnDate) : "",
+            [t("book_title")]: b.title,
+            [t("book_number")]: b.bookNumber,
+            [t("author")]: b.author,
+            [t("issue_date")]: fmt(b.issueDate),
+            [t("due_return_date")]: fmt(b.dueReturnDate),
+            [t("return_date")]: b.returnDate ? fmt(b.returnDate) : "",
         })));
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Books Issued");
+        XLSX.utils.book_append_sheet(wb, ws, t("books_issued"));
         XLSX.writeFile(wb, "books-issued.xlsx");
     }, [filtered]);
 
     const exportToPDF = useCallback(() => {
         const doc = new jsPDF();
-        doc.text("Books Issued", 14, 16);
+        doc.text(t("books_issued"), 14, 16);
         autoTable(doc, {
-            head: [["Book Title", "Book No.", "Author", "Issue Date", "Due Date", "Return Date"]],
+            head: [[t("book_title"), t("book_no"), t("author"), t("issue_date"), t("due_date"), t("return_date")]],
             body: filtered.map(b => [b.title, b.bookNumber, b.author, fmt(b.issueDate), fmt(b.dueReturnDate), b.returnDate ? fmt(b.returnDate) : "—"]),
             startY: 22,
         });
@@ -167,21 +169,21 @@ export default function UserBooksIssuedPage() {
                             <BookMarked className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Books Issued</h1>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("books_issued")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
                                 {loading
-                                    ? "Loading…"
-                                    : `${books.length} record${books.length === 1 ? "" : "s"} · ${outstandingCount} outstanding${overdueCount ? ` · ${overdueCount} overdue` : ""}`}
+                                    ? t("loading")
+                                    : `${books.length} ${t("record").toLowerCase()}${books.length === 1 ? "" : "s"} · ${outstandingCount} ${t("outstanding").toLowerCase()}${overdueCount ? ` · ${overdueCount} ${t("overdue").toLowerCase()}` : ""}`}
                             </p>
                         </div>
                     </div>
                     <Button
                         onClick={() => window.print()}
-                        title="Print"
+                        title={t("print")}
                         className="h-9 shrink-0 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
                     >
                         <Printer className="h-4 w-4" />
-                        <span className="hidden sm:inline">Print</span>
+                        <span className="hidden sm:inline">{t("print")}</span>
                     </Button>
                 </div>
 
@@ -191,7 +193,7 @@ export default function UserBooksIssuedPage() {
                         <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/70 px-4 py-2.5 text-[12px] text-red-700 print:hidden">
                             <AlertTriangle className="h-4 w-4 shrink-0" />
                             <span>
-                                You have <span className="font-bold">{overdueCount}</span> overdue book{overdueCount === 1 ? "" : "s"}. Please return {overdueCount === 1 ? "it" : "them"} to the library.
+                                {t("you_have")} <span className="font-bold">{overdueCount}</span> {t("overdue_book").toLowerCase()}{overdueCount === 1 ? "" : "s"}. {t("please_return_to_library")}
                             </span>
                         </div>
                     )}
@@ -201,7 +203,7 @@ export default function UserBooksIssuedPage() {
                         <div className="relative w-full sm:w-64">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search title, book no, author..."
+                                placeholder={t("search_title_book_no_author")}
                                 value={searchTerm}
                                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                                 className="pl-8 h-9 text-sm rounded-[10px]"
@@ -222,10 +224,10 @@ export default function UserBooksIssuedPage() {
 
                             <div className="flex items-center border border-gray-200 rounded-[10px] overflow-hidden">
                                 {[
-                                    { icon: Copy, label: "Copy", action: copyToClipboard },
-                                    { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
-                                    { icon: FileDown, label: "PDF", action: exportToPDF },
-                                    { icon: Printer, label: "Print", action: () => window.print() },
+                                    { icon: Copy, label: t("copy"), action: copyToClipboard },
+                                    { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
+                                    { icon: FileDown, label: t("pdf"), action: exportToPDF },
+                                    { icon: Printer, label: t("print"), action: () => window.print() },
                                 ].map(({ icon: Icon, label, action }, i, arr) => (
                                     <Button
                                         key={label}
@@ -250,13 +252,13 @@ export default function UserBooksIssuedPage() {
                         <Table className="min-w-[860px]">
                             <TableHeader>
                                 <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200">
-                                    <SortHead label="Book Title" field="title" className="w-[28%]" />
-                                    <SortHead label="Book Number" field="bookNumber" className="w-[14%]" />
-                                    <SortHead label="Author" field="author" className="w-[18%]" />
-                                    <SortHead label="Issue Date" field="issueDate" className="w-[13%]" />
-                                    <SortHead label="Due Return Date" field="dueReturnDate" className="w-[13%]" />
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 w-[8%]">Return Date</TableHead>
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center w-[9%]">Status</TableHead>
+                                    <SortHead label={t("book_title")} field="title" className="w-[28%]" />
+                                    <SortHead label={t("book_number")} field="bookNumber" className="w-[14%]" />
+                                    <SortHead label={t("author")} field="author" className="w-[18%]" />
+                                    <SortHead label={t("issue_date")} field="issueDate" className="w-[13%]" />
+                                    <SortHead label={t("due_return_date")} field="dueReturnDate" className="w-[13%]" />
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 w-[8%]">{t("return_date")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center w-[9%]">{t("status")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -265,7 +267,7 @@ export default function UserBooksIssuedPage() {
                                         <TableCell colSpan={7} className="h-32 text-center">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                                <span>Loading...</span>
+                                                <span>{t("loading")}</span>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -274,7 +276,7 @@ export default function UserBooksIssuedPage() {
                                         <TableCell colSpan={7} className="h-32 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <BookOpen className="h-8 w-8 opacity-30" />
-                                                <span className="text-sm">No books issued.</span>
+                                                <span className="text-sm">{t("no_books_issued")}</span>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -322,12 +324,12 @@ export default function UserBooksIssuedPage() {
                         {loading ? (
                             <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                <span>Loading...</span>
+                                <span>{t("loading")}</span>
                             </div>
                         ) : paginated.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
                                 <BookOpen className="h-8 w-8 opacity-30" />
-                                <span className="text-sm">No books issued.</span>
+                                <span className="text-sm">{t("no_books_issued")}</span>
                             </div>
                         ) : (
                             paginated.map((b) => (
@@ -368,15 +370,15 @@ export default function UserBooksIssuedPage() {
                                         )}
                                         <span className="flex items-center gap-1.5">
                                             <Calendar className="h-3 w-3 text-gray-400" />
-                                            Issued: <span className="font-medium text-gray-700">{fmt(b.issueDate)}</span>
+                                            {t("issued")}: <span className="font-medium text-gray-700">{fmt(b.issueDate)}</span>
                                         </span>
                                         <span className="flex items-center gap-1.5">
                                             <Calendar className={cn("h-3 w-3", isOverdue(b) ? "text-red-400" : "text-gray-400")} />
-                                            Due: <span className={cn("font-medium", isOverdue(b) ? "text-red-600" : "text-gray-700")}>{fmt(b.dueReturnDate)}</span>
+                                            {t("due")}: <span className={cn("font-medium", isOverdue(b) ? "text-red-600" : "text-gray-700")}>{fmt(b.dueReturnDate)}</span>
                                         </span>
                                         <span className="flex items-center gap-1.5 col-span-2">
                                             <CalendarCheck className="h-3 w-3 text-gray-400" />
-                                            Returned: <span className="font-medium text-gray-700">{b.returnDate ? fmt(b.returnDate) : "—"}</span>
+                                            {t("returned")}: <span className="font-medium text-gray-700">{b.returnDate ? fmt(b.returnDate) : "—"}</span>
                                         </span>
                                     </div>
                                 </div>
@@ -389,8 +391,8 @@ export default function UserBooksIssuedPage() {
                         <div className="flex items-center justify-between mt-4 gap-3 flex-wrap print:hidden">
                             <span className="text-[12px] text-gray-500">
                                 {sorted.length === 0
-                                    ? "No entries"
-                                    : `Showing ${start} to ${end} of ${sorted.length} entries`}
+                                    ? t("no_entries")
+                                    : `${t("showing")} ${start} ${t("to")} ${end} ${t("of")} ${sorted.length} ${t("entries")}`}
                             </span>
                             <div className="flex items-center gap-1.5">
                                 <Button

@@ -44,6 +44,7 @@ import {
     Calendar, CalendarDays, Clock, MessageSquare, Trash2,
 } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -85,6 +86,7 @@ const statusBadge = (status: string) => (
 );
 
 export default function UserApplyLeavePage() {
+    const { t } = useTranslation();
     const [leaves, setLeaves] = useState<LeaveRecord[]>([]);
     const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
     const [loading, setLoading] = useState(true);
@@ -127,7 +129,7 @@ export default function UserApplyLeavePage() {
             setCurrentPage(res.current_page || page);
         } catch (error) {
             console.error("Error fetching leaves:", error);
-            toast.error("Failed to load leave requests");
+            toast.error(t("failed_to_load_leave_requests"));
         } finally {
             setLoading(false);
         }
@@ -163,7 +165,7 @@ export default function UserApplyLeavePage() {
 
     const handleSubmitLeave = async () => {
         if (!formData.leave_type_id || !formData.leave_from || !formData.leave_to) {
-            toast.error("Please fill in required fields");
+            toast.error(t("please_fill_in_required_fields"));
             return;
         }
         setSubmitting(true);
@@ -175,11 +177,11 @@ export default function UserApplyLeavePage() {
                 half_day: formData.half_day || undefined,
                 reason: formData.reason,
             });
-            toast.success("Leave request submitted successfully");
+            toast.success(t("leave_request_submitted_successfully"));
             setDialogOpen(false);
             fetchData(1);
         } catch (error) {
-            toast.error("Failed to submit leave request");
+            toast.error(t("failed_to_submit_leave_request"));
         } finally {
             setSubmitting(false);
         }
@@ -189,49 +191,49 @@ export default function UserApplyLeavePage() {
         if (!deleteId) return;
         try {
             await api.delete(`/attendance/approve-leave/${deleteId}`);
-            toast.success("Leave request deleted");
+            toast.success(t("leave_request_deleted"));
             setDeleteDialogOpen(false);
             setDeleteId(null);
             fetchData(currentPage);
         } catch (error) {
-            toast.error("Failed to delete leave request");
+            toast.error(t("failed_to_delete_leave_request"));
         }
     };
 
     const exportRows = () =>
         leaves.map((l) => ({
-            "Leave Type": l.leaveType,
-            "Apply Date": fmt(l.applyDate),
-            "From Date": fmt(l.fromDate),
-            "To Date": fmt(l.toDate),
-            "Days": l.days,
-            "Half Day": l.halfDay || "Full Day",
-            "Reason": l.reason,
-            "Status": l.status,
-            "Admin Remark": l.adminRemark,
+            [t("leave_type")]: l.leaveType,
+            [t("apply_date")]: fmt(l.applyDate),
+            [t("from_date")]: fmt(l.fromDate),
+            [t("to_date")]: fmt(l.toDate),
+            [t("days")]: l.days,
+            [t("half_day")]: l.halfDay || t("full_day"),
+            [t("reason")]: l.reason,
+            [t("status")]: l.status,
+            [t("admin_remark")]: l.adminRemark,
         }));
 
     const copyToClipboard = () => {
         const text = exportRows().map((r) => Object.values(r).join("\t")).join("\n");
         navigator.clipboard.writeText(text);
-        toast.success("Copied to clipboard");
+        toast.success(t("copied_to_clipboard"));
     };
 
     const exportToExcel = () => {
         const ws = XLSX.utils.json_to_sheet(exportRows());
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Leaves");
+        XLSX.utils.book_append_sheet(wb, ws, t("leaves"));
         XLSX.writeFile(wb, "leave-requests.xlsx");
     };
 
     const exportToPDF = () => {
         const doc = new jsPDF("l");
-        doc.text("Leave Requests", 14, 16);
+        doc.text(t("leave_requests"), 14, 16);
         autoTable(doc, {
-            head: [["Leave Type", "Apply", "From", "To", "Days", "Half Day", "Status"]],
+            head: [[t("leave_type"), t("apply"), t("from"), t("to"), t("days"), t("half_day"), t("status")]],
             body: leaves.map((l) => [
                 l.leaveType, fmt(l.applyDate), fmt(l.fromDate), fmt(l.toDate),
-                String(l.days), l.halfDay || "Full Day", l.status,
+                String(l.days), l.halfDay || t("full_day"), l.status,
             ]),
             startY: 22,
             styles: { fontSize: 8 },
@@ -255,10 +257,10 @@ export default function UserApplyLeavePage() {
                             <CalendarCheck className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Apply Leave</h1>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("apply_leave")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
                                 {loading
-                                    ? "Loading…"
+                                    ? t("loading")
                                     : `${totalEntries} request${totalEntries === 1 ? "" : "s"}${pendingCount ? ` · ${pendingCount} pending` : ""}`}
                             </p>
                         </div>
@@ -268,7 +270,7 @@ export default function UserApplyLeavePage() {
                         className="h-9 shrink-0 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95"
                     >
                         <Plus className="h-4 w-4" />
-                        <span className="hidden sm:inline">Apply Leave</span>
+                        <span className="hidden sm:inline">{t("apply_leave")}</span>
                     </Button>
                 </div>
 
@@ -278,7 +280,7 @@ export default function UserApplyLeavePage() {
                         <div className="relative w-full sm:w-64">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search type, reason, date..."
+                                placeholder={t("search")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
@@ -300,10 +302,10 @@ export default function UserApplyLeavePage() {
 
                             <div className="flex items-center border border-gray-200 rounded-[10px] overflow-hidden">
                                 {[
-                                    { icon: Copy, label: "Copy", action: copyToClipboard },
-                                    { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
-                                    { icon: FileDown, label: "PDF", action: exportToPDF },
-                                    { icon: Printer, label: "Print", action: () => window.print() },
+                                    { icon: Copy, label: t("copy"), action: copyToClipboard },
+                                    { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
+                                    { icon: FileDown, label: t("pdf"), action: exportToPDF },
+                                    { icon: Printer, label: t("print"), action: () => window.print() },
                                 ].map(({ icon: Icon, label, action }, i, arr) => (
                                     <Button
                                         key={label}
@@ -328,14 +330,14 @@ export default function UserApplyLeavePage() {
                         <Table className="min-w-[1000px]">
                             <TableHeader>
                                 <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200 whitespace-nowrap">
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Leave Type</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Apply Date</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">From Date</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">To Date</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Days</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700">Reason</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Status</TableHead>
-                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">Action</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("leave_type")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("apply_date")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("from_date")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("to_date")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">{t("days")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700">{t("reason")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">{t("status")}</TableHead>
+                                    <TableHead className="py-3 px-4 font-bold text-gray-700 text-center">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -344,7 +346,7 @@ export default function UserApplyLeavePage() {
                                         <TableCell colSpan={8} className="h-32 text-center">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                                <span>Loading leave requests...</span>
+                                                <span>{t("loading")}</span>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -353,7 +355,7 @@ export default function UserApplyLeavePage() {
                                         <TableCell colSpan={8} className="h-32 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <CalendarDays className="h-8 w-8 opacity-30" />
-                                                <span className="text-sm">No leave requests found.</span>
+                                                <span className="text-sm">{t("no_leave_requests_found")}</span>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -379,7 +381,7 @@ export default function UserApplyLeavePage() {
                                                         <Button
                                                             size="icon"
                                                             onClick={() => setSelected(item)}
-                                                            title="View"
+                                                            title={t("view")}
                                                             className="h-7 w-7 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity"
                                                         >
                                                             <Eye className="h-3.5 w-3.5" />
@@ -387,7 +389,7 @@ export default function UserApplyLeavePage() {
                                                         {canDelete && (
                                                             <Button
                                                                 onClick={() => { setDeleteId(item.id); setDeleteDialogOpen(true); }}
-                                                                title="Delete"
+                                                                title={t("delete")}
                                                                 className="h-7 w-7 rounded-[10px] bg-red-50 text-red-600 hover:bg-red-100 shadow-none transition-colors active:scale-95"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
@@ -408,12 +410,12 @@ export default function UserApplyLeavePage() {
                         {loading ? (
                             <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                <span>Loading...</span>
+                                <span>{t("loading")}</span>
                             </div>
                         ) : leaves.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
                                 <CalendarDays className="h-8 w-8 opacity-30" />
-                                <span className="text-sm">No leave requests found.</span>
+                                <span className="text-sm">{t("no_leave_requests_found")}</span>
                             </div>
                         ) : (
                             leaves.map((item, idx) => {
@@ -457,7 +459,7 @@ export default function UserApplyLeavePage() {
                                         {item.adminRemark && (
                                             <div className="mt-2 flex items-start gap-1.5 text-[11px] text-gray-500 bg-indigo-50/50 rounded-lg px-2.5 py-2">
                                                 <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-indigo-400 shrink-0" />
-                                                <span><span className="font-semibold text-gray-600">Admin:</span> {item.adminRemark}</span>
+                                                <span><span className="font-semibold text-gray-600">{t("admin")}:</span> {item.adminRemark}</span>
                                             </div>
                                         )}
 
@@ -467,7 +469,7 @@ export default function UserApplyLeavePage() {
                                                 onClick={() => setSelected(item)}
                                                 className="h-7 px-3 gap-1 text-[11px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90"
                                             >
-                                                <Eye className="h-3.5 w-3.5" /> View
+                                                <Eye className="h-3.5 w-3.5" /> {t("view")}
                                             </Button>
                                             {canDelete && (
                                                 <Button
@@ -475,7 +477,7 @@ export default function UserApplyLeavePage() {
                                                     onClick={() => { setDeleteId(item.id); setDeleteDialogOpen(true); }}
                                                     className="h-7 px-3 gap-1 text-[11px] rounded-[10px] bg-red-50 text-red-600 hover:bg-red-100 shadow-none"
                                                 >
-                                                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                                                    <Trash2 className="h-3.5 w-3.5" /> {t("delete")}
                                                 </Button>
                                             )}
                                         </div>
@@ -490,8 +492,8 @@ export default function UserApplyLeavePage() {
                         <div className="flex items-center justify-between mt-4 gap-3 flex-wrap print:hidden">
                             <span className="text-[12px] text-gray-500">
                                 {totalEntries === 0
-                                    ? "No entries"
-                                    : `Showing ${startIndex + 1} to ${Math.min(startIndex + sizeNum, totalEntries)} of ${totalEntries} entries`}
+                                    ? t("no_entries")
+                                    : `${t("showing")} ${startIndex + 1} ${t("to")} ${Math.min(startIndex + sizeNum, totalEntries)} ${t("of")} ${totalEntries} ${t("entries")}`}
                             </span>
 
                             {totalPages > 1 && (
@@ -559,7 +561,7 @@ export default function UserApplyLeavePage() {
                                         <DialogTitle className="text-[15px] font-bold text-gray-800">{selected.leaveType}</DialogTitle>
                                         <DialogDescription className="text-[12px] text-gray-500">
                                             {selected.days} day{selected.days === 1 ? "" : "s"}
-                                            {selected.halfDay ? ` · ${selected.halfDay}` : " · Full Day"}
+                                            {selected.halfDay ? ` · ${selected.halfDay}` : ` · ${t("full_day")}`}
                                         </DialogDescription>
                                     </div>
                                 </div>
@@ -568,35 +570,35 @@ export default function UserApplyLeavePage() {
                             <div className="grid grid-cols-2 gap-3 text-[12px] text-gray-500 pt-1">
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    <span>Apply: <span className="font-medium text-gray-700">{fmt(selected.applyDate)}</span></span>
+                                    <span>{t("apply")}: <span className="font-medium text-gray-700">{fmt(selected.applyDate)}</span></span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Clock className="h-3.5 w-3.5" />
-                                    <span>Status: {statusBadge(selected.status)}</span>
+                                    <span>{t("status")}: {statusBadge(selected.status)}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    <span>From: <span className="font-medium text-gray-700">{fmt(selected.fromDate)}</span></span>
+                                    <span>{t("from")}: <span className="font-medium text-gray-700">{fmt(selected.fromDate)}</span></span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    <span>To: <span className="font-medium text-gray-700">{fmt(selected.toDate)}</span></span>
+                                    <span>{t("to")}: <span className="font-medium text-gray-700">{fmt(selected.toDate)}</span></span>
                                 </div>
                             </div>
 
                             <div className="pt-1">
-                                <p className="text-[12px] font-semibold text-gray-500 mb-1">Reason</p>
+                                <p className="text-[12px] font-semibold text-gray-500 mb-1">{t("reason")}</p>
                                 {selected.reason ? (
                                     <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap">{selected.reason}</p>
                                 ) : (
-                                    <p className="text-[13px] text-gray-400 italic">No reason provided.</p>
+                                    <p className="text-[13px] text-gray-400 italic">{t("no_reason_provided")}</p>
                                 )}
                             </div>
 
                             {selected.adminRemark && (
                                 <div className="rounded-lg bg-indigo-50/60 border border-indigo-100 px-3 py-2.5">
                                     <p className="text-[12px] font-semibold text-indigo-700 mb-0.5 flex items-center gap-1.5">
-                                        <MessageSquare className="h-3.5 w-3.5" /> Admin Remark
+                                        <MessageSquare className="h-3.5 w-3.5" /> {t("admin_remark")}
                                     </p>
                                     <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap">{selected.adminRemark}</p>
                                 </div>
@@ -607,7 +609,7 @@ export default function UserApplyLeavePage() {
                                     onClick={() => setSelected(null)}
                                     className="h-9 px-4 text-[13px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity"
                                 >
-                                    Close
+                                    {t("close")}
                                 </Button>
                             </div>
                         </>
@@ -619,20 +621,20 @@ export default function UserApplyLeavePage() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle className="text-gray-800 text-base font-bold">Apply Leave</DialogTitle>
+                        <DialogTitle className="text-gray-800 text-base font-bold">{t("apply_leave")}</DialogTitle>
                         <DialogDescription className="text-gray-500 text-xs">
-                            Fill in the details to submit a leave request
+                            {t("fill_in_the_details_to_submit_a_leave_request")}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <div className="space-y-2">
-                            <Label className="text-xs font-medium text-gray-600">Leave Type <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-medium text-gray-600">{t("leave_type")} <span className="text-red-500">*</span></Label>
                             <Select
                                 value={formData.leave_type_id}
                                 onValueChange={(val) => setFormData(prev => ({ ...prev, leave_type_id: val }))}
                             >
                                 <SelectTrigger className="h-9 text-xs border-gray-200 rounded-[10px]">
-                                    <SelectValue placeholder="Select leave type" />
+                                    <SelectValue placeholder={t("select_leave_type")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {leaveTypes.map(lt => (
@@ -643,7 +645,7 @@ export default function UserApplyLeavePage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-xs font-medium text-gray-600">From Date <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-medium text-gray-600">{t("from_date")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="date"
                                     value={formData.leave_from}
@@ -652,7 +654,7 @@ export default function UserApplyLeavePage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-medium text-gray-600">To Date <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-medium text-gray-600">{t("to_date")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="date"
                                     value={formData.leave_to}
@@ -663,27 +665,27 @@ export default function UserApplyLeavePage() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-medium text-gray-600">Half Day</Label>
+                            <Label className="text-xs font-medium text-gray-600">{t("half_day")}</Label>
                             <Select
                                 value={formData.half_day || "none"}
                                 onValueChange={(val) => setFormData(prev => ({ ...prev, half_day: val === "none" ? "" : val }))}
                             >
                                 <SelectTrigger className="h-9 text-xs border-gray-200 rounded-[10px]">
-                                    <SelectValue placeholder="None (Full day)" />
+                                    <SelectValue placeholder={t("none_full_day")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="none">None (Full day)</SelectItem>
-                                    <SelectItem value="First Half">First Half</SelectItem>
-                                    <SelectItem value="Second Half">Second Half</SelectItem>
+                                    <SelectItem value="none">{t("none_full_day")}</SelectItem>
+                                    <SelectItem value="First Half">{t("first_half")}</SelectItem>
+                                    <SelectItem value="Second Half">{t("second_half")}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-medium text-gray-600">Reason</Label>
+                            <Label className="text-xs font-medium text-gray-600">{t("reason")}</Label>
                             <Textarea
                                 value={formData.reason}
                                 onChange={(e) => setFormData(prev => ({ ...prev, reason: e.target.value }))}
-                                placeholder="Enter reason for leave..."
+                                placeholder={t("enter_reason_for_leave")}
                                 className="min-h-[80px] text-xs border-gray-200 rounded-[10px]"
                             />
                         </div>
@@ -693,7 +695,7 @@ export default function UserApplyLeavePage() {
                                 onClick={() => setDialogOpen(false)}
                                 className="h-9 px-4 text-xs border-gray-200 text-gray-600 rounded-[10px]"
                             >
-                                Cancel
+                                {t("cancel")}
                             </Button>
                             <Button
                                 onClick={handleSubmitLeave}
@@ -701,8 +703,8 @@ export default function UserApplyLeavePage() {
                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white h-9 px-5 text-xs font-medium rounded-[10px] shadow-sm transition-opacity disabled:opacity-50"
                             >
                                 {submitting ? (
-                                    <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Submitting...</>
-                                ) : "Submit"}
+                                    <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />{t("submitting")}</>
+                                ) : t("submit")}
                             </Button>
                         </div>
                     </div>
@@ -713,18 +715,18 @@ export default function UserApplyLeavePage() {
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-gray-800 text-base">Delete Leave Request</AlertDialogTitle>
+                        <AlertDialogTitle className="text-gray-800 text-base">{t("delete_leave_request")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-gray-500 text-xs">
-                            Are you sure you want to delete this leave request? This action cannot be undone.
+                            {t("are_you_sure_you_want_to_delete_this_leave_request_this_action_cannot_be_undone")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="h-9 px-4 text-xs border-gray-200 rounded-[10px]">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="h-9 px-4 text-xs border-gray-200 rounded-[10px]">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDelete}
                             className="h-9 px-4 text-xs bg-red-600 hover:bg-red-700 text-white rounded-[10px]"
                         >
-                            Delete
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

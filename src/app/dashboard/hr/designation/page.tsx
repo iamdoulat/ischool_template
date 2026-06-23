@@ -34,7 +34,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -61,7 +62,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function DesignationPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [designations, setDesignations] = useState<Designation[]>([]);
     const [loading, setLoading] = useState(true);
@@ -80,7 +82,7 @@ export default function DesignationPage() {
             setDesignations(response.data.data);
         } catch (error) {
             console.error("Error fetching designations:", error);
-            toast("error", "Failed to load designations");
+            tt.error("failed_to_load_designations");
         } finally {
             setLoading(false);
         }
@@ -92,23 +94,23 @@ export default function DesignationPage() {
 
     const handleSubmit = async () => {
         if (!name.trim()) {
-            toast("error", "Name is required");
+            tt.error("name_is_required");
             return;
         }
 
         try {
             if (isEditing && currentId) {
                 await api.put(`/hr/designation/${currentId}`, { name });
-                toast("success", "Designation updated successfully");
+                tt.success("designation_updated_successfully");
             } else {
                 await api.post("/hr/designation", { name });
-                toast("success", "Designation created successfully");
+                tt.success("designation_created_successfully");
             }
             resetForm();
             fetchData();
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Failed to save designation");
+            tt.error(err.response?.data?.message || "failed_to_save_designation");
         }
     };
 
@@ -119,13 +121,13 @@ export default function DesignationPage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this designation?")) return;
+        if (!confirm(t("are_you_sure_delete_designation"))) return;
         try {
             await api.delete(`/hr/designation/${id}`);
-            toast("success", "Designation deleted successfully");
+            tt.success("designation_deleted_successfully");
             fetchData();
         } catch (error) {
-            toast("error", "Failed to delete designation");
+            tt.error("failed_to_delete_designation");
         }
     };
 
@@ -147,15 +149,15 @@ export default function DesignationPage() {
     const exportToExcel = () => {
         const ws = XLSX.utils.json_to_sheet(designations.map(d => ({ Designation: d.name })));
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Designations");
+        XLSX.utils.book_append_sheet(wb, ws, t("designations"));
         XLSX.writeFile(wb, "designations.xlsx");
     };
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Designation List", 14, 15);
+        doc.text(t("designation_list"), 14, 15);
         autoTable(doc, {
-            head: [['No', 'Designation']],
+            head: [[t("no"), t("designation")]],
             body: designations.map((d, idx) => [idx + 1, d.name]),
             startY: 20,
         });
@@ -165,7 +167,7 @@ export default function DesignationPage() {
     const copyToClipboard = () => {
         const text = designations.map(d => d.name).join('\n');
         navigator.clipboard.writeText(text);
-        toast("success", "Data copied to clipboard");
+        tt.success("data_copied_to_clipboard");
     };
 
     return (
@@ -179,22 +181,22 @@ export default function DesignationPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {isEditing ? "Edit Designation" : "Add Designation"}
+                                {isEditing ? t("edit_designation") : t("add_designation")}
                             </CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Manage staff designations</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("manage_staff_designations")}</p>
                         </div>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                    Name <span className="text-red-500">*</span>
+                                    {t("name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500 rounded-lg"
-                                    placeholder="e.g. Faculty"
+                                    placeholder={t("eg_faculty")}
                                 />
                             </div>
 
@@ -205,7 +207,7 @@ export default function DesignationPage() {
                                         variant="outline"
                                         className="px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
                                     >
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button
@@ -213,7 +215,7 @@ export default function DesignationPage() {
                                     variant="gradient"
                                     className="px-8 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5"
                                 >
-                                    {isEditing ? "Update" : "Save"}
+                                    {isEditing ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </div>
@@ -229,15 +231,15 @@ export default function DesignationPage() {
                             <BadgeCheck className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Designation List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{filteredDesignations.length} designation(s)</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("designation_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_designations", { count: filteredDesignations.length })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
@@ -287,8 +289,8 @@ export default function DesignationPage() {
                             <Table>
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="hover:bg-transparent border-gray-100">
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Designation</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("designation")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -296,7 +298,7 @@ export default function DesignationPage() {
                                         <TableSkeleton rows={5} cols={2} />
                                     ) : paginatedData.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={2} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</TableCell>
+                                            <TableCell colSpan={2} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell>
                                         </TableRow>
                                     ) : (
                                         paginatedData.map((des) => (

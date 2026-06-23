@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface OnlineCourse {
     id: number;
@@ -43,6 +44,7 @@ interface OnlineCourse {
 }
 
 export default function UserOnlineCoursePage() {
+    const { t } = useTranslation();
     const [data, setData] = useState<OnlineCourse[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -102,8 +104,8 @@ export default function UserOnlineCoursePage() {
                         <Monitor className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[16px] font-bold text-white tracking-tight leading-none">Online Courses</h1>
-                        <p className="text-[11px] text-white/80 mt-1">{totalEntries} course{totalEntries === 1 ? "" : "s"} available</p>
+                        <h1 className="text-[16px] font-bold text-white tracking-tight leading-none">{t("online_course")}</h1>
+                        <p className="text-[11px] text-white/80 mt-1">{totalEntries} {t("courses_available")}</p>
                     </div>
                 </div>
 
@@ -113,7 +115,7 @@ export default function UserOnlineCoursePage() {
                         <div className="relative w-full md:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Search courses..."
+                                placeholder={t("search")}
                                 value={searchTerm}
                                 onChange={(e) => {
                                     setSearchTerm(e.target.value);
@@ -147,6 +149,7 @@ export default function UserOnlineCoursePage() {
                                         key={i}
                                         variant="ghost"
                                         size="icon"
+                                        title={[t("copy"), t("excel"), t("pdf"), t("print"), t("columns")][i]}
                                         className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all"
                                     >
                                         <Icon className="h-3.5 w-3.5" />
@@ -177,7 +180,7 @@ export default function UserOnlineCoursePage() {
                     ) : data.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                             <Monitor className="h-12 w-12 opacity-30 mb-3" />
-                            <p className="font-bold uppercase text-[11px] tracking-widest">No courses available</p>
+                            <p className="font-bold uppercase text-[11px] tracking-widest">{t("no_courses_found")}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -219,26 +222,26 @@ export default function UserOnlineCoursePage() {
                                             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-50 text-amber-500">
                                                 <Star className="h-3 w-3" />
                                             </span>
-                                            <span className="truncate">{course.instructor_name || "Instructor"}</span>
+                                            <span className="truncate">{course.instructor_name || t("instructor")}</span>
                                         </div>
 
                                         {/* Stats */}
                                         <div className="grid grid-cols-2 gap-1.5 mb-3 mt-auto">
                                             <div className="flex items-center gap-1 text-[10px] text-gray-500">
                                                 <BookOpen className="h-3 w-3 text-indigo-400 shrink-0" />
-                                                {course.total_lessons} Lessons
+                                                {course.total_lessons} {t("lessons")}
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-gray-500">
                                                 <Clock className="h-3 w-3 text-indigo-400 shrink-0" />
-                                                {course.total_hours || "N/A"}
+                                                {course.total_hours || t("not_set")}
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-gray-500">
                                                 <FileText className="h-3 w-3 text-indigo-400 shrink-0" />
-                                                {course.total_exams} Exams
+                                                {course.total_exams} {t("exams")}
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-gray-500">
                                                 <Award className="h-3 w-3 text-indigo-400 shrink-0" />
-                                                {course.total_quizzes} Quizzes
+                                                {course.total_quizzes} {t("quizzes")}
                                             </div>
                                         </div>
 
@@ -258,7 +261,7 @@ export default function UserOnlineCoursePage() {
                                                 onClick={() => openDetail(course)}
                                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-3.5 h-8 text-[10px] font-bold rounded-lg shadow-sm transition-all active:scale-95 border-0"
                                             >
-                                                View Details
+                                                {t("view_details")}
                                             </Button>
                                         </div>
                                     </div>
@@ -270,9 +273,9 @@ export default function UserOnlineCoursePage() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
-                            Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                            {Math.min(startIndex + parseInt(itemsPerPage, 10), totalEntries)} of{" "}
-                            {totalEntries} entries
+                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
+                            {Math.min(startIndex + parseInt(itemsPerPage, 10), totalEntries)} {t("of")}{" "}
+                            {totalEntries} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (
@@ -319,7 +322,7 @@ export default function UserOnlineCoursePage() {
                     <div className="bg-gradient-to-r from-[#6366f1] to-[#FF9800] text-white px-5 py-4 flex justify-between items-center">
                         <DialogHeader>
                             <DialogTitle className="text-white text-sm font-semibold tracking-tight pr-6">
-                                {selectedCourse?.title || "Course Details"}
+                                {selectedCourse?.title || t("course_details")}
                             </DialogTitle>
                         </DialogHeader>
                         <button
@@ -369,10 +372,10 @@ export default function UserOnlineCoursePage() {
                                 {/* Stats Bar */}
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                     {[
-                                        { label: "Lessons", value: selectedCourse.total_lessons, icon: BookOpen },
-                                        { label: "Hours", value: selectedCourse.total_hours || "N/A", icon: Clock },
-                                        { label: "Exams", value: selectedCourse.total_exams, icon: FileText },
-                                        { label: "Quizzes", value: selectedCourse.total_quizzes, icon: Award },
+                                        { label: t("lessons"), value: selectedCourse.total_lessons, icon: BookOpen },
+                                        { label: t("hours"), value: selectedCourse.total_hours || t("not_set"), icon: Clock },
+                                        { label: t("exams"), value: selectedCourse.total_exams, icon: FileText },
+                                        { label: t("quizzes"), value: selectedCourse.total_quizzes, icon: Award },
                                     ].map((stat, i) => (
                                         <div key={i} className="rounded-lg border border-gray-100 bg-gradient-to-br from-[#FF9800]/5 to-[#6366F1]/5 p-3 flex flex-col items-center text-center">
                                             <stat.icon className="h-4 w-4 text-[#6366f1] mb-1" />
@@ -398,7 +401,7 @@ export default function UserOnlineCoursePage() {
                                 {selectedCourse.outline && selectedCourse.outline.length > 0 && (
                                     <div>
                                         <h3 className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">
-                                            Course Outline
+                                            {t("course_outline")}
                                         </h3>
                                         <div className="space-y-1.5">
                                             {selectedCourse.outline.map((item, idx) => (
@@ -412,7 +415,7 @@ export default function UserOnlineCoursePage() {
                                                     </span>
                                                     {item.video_url && (
                                                         <span className="text-[10px] text-indigo-500 font-medium">
-                                                            Video
+                                                            {t("video")}
                                                         </span>
                                                     )}
                                                 </div>
@@ -425,7 +428,7 @@ export default function UserOnlineCoursePage() {
                                 {selectedCourse.live_classes && selectedCourse.live_classes.length > 0 && (
                                     <div>
                                         <h3 className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">
-                                            Live Classes
+                                            {t("live_classes")}
                                         </h3>
                                         <div className="space-y-1.5">
                                             {selectedCourse.live_classes.map((item, idx) => (
@@ -444,7 +447,7 @@ export default function UserOnlineCoursePage() {
                                                             rel="noopener noreferrer"
                                                             className="text-[10px] text-[#6366f1] font-medium hover:underline"
                                                         >
-                                                            Join
+                                                            {t("join")}
                                                         </a>
                                                     )}
                                                 </div>
@@ -457,7 +460,7 @@ export default function UserOnlineCoursePage() {
                                 {selectedCourse.quizzes && selectedCourse.quizzes.length > 0 && (
                                     <div>
                                         <h3 className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">
-                                            Quizzes
+                                            {t("quizzes")}
                                         </h3>
                                         <div className="space-y-2">
                                             {selectedCourse.quizzes.map((item, idx) => (
@@ -489,7 +492,7 @@ export default function UserOnlineCoursePage() {
                                                                 ))}
                                                             </div>
                                                             <div className="text-[10px] text-gray-400 mt-1">
-                                                                {item.points} pts
+                                                                {item.points} {t("pts")}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -516,12 +519,12 @@ export default function UserOnlineCoursePage() {
                         </div>
                         <Button
                             onClick={() => {
-                                toast.success("Enrolled successfully! Redirecting to course...");
+                                toast.success(t("enrolled_successfully"));
                                 setDetailOpen(false);
                             }}
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-6 h-9 text-xs font-bold rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.25)] transition-all active:scale-95 border-0"
                         >
-                            Apply Now
+                            {t("apply_now")}
                         </Button>
                     </div>
                 </DialogContent>

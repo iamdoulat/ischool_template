@@ -36,7 +36,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -70,7 +71,8 @@ function SkeletonRows({ rows = 6, cols }: { rows?: number; cols: number }) {
 }
 
 export default function HostelMasterPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [hostels, setHostels] = useState<HostelMaster[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
@@ -85,7 +87,6 @@ export default function HostelMasterPage() {
         description: "",
     });
 
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(50);
 
@@ -95,7 +96,7 @@ export default function HostelMasterPage() {
             const res = await api.get("/hostels");
             setHostels(res.data.data || []);
         } catch (error) {
-            toast("error", "Failed to fetch hostels");
+            tt.error("failed_to_fetch_hostels");
         } finally {
             setFetching(false);
         }
@@ -107,7 +108,7 @@ export default function HostelMasterPage() {
 
     const handleSave = async () => {
         if (!form.name || !form.type) {
-            toast("error", "Please fill required fields");
+            tt.error("please_fill_required_fields");
             return;
         }
 
@@ -119,16 +120,16 @@ export default function HostelMasterPage() {
 
         try {
             if (form.id) {
-                await api.put(`/hostels/${form.id}`, submitData);
-                toast("success", "Hostel updated successfully");
+                await api.put('/hostels/' + form.id, submitData);
+                tt.success("hostel_updated_successfully");
             } else {
                 await api.post("/hostels", submitData);
-                toast("success", "Hostel created successfully");
+                tt.success("hostel_created_successfully");
             }
             setForm({ id: null, name: "", type: "", address: "", intake: "", description: "" });
             fetchHostels();
         } catch (error) {
-            toast("error", "Failed to save hostel");
+            tt.error("failed_to_save_hostel");
         } finally {
             setLoading(false);
         }
@@ -147,13 +148,13 @@ export default function HostelMasterPage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this hostel?")) return;
+        if (!confirm(t("are_you_sure_delete_hostel"))) return;
         try {
-            await api.delete(`/hostels/${id}`);
-            toast("success", "Hostel deleted successfully");
+            await api.delete('/hostels/' + id);
+            tt.success("hostel_deleted_successfully");
             fetchHostels();
         } catch (error) {
-            toast("error", "Failed to delete hostel");
+            tt.error("failed_to_delete_hostel");
         }
     };
 
@@ -162,17 +163,16 @@ export default function HostelMasterPage() {
         h.type.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Pagination logic
     const totalPages = Math.ceil(filteredHostels.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedHostels = filteredHostels.slice(startIndex, startIndex + itemsPerPage);
 
     const exportToExcel = () => {
         const data = filteredHostels.map(h => ({
-            'Hostel Name': h.name,
-            'Type': h.type,
-            'Address': h.address,
-            'Intake': h.intake
+            [t("hostel_name")]: h.name,
+            [t("type")]: h.type,
+            [t("address")]: h.address,
+            [t("intake")]: h.intake
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -182,9 +182,9 @@ export default function HostelMasterPage() {
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Hostel List", 14, 15);
+        doc.text(t("hostel_list"), 14, 15);
         autoTable(doc, {
-            head: [['Hostel Name', 'Type', 'Address', 'Intake']],
+            head: [[t("hostel_name"), t("type"), t("address"), t("intake")]],
             body: filteredHostels.map(h => [h.name, h.type, h.address, h.intake]),
             startY: 20,
         });
@@ -192,9 +192,9 @@ export default function HostelMasterPage() {
     };
 
     const copyToClipboard = () => {
-        const text = filteredHostels.map(h => `${h.name}\t${h.type}\t${h.address}\t${h.intake}`).join('\n');
+        const text = filteredHostels.map(h => h.name + '\t' + h.type + '\t' + h.address + '\t' + h.intake).join('\n');
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     return (
@@ -208,14 +208,14 @@ export default function HostelMasterPage() {
                                 <Building2 className="h-5 w-5" />
                             </span>
                             <div className="min-w-0">
-                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{form.id ? "Edit Hostel" : "Add Hostel"}</h2>
-                                <p className="text-[11px] text-gray-500">Hostel master record</p>
+                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{form.id ? t("edit_hostel") : t("add_hostel")}</h2>
+                                <p className="text-[11px] text-gray-500">{t("hostel_master_record")}</p>
                             </div>
                         </div>
                         <div className="p-4 space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Hostel Name <span className="text-red-500 font-bold">*</span>
+                                    {t("hostel_name")} <span className="text-red-500 font-bold">*</span>
                                 </Label>
                                 <Input
                                     value={form.name}
@@ -227,22 +227,22 @@ export default function HostelMasterPage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Type <span className="text-red-500 font-bold">*</span>
+                                    {t("type")} <span className="text-red-500 font-bold">*</span>
                                 </Label>
                                 <Select value={form.type} onValueChange={(val) => setForm({ ...form, type: val })}>
                                     <SelectTrigger className="h-8 border-gray-200 text-[11px] focus:ring-indigo-500 rounded shadow-none">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="boys">Boys</SelectItem>
-                                        <SelectItem value="girls">Girls</SelectItem>
-                                        <SelectItem value="combine">Combine</SelectItem>
+                                        <SelectItem value="boys">{t("boys")}</SelectItem>
+                                        <SelectItem value="girls">{t("girls")}</SelectItem>
+                                        <SelectItem value="combine">{t("combine")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Address</Label>
+                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("address")}</Label>
                                 <Input
                                     value={form.address}
                                     onChange={(e) => setForm({ ...form, address: e.target.value })}
@@ -252,7 +252,7 @@ export default function HostelMasterPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Intake</Label>
+                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("intake")}</Label>
                                 <Input
                                     value={form.intake}
                                     onChange={(e) => setForm({ ...form, intake: e.target.value })}
@@ -262,7 +262,7 @@ export default function HostelMasterPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Description</Label>
+                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("description")}</Label>
                                 <Textarea
                                     value={form.description}
                                     onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -278,7 +278,7 @@ export default function HostelMasterPage() {
                                     variant="gradient"
                                     className="px-8 h-10 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg min-w-[100px]"
                                 >
-                                    {loading ? "Saving..." : "Save"}
+                                    {loading ? t("saving") : t("save")}
                                 </Button>
                             </div>
                         </div>
@@ -293,8 +293,8 @@ export default function HostelMasterPage() {
                                 <Building2 className="h-5 w-5" />
                             </span>
                             <div className="min-w-0">
-                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Hostel List</h2>
-                                <p className="text-[11px] text-gray-500">{filteredHostels.length} hostel{filteredHostels.length === 1 ? "" : "s"}</p>
+                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{t("hostel_list")}</h2>
+                                <p className="text-[11px] text-gray-500">{t("x_hostels", { count: filteredHostels.length })}</p>
                             </div>
                         </div>
                         <div className="p-4 space-y-4">
@@ -303,7 +303,7 @@ export default function HostelMasterPage() {
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
@@ -350,18 +350,18 @@ export default function HostelMasterPage() {
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                            <div className="flex items-center gap-1 cursor-pointer">Hostel Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                            <div className="flex items-center gap-1 cursor-pointer">{t("hostel_name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                            <div className="flex items-center gap-1 cursor-pointer">Type <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                            <div className="flex items-center gap-1 cursor-pointer">{t("type")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                            <div className="flex items-center gap-1 cursor-pointer">Address <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                            <div className="flex items-center gap-1 cursor-pointer">{t("address")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1 cursor-pointer">Intake <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                            <div className="flex items-center justify-end gap-1 cursor-pointer">{t("intake")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -369,7 +369,7 @@ export default function HostelMasterPage() {
                                         <SkeletonRows cols={5} />
                                     ) : paginatedHostels.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="text-center py-10 text-gray-400 italic">No hostels found</TableCell>
+                                            <TableCell colSpan={5} className="text-center py-10 text-gray-400 italic">{t("no_hostels_found")}</TableCell>
                                         </TableRow>
                                     ) : (
                                         paginatedHostels.map((hostel) => (
@@ -399,7 +399,7 @@ export default function HostelMasterPage() {
                         {totalPages > 1 && (
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-4 border-t border-gray-100">
                                 <div>
-                                    Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredHostels.length)} of {filteredHostels.length} entries
+                                    {t("showing_x_to_y_of_z", { from: startIndex + 1, to: Math.min(startIndex + itemsPerPage, filteredHostels.length), total: filteredHostels.length })}
                                 </div>
                                 <div className="flex gap-1.5 items-center">
                                     <Button

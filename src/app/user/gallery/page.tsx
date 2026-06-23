@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useImageUrl } from "@/lib/image-url";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Dialog, DialogContent,
 } from "@/components/ui/dialog";
@@ -35,6 +36,7 @@ function GridSkeleton() {
 
 export default function UserGalleryPage() {
     const resolvedGetImageUrl = useImageUrl();
+    const { t } = useTranslation();
     const resolveImg = (path: string | null) => {
         if (!path) return null;
         if (path.startsWith("http://") || path.startsWith("https://")) return path;
@@ -51,7 +53,7 @@ export default function UserGalleryPage() {
                 const res = await api.get("front-cms/gallery");
                 setGallery(res.data?.data ?? []);
             } catch {
-                toast.error("Failed to load gallery");
+                toast.error(t("failed_to_load_gallery"));
             } finally {
                 setLoading(false);
             }
@@ -68,8 +70,8 @@ export default function UserGalleryPage() {
                             <Images className="h-5 w-5" />
                         </span>
                         <div>
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Photo Gallery</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">School photo albums and memories</p>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("gallery")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("school_photo_albums_and_memories")}</p>
                         </div>
                     </div>
                 </div>
@@ -80,7 +82,7 @@ export default function UserGalleryPage() {
                     ) : gallery.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-3 py-16 text-gray-400">
                             <FolderOpen className="h-12 w-12 opacity-30" />
-                            <p className="text-[12px] font-semibold">No photos found.</p>
+                            <p className="text-[12px] font-semibold">{t("no_photos_found")}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">

@@ -25,7 +25,8 @@ import { cn } from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     Dialog,
     DialogContent,
@@ -90,7 +91,8 @@ export default function OfflineBankPaymentsPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [rejectionReason, setRejectionReason] = useState("");
     const [processing, setProcessing] = useState(false);
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const { symbol, formatCurrency } = useCurrencyFormatter();
 
     // Pagination states
@@ -115,7 +117,7 @@ export default function OfflineBankPaymentsPage() {
             setPayments(res.data.data || []);
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Failed to fetch payments");
+            tt.error(err.response?.data?.message || "failed_to_fetch_payments");
         } finally {
             setLoading(false);
         }
@@ -126,12 +128,12 @@ export default function OfflineBankPaymentsPage() {
         setProcessing(true);
         try {
             await api.post(`/fee-collection/offline-payments/${selectedPayment.id}/approve`);
-            toast("success", "Payment approved and applied to student records");
+            tt.success("payment_approved_and_applied_to_student_records");
             setIsDetailsOpen(false);
             fetchPayments();
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Failed to approve payment");
+            tt.error(err.response?.data?.message || "failed_to_approve_payment");
         } finally {
             setProcessing(false);
         }
@@ -139,7 +141,7 @@ export default function OfflineBankPaymentsPage() {
 
     const handleReject = async () => {
         if (!selectedPayment || !rejectionReason) {
-            toast("error", "Please provide a reason for rejection");
+            tt.error("please_provide_a_reason_for_rejection");
             return;
         }
         setProcessing(true);
@@ -147,12 +149,12 @@ export default function OfflineBankPaymentsPage() {
             await api.post(`/fee-collection/offline-payments/${selectedPayment.id}/reject`, {
                 rejection_reason: rejectionReason
             });
-            toast("success", "Payment rejected and student notified");
+            tt.success("payment_rejected_and_student_notified");
             setIsDetailsOpen(false);
             fetchPayments();
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Failed to reject payment");
+            tt.error(err.response?.data?.message || "failed_to_reject_payment");
         } finally {
             setProcessing(false);
         }
@@ -188,7 +190,7 @@ export default function OfflineBankPaymentsPage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Offline Payments");
         XLSX.writeFile(workbook, "offline_payments.xlsx");
-        toast("success", "Exported to Excel");
+        tt.success("exported_to_excel");
     };
 
     const handleExportCSV = () => {
@@ -212,12 +214,12 @@ export default function OfflineBankPaymentsPage() {
         link.href = URL.createObjectURL(blob);
         link.download = "offline_payments.csv";
         link.click();
-        toast("success", "Exported to CSV");
+        tt.success("exported_to_csv");
     };
 
     const handleExportPDF = () => {
         const doc = new jsPDF();
-        doc.text("Offline Bank Payments Report", 14, 15);
+        doc.text(t("offline_bank_payments_report"), 14, 15);
         const tableColumn = ["Request ID", "Student Name", "Payment Info", `Amount (${symbol})`, "Status"];
         const tableRows = filteredPayments.map(p => [
             `#${p.id}`,
@@ -228,17 +230,17 @@ export default function OfflineBankPaymentsPage() {
         ]);
         autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
         doc.save("offline_payments.pdf");
-        toast("success", "Exported to PDF");
+        tt.success("exported_to_pdf");
     };
 
     const getStatusBadge = (status: string) => {
         switch (status) {
             case "pending":
-                return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase tracking-wider"><Clock className="h-3 w-3" /> Pending</span>;
+                return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase tracking-wider"><Clock className="h-3 w-3" /> {t("pending")}</span>;
             case "approved":
-                return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-black uppercase tracking-wider"><CheckCircle2 className="h-3 w-3" /> Approved</span>;
+                return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-black uppercase tracking-wider"><CheckCircle2 className="h-3 w-3" /> {t("approved")}</span>;
             case "rejected":
-                return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-wider"><XCircle className="h-3 w-3" /> Rejected</span>;
+                return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-wider"><XCircle className="h-3 w-3" /> {t("rejected")}</span>;
             default:
                 return null;
         }
@@ -247,8 +249,8 @@ export default function OfflineBankPaymentsPage() {
     return (
         <div className="p-6 space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight">Offline Bank Payments</h1>
-                <p className="text-muted-foreground">Verify and manage fee payments submitted via bank transfer or offline deposits.</p>
+                <h1 className="text-3xl font-bold tracking-tight">{t("offline_bank_payments")}</h1>
+                <p className="text-muted-foreground">{t("verify_and_manage_fee_payments")}</p>
             </div>
 
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
@@ -258,8 +260,8 @@ export default function OfflineBankPaymentsPage() {
                             <Landmark className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Payment Requests</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{filteredPayments.length} payment{filteredPayments.length === 1 ? '' : 's'}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("payment_requests")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_payments", { count: filteredPayments.length })}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 bg-muted/20 p-1 rounded-lg border border-muted/50">
@@ -276,7 +278,7 @@ export default function OfflineBankPaymentsPage() {
                                         : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
                                 )}
                             >
-                                {status}
+                                {t(status as "all" | "pending" | "approved" | "rejected")}
                             </Button>
                         ))}
                     </div>
@@ -288,7 +290,7 @@ export default function OfflineBankPaymentsPage() {
                         <div className="relative w-full max-sm group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                             <Input
-                                placeholder="Search by name, admission no or ref..."
+                                placeholder={t("search_by_name_admission_no_or_ref")}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-10 h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
@@ -316,7 +318,7 @@ export default function OfflineBankPaymentsPage() {
                                     size="icon"
                                     onClick={handleExportExcel}
                                     className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
-                                    title="Excel"
+                                    title={t("excel")}
                                 >
                                     <FileSpreadsheet className="h-4 w-4" />
                                 </Button>
@@ -325,7 +327,7 @@ export default function OfflineBankPaymentsPage() {
                                     size="icon"
                                     onClick={handleExportCSV}
                                     className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
-                                    title="CSV"
+                                    title={t("csv")}
                                 >
                                     <FileText className="h-4 w-4" />
                                 </Button>
@@ -334,7 +336,7 @@ export default function OfflineBankPaymentsPage() {
                                     size="icon"
                                     onClick={handleExportPDF}
                                     className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
-                                    title="PDF"
+                                    title={t("pdf")}
                                 >
                                     <FileCode className="h-4 w-4" />
                                 </Button>
@@ -343,7 +345,7 @@ export default function OfflineBankPaymentsPage() {
                                     size="icon"
                                     onClick={handlePrint}
                                     className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all rounded-lg"
-                                    title="Print"
+                                    title={t("print")}
                                 >
                                     <Printer className="h-4 w-4" />
                                 </Button>
@@ -358,11 +360,11 @@ export default function OfflineBankPaymentsPage() {
                                 <thead>
                                     <tr className="bg-muted/10">
                                         {[
-                                            "Request ID", "Student Detail", "Payment Info", `Amount (${symbol})`, "Status", "Action"
+                                            t("request_id"), t("student_detail"), t("payment_info"), t("amount_x", { symbol }), t("status"), t("action")
                                         ].map((header) => (
                                             <th key={header} className={cn(
                                                 "px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 border-b border-muted/20 whitespace-nowrap",
-                                                header === "Action" ? "text-center w-32" : ""
+                                                header === t("action") ? "text-center w-32" : ""
                                             )}>
                                                 {header}
                                             </th>
@@ -377,7 +379,7 @@ export default function OfflineBankPaymentsPage() {
                                             <td colSpan={6} className="px-6 py-20 text-center">
                                                 <div className="flex flex-col items-center gap-3 opacity-30">
                                                     <Wallet className="h-12 w-12" />
-                                                    <p className="font-bold tracking-tight text-lg">No payment requests found</p>
+                                                    <p className="font-bold tracking-tight text-lg">{t("no_payment_requests_found")}</p>
                                                 </div>
                                             </td>
                                         </tr>
@@ -395,9 +397,9 @@ export default function OfflineBankPaymentsPage() {
                                                 </td>
                                                 <td className="px-6 py-6">
                                                     <div className="flex flex-col">
-                                                        <span className="text-xs font-bold text-primary">{payment.student_fee_master?.fee_master.fee_type.name || 'General Payment'}</span>
-                                                        <span className="text-[10px] text-muted-foreground font-medium">Ref: {payment.reference_no || 'N/A'}</span>
-                                                        <span className="text-[10px] text-muted-foreground font-medium">Date: {new Date(payment.payment_date).toLocaleDateString()}</span>
+                                                        <span className="text-xs font-bold text-primary">{payment.student_fee_master?.fee_master.fee_type.name || t("general_payment")}</span>
+                                                        <span className="text-[10px] text-muted-foreground font-medium">{t("ref_label")} {payment.reference_no || 'N/A'}</span>
+                                                        <span className="text-[10px] text-muted-foreground font-medium">{t("date_label")} {new Date(payment.payment_date).toLocaleDateString()}</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-6 text-sm font-black text-foreground">{formatCurrency(payment.amount)}</td>
@@ -429,7 +431,7 @@ export default function OfflineBankPaymentsPage() {
                     {filteredPayments.length > 0 && (
                         <div className="p-6 border-t border-muted/20 flex items-center justify-between">
                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                Showing {Math.min((currentPage - 1) * pageSize + 1, filteredPayments.length)} to {Math.min(currentPage * pageSize, filteredPayments.length)} of {filteredPayments.length} entries
+                                {t("showing_x_to_y_of_z", { from: Math.min((currentPage - 1) * pageSize + 1, filteredPayments.length), to: Math.min(currentPage * pageSize, filteredPayments.length), total: filteredPayments.length })}
                             </p>
                             <div className="flex items-center gap-2">
                                 <Button
@@ -469,15 +471,15 @@ export default function OfflineBankPaymentsPage() {
                                     <Landmark className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <DialogTitle className="text-2xl font-bold text-white">Payment Details</DialogTitle>
+                                    <DialogTitle className="text-2xl font-bold text-white">{t("payment_details")}</DialogTitle>
                                     <DialogDescription className="text-white/80 font-medium">
-                                        Review the submission from {selectedPayment?.student.name}
+                                        {t("review_the_submission_from", { name: selectedPayment?.student.name })}
                                     </DialogDescription>
                                 </div>
                             </div>
                             <div className="flex flex-col items-end">
                                 <span className="text-2xl font-black text-white">{symbol}{selectedPayment?.amount.toFixed(2)}</span>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Request #{selectedPayment?.id}</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-white/80">{t("request")} #{selectedPayment?.id}</span>
                             </div>
                         </div>
                     </DialogHeader>
@@ -487,27 +489,27 @@ export default function OfflineBankPaymentsPage() {
                         <div className="space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Bank Name</span>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("bank_name")}</span>
                                     <p className="text-sm font-bold">{selectedPayment?.bank_name || 'N/A'}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Account No</span>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("account_no")}</span>
                                     <p className="text-sm font-bold">{selectedPayment?.bank_account_no || 'N/A'}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Reference No</span>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("reference_no")}</span>
                                     <p className="text-sm font-bold text-primary">{selectedPayment?.reference_no || 'N/A'}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Payment Date</span>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("payment_date")}</span>
                                     <p className="text-sm font-bold">{selectedPayment?.payment_date ? new Date(selectedPayment.payment_date).toLocaleDateString() : 'N/A'}</p>
                                 </div>
                             </div>
 
                             <div className="p-4 rounded-lg bg-muted/20 border border-muted/50 space-y-2">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Rejection Reason (Required for rejection)</span>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("rejection_reason_required")}</span>
                                 <Textarea
-                                    placeholder="Provide a reason if rejecting this payment..."
+                                    placeholder={t("provide_reason_for_rejection")}
                                     value={rejectionReason}
                                     onChange={(e) => setRejectionReason(e.target.value)}
                                     className="min-h-[100px] bg-background/50 border-muted/50 rounded-lg text-xs font-medium resize-none focus:ring-primary/20"
@@ -518,7 +520,7 @@ export default function OfflineBankPaymentsPage() {
                         {/* Image Section */}
                         <div className="space-y-3">
                             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1.5">
-                                <FileText className="h-3 w-3" /> Payment Proof / Screenshot
+                                <FileText className="h-3 w-3" /> {t("payment_proof_or_screenshot")}
                             </span>
                             <div className="aspect-[4/3] rounded-lg bg-muted/10 border-2 border-dashed border-muted/50 flex items-center justify-center overflow-hidden group/img relative">
                                 {selectedPayment?.screenshot ? (
@@ -537,7 +539,7 @@ export default function OfflineBankPaymentsPage() {
                                 ) : (
                                     <div className="flex flex-col items-center gap-2 text-muted-foreground/40">
                                         <XCircle className="h-10 w-10" />
-                                        <span className="text-xs font-bold">No Screenshot Uploaded</span>
+                                        <span className="text-xs font-bold">{t("no_screenshot_uploaded")}</span>
                                     </div>
                                 )}
                             </div>
@@ -550,7 +552,7 @@ export default function OfflineBankPaymentsPage() {
                             onClick={() => setIsDetailsOpen(false)}
                             className="flex-1 h-12 rounded-lg font-bold uppercase tracking-widest text-[10px] border-muted/50 hover:bg-muted/10"
                         >
-                            Close
+                            {t("close")}
                         </Button>
                         {selectedPayment?.status === 'pending' && (
                             <>
@@ -560,7 +562,7 @@ export default function OfflineBankPaymentsPage() {
                                     className="flex-1 h-12 rounded-lg bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-destructive/20 transition-all active:scale-95 flex items-center gap-2"
                                 >
                                     {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                                    Reject Payment
+                                    {t("reject_payment")}
                                 </Button>
                                 <Button
                                     onClick={handleApprove}
@@ -568,7 +570,7 @@ export default function OfflineBankPaymentsPage() {
                                     className="flex-[1.5] h-12 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2"
                                 >
                                     {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                    Approve & Apply Fee
+                                    {t("approve_and_apply_fee")}
                                 </Button>
                             </>
                         )}

@@ -25,7 +25,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, Save, Loader2, AlertCircle, History, CalendarDays, UserCheck, ClipboardCheck, Filter } from "lucide-react";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { StaffCsvImportDialog } from "@/components/attendance/StaffCsvImportDialog";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -62,28 +63,11 @@ interface StaffRole {
     name: string;
 }
 
-const attendanceOptions = [
-    { label: "Present", value: "present", color: "text-green-600", bg: "bg-green-600" },
-    { label: "Late", value: "late", color: "text-amber-500", bg: "bg-amber-500" },
-    { label: "Absent", value: "absent", color: "text-red-600", bg: "bg-red-600" },
-    { label: "Half Day", value: "half_day", color: "text-orange-500", bg: "bg-orange-500" },
-    { label: "Holiday", value: "holiday", color: "text-blue-500", bg: "bg-blue-500" },
-    { label: "2nd Half", value: "half_day_second", color: "text-purple-500", bg: "bg-purple-500" },
-];
-
-const attendanceBadge: Record<string, string> = {
-    present: "bg-green-600 text-white shadow-sm",
-    late: "bg-amber-500 text-white shadow-sm",
-    absent: "bg-red-600 text-white shadow-sm",
-    half_day: "bg-orange-500 text-white shadow-sm",
-    holiday: "bg-blue-500 text-white shadow-sm",
-    half_day_second: "bg-purple-500 text-white shadow-sm",
-};
-
 const today = new Date().toISOString().split("T")[0];
 
 export default function StaffAttendancePage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [role, setRole] = useState("all");
     const [date, setDate] = useState(today);
     const [attendanceData, setAttendanceData] = useState<StaffAttendanceRecord[]>([]);
@@ -93,12 +77,30 @@ export default function StaffAttendancePage() {
     const [searched, setSearched] = useState(false);
     const [roles, setRoles] = useState<StaffRole[]>([]);
 
+    const attendanceOptions = [
+        { label: "present", value: "present", color: "text-green-600", bg: "bg-green-600" },
+        { label: "late", value: "late", color: "text-amber-500", bg: "bg-amber-500" },
+        { label: "absent", value: "absent", color: "text-red-600", bg: "bg-red-600" },
+        { label: "half_day", value: "half_day", color: "text-orange-500", bg: "bg-orange-500" },
+        { label: "holiday", value: "holiday", color: "text-blue-500", bg: "bg-blue-500" },
+        { label: "second_half", value: "half_day_second", color: "text-purple-500", bg: "bg-purple-500" },
+    ];
+
+    const attendanceBadge: Record<string, string> = {
+        present: "bg-green-600 text-white shadow-sm",
+        late: "bg-amber-500 text-white shadow-sm",
+        absent: "bg-red-600 text-white shadow-sm",
+        half_day: "bg-orange-500 text-white shadow-sm",
+        holiday: "bg-blue-500 text-white shadow-sm",
+        half_day_second: "bg-purple-500 text-white shadow-sm",
+    };
+
     useEffect(() => {
         api.get("/hr/staff-roles").then(res => setRoles(res.data?.data || [])).catch(console.error);
     }, []);
 
     const handleSearch = useCallback(async () => {
-        if (!date) { toast("error", "Please select an attendance date."); return; }
+        if (!date) { tt.error("please_select_attendance_date"); return; }
         try {
             setSearching(true);
             setSearched(false);
@@ -111,11 +113,11 @@ export default function StaffAttendancePage() {
                 setSearched(true);
             }
         } catch {
-            toast("error", "Failed to load staff list.");
+            tt.error("failed_to_load_staff_list");
         } finally {
             setSearching(false);
         }
-    }, [date, role, toast]);
+    }, [date, role, tt]);
 
     const handleBulkChange = (value: string) => {
         setBulkAttendance(value);
@@ -149,16 +151,16 @@ export default function StaffAttendancePage() {
                 }
             });
             if (matchCount > 0) {
-                toast("success", `Applied CSV data to ${matchCount} matching staff members.`);
+                tt.success("applied_csv_data_to_n", { count: matchCount });
             } else {
-                toast("error", "No matching staff members found for the imported records.");
+                tt.error("no_matching_staff_csv");
             }
             return updated;
         });
     };
 
     const handleSave = async () => {
-        if (attendanceData.length === 0) { toast("error", "No staff to save."); return; }
+        if (attendanceData.length === 0) { tt.error("no_staff_to_save"); return; }
         try {
             setSaving(true);
             const records = attendanceData.map(s => ({
@@ -170,11 +172,11 @@ export default function StaffAttendancePage() {
             }));
             const res = await api.post("/hr/staff-attendance", { date, records });
             if (res.data?.success) {
-                toast("success", res.data.message ?? "Attendance saved successfully!");
+                tt.success("attendance_saved_successfully");
             }
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Failed to save attendance.");
+            tt.error(err.response?.data?.message || "failed_to_save_attendance");
         } finally {
             setSaving(false);
         }
@@ -184,14 +186,14 @@ export default function StaffAttendancePage() {
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             <div className="flex justify-between items-center">
                 <h1 className="text-xl font-medium text-gray-800 flex items-center gap-2">
-                    <ClipboardCheck className="h-5 w-5 text-indigo-600" /> Staff Attendance
+                    <ClipboardCheck className="h-5 w-5 text-indigo-600" /> {t("staff_attendance")}
                 </h1>
                 <Button
                     onClick={() => window.history.back()}
                     variant="outline"
                     className="gap-2 h-9 px-6 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-white shadow-sm flex items-center"
                 >
-                    <History className="h-4 w-4" /> Attendance Report
+                    <History className="h-4 w-4" /> {t("attendance_report")}
                 </Button>
             </div>
 
@@ -202,20 +204,20 @@ export default function StaffAttendancePage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Mark Daily Attendance</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Select a role and attendance date</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("mark_daily_attendance")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("select_role_and_attendance_date")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Role <span className="text-red-500">*</span></Label>
+                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">{t("role")} <span className="text-red-500">*</span></Label>
                             <Select value={role} onValueChange={setRole}>
                                 <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
-                                    <SelectValue placeholder="All Roles" />
+                                    <SelectValue placeholder={t("all_roles")} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-lg border-gray-100">
-                                    <SelectItem value="all">All Roles</SelectItem>
+                                    <SelectItem value="all">{t("all_roles")}</SelectItem>
                                     {roles.map((r, idx) => (
                                         <SelectItem key={r.id || idx} value={r.name}>{r.name}</SelectItem>
                                     ))}
@@ -224,7 +226,7 @@ export default function StaffAttendancePage() {
                         </div>
 
                         <div className="space-y-2 col-span-2">
-                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Attendance Date <span className="text-red-500">*</span></Label>
+                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">{t("attendance_date")} <span className="text-red-500">*</span></Label>
                             <div className="flex gap-4">
                                  <DatePicker
                                      value={date}
@@ -238,7 +240,7 @@ export default function StaffAttendancePage() {
                                     className="gap-2 h-10 px-8 text-[11px] font-bold uppercase tracking-widest rounded shadow-md"
                                 >
                                     {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                    Search
+                                    {t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -255,8 +257,8 @@ export default function StaffAttendancePage() {
                                 <ClipboardCheck className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Staff Attendance</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{attendanceData.length} staff members &bull; {new Date(date).toDateString()}</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("staff_attendance")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("x_staff_members_on_date", { count: attendanceData.length, date: new Date(date).toDateString() })}</p>
                             </div>
                         </div>
                     </CardHeader>
@@ -269,7 +271,7 @@ export default function StaffAttendancePage() {
                                         <UserCheck className="h-4 w-4 text-indigo-600" />
                                     </div>
                                     <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
-                                        Set Bulk:
+                                        {t("set_bulk")}:
                                     </span>
                                 </div>
                                 <RadioGroup
@@ -288,7 +290,7 @@ export default function StaffAttendancePage() {
                                                 htmlFor={`bulk-${opt.value}`}
                                                 className={cn("text-[11px] font-bold cursor-pointer leading-none uppercase tracking-tighter", opt.color)}
                                             >
-                                                {opt.label}
+                                                {t(opt.label)}
                                             </Label>
                                         </div>
                                     ))}
@@ -304,7 +306,7 @@ export default function StaffAttendancePage() {
                                     className="gap-2 h-9 px-6 text-[11px] font-bold uppercase tracking-widest rounded shadow-lg transition-transform hover:scale-105"
                                 >
                                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                                    Save Attendance
+                                    {t("save_attendance")}
                                 </Button>
                             </div>
                         </div>
@@ -316,11 +318,11 @@ export default function StaffAttendancePage() {
                                     <TableHeader className="bg-gray-50/50">
                                         <TableRow className="hover:bg-transparent border-gray-100">
                                             <TableHead className="text-[10px] font-bold uppercase text-gray-600 w-12 pl-4 text-center">#</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">Staff Info</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">Role</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600 min-w-[320px]">Attendance Status</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">Entry/Exit</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">Notes</TableHead>
+                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">{t("staff_info")}</TableHead>
+                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">{t("role")}</TableHead>
+                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600 min-w-[320px]">{t("attendance_status")}</TableHead>
+                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">{t("entry_exit")}</TableHead>
+                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">{t("notes")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -331,7 +333,7 @@ export default function StaffAttendancePage() {
                                                 <TableCell colSpan={6} className="h-32 text-center">
                                                     <div className="flex flex-col items-center justify-center text-gray-400">
                                                         <AlertCircle className="h-8 w-8 mb-2 opacity-20" />
-                                                        <p className="text-xs italic">No staff records found for this selection.</p>
+                                                        <p className="text-xs italic">{t("no_staff_records_found")}</p>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -356,7 +358,7 @@ export default function StaffAttendancePage() {
                                                                 "inline-flex items-center justify-center w-full px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-tighter shadow-sm",
                                                                 attendanceBadge[staff.attendance] || "bg-gray-200 text-gray-600"
                                                             )}>
-                                                                {attendanceOptions.find(o => o.value === staff.attendance)?.label ?? staff.attendance}
+                                                                {t(attendanceOptions.find(o => o.value === staff.attendance)?.label ?? staff.attendance)}
                                                             </span>
                                                         </div>
                                                         <RadioGroup
@@ -375,7 +377,7 @@ export default function StaffAttendancePage() {
                                                                         htmlFor={`${staff.id}-${opt.value}`}
                                                                         className={cn("text-[9px] font-bold cursor-pointer leading-none uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity", staff.attendance === opt.value ? "opacity-100" : "")}
                                                                     >
-                                                                        {opt.label.split(' ')[0]}
+                                                                        {t(opt.label)}
                                                                     </Label>
                                                                 </div>
                                                             ))}
@@ -402,7 +404,7 @@ export default function StaffAttendancePage() {
                                                 <TableCell className="py-4 pr-4">
                                                     <Input
                                                         type="text"
-                                                        placeholder="Add note..."
+                                                        placeholder={t("add_note")}
                                                         value={staff.note}
                                                         onChange={e => handleIndividualChange(staff.id, "note", e.target.value)}
                                                         className="h-7 min-w-[120px] text-[10px] bg-white border-gray-100 rounded-md focus-visible:ring-indigo-500 shadow-none"
@@ -421,7 +423,7 @@ export default function StaffAttendancePage() {
                                 <div className="flex items-center gap-2">
                                     <CalendarDays className="h-4 w-4 text-gray-400" />
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                        {attendanceData.length} Staff Members &bull; {new Date(date).toDateString()}
+                                        {t("x_staff_members_on_date", { count: attendanceData.length, date: new Date(date).toDateString() })}
                                     </p>
                                 </div>
                                 <Button
@@ -431,7 +433,7 @@ export default function StaffAttendancePage() {
                                     className="gap-2 h-10 px-10 text-[11px] font-bold uppercase tracking-widest rounded shadow-xl"
                                 >
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                    Finalize & Save
+                                    {t("finalize_and_save")}
                                 </Button>
                             </div>
                         )}
@@ -443,8 +445,8 @@ export default function StaffAttendancePage() {
             {!searched && !searching && attendanceData.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-24 text-gray-300 bg-white rounded-lg border border-dashed border-gray-200">
                     <UserCheck className="h-16 w-16 mb-4 opacity-10" />
-                    <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">No Data Loaded</p>
-                    <p className="text-[11px] text-gray-400 mt-2 italic">Select a role and date, then click search to load the attendance sheet.</p>
+                    <p className="text-[12px] font-medium uppercase tracking-[.2em] text-gray-400">{t("no_data_loaded")}</p>
+                    <p className="text-[11px] text-gray-400 mt-2 italic">{t("select_role_and_date_message")}</p>
                 </div>
             )}
         </div>

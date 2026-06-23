@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Loader2, Calendar, BookOpen, User, Info, FileSpreadsheet, FileText, Printer, Copy, Columns } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
 
 interface Student {
@@ -40,6 +41,7 @@ interface SchoolClass {
 }
 
 export default function PeriodAttendanceByDatePage() {
+    const { t } = useTranslation();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
@@ -75,7 +77,7 @@ export default function PeriodAttendanceByDatePage() {
 
     const handleSearch = async () => {
         if (!selectedClass || !selectedSection || !attendanceDate) {
-            toast.error("Please select class, section and date");
+            toast.error(t("please_select_class_section_date"));
             return;
         }
 
@@ -93,15 +95,15 @@ export default function PeriodAttendanceByDatePage() {
                 setStudents(response.data.data.students);
                 setTimetable(response.data.data.timetable);
                 if (response.data.data.students.length === 0) {
-                    toast.info("No students found for this class and section");
+                    toast.info(t("no_students_found_for_class_section"));
                 }
                 if (response.data.data.timetable.length === 0) {
-                    toast.warning("No timetable found for this day. Attendance might not have been scheduled.");
+                    toast.warning(t("no_timetable_found_for_day"));
                 }
             }
         } catch (error) {
             console.error("Error searching report:", error);
-            toast.error("Failed to load report");
+            toast.error(t("failed_to_load_report"));
         } finally {
             setLoading(false);
         }
@@ -144,19 +146,32 @@ export default function PeriodAttendanceByDatePage() {
 
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
+            {/* Page Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Calendar className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("period_attendance_by_date")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("view_subject_wise_attendance")}</p>
+                    </div>
+                </div>
+            </div>
+
             {/* Select Criteria Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
                 <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-tight mb-4 border-b border-gray-50 pb-2 flex items-center gap-2">
                     <Search className="h-3 w-3" />
-                    Select Criteria
+                    {t("select_criteria")}
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class</Label>
+                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("class")}</Label>
                         <Select value={selectedClass} onValueChange={setSelectedClass}>
                             <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                <SelectValue placeholder="Select Class" />
+                                <SelectValue placeholder={t("select_class")} />
                             </SelectTrigger>
                             <SelectContent>
                                 {classes.map(cls => (
@@ -167,10 +182,10 @@ export default function PeriodAttendanceByDatePage() {
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
+                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("section")}</Label>
                         <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
                             <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                <SelectValue placeholder="Select Section" />
+                                <SelectValue placeholder={t("select_section")} />
                             </SelectTrigger>
                             <SelectContent>
                                 {sections.map(sec => (
@@ -181,7 +196,7 @@ export default function PeriodAttendanceByDatePage() {
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Date</Label>
+                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("date")}</Label>
                         <Input 
                             type="date" 
                             value={attendanceDate} 
@@ -198,7 +213,7 @@ export default function PeriodAttendanceByDatePage() {
                         className="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-6 h-8 text-[10px] font-bold uppercase transition-all rounded shadow-md flex items-center gap-2"
                     >
                         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                        Search
+                        {t("search")}
                     </Button>
                 </div>
             </div>
@@ -208,7 +223,7 @@ export default function PeriodAttendanceByDatePage() {
                 <div className="flex justify-between items-center border-b border-gray-50 pb-2">
                     <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-tight flex items-center gap-2">
                         <Calendar className="h-3 w-3 text-indigo-500" />
-                        Period Attendance Report
+                        {t("period_attendance_report")}
                     </h2>
                     
                     <div className="flex items-center gap-1 text-gray-400">
@@ -225,7 +240,7 @@ export default function PeriodAttendanceByDatePage() {
                         <Table className="min-w-max border-collapse">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/50">
-                                    <TableHead className="py-3 px-4 border-r w-[200px] sticky left-0 bg-gray-50/50 z-10">Student</TableHead>
+                                    <TableHead className="py-3 px-4 border-r w-[200px] sticky left-0 bg-gray-50/50 z-10">{t("student")}</TableHead>
                                     {timetable.map((item) => (
                                         <TableHead key={item.id} className="py-3 px-4 text-center border-r min-w-[150px]">
                                             <div className="flex flex-col items-center">
@@ -263,8 +278,8 @@ export default function PeriodAttendanceByDatePage() {
                             <Info className="h-5 w-5" />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-[12px] font-bold text-indigo-700 uppercase">No Timetable Scheduled</p>
-                            <p className="text-[11px] text-indigo-600/70">Please configure the class timetable for this day to view period attendance.</p>
+                            <p className="text-[12px] font-bold text-indigo-700 uppercase">{t("no_timetable_scheduled")}</p>
+                            <p className="text-[11px] text-indigo-600/70">{t("configure_class_timetable_message")}</p>
                         </div>
                     </div>
                 ) : !loading && (
@@ -273,8 +288,8 @@ export default function PeriodAttendanceByDatePage() {
                             <BookOpen className="h-6 w-6" />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-[12px] font-bold text-gray-400 uppercase tracking-tighter">No Records Found</p>
-                            <p className="text-[11px] text-gray-400">Select class, section and date to view the attendance report.</p>
+                            <p className="text-[12px] font-bold text-gray-400 uppercase tracking-tighter">{t("no_records_found")}</p>
+                            <p className="text-[11px] text-gray-400">{t("select_criteria_to_view_report")}</p>
                         </div>
                     </div>
                 )}

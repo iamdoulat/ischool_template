@@ -21,7 +21,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -67,7 +68,8 @@ export default function StudentHousePage() {
     const [formData, setFormData] = useState({ name: "", description: "" });
     const [editingHouse, setEditingHouse] = useState<StudentHouse | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
 
     const fetchHouses = useCallback(async () => {
         setLoading(true);
@@ -77,11 +79,11 @@ export default function StudentHousePage() {
             setSelectedIds(new Set());
         } catch (error) {
             console.error("Error fetching houses:", error);
-            toast("error", "Failed to fetch student houses.");
+            tt.error("failed_to_fetch_student_houses");
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [tt]);
 
     useEffect(() => {
         fetchHouses();
@@ -89,7 +91,7 @@ export default function StudentHousePage() {
 
     const handleSave = async () => {
         if (!formData.name.trim()) {
-            toast("error", "House name is required.");
+            tt.error("house_name_is_required");
             return;
         }
 
@@ -97,17 +99,17 @@ export default function StudentHousePage() {
         try {
             if (editingHouse) {
                 await api.put(`/student-houses/${editingHouse.id}`, formData);
-                toast("success", "Student house updated successfully.");
+                tt.success("student_house_updated_successfully");
             } else {
                 await api.post("/student-houses", formData);
-                toast("success", "Student house added successfully.");
+                tt.success("student_house_added_successfully");
             }
             setFormData({ name: "", description: "" });
             setEditingHouse(null);
             fetchHouses();
         } catch (error) {
             const message = (error as any).response?.data?.message || "Failed to save house.";
-            toast("error", message);
+            tt.error(message);
         } finally {
             setLoading(false);
         }
@@ -117,10 +119,10 @@ export default function StudentHousePage() {
         setLoading(true);
         try {
             await api.delete(`/student-houses/${id}`);
-            toast("success", "Student house deleted successfully.");
+            tt.success("student_house_deleted_successfully");
             fetchHouses();
         } catch (error) {
-            toast("error", "Failed to delete house.");
+            tt.error("failed_to_delete_house");
         } finally {
             setLoading(false);
         }
@@ -132,10 +134,10 @@ export default function StudentHousePage() {
         setLoading(true);
         try {
             await api.post("/student-houses/bulk-delete", { ids: Array.from(selectedIds) });
-            toast("success", "Selected houses deleted successfully.");
+            tt.success("selected_houses_deleted_successfully");
             fetchHouses();
         } catch (error) {
-            toast("error", "Failed to delete selected houses.");
+            tt.error("failed_to_delete_selected_houses");
         } finally {
             setLoading(false);
         }
@@ -173,29 +175,29 @@ export default function StudentHousePage() {
     // Export functions
     const exportToCopy = () => {
         if (houses.length === 0) return;
-        const text = ["Name\tDescription\tHouse ID", ...houses.map(h => `${h.name}\t${h.description || ""}\t${h.id}`)].join("\n");
+        const text = [t("name") + "\t" + t("description") + "\t" + t("house_id"), ...houses.map(h => `${h.name}\t${h.description || ""}\t${h.id}`)].join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
         if (houses.length === 0) return;
-        const worksheet = XLSX.utils.json_to_sheet(houses.map(h => ({ Name: h.name, Description: h.description, "House ID": h.id })));
+        const worksheet = XLSX.utils.json_to_sheet(houses.map(h => ({ [t("name")]: h.name, [t("description")]: h.description, [t("house_id")]: h.id })));
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Houses");
+        XLSX.utils.book_append_sheet(workbook, worksheet, t("houses"));
         XLSX.writeFile(workbook, "student_houses.xlsx");
-        toast("success", "Excel file downloaded");
+        tt.success("excel_file_downloaded");
     };
 
     const exportToPDF = () => {
         if (houses.length === 0) return;
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [["Name", "Description", "House ID"]],
+            head: [[t("name"), t("description"), t("house_id")]],
             body: houses.map(h => [h.name, h.description || "-", h.id]),
         });
         doc.save("student_houses.pdf");
-        toast("success", "PDF file downloaded");
+        tt.success("pdf_file_downloaded");
     };
 
     return (
@@ -211,47 +213,47 @@ export default function StudentHousePage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {editingHouse ? "Edit Student House" : "Add Student House"}
+                                    {editingHouse ? t("edit_student_house") : t("add_student_house")}
                                 </CardTitle>
                                 <p className="text-[11px] text-gray-500 mt-1">
-                                    {editingHouse ? "Update house details" : "Create a new student house"}
+                                    {editingHouse ? t("update_house_details") : t("create_new_student_house")}
                                 </p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Name <span className="text-destructive">*</span>
+                                    {t("name")} <span className="text-destructive">*</span>
                                 </label>
                                 <Input
                                     className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all border-indigo-200"
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="Enter house name"
+                                    placeholder={t("enter_house_name")}
                                 />
                             </div>
 
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Description
+                                    {t("description")}
                                 </label>
                                 <Textarea
                                     className="min-h-[120px] rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all border-indigo-200"
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    placeholder="Enter description"
+                                    placeholder={t("enter_description")}
                                 />
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">
                                 {editingHouse && (
                                     <Button variant="outline" className="h-10 px-6" onClick={() => { setEditingHouse(null); setFormData({ name: "", description: "" }); }}>
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button variant="gradient" className="h-10 px-8" onClick={handleSave} disabled={loading}>
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                                    {editingHouse ? "Update" : "Save"}
+                                    {editingHouse ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </CardContent>
@@ -266,8 +268,8 @@ export default function StudentHousePage() {
                                 <Home className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student House List</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{houses.length} {houses.length === 1 ? "house" : "houses"} total</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_house_list")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("count_houses_total", { count: houses.length })}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
@@ -276,7 +278,7 @@ export default function StudentHousePage() {
                                 <div className="relative w-full md:w-64">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search"
+                                        placeholder={t("search")}
                                         className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -284,12 +286,12 @@ export default function StudentHousePage() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="flex gap-1">
-                                        <IconButton icon={Printer} onClick={() => window.print()} title="Print" />
-                                        <IconButton icon={Copy} onClick={exportToCopy} title="Copy" />
-                                        <IconButton icon={TableIcon} onClick={exportToExcel} title="Excel" />
-                                        <IconButton icon={FileText} onClick={exportToPDF} title="PDF" />
-                                        <IconButton icon={Download} onClick={exportToExcel} title="Download" />
-                                        <IconButton icon={Columns} title="Columns" />
+                                        <IconButton icon={Printer} onClick={() => window.print()} title={t("print")} />
+                                        <IconButton icon={Copy} onClick={exportToCopy} title={t("copy")} />
+                                        <IconButton icon={TableIcon} onClick={exportToExcel} title={t("excel")} />
+                                        <IconButton icon={FileText} onClick={exportToPDF} title={t("pdf")} />
+                                        <IconButton icon={Download} onClick={exportToExcel} title={t("download")} />
+                                        <IconButton icon={Columns} title={t("columns")} />
                                     </div>
                                 </div>
                             </div>
@@ -307,11 +309,11 @@ export default function StudentHousePage() {
                                                     onChange={(e) => handleSelectAll(e.target.checked)}
                                                 />
                                             </Th>
-                                            <Th>Name</Th>
-                                            <Th>Description</Th>
-                                            <Th>House ID</Th>
+                                            <Th>{t("name")}</Th>
+                                            <Th>{t("description")}</Th>
+                                            <Th>{t("house_id")}</Th>
                                             <Th className="text-right flex items-center justify-end gap-2">
-                                                <span>Action</span>
+                                                <span>{t("action")}</span>
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <button
@@ -320,21 +322,21 @@ export default function StudentHousePage() {
                                                                 "p-1 rounded transition-all shadow-sm active:scale-90",
                                                                 selectedIds.size > 0 ? "bg-red-500 text-white hover:bg-red-600" : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
                                                             )}
-                                                            title="Delete Selected"
+                                                            title={t("delete_selected")}
                                                         >
                                                             <Trash2 className="h-3 w-3" />
                                                         </button>
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
                                                         <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                            <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                This will permanently delete {selectedIds.size} selected houses. This action cannot be undone.
+                                                                {t("permanently_delete_selected_houses", { count: selectedIds.size })}
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">Delete All</AlertDialogAction>
+                                                            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">{t("delete_all")}</AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>
@@ -346,7 +348,7 @@ export default function StudentHousePage() {
                                             <TableSkeleton rows={5} cols={5} />
                                         ) : filteredHouses.length === 0 ? (
                                             <tr>
-                                                <td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                                <td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                             </tr>
                                         ) : (
                                             filteredHouses.map((house) => (
@@ -378,14 +380,14 @@ export default function StudentHousePage() {
                                                                 </AlertDialogTrigger>
                                                                 <AlertDialogContent>
                                                                     <AlertDialogHeader>
-                                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                                                                         <AlertDialogDescription>
-                                                                            This will permanently delete the house "{house.name}".
+                                                                            {t("permanently_delete_house", { name: house.name })}
                                                                         </AlertDialogDescription>
                                                                     </AlertDialogHeader>
                                                                     <AlertDialogFooter>
-                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                        <AlertDialogAction onClick={() => handleDelete(house.id)} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                                                                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                                                        <AlertDialogAction onClick={() => handleDelete(house.id)} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                                                                     </AlertDialogFooter>
                                                                 </AlertDialogContent>
                                                             </AlertDialog>
@@ -401,7 +403,7 @@ export default function StudentHousePage() {
                             {filteredHouses.length > 0 && (
                                 <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                        Showing 1 to {filteredHouses.length} of {filteredHouses.length} entries
+                                        {t("showing_x_to_y_of_z", { from: 1, to: filteredHouses.length, total: filteredHouses.length })}
                                     </p>
                                     <div className="flex items-center gap-2">
                                         <Button variant="outline" size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all">

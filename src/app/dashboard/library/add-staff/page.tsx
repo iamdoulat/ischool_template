@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -110,7 +111,8 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 }
 
 export default function AddStaffLibraryPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [staffList, setStaffList] = useState<StaffMember[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -142,7 +144,7 @@ export default function AddStaffLibraryPage() {
             });
         } catch (error) {
             console.error("Error fetching staff:", error);
-            toast({ title: "Error", description: "Failed to fetch staff records", variant: "destructive" });
+            tt.error("failed_to_fetch_staff_records");
         } finally {
             setLoading(false);
         }
@@ -180,7 +182,7 @@ export default function AddStaffLibraryPage() {
 
     const saveMembership = async () => {
         if (!memberFormData.member_id) {
-            toast({ title: "Error", description: "Library Member ID is required", variant: "destructive" });
+            tt.error("library_member_id_required");
             return;
         }
 
@@ -191,12 +193,12 @@ export default function AddStaffLibraryPage() {
                 member_type: 'staff',
                 ...memberFormData
             });
-            toast({ title: "Success", description: "Library membership assigned successfully" });
+            tt.success("library_membership_assigned_successfully");
             setIsDialogOpen(false);
             fetchStaff();
         } catch (error) {
-            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to assign membership";
-            toast({ title: "Error", description: message, variant: "destructive" });
+            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+            tt.error(message || "failed_to_assign_membership");
         } finally {
             setSaving(false);
         }
@@ -204,19 +206,19 @@ export default function AddStaffLibraryPage() {
 
     const updateMembership = async () => {
         if (!memberFormData.member_id) {
-            toast({ title: "Error", description: "Library Member ID is required", variant: "destructive" });
+            tt.error("library_member_id_required");
             return;
         }
 
         setSaving(true);
         try {
             await api.put(`/library/members/${selectedStaff?.id}`, memberFormData);
-            toast({ title: "Success", description: "Library membership updated successfully" });
+            tt.success("library_membership_updated_successfully");
             setIsDialogOpen(false);
             fetchStaff();
         } catch (error) {
-            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to update membership";
-            toast({ title: "Error", description: message, variant: "destructive" });
+            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+            tt.error(message || "failed_to_update_membership");
         } finally {
             setSaving(false);
         }
@@ -231,19 +233,19 @@ export default function AddStaffLibraryPage() {
         if (!deleteTarget) return;
         try {
             await api.delete(`/library/members/${deleteTarget.id}`);
-            toast({ title: "Success", description: "Membership revoked successfully" });
+            tt.success("membership_revoked_successfully");
             setIsDeleteDialogOpen(false);
             setDeleteTarget(null);
             fetchStaff();
         } catch {
-            toast({ title: "Error", description: "Failed to revoke membership", variant: "destructive" });
+            tt.error("failed_to_revoke_membership");
         }
     };
 
     const handleCopy = () => {
         const text = staffList.map(s => `${s.name}\t${s.email}\t${s.library_member ? 'Member' : 'Not Member'}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        tt.success("data_copied_to_clipboard");
     };
 
     const handleExportCSV = () => {
@@ -278,8 +280,8 @@ export default function AddStaffLibraryPage() {
                         <UserCog className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Staff Member List</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? staffList.length} staff record{(pagination?.total ?? staffList.length) === 1 ? "" : "s"}</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("staff_member_list")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("staff_records_count", { count: pagination?.total ?? staffList.length })}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -288,14 +290,14 @@ export default function AddStaffLibraryPage() {
                         <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search by name, email, staff ID..."
+                                    placeholder={t("search_by_name_email_staff_id")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-9 text-xs"
                                 />
                             </div>
                             <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                                <Search className="h-4 w-4" /> Search
+                                <Search className="h-4 w-4" /> {t("search")}
                             </Button>
                         </form>
 
@@ -333,13 +335,13 @@ export default function AddStaffLibraryPage() {
                         <Table className="min-w-[1000px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Member ID <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Library Card No.</TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Staff Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Email <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Date Of Birth <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Phone <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("member_id")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("library_card_no")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("staff_name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("email")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("date_of_birth")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("phone")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -348,7 +350,7 @@ export default function AddStaffLibraryPage() {
                                 ) : staffList.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                            No staff found
+                                            {t("no_staff_found")}
                                         </TableCell>
                                     </TableRow>
                                 ) : staffList.map((staff) => (
@@ -376,16 +378,16 @@ export default function AddStaffLibraryPage() {
                                                     {staff.library_member ? (
                                                         <>
                                                             <DropdownMenuItem onClick={() => handleEditMembership(staff)}>
-                                                                <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+                                                                <Pencil className="h-3.5 w-3.5 mr-2" /> {t("edit")}
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator />
                                                             <DropdownMenuItem onClick={() => handleRevokeClick(staff)} className="text-red-500">
-                                                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Revoke
+                                                                <Trash2 className="h-3.5 w-3.5 mr-2" /> {t("revoke")}
                                                             </DropdownMenuItem>
                                                         </>
                                                     ) : (
                                                         <DropdownMenuItem onClick={() => handleAddMembership(staff)}>
-                                                            <Plus className="h-3.5 w-3.5 mr-2" /> Add
+                                                            <Plus className="h-3.5 w-3.5 mr-2" /> {t("add")}
                                                         </DropdownMenuItem>
                                                     )}
                                                 </DropdownMenuContent>
@@ -400,7 +402,7 @@ export default function AddStaffLibraryPage() {
                     {/* Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
                         <div>
-                            Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
+                            {t("showing_x_to_y_of_z", { from: pagination?.from || 0, to: pagination?.to || 0, total: pagination?.total || 0 })}
                         </div>
                         <div className="flex gap-1 items-center">
                             <Button
@@ -445,40 +447,40 @@ export default function AddStaffLibraryPage() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-gray-800">{isEditing ? "Edit Library Member" : "Add Library Member"}</DialogTitle>
+                        <DialogTitle className="text-lg font-bold text-gray-800">{isEditing ? t("edit_library_member") : t("add_library_member")}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Staff Name</Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("staff_name")}</Label>
                             <Input value={selectedStaff?.name || ""} disabled className="h-9 bg-gray-50 border-gray-200 text-xs shadow-none" />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Library Card No.</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("library_card_no")}</Label>
                                 <Input
                                     value={memberFormData.library_card_no}
                                     onChange={(e) => setMemberFormData({ ...memberFormData, library_card_no: e.target.value })}
                                     className="h-9 border-gray-200 text-xs shadow-none"
-                                    placeholder="Optional"
+                                    placeholder={t("optional")}
                                 />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">
-                                    Member ID <span className="text-red-500 font-bold">*</span>
+                                    {t("member_id")} <span className="text-red-500 font-bold">*</span>
                                 </Label>
                                 <Input
                                     value={memberFormData.member_id}
                                     onChange={(e) => setMemberFormData({ ...memberFormData, member_id: e.target.value })}
                                     className="h-9 border-gray-200 text-xs shadow-none"
-                                    placeholder="Required"
+                                    placeholder={t("required")}
                                 />
                             </div>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full" disabled={saving}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full" disabled={saving}>{t("cancel")}</Button>
                         <Button onClick={isEditing ? updateMembership : saveMembership} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] uppercase font-bold shadow-lg active:scale-95 transition-all" disabled={saving}>
-                            {saving ? "Saving..." : isEditing ? "Update Member" : "Add Member"}
+                            {saving ? t("saving") : isEditing ? t("update_member") : t("add_member")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -488,14 +490,14 @@ export default function AddStaffLibraryPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent className="sm:max-w-[400px]">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Revoke Membership</AlertDialogTitle>
+                        <AlertDialogTitle>{t("revoke_membership")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to revoke library membership for <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
+                            {t("revoke_membership_confirmation", { name: deleteTarget?.name || "" })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmRevoke} className="bg-red-500 hover:bg-red-600 text-white">Revoke</AlertDialogAction>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmRevoke} className="bg-red-500 hover:bg-red-600 text-white">{t("revoke")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

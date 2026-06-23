@@ -15,38 +15,19 @@ import {
 } from "lucide-react";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useImageUrl } from "@/lib/image-url";
-import api from "@/lib/api";
-
-interface MenuItem {
-    id: number;
-    title: string;
-    url?: string;
-    page?: string;
-    is_external: boolean;
-    open_new_tab: boolean;
-    type: string;
-    column: number;
-}
+import { getPublicMenus, type PublicMenuItem as MenuItem } from "@/lib/public-menus";
 
 export function PublicFooter() {
     const { settings } = useSettings();
     const getImageUrl = useImageUrl();
     const [footerMenus, setFooterMenus] = useState<MenuItem[]>([]);
     useEffect(() => {
-        fetchFooterMenus();
+        let active = true;
+        getPublicMenus().then((menus) => {
+            if (active) setFooterMenus(menus.filter((m) => m.type === "bottom"));
+        });
+        return () => { active = false; };
     }, []);
-
-    const fetchFooterMenus = async () => {
-        try {
-            const res = await api.get("front-cms/menus");
-            if (res.data?.status === "Success") {
-                const bottomMenus = res.data.data.filter((m: MenuItem) => m.type === "bottom");
-                setFooterMenus(bottomMenus);
-            }
-        } catch (error) {
-            console.error("Failed to load footer menus", error);
-        }
-    };
 
     const renderMenuLink = (item: MenuItem) => {
         const href = item.is_external

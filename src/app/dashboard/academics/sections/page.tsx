@@ -14,6 +14,8 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -58,6 +60,8 @@ export default function SectionsPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [idToDelete, setIdToDelete] = useState<number | null>(null);
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -97,7 +101,7 @@ export default function SectionsPage() {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!sectionName.trim()) {
-            toast("error", "Please provide a section name.");
+            tt.error("please_fill_required_fields");
             return;
         }
 
@@ -105,10 +109,10 @@ export default function SectionsPage() {
         try {
             if (editingId) {
                 await api.put(`/academics/sections/${editingId}`, { name: sectionName });
-                toast("success", "Section updated successfully");
+                tt.success("updated_successfully");
             } else {
                 await api.post(`/academics/sections`, { name: sectionName });
-                toast("success", "Section created successfully");
+                tt.success("created_successfully");
             }
             setSectionName("");
             setEditingId(null);
@@ -116,7 +120,7 @@ export default function SectionsPage() {
         } catch (error) {
             console.error("Error saving section:", error);
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Error saving section");
+            tt.error(err.response?.data?.message || "failed_to_save");
         } finally {
             setSaving(false);
         }
@@ -138,11 +142,11 @@ export default function SectionsPage() {
         try {
             await api.delete(`/academics/sections/${idToDelete}`);
             fetchSections(currentPage);
-            toast("success", "Section deleted successfully (globally)");
+            tt.success("deleted_successfully");
         } catch (error) {
             console.error("Error deleting section:", error);
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Error deleting section");
+            tt.error(err.response?.data?.message || "failed_to_delete");
         } finally {
             setLoading(false);
             setIsDeleteDialogOpen(false);
@@ -153,11 +157,11 @@ export default function SectionsPage() {
     const exportToCopy = () => {
         const text = sections.map(s => s.name).join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
-        const worksheet = XLSX.utils.json_to_sheet(sections.map(s => ({ Section: s.name })));
+        const worksheet = XLSX.utils.json_to_sheet(sections.map(s => ({ [t("section")]: s.name })));
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Sections");
         XLSX.writeFile(workbook, "sections.xlsx");
@@ -166,7 +170,7 @@ export default function SectionsPage() {
     const exportToPDF = () => {
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [['Section']],
+            head: [[t("section")]],
             body: sections.map(s => [s.name]),
         });
         doc.save("sections.pdf");
@@ -175,11 +179,11 @@ export default function SectionsPage() {
     const printTable = () => {
         const printWindow = window.open('', '', 'height=600,width=800');
         if (!printWindow) return;
-        printWindow.document.write('<html><head><title>Section List</title>');
+        printWindow.document.write('<html><head><title>' + t("section_list") + '</title>');
         printWindow.document.write('<style>table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style>');
         printWindow.document.write('</head><body>');
-        printWindow.document.write('<h2>Section List</h2>');
-        printWindow.document.write('<table><thead><tr><th>Section</th></tr></thead><tbody>');
+        printWindow.document.write('<h2>' + t("section_list") + '</h2>');
+        printWindow.document.write('<table><thead><tr><th>' + t("section") + '</th></tr></thead><tbody>');
         sections.forEach(s => {
             printWindow.document.write(`<tr><td>${s.name}</td></tr>`);
         });
@@ -202,10 +206,10 @@ export default function SectionsPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {editingId ? "Edit Section" : "Add Section"}
+                                {editingId ? t("edit_section") : t("add_section")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {editingId ? "Update an existing section" : "Create a new section"}
+                                {editingId ? t("update_existing_section") : t("create_new_section")}
                             </p>
                         </div>
                     </CardHeader>
@@ -213,7 +217,7 @@ export default function SectionsPage() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="sectionName" className="text-sm font-medium text-gray-700">
-                                    Section Name <span className="text-red-500">*</span>
+                                    {t("section_name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     id="sectionName"
@@ -231,7 +235,7 @@ export default function SectionsPage() {
                                     className={`px-8 h-9 text-xs flex items-center gap-2 ${saveGradient}`}
                                 >
                                     {saving && <Loader2 className="h-3 w-3 animate-spin" />}
-                                    {editingId ? "Update" : "Save"}
+                                    {editingId ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </div>
@@ -247,15 +251,15 @@ export default function SectionsPage() {
                             <LayoutGrid className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Section List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{total} total entr{total === 1 ? 'y' : 'ies'}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("section_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: total })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500"
@@ -291,8 +295,8 @@ export default function SectionsPage() {
                             <Table>
                                 <TableHeader className="bg-gray-50/50 text-[11px] uppercase">
                                     <TableRow className="hover:bg-transparent border-gray-100">
-                                        <TableHead className="font-bold text-gray-700 py-3">Section</TableHead>
-                                        <TableHead className="font-bold text-gray-700 text-right py-3">Action</TableHead>
+                                        <TableHead className="font-bold text-gray-700 py-3">{t("section")}</TableHead>
+                                        <TableHead className="font-bold text-gray-700 text-right py-3">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -300,7 +304,7 @@ export default function SectionsPage() {
                                         <TableSkeleton rows={5} cols={2} />
                                     ) : sections.length === 0 ? (
                                         <tr>
-                                            <td colSpan={2} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                            <td colSpan={2} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                         </tr>
                                     ) : (
                                         sections.map((sec) => (
@@ -335,7 +339,7 @@ export default function SectionsPage() {
 
                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
                             <div>
-                                Showing {from} to {to} of {total} entries
+                                {t("showing_x_to_y_of_z", { from, to, total })}
                             </div>
                             <div className="flex gap-1">
                                 <Button
@@ -376,15 +380,15 @@ export default function SectionsPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete this section from all classes tracking it. This action cannot be undone.
+                            {t("delete_section_confirm_message")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                            Delete
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

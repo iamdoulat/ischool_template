@@ -488,19 +488,19 @@ export default function StudentEditPage() {
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-20">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
                     <Link href="/dashboard/student-information/student-details">
-                        <Button variant="ghost" size="icon" className="rounded-full">
+                        <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                     </Link>
-                    <div className="p-3 bg-primary/10 rounded-lg">
-                        <UserPlus className="h-6 w-6 text-primary" />
-                    </div>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <UserPlus className="h-5 w-5" />
+                    </span>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Edit Student</h1>
-                        <p className="text-sm text-muted-foreground">Modify details for {formData.name} {formData.last_name}</p>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Edit Student</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Modify details for {formData.name} {formData.last_name}</p>
                     </div>
                 </div>
             </div>

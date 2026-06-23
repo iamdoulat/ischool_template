@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -106,6 +107,8 @@ export default function QrCodeGenerationPage() {
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
+  const { t } = useTranslation();
+
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const fetchUsers = useCallback(async () => {
@@ -117,7 +120,7 @@ export default function QrCodeGenerationPage() {
       const res = await api.get(`/smart-attendance/users?${params}`);
       if (res.data?.success) setUsers(res.data.data);
     } catch {
-      toast.error("Failed to load users");
+      toast.error(t("failed_to_load_users"));
     } finally {
       setLoading(false);
     }
@@ -134,7 +137,7 @@ export default function QrCodeGenerationPage() {
         fetchUsers();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to generate QR code");
+      toast.error(err.response?.data?.message || t("failed_to_generate_qr_code"));
     } finally {
       setProcessingId(null);
     }
@@ -150,7 +153,7 @@ export default function QrCodeGenerationPage() {
         fetchUsers();
       }
     } catch {
-      toast.error("Failed to delete QR code");
+      toast.error(t("failed_to_delete_qr_code"));
     } finally {
       setProcessingId(null);
     }
@@ -176,7 +179,7 @@ export default function QrCodeGenerationPage() {
         <img src="${imgSrc}" alt="QR Code" />
         <div class="label">${name}</div>
         <div class="sub">QR: ${qrCode}</div>
-        <button onclick="window.print()" style="padding:12px 32px;font-size:16px;cursor:pointer">Print</button>
+        <button onclick="window.print()" style="padding:12px 32px;font-size:16px;cursor:pointer">${t("print")}</button>
       </body></html>
     `);
     win.document.close();
@@ -195,8 +198,8 @@ export default function QrCodeGenerationPage() {
                 <QrCode className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">QR Code Management</CardTitle>
-                <p className="text-[11px] text-gray-500 mt-1">Generate one-time QR codes for students, teachers, and staff. Delete to regenerate.</p>
+                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("qr_code_management")}</CardTitle>
+                <p className="text-[11px] text-gray-500 mt-1">{t("generate_qr_codes_description")}</p>
               </div>
             </div>
           </CardHeader>
@@ -213,12 +216,12 @@ export default function QrCodeGenerationPage() {
               <QrCode className="h-4 w-4" />
             </span>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-sm font-bold text-slate-800 leading-none">Users</CardTitle>
+              <CardTitle className="text-sm font-bold text-slate-800 leading-none">{t("users")}</CardTitle>
             </div>
             <div className="relative w-full sm:w-56">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by name, ID..."
+                placeholder={t("search_by_name_id")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 h-8 text-[11px]"
@@ -226,13 +229,13 @@ export default function QrCodeGenerationPage() {
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="h-8 w-32 text-[11px]">
-                <SelectValue placeholder="All Roles" />
+                <SelectValue placeholder={t("all_roles")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="Student">Students</SelectItem>
-                <SelectItem value="Teacher">Teachers</SelectItem>
-                <SelectItem value="Staff">Staff</SelectItem>
+                <SelectItem value="all">{t("all_roles")}</SelectItem>
+                <SelectItem value="Student">{t("students")}</SelectItem>
+                <SelectItem value="Teacher">{t("teachers")}</SelectItem>
+                <SelectItem value="Staff">{t("staff")}</SelectItem>
               </SelectContent>
             </Select>
           </CardHeader>
@@ -240,12 +243,12 @@ export default function QrCodeGenerationPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50/50">
-                  <TableHead className="text-[11px]">Name</TableHead>
-                  <TableHead className="text-[11px]">Role</TableHead>
-                  <TableHead className="text-[11px]">ID / Admission No</TableHead>
-                  <TableHead className="text-[11px]">QR Code</TableHead>
-                  <TableHead className="text-[11px]">Status</TableHead>
-                  <TableHead className="text-[11px] text-right">Actions</TableHead>
+                  <TableHead className="text-[11px]">{t("name")}</TableHead>
+                  <TableHead className="text-[11px]">{t("role")}</TableHead>
+                  <TableHead className="text-[11px]">{t("id_admission_no")}</TableHead>
+                  <TableHead className="text-[11px]">{t("qr_code")}</TableHead>
+                  <TableHead className="text-[11px]">{t("status")}</TableHead>
+                  <TableHead className="text-[11px] text-right">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -253,7 +256,7 @@ export default function QrCodeGenerationPage() {
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                       <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      {searchQuery ? "No matching users found." : "Type a search to find users."}
+                      {searchQuery ? t("no_matching_users_found") : t("type_search_to_find_users")}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -271,11 +274,11 @@ export default function QrCodeGenerationPage() {
                           <div className="flex items-center gap-2">
                             <img
                               src={getQrImageUrl(user.qr_code, 80)}
-                              alt="QR"
+                              alt={t("qr")}
                               className="w-10 h-10 rounded border border-slate-200"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
-                            <Button variant="ghost" size="sm" onClick={() => handleDownload(user.qr_code!, user.name)} title="Download QR Code" className="h-7 w-7 p-0">
+                            <Button variant="ghost" size="sm" onClick={() => handleDownload(user.qr_code!, user.name)} title={t("download_qr_code")} className="h-7 w-7 p-0">
                               <Download className="h-3.5 w-3.5" />
                             </Button>
                           </div>
@@ -286,11 +289,11 @@ export default function QrCodeGenerationPage() {
                       <TableCell>
                         {user.has_qr ? (
                           <span className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-xs font-medium">
-                            <CheckCircle className="h-3 w-3" /> Generated
+                            <CheckCircle className="h-3 w-3" /> {t("generated")}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-xs font-medium">
-                            <AlertCircle className="h-3 w-3" /> Not Generated
+                            <AlertCircle className="h-3 w-3" /> {t("not_generated")}
                           </span>
                         )}
                       </TableCell>
@@ -298,29 +301,29 @@ export default function QrCodeGenerationPage() {
                         <div className="flex items-center justify-end gap-1">
                           {user.has_qr && user.qr_code && (
                             <>
-                              <Button variant="ghost" size="sm" onClick={() => handlePrint(user.qr_code!, user.name)} title="Print QR Code" className="h-7 w-7 p-0">
+                              <Button variant="ghost" size="sm" onClick={() => handlePrint(user.qr_code!, user.name)} title={t("print_qr_code")} className="h-7 w-7 p-0">
                                 <Printer className="h-3.5 w-3.5" />
                               </Button>
                               <AlertDialog open={deleteId === user.id} onOpenChange={(o) => setDeleteId(o ? user.id : null)}>
                                 <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0" title="Delete QR Code">
+                                  <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0" title={t("delete_qr_code")}>
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete QR Code?</AlertDialogTitle>
+                                    <AlertDialogTitle>{t("delete_qr_code_confirm")}</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      This will remove the QR code for <strong>{user.name}</strong>. You can generate a new one after deletion.
+                                      {t("delete_qr_code_description")} <strong>{user.name}</strong>. {t("can_generate_new_after_deletion")}
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel onClick={() => setDeleteId(null)}>Cancel</AlertDialogCancel>
+                                    <AlertDialogCancel onClick={() => setDeleteId(null)}>{t("cancel")}</AlertDialogCancel>
                                     <AlertDialogAction onClick={() => deleteQr(user.id)} className="bg-red-600 hover:bg-red-700">
                                       {processingId === user.id ? (
-                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...</>
+                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("deleting")}</>
                                       ) : (
-                                        "Delete"
+                                        {t("delete")}
                                       )}
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
@@ -332,7 +335,7 @@ export default function QrCodeGenerationPage() {
                             <Button variant="default" size="sm" onClick={() => generateQr(user.id)} disabled={processingId === user.id}
                               className="h-7 px-3 text-[11px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white">
                               {processingId === user.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                              Generate
+                              {t("generate")}
                             </Button>
                           )}
                         </div>

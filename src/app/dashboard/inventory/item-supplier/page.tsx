@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -98,7 +99,8 @@ const EMPTY_FORM = {
 };
 
 export default function ItemSupplierPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -125,7 +127,7 @@ export default function ItemSupplierPage() {
             });
         } catch (error) {
             console.error("Error fetching suppliers:", error);
-            toast({ title: "Error", description: "Failed to fetch suppliers", variant: "destructive" });
+            tt.error("failed_to_fetch_suppliers");
         } finally {
             setLoading(false);
         }
@@ -142,23 +144,23 @@ export default function ItemSupplierPage() {
 
     const handleSave = async () => {
         if (!formData.item_supplier) {
-            toast({ title: "Validation Error", description: "Name is required", variant: "destructive" });
+            tt.error("supplier_name_is_required");
             return;
         }
         setSaving(true);
         try {
             if (isEditing && currentId) {
                 await api.put(`/inventory/item-suppliers/${currentId}`, formData);
-                toast({ title: "Success", description: "Supplier updated successfully" });
+                tt.success("supplier_updated_successfully");
             } else {
                 await api.post('/inventory/item-suppliers', formData);
-                toast({ title: "Success", description: "Supplier added successfully" });
+                tt.success("supplier_added_successfully");
             }
             resetForm();
             fetchSuppliers();
         } catch (error) {
-            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Something went wrong";
-            toast({ title: "Error", description: message, variant: "destructive" });
+            console.error("Error saving supplier:", error);
+            tt.error("something_went_wrong");
         } finally {
             setSaving(false);
         }
@@ -185,23 +187,23 @@ export default function ItemSupplierPage() {
         if (!deleteSupplierId) return;
         try {
             await api.delete(`/inventory/item-suppliers/${deleteSupplierId}`);
-            toast({ title: "Success", description: "Supplier deleted successfully" });
+            tt.success("supplier_deleted_successfully");
             setIsDeleteDialogOpen(false);
             setDeleteSupplierId(null);
             fetchSuppliers();
         } catch {
-            toast({ title: "Error", description: "Failed to delete supplier", variant: "destructive" });
+            tt.error("failed_to_delete_supplier");
         }
     };
 
     const handleCopy = () => {
         const text = suppliers.map(s => `${s.item_supplier}\t${s.contact_person_name}\t${s.address}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        tt.success("data_copied_to_clipboard");
     };
 
     const handleExportCSV = () => {
-        const headers = ["Item Supplier", "Contact Person", "Address"];
+        const headers = [t("item_supplier"), t("contact_person"), t("address")];
         const rows = suppliers.map(s => [s.item_supplier, s.contact_person_name, s.address]);
         const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -216,11 +218,11 @@ export default function ItemSupplierPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     return (
@@ -233,43 +235,43 @@ export default function ItemSupplierPage() {
                             <Truck className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{isEditing ? "Edit Item Supplier" : "Add Item Supplier"}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{isEditing ? "Update selected supplier" : "Create a new supplier"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{isEditing ? t("edit_item_supplier") : t("add_item_supplier")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{isEditing ? t("update_selected_supplier") : t("create_new_supplier")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Name <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("name")} <span className="text-red-500">*</span></Label>
                             <Input value={formData.item_supplier} onChange={e => setFormData({ ...formData, item_supplier: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Phone</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("phone")}</Label>
                             <Input value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Email</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("email")}</Label>
                             <Input value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Address</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("address")}</Label>
                             <Textarea className="resize-none min-h-[60px]" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Contact Person Name</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("contact_person_name")}</Label>
                             <Input value={formData.contact_person_name} onChange={e => setFormData({ ...formData, contact_person_name: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Contact Person Phone</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("contact_person_phone")}</Label>
                             <Input value={formData.contact_person_phone} onChange={e => setFormData({ ...formData, contact_person_phone: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">Contact Person Email</Label>
+                            <Label className="text-xs font-semibold text-gray-600">{t("contact_person_email")}</Label>
                             <Input value={formData.contact_person_email} onChange={e => setFormData({ ...formData, contact_person_email: e.target.value })} />
                         </div>
                         <div className="flex justify-end pt-2 gap-2">
-                            {isEditing && <Button variant="outline" onClick={resetForm} className="h-9 px-6 rounded-full text-xs font-bold">Cancel</Button>}
+                            {isEditing && <Button variant="outline" onClick={resetForm} className="h-9 px-6 rounded-full text-xs font-bold">{t("cancel")}</Button>}
                             <Button onClick={handleSave} disabled={saving} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
-                                <Save className="h-4 w-4" /> {isEditing ? "Update" : "Add"}
+                                <Save className="h-4 w-4" /> {isEditing ? t("update") : t("add")}
                             </Button>
                         </div>
                     </CardContent>
@@ -282,16 +284,16 @@ export default function ItemSupplierPage() {
                             <Truck className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Item Supplier List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? suppliers.length} supplier{(pagination?.total ?? suppliers.length) === 1 ? "" : "s"}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("item_supplier_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? suppliers.length} {t("suppliers")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
                             <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
-                                <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 text-xs w-full md:w-64" />
+                                <Input placeholder={t("search_placeholder")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 text-xs w-full md:w-64" />
                                 <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                                    <Search className="h-4 w-4" /> Search
+                                    <Search className="h-4 w-4" /> {t("search")}
                                 </Button>
                             </form>
                             <div className="flex items-center gap-2">
@@ -318,17 +320,17 @@ export default function ItemSupplierPage() {
                             <Table className="min-w-[900px]">
                                 <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Item Supplier <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">Contact Person <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Address</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("item_supplier")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                        <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("contact_person")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("address")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {loading ? (
                                         <SkeletonRows rows={6} cols={TABLE_COLS} />
                                     ) : suppliers.length === 0 ? (
-                                        <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell></TableRow>
                                     ) : suppliers.map((s) => (
                                         <TableRow key={s.id} className="text-xs hover:bg-gray-50/60 transition-colors">
                                             <TableCell className="py-4">
@@ -361,7 +363,7 @@ export default function ItemSupplierPage() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                            <div>Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries</div>
+                            <div>{t("showing_x_to_y_of_z", { from: (pagination?.from || 0).toString(), to: (pagination?.to || 0).toString(), total: (pagination?.total || 0).toString() })}</div>
                             <div className="flex gap-1 items-center">
                                 <Button variant="outline" size="sm" disabled={!pagination || pagination.current_page === 1} onClick={() => fetchSuppliers(pagination!.current_page - 1)} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                                 {[...Array(pagination?.last_page || 0)].map((_, i) => (
@@ -377,12 +379,12 @@ export default function ItemSupplierPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent className="sm:max-w-[400px]">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Item Supplier</AlertDialogTitle>
-                        <AlertDialogDescription>Are you sure you want to delete this supplier? This action cannot be undone.</AlertDialogDescription>
+                        <AlertDialogTitle>{t("delete_item_supplier")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("delete_item_supplier_confirmation")}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600 text-white">Delete</AlertDialogAction>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600 text-white">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

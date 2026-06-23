@@ -24,18 +24,14 @@ export default function DynamicPage() {
 
     useEffect(() => {
         const fetchPage = async () => {
-            console.log("Fetching page for slug:", slug);
             try {
                 const res = await api.get(`front-cms/pages/show-by-slug/${slug}`);
-                console.log("API Response:", res.data);
                 if (res.data?.status === "Success") {
                     setPage(res.data.data);
                 } else {
-                    console.warn("Page not found in success response");
                     setError("Page not found");
                 }
-            } catch (err) {
-                console.error("Failed to fetch page:", err);
+            } catch {
                 setError("Page not found");
             } finally {
                 setLoading(false);

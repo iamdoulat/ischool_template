@@ -33,11 +33,13 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function StudentAdmissionPage() {
     const getImageUrl = useImageUrl();
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
     const { symbol } = useCurrencyFormatter();
     const [loading, setLoading] = useState(false);
     const [fetchingPrereqs, setFetchingPrereqs] = useState(true);
@@ -218,7 +220,7 @@ export default function StudentAdmissionPage() {
             setFeeDiscounts(feeDiscountsRes.data.data?.data || feeDiscountsRes.data.data || []);
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
-            toast("error", "Failed to load admission prerequisites");
+            tt.error("failed_to_load_admission_prerequisites");
         } finally {
             setFetchingPrereqs(false);
         }
@@ -306,10 +308,10 @@ export default function StudentAdmissionPage() {
             });
 
             setShowSiblingModal(false);
-            toast("success", "Sibling added and details applied");
+            tt.success("sibling_added_and_details_applied");
         } catch (error) {
             console.error("Error adding sibling:", error);
-            toast("error", "Failed to add sibling details");
+            tt.error("failed_to_add_sibling_details");
         }
     };
 
@@ -366,7 +368,7 @@ export default function StudentAdmissionPage() {
 
         // Manual validation check for guardian fields (required in backend)
         if (!formData.guardian_name || !formData.guardian_relation || !formData.guardian_phone) {
-            toast("error", "Guardian Name, Relation and Phone are required");
+            tt.error("guardian_name_relation_and_phone_are_required");
             return;
         }
 
@@ -392,13 +394,17 @@ export default function StudentAdmissionPage() {
                 },
             });
 
-            toast("success", "Student admitted successfully");
+            tt.success("student_admitted_successfully");
             window.location.reload(); // Quick reset
         } catch (error) {
             console.error("Error submitting admission:", error);
             const err = error as { response?: { data?: { message?: string; errors?: Record<string, unknown> } } };
-            const message = err.response?.data?.message || "Failed to admit student";
-            toast("error", message);
+            const message = err.response?.data?.message;
+            if (message) {
+                tt.toast("error", message);
+            } else {
+                tt.error("failed_to_admit_student");
+            }
             if (err.response?.data?.errors) {
                 // Log specific validation errors for easier debugging
                 console.log("Validation Errors:", err.response.data.errors);
@@ -417,14 +423,14 @@ export default function StudentAdmissionPage() {
                         <UserPlus className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Student Admission</h1>
-                        <p className="text-sm text-muted-foreground">Fill in the details to admit a new student</p>
+                        <h1 className="text-2xl font-bold tracking-tight">{t("student_admission")}</h1>
+                        <p className="text-sm text-muted-foreground">{t("fill_in_the_details_to_admit_a_new_student")}</p>
                     </div>
                 </div>
                 <Link href="/dashboard/student-information/import-student">
                     <Button variant="gradient" className="h-10 px-6">
                         <Upload className="h-4 w-4" />
-                        Import Student
+                        {t("import_student")}
                     </Button>
                 </Link>
             </div>
@@ -432,110 +438,111 @@ export default function StudentAdmissionPage() {
             {/* Individual Sections */}
             <form className="space-y-8" onSubmit={handleSubmit}>
                 {/* Student Admission Card */}
-                <SectionCard title="Student Admission" icon={GraduationCap}>
+                <SectionCard title={t("student_admission")} icon={GraduationCap}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <InputField label="Admission No" required value={formData.admission_no} onChange={(val) => handleChange("admission_no", val)} readOnly={autoAdmissionEnabled} helperText={autoAdmissionEnabled ? "Auto-generated" : ""} />
-                        <InputField label="Roll Number" value={formData.roll_no} onChange={(val) => handleChange("roll_no", val)} readOnly={autoRollEnabled} helperText={autoRollEnabled ? "Auto-generated" : ""} />
+                        <InputField label={t("admission_no")} required value={formData.admission_no} onChange={(val) => handleChange("admission_no", val)} readOnly={autoAdmissionEnabled} helperText={autoAdmissionEnabled ? t("auto_generated") : ""} />
+                        <InputField label={t("roll_number")} value={formData.roll_no} onChange={(val) => handleChange("roll_no", val)} readOnly={autoRollEnabled} helperText={autoRollEnabled ? t("auto_generated") : ""} />
                         <div className="relative">
-                            <InputField label="Username" value={formData.username || ""} onChange={(val) => handleChange("username", val)} readOnly={autoUsernameEnabled} helperText={autoUsernameEnabled ? "Auto-generated" : ""} />
+                            <InputField label={t("username")} value={formData.username || ""} onChange={(val) => handleChange("username", val)} readOnly={autoUsernameEnabled} helperText={autoUsernameEnabled ? t("auto_generated") : ""} />
                             <button
                                 type="button"
                                 onClick={fetchUsername}
                                 className="absolute right-1 top-6 h-6 w-6 flex items-center justify-center rounded hover:bg-indigo-50 text-indigo-500 transition-colors"
-                                title="Generate Username"
+                                title={t("generate_username")}
                             >
                                 <RefreshCw className="h-3.5 w-3.5" />
                             </button>
                         </div>
                         <SelectField
-                            label="Class"
+                            label={t("class")}
                             required
                             value={formData.school_class_id}
                             onChange={(val) => handleChange("school_class_id", val)}
                             options={classes.map(c => ({ label: c.name, value: c.id.toString() }))}
                         />
                         <SelectField
-                            label="Section"
+                            label={t("section")}
                             required
                             value={formData.section_id}
                             onChange={(val) => handleChange("section_id", val)}
                             options={sections.map(s => ({ label: s.name, value: s.id.toString() }))}
                         />
 
-                        <InputField label="First Name" required value={formData.name} onChange={(val) => handleChange("name", val)} />
-                        <InputField label="Last Name" value={formData.last_name} onChange={(val) => handleChange("last_name", val)} />
-                        <InputField label="Student Full Name" value={formData.full_name || ""} onChange={(val) => handleChange("full_name", val)} readOnly />
+                        <InputField label={t("first_name")} required value={formData.name} onChange={(val) => handleChange("name", val)} />
+                        <InputField label={t("last_name")} value={formData.last_name} onChange={(val) => handleChange("last_name", val)} />
+                        <InputField label={t("student_full_name")} value={formData.full_name || ""} onChange={(val) => handleChange("full_name", val)} readOnly />
                         <SelectField
-                            label="Gender"
+                            label={t("gender")}
                             required
                             value={formData.gender}
                             onChange={(val) => handleChange("gender", val)}
                             options={[
-                                { label: "Male", value: "Male" },
-                                { label: "Female", value: "Female" },
-                                { label: "Other", value: "Other" }
+                                { label: t("male"), value: "Male" },
+                                { label: t("female"), value: "Female" },
+                                { label: t("other"), value: "Other" }
                             ]}
                         />
-                        <DateField label="Date Of Birth" required value={formData.dob} onChange={(val) => handleChange("dob", val)} />
+                        <DateField label={t("date_of_birth")} required value={formData.dob} onChange={(val) => handleChange("dob", val)} />
 
                         <SelectField
-                            label="Category"
+                            label={t("category")}
                             value={formData.category}
                             onChange={(val) => handleChange("category", val)}
                             options={categories.map(c => ({ label: c.category_name || c.category || c.name, value: c.id.toString() }))}
                         />
-                        <InputField label="Religion" value={formData.religion} onChange={(val) => handleChange("religion", val)} />
-                        <InputField label="Caste" value={formData.caste} onChange={(val) => handleChange("caste", val)} />
-                        <InputField label="Mobile Number" value={formData.phone} onChange={(val) => handleChange("phone", val)} />
+                        <InputField label={t("religion")} value={formData.religion} onChange={(val) => handleChange("religion", val)} />
+                        <InputField label={t("caste")} value={formData.caste} onChange={(val) => handleChange("caste", val)} />
+                        <InputField label={t("mobile_number")} value={formData.phone} onChange={(val) => handleChange("phone", val)} />
                         <SelectField
-                            label="Status"
+                            label={t("status")}
                             required
                             value={formData.active ? "1" : "0"}
                             onChange={(val) => handleChange("active", val === "1")}
                             options={[
-                                { label: "Active", value: "1" },
-                                { label: "Disabled", value: "0" }
+                                { label: t("active"), value: "1" },
+                                { label: t("disabled"), value: "0" }
                             ]}
                         />
-                        <InputField label="Email" type="email" value={formData.email} onChange={(val) => handleChange("email", val)} />
-                        <DateField label="Admission Date" value={formData.admission_date} onChange={(val) => handleChange("admission_date", val)} />
+                        <InputField label={t("email")} type="email" value={formData.email} onChange={(val) => handleChange("email", val)} />
+                        <DateField label={t("admission_date")} value={formData.admission_date} onChange={(val) => handleChange("admission_date", val)} />
                         <div className="lg:col-span-2">
                             <FileUploadField
-                                label="Student Photo (100px X 100px)"
+                                label={t("student_photo_100px_x_100px")}
                                 required
                                 value={formData.avatar}
                                 onChange={(field) => handleChange("avatar", field)}
+                                placeholder={t("drag_and_drop_a_file_here_or_click")}
                             />
                         </div>
 
                         <SelectField
-                            label="Blood Group"
+                            label={t("blood_group")}
                             value={formData.blood_group}
                             onChange={(val) => handleChange("blood_group", val)}
                             options={["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map(v => ({ label: v, value: v }))}
                         />
                         <SelectField
-                            label="House"
+                            label={t("house")}
                             value={formData.house}
                             onChange={(val) => handleChange("house", val)}
                             options={houses.map(h => ({ label: h.name || h.house_name, value: h.id.toString() }))}
                         />
-                        <InputField label="Height" value={formData.height} onChange={(val) => handleChange("height", val)} />
-                        <InputField label="Weight" value={formData.weight} onChange={(val) => handleChange("weight", val)} />
+                        <InputField label={t("height")} value={formData.height} onChange={(val) => handleChange("height", val)} />
+                        <InputField label={t("weight")} value={formData.weight} onChange={(val) => handleChange("weight", val)} />
 
-                        <DateField label="Measurement Date" value={formData.measurement_date} onChange={(val) => handleChange("measurement_date", val)} />
+                        <DateField label={t("measurement_date")} value={formData.measurement_date} onChange={(val) => handleChange("measurement_date", val)} />
 
                         {/* Sibling Section Matching Screenshot */}
                         <div className="lg:col-span-4 mt-6">
                             <div className="bg-[#f8f9fa] border-b border-muted/50 px-4 py-2 flex items-center justify-between">
-                                <span className="text-sm font-medium text-foreground">Sibling</span>
+                                <span className="text-sm font-medium text-foreground">{t("sibling")}</span>
                                 {selectedSiblings.length > 0 && (
                                     <button
                                         type="button"
                                         onClick={() => setSelectedSiblings([])}
                                         className="bg-primary text-white text-[10px] px-3 py-1 rounded shadow-sm hover:bg-primary/90 transition-colors"
                                     >
-                                        Remove Sibling
+                                        {t("remove_sibling")}
                                     </button>
                                 )}
                             </div>
@@ -556,15 +563,15 @@ export default function StudentAdmissionPage() {
                                         <div className="flex flex-col text-[11px] space-y-0.5">
                                             <span className="text-primary font-bold text-sm mb-1">{sibling.name}</span>
                                             <div className="flex gap-1">
-                                                <span className="font-bold">Admission No:</span>
+                                                <span className="font-bold">{t("admission_no")}:</span>
                                                 <span className="text-muted-foreground">{sibling.admission_no}</span>
                                             </div>
                                             <div className="flex gap-1">
-                                                <span className="font-bold">Class:</span>
+                                                <span className="font-bold">{t("class")}:</span>
                                                 <span className="text-muted-foreground">{sibling.class_name}</span>
                                             </div>
                                             <div className="flex gap-1">
-                                                <span className="font-bold">Section:</span>
+                                                <span className="font-bold">{t("section")}:</span>
                                                 <span className="text-muted-foreground">{sibling.section_name}</span>
                                             </div>
                                         </div>
@@ -583,19 +590,19 @@ export default function StudentAdmissionPage() {
                                     className="h-[106px] w-[300px] border-2 border-dashed border-primary/20 rounded-md text-primary font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/40 transition-all group"
                                 >
                                     <Plus className="h-6 w-6 transition-transform group-hover:scale-110" />
-                                    <span>Add Sibling</span>
+                                    <span>{t("add_sibling")}</span>
                                 </button>
                             </div>
                         </div>
 
                         <div className="lg:col-span-4">
-                            <TextAreaField label="Medical History" rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
+                            <TextAreaField label={t("medical_history")} rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
                         </div>
                     </div>
                 </SectionCard>
 
                 {/* Fees Details Card */}
-                <SectionCard title="Fees Details" icon={Wallet}>
+                <SectionCard title={t("fees_details")} icon={Wallet}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredFeeGroups.map((group) => (
                             <label key={group.id} className="flex flex-col border border-muted/50 p-4 rounded-lg cursor-pointer hover:bg-muted/20 transition-colors group/fee">
@@ -626,14 +633,14 @@ export default function StudentAdmissionPage() {
                         ))}
                         {filteredFeeGroups.length === 0 && (
                             <div className="col-span-full py-6 text-center text-muted-foreground text-sm">
-                                No fee groups available.
+                                {t("no_fee_groups_available")}
                             </div>
                         )}
                     </div>
                 </SectionCard>
 
                 {/* Fees Discount Details Card */}
-                <SectionCard title="Fees Discount Details" icon={Percent}>
+                <SectionCard title={t("fees_discount_details")} icon={Percent}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {feeDiscounts.map((discount) => (
                             <label key={discount.id} className="flex flex-col border border-muted/50 p-4 rounded-lg cursor-pointer hover:bg-muted/20 transition-colors group/discount">
@@ -662,43 +669,45 @@ export default function StudentAdmissionPage() {
                                                 {discount.type === 'percentage' ? `${discount.percentage}%` : `${symbol}${discount.amount}`}
                                             </span>
                                         </div>
-                                        {discount.code && <span className="text-xs text-muted-foreground mt-0.5">Code: {discount.code}</span>}
+                                        {discount.code && <span className="text-xs text-muted-foreground mt-0.5">{t("code")}: {discount.code}</span>}
                                     </div>
                                 </div>
                             </label>
                         ))}
                         {feeDiscounts.length === 0 && (
                             <div className="col-span-full py-6 text-center text-muted-foreground text-sm">
-                                No fee discounts available.
+                                {t("no_fee_discounts_available")}
                             </div>
                         )}
                     </div>
                 </SectionCard>
 
                 {/* Parent Guardian Detail Card */}
-                <SectionCard title="Parent Guardian Detail" icon={Users}>
+                <SectionCard title={t("parent_guardian_detail")} icon={Users}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <InputField label="Father Name" value={formData.father_name} onChange={(val) => handleChange("father_name", val)} />
-                        <InputField label="Father Phone" value={formData.father_phone} onChange={(val) => handleChange("father_phone", val)} />
-                        <InputField label="Father Occupation" value={formData.father_occupation} onChange={(val) => handleChange("father_occupation", val)} />
+                        <InputField label={t("father_name")} value={formData.father_name} onChange={(val) => handleChange("father_name", val)} />
+                        <InputField label={t("father_phone")} value={formData.father_phone} onChange={(val) => handleChange("father_phone", val)} />
+                        <InputField label={t("father_occupation")} value={formData.father_occupation} onChange={(val) => handleChange("father_occupation", val)} />
                         <FileUploadField
-                            label="Father Photo (100px X 100px)"
+                            label={t("father_photo_100px_x_100px")}
                             value={formData.father_photo}
                             onChange={(file) => handleChange("father_photo", file)}
+                            placeholder={t("drag_and_drop_a_file_here_or_click")}
                         />
 
-                        <InputField label="Mother Name" value={formData.mother_name} onChange={(val) => handleChange("mother_name", val)} />
-                        <InputField label="Mother Phone" value={formData.mother_phone} onChange={(val) => handleChange("mother_phone", val)} />
-                        <InputField label="Mother Occupation" value={formData.mother_occupation} onChange={(val) => handleChange("mother_occupation", val)} />
+                        <InputField label={t("mother_name")} value={formData.mother_name} onChange={(val) => handleChange("mother_name", val)} />
+                        <InputField label={t("mother_phone")} value={formData.mother_phone} onChange={(val) => handleChange("mother_phone", val)} />
+                        <InputField label={t("mother_occupation")} value={formData.mother_occupation} onChange={(val) => handleChange("mother_occupation", val)} />
                         <FileUploadField
-                            label="Mother Photo (100px X 100px)"
+                            label={t("mother_photo_100px_x_100px")}
                             value={formData.mother_photo}
                             onChange={(file) => handleChange("mother_photo", file)}
+                            placeholder={t("drag_and_drop_a_file_here_or_click")}
                         />
 
                         <div className="lg:col-span-4 py-2">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-3">
-                                If Guardian Is <span className="text-destructive">*</span>
+                                {t("if_guardian_is")} <span className="text-destructive">*</span>
                             </label>
                             <div className="flex gap-6">
                                 {["Father", "Mother", "Other"].map((role) => (
@@ -714,38 +723,39 @@ export default function StudentAdmissionPage() {
                                             <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
                                             <div className="absolute h-2.5 w-2.5 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
                                         </div>
-                                        <span className="text-sm font-semibold group-hover:text-primary transition-colors">{role}</span>
+                                        <span className="text-sm font-semibold group-hover:text-primary transition-colors">{t(role.toLowerCase())}</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
 
-                        <InputField label="Guardian Name" required value={formData.guardian_name} onChange={(val) => handleChange("guardian_name", val)} />
+                        <InputField label={t("guardian_name")} required value={formData.guardian_name} onChange={(val) => handleChange("guardian_name", val)} />
                         {formData.guardian_type === "Other" && (
-                            <InputField label="Guardian Relation" required value={formData.guardian_relation} onChange={(val) => handleChange("guardian_relation", val)} />
+                            <InputField label={t("guardian_relation")} required value={formData.guardian_relation} onChange={(val) => handleChange("guardian_relation", val)} />
                         )}
-                        <InputField label="Guardian Email" value={formData.guardian_email} onChange={(val) => handleChange("guardian_email", val)} />
+                        <InputField label={t("guardian_email")} value={formData.guardian_email} onChange={(val) => handleChange("guardian_email", val)} />
                         <div className="relative">
-                            <InputField label="Parent Username" value={formData.parent_username || ""} onChange={(val) => handleChange("parent_username", val)} readOnly={parentAutoUsernameEnabled} helperText={parentAutoUsernameEnabled ? "Auto-generated" : ""} />
+                            <InputField label={t("parent_username")} value={formData.parent_username || ""} onChange={(val) => handleChange("parent_username", val)} readOnly={parentAutoUsernameEnabled} helperText={parentAutoUsernameEnabled ? t("auto_generated") : ""} />
                             <button
                                 type="button"
                                 onClick={fetchParentUsername}
                                 disabled={generatingParentUsername}
                                 className="absolute right-1 top-6 h-6 w-6 flex items-center justify-center rounded hover:bg-indigo-50 text-indigo-500 transition-colors"
-                                title="Generate parent username"
+                                title={t("generate_parent_username")}
                             >
                                 <RefreshCw className={`h-3.5 w-3.5 ${generatingParentUsername ? 'animate-spin' : ''}`} />
                             </button>
                         </div>
 
-                        <InputField label="Guardian Phone" required value={formData.guardian_phone} onChange={(val) => handleChange("guardian_phone", val)} />
-                        <InputField label="Guardian Occupation" value={formData.guardian_occupation} onChange={(val) => handleChange("guardian_occupation", val)} />
+                        <InputField label={t("guardian_phone")} required value={formData.guardian_phone} onChange={(val) => handleChange("guardian_phone", val)} />
+                        <InputField label={t("guardian_occupation")} value={formData.guardian_occupation} onChange={(val) => handleChange("guardian_occupation", val)} />
                         <FileUploadField
-                            label="Guardian Photo (100px X 100px)"
+                            label={t("guardian_photo_100px_x_100px")}
                             value={formData.guardian_photo}
                             onChange={(file) => handleChange("guardian_photo", file)}
+                            placeholder={t("drag_and_drop_a_file_here_or_click")}
                         />
-                        <TextAreaField label="Guardian Address" rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
+                        <TextAreaField label={t("guardian_address")} rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
                     </div>
                     <div className="mt-6 pt-4 border-t border-muted/30">
                         <button
@@ -753,7 +763,7 @@ export default function StudentAdmissionPage() {
                             onClick={() => setShowMoreDetails(!showMoreDetails)}
                             className="w-full flex items-center justify-between text-muted-foreground hover:text-foreground transition-colors py-2 px-1"
                         >
-                            <span className="font-bold text-sm">{showMoreDetails ? "Hide More Details" : "Add More Details"}</span>
+                            <span className="font-bold text-sm">{showMoreDetails ? t("hide_more_details") : t("add_more_details")}</span>
                             <Plus className={cn("h-5 w-5 bg-muted rounded-full p-1 transition-transform", showMoreDetails && "rotate-45")} />
                         </button>
                     </div>
@@ -761,26 +771,26 @@ export default function StudentAdmissionPage() {
                     {showMoreDetails && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 pt-6 border-t border-muted/30 animate-in slide-in-from-top-4 duration-300">
                             <div className="lg:col-span-4 mb-2">
-                                <h3 className="text-lg font-bold">Others Information</h3>
+                                <h3 className="text-lg font-bold">{t("others_information")}</h3>
                             </div>
 
                             <div className="lg:col-span-2">
-                                <TextAreaField label="Current Address" rows={2} value={formData.current_address} onChange={(val) => handleChange("current_address", val)} />
+                                <TextAreaField label={t("current_address")} rows={2} value={formData.current_address} onChange={(val) => handleChange("current_address", val)} />
                             </div>
                             <div className="lg:col-span-2">
-                                <TextAreaField label="Permanent Address" rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
+                                <TextAreaField label={t("permanent_address")} rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
                             </div>
 
-                            <InputField label="Bank Account Number" value={formData.bank_account_no} onChange={(val) => handleChange("bank_account_no", val)} />
-                            <InputField label="Bank Name" value={formData.bank_name} onChange={(val) => handleChange("bank_name", val)} />
-                            <InputField label="IFSC Code" value={formData.ifsc_code} onChange={(val) => handleChange("ifsc_code", val)} />
-                            <InputField label="National Identification Number" value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
+                            <InputField label={t("bank_account_number")} value={formData.bank_account_no} onChange={(val) => handleChange("bank_account_no", val)} />
+                            <InputField label={t("bank_name")} value={formData.bank_name} onChange={(val) => handleChange("bank_name", val)} />
+                            <InputField label={t("ifsc_code")} value={formData.ifsc_code} onChange={(val) => handleChange("ifsc_code", val)} />
+                            <InputField label={t("national_identification_number")} value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
 
-                            <InputField label="Local Identification Number" value={formData.local_identification_no} onChange={(val) => handleChange("local_identification_no", val)} />
+                            <InputField label={t("local_identification_number")} value={formData.local_identification_no} onChange={(val) => handleChange("local_identification_no", val)} />
 
                             <div className="py-2">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-3">
-                                    RTE
+                                    {t("rte")}
                                 </label>
                                 <div className="flex gap-6">
                                     {["Yes", "No"].map((opt) => (
@@ -796,7 +806,7 @@ export default function StudentAdmissionPage() {
                                                 <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
                                                 <div className="absolute h-2.5 w-2.5 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{opt}</span>
+                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{t(opt.toLowerCase())}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -805,10 +815,10 @@ export default function StudentAdmissionPage() {
                             <div className="lg:col-span-2"></div>
 
                             <div className="lg:col-span-2">
-                                <TextAreaField label="Previous School Details" rows={2} value={formData.previous_school_details} onChange={(val) => handleChange("previous_school_details", val)} />
+                                <TextAreaField label={t("previous_school_details")} rows={2} value={formData.previous_school_details} onChange={(val) => handleChange("previous_school_details", val)} />
                             </div>
                             <div className="lg:col-span-2">
-                                <TextAreaField label="Note" rows={2} value={formData.note} onChange={(val) => handleChange("note", val)} />
+                                <TextAreaField label={t("note")} rows={2} value={formData.note} onChange={(val) => handleChange("note", val)} />
                             </div>
                         </div>
                     )}
@@ -816,32 +826,32 @@ export default function StudentAdmissionPage() {
 
                 {/* Transport & Hostel Details */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-                    <SectionCard title="Transport Details" icon={MapPin}>
+                    <SectionCard title={t("transport_details")} icon={MapPin}>
                         <div className="grid grid-cols-1 gap-6">
                             <SelectField
-                                label="Route List"
+                                label={t("route_list")}
                                 options={transportRoutes.map(r => ({ label: r.title || r.name, value: r.id }))}
                                 value={formData.transport_route_id || ""}
                                 onChange={(val) => handleChange("transport_route_id", val)}
                             />
                             <SelectField
-                                label="Pickup Point"
+                                label={t("pickup_point")}
                                 options={pickupPoints.map(p => ({ label: p.point_name || p.name, value: p.id }))}
                                 value={formData.transport_pickup_point_id || ""}
                                 onChange={(val) => handleChange("transport_pickup_point_id", val)}
                             />
                         </div>
                     </SectionCard>
-                    <SectionCard title="Hostel Details" icon={House}>
+                    <SectionCard title={t("hostel_details")} icon={House}>
                         <div className="grid grid-cols-1 gap-6">
                             <SelectField
-                                label="Hostel"
+                                label={t("hostel")}
                                 options={hostels.map(h => ({ label: h.hostel_name || h.name, value: h.id }))}
                                 value={formData.hostel_id || ""}
                                 onChange={(val) => handleChange("hostel_id", val)}
                             />
                             <SelectField
-                                label="Room No."
+                                label={t("room_no")}
                                 options={rooms.map(r => ({ label: r.room_number || r.room_no || r.name, value: r.id }))}
                                 value={formData.room_id || ""}
                                 onChange={(val) => handleChange("room_id", val)}
@@ -858,7 +868,7 @@ export default function StudentAdmissionPage() {
                         disabled={loading}
                     >
                         {loading ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Save className="h-5 w-5 mr-2" />}
-                        Save
+                        {t("save")}
                     </Button>
                 </div>
             </form>
@@ -866,11 +876,11 @@ export default function StudentAdmissionPage() {
             <Dialog open={showSiblingModal} onOpenChange={setShowSiblingModal}>
                 <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl">
                     <DialogHeader className="px-6 py-4 bg-primary text-primary-foreground flex flex-row items-center justify-between space-y-0">
-                        <DialogTitle className="text-xl font-bold">Add Sibling</DialogTitle>
+                        <DialogTitle className="text-xl font-bold">{t("add_sibling")}</DialogTitle>
                     </DialogHeader>
                     <div className="p-8 space-y-6">
                         <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-sm font-bold text-muted-foreground text-right">Class</label>
+                            <label className="text-sm font-bold text-muted-foreground text-right">{t("class")}</label>
                             <SelectField
                                 label=""
                                 value={siblingClassId}
@@ -884,7 +894,7 @@ export default function StudentAdmissionPage() {
                             />
                         </div>
                         <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-sm font-bold text-muted-foreground text-right">Section</label>
+                            <label className="text-sm font-bold text-muted-foreground text-right">{t("section")}</label>
                             <SelectField
                                 label=""
                                 value={siblingSectionId}
@@ -896,7 +906,7 @@ export default function StudentAdmissionPage() {
                             />
                         </div>
                         <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-sm font-bold text-muted-foreground text-right">Student</label>
+                            <label className="text-sm font-bold text-muted-foreground text-right">{t("student")}</label>
                             <SelectField
                                 label=""
                                 value={siblingStudentId}
@@ -915,7 +925,7 @@ export default function StudentAdmissionPage() {
                             className="bg-primary hover:bg-primary/90 text-white px-6 rounded-lg flex items-center gap-2"
                         >
                             {loadingSiblings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
-                            Add
+                            {t("add")}
                         </Button>
                     </div>
                 </DialogContent>
@@ -981,6 +991,7 @@ function InputField({ label, required, type = "text", value = "", onChange, plac
 }
 
 function SelectField({ label, required, options, value, onChange }: { label: string, required?: boolean, options: { label: string, value: string }[] | string[], value: string, onChange: (val: string) => void }) {
+    const { t } = useTranslation();
     return (
         <div className="space-y-2 group">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
@@ -993,7 +1004,7 @@ function SelectField({ label, required, options, value, onChange }: { label: str
                     required={required}
                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                 >
-                    <option value="">Select</option>
+                    <option value="">{t("select")}</option>
                     {options.map(opt => {
                         const label = typeof opt === "string" ? opt : opt.label;
                         const value = typeof opt === "string" ? opt : opt.value;
@@ -1022,7 +1033,7 @@ function TextAreaField({ label, required, rows = 3, value, onChange }: { label: 
     );
 }
 
-function FileUploadField({ label, required, value, onChange }: { label: string, required?: boolean, value?: File | null, onChange?: (file: File | null) => void }) {
+function FileUploadField({ label, required, value, onChange, placeholder }: { label: string, required?: boolean, value?: File | null, onChange?: (file: File | null) => void, placeholder?: string }) {
     return (
         <div className="space-y-2 group">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
@@ -1032,7 +1043,7 @@ function FileUploadField({ label, required, value, onChange }: { label: string, 
                 <div className="flex items-center gap-2 px-4 pointer-events-none w-full">
                     <Upload className="h-4 w-4 text-muted-foreground group-hover/upload:text-primary transition-colors" />
                     <span className="text-xs font-semibold text-muted-foreground group-hover/upload:text-foreground truncate">
-                        {value ? value.name : "Drag and drop a file here or click"}
+                        {value ? value.name : placeholder || "Drag and drop a file here or click"}
                     </span>
                 </div>
                 <input

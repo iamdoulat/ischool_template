@@ -24,7 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { toast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     Dialog,
     DialogContent,
@@ -69,6 +70,8 @@ interface Complaint {
 
 
 export default function ComplainPage() {
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
     const [complaints, setComplaints] = useState<Complaint[]>([]);
     const [dynamicComplaintTypes, setDynamicComplaintTypes] = useState<{ id: number; name: string }[]>([]);
     const [dynamicSources, setDynamicSources] = useState<{ id: number; name: string }[]>([]);
@@ -129,11 +132,11 @@ export default function ComplainPage() {
             }
         } catch (error) {
             console.error("Error fetching complaints:", error);
-            toast("error", "Failed to load complaints");
+            tt.error("failed_to_load_complaints");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, page, limit]);
+    }, [searchQuery, page, limit, tt]);
 
     const fetchComplaintTypes = useCallback(async () => {
         try {
@@ -166,18 +169,18 @@ export default function ComplainPage() {
         try {
             if (isEdit && editId) {
                 await api.put(`/complaints/${editId}`, formData);
-                toast("success", "Complaint updated successfully");
+                tt.success("complaint_updated_successfully");
             } else {
                 await api.post("/complaints", formData);
-                toast("success", "Complaint added successfully");
+                tt.success("complaint_added_successfully");
             }
             fetchComplaints();
             resetForm();
         } catch (error) {
             console.error("Error saving complaint:", error);
             const err = error as { response?: { data?: { message?: string } } };
-            const message = err.response?.data?.message || "Failed to save complaint";
-            toast("error", message);
+            const message = err.response?.data?.message || "failed_to_save_complaint";
+            tt.error(message);
         }
     };
 
@@ -185,7 +188,7 @@ export default function ComplainPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/complaints/${deleteId}`);
-            toast("success", "Complaint deleted successfully");
+            tt.success("complaint_deleted_successfully");
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
             fetchComplaints();
@@ -193,9 +196,9 @@ export default function ComplainPage() {
             console.error("Error deleting complaint:", error);
             const err = error as { response?: { status?: number } };
             if (err.response?.status === 404) {
-                toast("error", "Complaint not found. It may have been already deleted.");
+                tt.error("complaint_not_found_already_deleted");
             } else {
-                toast("error", "Failed to delete complaint");
+                tt.error("failed_to_delete_complaint");
             }
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
@@ -206,13 +209,13 @@ export default function ComplainPage() {
     const handleBulkDelete = async () => {
         try {
             await api.post("/complaints/bulk-delete", { ids: selectedIds });
-            toast("success", `${selectedIds.length} complaints deleted successfully`);
+            tt.success("complaints_deleted_successfully", { count: selectedIds.length });
             setIsBulkDeleteDialogOpen(false);
             setSelectedIds([]);
             fetchComplaints();
         } catch (error) {
             console.error("Error bulk deleting complaints:", error);
-            toast("error", "Failed to delete selected complaints");
+            tt.error("failed_to_delete_selected_complaints");
         }
     };
 
@@ -281,7 +284,7 @@ export default function ComplainPage() {
     const handleCopy = () => {
         const text = complaints.map(c => `${c.id}\t${c.complaint_type}\t${c.complain_by}\t${c.phone}\t${c.date}`).join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const handlePrint = () => {
@@ -289,11 +292,11 @@ export default function ComplainPage() {
     };
 
     const handleExportExcel = () => {
-        toast("success", "Exporting to Excel...");
+        tt.success("exporting_to_excel");
     };
 
     const handleExportPDF = () => {
-        toast("success", "Exporting to PDF...");
+        tt.success("exporting_to_pdf");
     };
 
     return (
@@ -309,30 +312,30 @@ export default function ComplainPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {isEdit ? "Edit Complain" : "Add Complain"}
+                                    {isEdit ? t("edit_complain") : t("add_complain")}
                                 </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{isEdit ? "Update complaint record" : "Register a new complaint"}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{isEdit ? t("update_complaint_record") : t("register_a_new_complaint")}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-4">
                             <form onSubmit={handleSave} className="space-y-4">
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Complaint ID</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("complaint_id")}</label>
                                     <Input
                                         className="h-10 rounded-lg bg-muted/50 border-muted/50 text-slate-500 cursor-not-allowed"
-                                        value={formData.complaint_id || "(Auto-generated)"}
+                                        value={formData.complaint_id || t("auto_generated")}
                                         disabled
                                     />
                                 </div>
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Complaint Type</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("complaint_type")}</label>
                                     <div className="relative">
                                         <select
                                             className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none cursor-pointer group-hover:border-indigo-200 transition-colors font-medium text-slate-700"
                                             value={formData.complaint_type || ""}
                                             onChange={(e) => setFormData({ ...formData, complaint_type: e.target.value })}
                                         >
-                                            <option value="">Select</option>
+                                            <option value="">{t("select")}</option>
                                             {dynamicComplaintTypes.map(type => (
                                                 <option key={type.id} value={type.name}>{type.name}</option>
                                             ))}
@@ -342,14 +345,14 @@ export default function ComplainPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Source</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("source")}</label>
                                     <div className="relative">
                                         <select
                                             className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none cursor-pointer group-hover:border-indigo-200 transition-colors font-medium text-slate-700"
                                             value={formData.source || ""}
                                             onChange={(e) => setFormData({ ...formData, source: e.target.value })}
                                         >
-                                            <option value="">Select</option>
+                                            <option value="">{t("select")}</option>
                                             {dynamicSources.map(source => (
                                                 <option key={source.id} value={source.name}>{source.name}</option>
                                             ))}
@@ -360,7 +363,7 @@ export default function ComplainPage() {
 
                                 <div className="space-y-1.5 group">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                                        Complain By <span className="text-destructive">*</span>
+                                        {t("complain_by")} <span className="text-destructive">*</span>
                                     </label>
                                     <Input
                                         className="h-10 rounded-lg bg-muted/30 border-muted/50 transition-all hover:border-indigo-200"
@@ -371,7 +374,7 @@ export default function ComplainPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Phone</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("phone")}</label>
                                     <Input
                                         className="h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={formData.phone || ""}
@@ -380,7 +383,7 @@ export default function ComplainPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Date</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("date")}</label>
                                     <Input
                                         type="date"
                                         className="h-10 rounded-lg bg-muted/30 border-muted/50"
@@ -390,7 +393,7 @@ export default function ComplainPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Description</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("description")}</label>
                                     <Textarea
                                         className="min-h-[80px] rounded-lg bg-muted/30 border-muted/50 resize-none"
                                         value={formData.description || ""}
@@ -399,7 +402,7 @@ export default function ComplainPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Action Taken</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("action_taken")}</label>
                                     <Input
                                         className="h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={formData.action_taken || ""}
@@ -408,7 +411,7 @@ export default function ComplainPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Assigned</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("assigned")}</label>
                                     <Input
                                         className="h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={formData.assigned || ""}
@@ -417,7 +420,7 @@ export default function ComplainPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Note</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("note")}</label>
                                     <Textarea
                                         className="min-h-[80px] rounded-lg bg-muted/30 border-muted/50 resize-none"
                                         value={formData.note || ""}
@@ -426,23 +429,23 @@ export default function ComplainPage() {
                                 </div>
 
                                 <div className="space-y-1.5 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Attach Document</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("attach_document")}</label>
                                     <div className="border-2 border-dashed border-muted/50 rounded-lg p-6 bg-muted/10 group-hover:bg-muted/20 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 group-hover:border-indigo-300">
                                         <div className="p-2 rounded-full bg-muted/30">
                                             <CloudUpload className="h-5 w-5 text-muted-foreground group-hover:text-indigo-500 transition-colors" />
                                         </div>
-                                        <p className="text-xs font-semibold text-muted-foreground group-hover:text-slate-900 transition-colors">Drag and drop a file here or click</p>
+                                        <p className="text-xs font-semibold text-muted-foreground group-hover:text-slate-900 transition-colors">{t("drag_and_drop_file")}</p>
                                     </div>
                                 </div>
 
                                 <div className="flex justify-end gap-2 pt-2">
                                     {isEdit && (
                                         <Button type="button" variant="outline" className="h-10 px-6" onClick={resetForm}>
-                                            Cancel
+                                            {t("cancel")}
                                         </Button>
                                     )}
                                     <Button type="submit" variant="gradient" className="h-10 px-8">
-                                        Save
+                                        {t("save")}
                                     </Button>
                                 </div>
                             </form>
@@ -458,8 +461,8 @@ export default function ComplainPage() {
                                 <MessageSquareWarning className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Complaint List</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{total} total complaint{total === 1 ? "" : "s"}</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("complaint_list")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("total_complaints_count", { total })}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
@@ -468,7 +471,7 @@ export default function ComplainPage() {
                                 <div className="relative w-full md:w-64">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search"
+                                        placeholder={t("search")}
                                         className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={searchQuery}
                                         onChange={(e) => {
@@ -503,7 +506,7 @@ export default function ComplainPage() {
                                         <IconButton icon={Copy} onClick={handleCopy} />
                                         <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} />
                                         <IconButton icon={FileText} onClick={handleExportPDF} />
-                                        <IconButton icon={Download} onClick={() => toast("success", "Downloading...")} />
+                                        <IconButton icon={Download} onClick={() => tt.success("downloading")} />
                                         <IconButton icon={Columns} />
                                     </div>
                                 </div>
@@ -520,11 +523,11 @@ export default function ComplainPage() {
                                                     onCheckedChange={toggleSelectAll}
                                                 />
                                             </th>
-                                            <Th>Complain #</Th>
-                                            <Th>Complaint Type</Th>
-                                            <Th>Name</Th>
-                                            <Th>Phone</Th>
-                                            <Th>Date</Th>
+                                            <Th>{t("complain_number")}</Th>
+                                            <Th>{t("complaint_type")}</Th>
+                                            <Th>{t("name")}</Th>
+                                            <Th>{t("phone")}</Th>
+                                            <Th>{t("date")}</Th>
                                             <th className="px-4 py-4 border-b border-muted/50 text-right">
                                                 <div className="flex justify-end pr-1 text-slate-700">
                                                     {selectedIds.length > 0 ? (
@@ -535,7 +538,7 @@ export default function ComplainPage() {
                                                             <Trash2 className="h-3.5 w-3.5 text-white" />
                                                         </button>
                                                     ) : (
-                                                        "ACTION"
+                                                        t("action")
                                                     )}
                                                 </div>
                                             </th>
@@ -544,11 +547,11 @@ export default function ComplainPage() {
                                     <tbody className="divide-y divide-muted/30">
                                         {loading ? (
                                             <tr>
-                                                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading complaints...</td>
+                                                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">{t("loading_complaints")}</td>
                                             </tr>
                                         ) : displayedComplaints.length === 0 ? (
                                             <tr>
-                                                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No complaints found</td>
+                                                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">{t("no_complaints_found")}</td>
                                             </tr>
                                         ) : (
                                             displayedComplaints.map((item) => (
@@ -583,7 +586,7 @@ export default function ComplainPage() {
 
                             <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                    Showing {total > 0 ? (page - 1) * limit + 1 : 0} to {Math.min(page * limit, total)} of {total} entries
+                                    {t("showing_x_to_y_of_z", { from: total > 0 ? (page - 1) * limit + 1 : 0, to: Math.min(page * limit, total), total })}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -628,14 +631,14 @@ export default function ComplainPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the complaint entry.
+                            {t("permanently_delete_complaint_entry")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -643,14 +646,14 @@ export default function ComplainPage() {
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Bulk Delete Entries</AlertDialogTitle>
+                        <AlertDialogTitle>{t("bulk_delete_entries")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete {selectedIds.length} selected complaint entries? This action cannot be undone.
+                            {t("confirm_bulk_delete_complaint_entries", { count: selectedIds.length })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">Delete Selected</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">{t("delete_selected")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -660,29 +663,29 @@ export default function ComplainPage() {
                     <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-6">
                         <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
                             <Eye className="h-5 w-5" />
-                            Complaint Details
+                            {t("complaint_details")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="p-6">
                         <div className="grid grid-cols-2 gap-y-6 gap-x-8">
-                            <DetailItem label="Complaint ID" value={selectedComplaint?.complaint_id} />
-                            <DetailItem label="Complaint Type" value={selectedComplaint?.complaint_type} />
-                            <DetailItem label="Source" value={selectedComplaint?.source} />
-                            <DetailItem label="Complain By" value={selectedComplaint?.complain_by} />
-                            <DetailItem label="Phone" value={selectedComplaint?.phone} />
-                            <DetailItem label="Date" value={selectedComplaint?.date ? new Date(selectedComplaint.date).toLocaleDateString() : "-"} />
-                            <DetailItem label="Assigned" value={selectedComplaint?.assigned} />
-                            <DetailItem label="Action Taken" value={selectedComplaint?.action_taken} />
+                            <DetailItem label={t("complaint_id")} value={selectedComplaint?.complaint_id} />
+                            <DetailItem label={t("complaint_type")} value={selectedComplaint?.complaint_type} />
+                            <DetailItem label={t("source")} value={selectedComplaint?.source} />
+                            <DetailItem label={t("complain_by")} value={selectedComplaint?.complain_by} />
+                            <DetailItem label={t("phone")} value={selectedComplaint?.phone} />
+                            <DetailItem label={t("date")} value={selectedComplaint?.date ? new Date(selectedComplaint.date).toLocaleDateString() : "-"} />
+                            <DetailItem label={t("assigned")} value={selectedComplaint?.assigned} />
+                            <DetailItem label={t("action_taken")} value={selectedComplaint?.action_taken} />
                             <div className="col-span-2 space-y-1">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Description</label>
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("description")}</label>
                                 <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px]">
-                                    {selectedComplaint?.description || "No description provided"}
+                                    {selectedComplaint?.description || t("no_description_provided")}
                                 </p>
                             </div>
                             <div className="col-span-2 space-y-1">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Note</label>
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("note")}</label>
                                 <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px]">
-                                    {selectedComplaint?.note || "No note provided"}
+                                    {selectedComplaint?.note || t("no_note_provided")}
                                 </p>
                             </div>
                         </div>
@@ -692,7 +695,7 @@ export default function ComplainPage() {
                                 variant="gradient"
                                 className="px-8 h-10 rounded-lg shadow-lg shadow-indigo-200 transition-all active:scale-95 text-white"
                             >
-                                Close
+                                {t("close")}
                             </Button>
                         </div>
                     </div>

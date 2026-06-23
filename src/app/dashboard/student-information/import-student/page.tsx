@@ -106,14 +106,14 @@ export default function ImportStudentPage() {
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-20">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-primary/10 rounded-lg">
-                        <FileSpreadsheet className="h-6 w-6 text-primary" />
-                    </div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <FileSpreadsheet className="h-5 w-5" />
+                    </span>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Import Student</h1>
-                        <p className="text-sm text-muted-foreground">Bulk import students from CSV file</p>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Import Student</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Bulk import students from CSV file</p>
                     </div>
                 </div>
                 <Button

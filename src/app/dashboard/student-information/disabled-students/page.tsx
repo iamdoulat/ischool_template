@@ -30,14 +30,16 @@ import {
     User,
     Phone,
     Mail,
-    Save
+    Save,
+    UserX
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -97,7 +99,8 @@ export default function DisabledStudentsPage() {
     const [editingStudent, setEditingStudent] = useState<any | null>(null);
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
     const router = useRouter();
 
     // Pagination state
@@ -120,9 +123,9 @@ export default function DisabledStudentsPage() {
             setDisableReasons(reasonsRes.data.data || []);
         } catch (error) {
             console.error("Error fetching dependencies:", error);
-            toast("error", "Failed to load dependencies");
+            tt.error("failed_to_load_dependencies");
         }
-    }, [toast]);
+    }, [tt]);
 
     const fetchSections = async (classId: string) => {
         if (!classId) {
@@ -169,11 +172,11 @@ export default function DisabledStudentsPage() {
             setTo(to || 0);
         } catch (error) {
             console.error("Error fetching disabled students:", error);
-            toast("error", "Failed to fetch disabled students.");
+            tt.error("failed_to_fetch_disabled_students");
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, selectedClassId, selectedSectionId, toast]);
+    }, [searchTerm, selectedClassId, selectedSectionId, tt]);
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -189,7 +192,7 @@ export default function DisabledStudentsPage() {
     // Export functions
     const exportToCopy = () => {
         if (students.length === 0) {
-            toast("error", "No data to copy.");
+            tt.error("no_data_to_copy");
             return;
         }
         const headers = ["Admission No", "Roll No", "Student Name", "Class", "Father Name", "Disable Date", "Disable Reason", "Gender", "Mobile Number"];
@@ -206,12 +209,12 @@ export default function DisabledStudentsPage() {
         ]);
         const text = [headers.join("\t"), ...rows.map(r => r.join("\t"))].join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
         if (students.length === 0) {
-            toast("error", "No data to export.");
+            tt.error("no_data_to_export");
             return;
         }
         const data = students.map(s => ({
@@ -229,12 +232,12 @@ export default function DisabledStudentsPage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Disabled Students");
         XLSX.writeFile(workbook, "disabled_students.xlsx");
-        toast("success", "Excel file downloaded");
+        tt.success("excel_file_downloaded");
     };
 
     const exportToPDF = () => {
         if (students.length === 0) {
-            toast("error", "No data to export.");
+            tt.error("no_data_to_export");
             return;
         }
         const doc = new jsPDF("landscape");
@@ -254,7 +257,7 @@ export default function DisabledStudentsPage() {
             styles: { fontSize: 8 },
         });
         doc.save("disabled_students.pdf");
-        toast("success", "PDF file downloaded");
+        tt.success("pdf_file_downloaded");
     };
 
     const handlePrint = () => {
@@ -262,13 +265,13 @@ export default function DisabledStudentsPage() {
     };
 
     const handleRestore = async (id: string) => {
-        if (!confirm("Are you sure you want to enable this student?")) return;
+        if (!confirm(t("are_you_sure_enable_student"))) return;
         try {
             await api.post(`/students/${id}/toggle-status`, { active: true });
-            toast("success", "Student enabled successfully");
+            tt.success("student_enabled_successfully");
             fetchStudents(currentPage);
         } catch (error) {
-            toast("error", "Failed to restore student");
+            tt.error("failed_to_restore_student");
         }
     };
 
@@ -297,12 +300,12 @@ export default function DisabledStudentsPage() {
             };
             
             await api.put(`/students/${editingStudent.id}`, data);
-            toast("success", "Student information updated successfully");
+            tt.success("student_information_updated_successfully");
             setEditDialogOpen(false);
             fetchStudents(currentPage);
         } catch (error: any) {
             console.error("Error updating student:", error);
-            toast("error", error.response?.data?.message || "Failed to update student information");
+            tt.error(error.response?.data?.message || t("failed_to_update_student_information"));
         } finally {
             setLoading(false);
         }
@@ -311,18 +314,26 @@ export default function DisabledStudentsPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
             {/* Select Criteria Section */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm print:hidden">
-                <CardHeader className="border-b border-muted/50 pb-4">
-                    <CardTitle className="text-xl font-bold tracking-tight">Select Criteria</CardTitle>
-                </CardHeader>
+            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm print:hidden pt-0 overflow-hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <UserX className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("disabled_students")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("search_and_manage_disabled_student_records")}</p>
+                        </div>
+                    </div>
+                </div>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
                         <div className="md:col-span-3 space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                Class <span className="text-destructive">*</span>
+                                {t("class")} <span className="text-destructive">*</span>
                             </label>
                              <div className="relative">
-                                 <select 
+                                 <select
                                      className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                      value={selectedClassId}
                                      onChange={(e) => {
@@ -332,7 +343,7 @@ export default function DisabledStudentsPage() {
                                          fetchSections(val);
                                      }}
                                  >
-                                     <option value="">Select</option>
+                                     <option value="">{t("select")}</option>
                                      {classes.map(c => (
                                          <option key={c.id} value={c.id}>{c.name}</option>
                                      ))}
@@ -343,15 +354,15 @@ export default function DisabledStudentsPage() {
 
                         <div className="md:col-span-3 space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                Section
+                                {t("section")}
                             </label>
                              <div className="relative">
-                                 <select 
+                                 <select
                                      className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                      value={selectedSectionId}
                                      onChange={(e) => setSelectedSectionId(e.target.value)}
                                  >
-                                     <option value="">Select</option>
+                                     <option value="">{t("select")}</option>
                                      {sections.map(s => (
                                          <option key={s.id} value={s.id}>{s.name}</option>
                                      ))}
@@ -362,17 +373,17 @@ export default function DisabledStudentsPage() {
 
                         <div className="md:col-span-6 space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                Search By Keyword
+                                {t("search_by_keyword")}
                             </label>
                             <div className="flex gap-2">
                                 <Input
-                                    placeholder="Search By Student Name, Roll Number, Etc."
+                                    placeholder={t("search_by_student_name_roll_number_etc")}
                                     className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                                 <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => fetchStudents(1)}>
-                                    <Search className="h-4 w-4" /> Search
+                                    <Search className="h-4 w-4" /> {t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -392,7 +403,7 @@ export default function DisabledStudentsPage() {
                         )}
                     >
                         <LayoutList className="h-4 w-4" />
-                        List View
+                        {t("list_view")}
                         {activeTab === "list" && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
                     </button>
                     <button
@@ -403,7 +414,7 @@ export default function DisabledStudentsPage() {
                         )}
                     >
                         <LayoutGrid className="h-4 w-4" />
-                        Details View
+                        {t("details_view")}
                         {activeTab === "details" && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
                     </button>
                 </div>
@@ -415,7 +426,7 @@ export default function DisabledStudentsPage() {
                             <div className="relative w-full md:w-64">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -427,12 +438,12 @@ export default function DisabledStudentsPage() {
                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                 </div>
                                 <div className="flex gap-1">
-                                    <IconButton icon={Printer} onClick={handlePrint} title="Print" />
-                                    <IconButton icon={Copy} onClick={exportToCopy} title="Copy" />
-                                    <IconButton icon={TableIcon} onClick={exportToExcel} title="Excel" />
-                                    <IconButton icon={FileText} onClick={exportToPDF} title="PDF" />
-                                    <IconButton icon={Download} onClick={() => students.length > 0 && exportToExcel()} title="Download" />
-                                    <IconButton icon={Columns} title="Columns" />
+                                    <IconButton icon={Printer} onClick={handlePrint} title={t("print")} />
+                                    <IconButton icon={Copy} onClick={exportToCopy} title={t("copy")} />
+                                    <IconButton icon={TableIcon} onClick={exportToExcel} title={t("excel")} />
+                                    <IconButton icon={FileText} onClick={exportToPDF} title={t("pdf")} />
+                                    <IconButton icon={Download} onClick={() => students.length > 0 && exportToExcel()} title={t("download")} />
+                                    <IconButton icon={Columns} title={t("columns")} />
                                 </div>
                             </div>
                         </div>
@@ -450,16 +461,16 @@ export default function DisabledStudentsPage() {
                                     <table className="w-full text-left border-collapse">
                                         <thead className="bg-muted/50 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                             <tr>
-                                                <Th>Admission No</Th>
-                                                <Th>Roll No</Th>
-                                                <Th>Student Name</Th>
-                                                <Th>Class</Th>
-                                                <Th>Father Name</Th>
-                                                <Th>Disable Date</Th>
-                                                <Th>Disable Reason</Th>
-                                                <Th>Gender</Th>
-                                                <Th>Mobile Number</Th>
-                                                <Th className="text-right print:hidden">Action</Th>
+                                                <Th>{t("admission_no")}</Th>
+                                                <Th>{t("roll_no")}</Th>
+                                                <Th>{t("student_name")}</Th>
+                                                <Th>{t("class")}</Th>
+                                                <Th>{t("father_name")}</Th>
+                                                <Th>{t("disable_date")}</Th>
+                                                <Th>{t("disable_reason")}</Th>
+                                                <Th>{t("gender")}</Th>
+                                                <Th>{t("mobile_number")}</Th>
+                                                <Th className="text-right print:hidden">{t("action")}</Th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-muted/30">
@@ -476,17 +487,17 @@ export default function DisabledStudentsPage() {
                                                     <Td>{student.phone}</Td>
                                                     <Td className="text-right print:hidden">
                                                         <div className="flex justify-end gap-1">
-                                                            <ActionBtn icon={RotateCcw} onClick={() => handleRestore(student.id)} className="bg-green-500 hover:bg-green-600" title="Enable" />
-                                                            <ActionBtn 
-                                                                icon={Eye} 
-                                                                className="bg-indigo-500 hover:bg-indigo-600" 
-                                                                title="View" 
+                                                            <ActionBtn icon={RotateCcw} onClick={() => handleRestore(student.id)} className="bg-green-500 hover:bg-green-600" title={t("enable")} />
+                                                            <ActionBtn
+                                                                icon={Eye}
+                                                                className="bg-indigo-500 hover:bg-indigo-600"
+                                                                title={t("view")}
                                                                 onClick={() => handleView(student)}
                                                             />
-                                                            <ActionBtn 
-                                                                icon={Pencil} 
-                                                                className="bg-indigo-500 hover:bg-indigo-600" 
-                                                                title="Edit" 
+                                                            <ActionBtn
+                                                                icon={Pencil}
+                                                                className="bg-indigo-500 hover:bg-indigo-600"
+                                                                title={t("edit")}
                                                                 onClick={() => handleEdit(student)}
                                                             />
                                                         </div>
@@ -515,7 +526,7 @@ export default function DisabledStudentsPage() {
                                                             {student.admission_no}
                                                         </Badge>
                                                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">
-                                                            Roll: {student.roll_no || "-"}
+                                                            {t("roll")}: {student.roll_no || "-"}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -532,20 +543,20 @@ export default function DisabledStudentsPage() {
 
                                                 <div className="grid grid-cols-2 gap-4 py-4 border-y border-muted/50">
                                                     <div className="space-y-1">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Reason</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t("reason")}</span>
                                                         <p className="text-xs font-bold text-slate-700 line-clamp-1">{student.reason?.reason || student.disable_reason || "-"}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Date</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t("date")}</span>
                                                         <p className="text-xs font-bold text-slate-700">{formatDate(student.disable_date)}</p>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center justify-between pt-2">
                                                     <div className="flex -space-x-2">
-                                                        <ActionBtn icon={RotateCcw} onClick={() => handleRestore(student.id)} className="bg-green-500 hover:bg-green-600 rounded-lg" title="Enable" />
-                                                        <ActionBtn icon={Eye} onClick={() => handleView(student)} className="bg-indigo-500 hover:bg-indigo-600 rounded-lg ml-2" title="View" />
-                                                        <ActionBtn icon={Pencil} onClick={() => handleEdit(student)} className="bg-indigo-500 hover:bg-indigo-600 rounded-lg ml-2" title="Edit" />
+                                                        <ActionBtn icon={RotateCcw} onClick={() => handleRestore(student.id)} className="bg-green-500 hover:bg-green-600 rounded-lg" title={t("enable")} />
+                                                        <ActionBtn icon={Eye} onClick={() => handleView(student)} className="bg-indigo-500 hover:bg-indigo-600 rounded-lg ml-2" title={t("view")} />
+                                                        <ActionBtn icon={Pencil} onClick={() => handleEdit(student)} className="bg-indigo-500 hover:bg-indigo-600 rounded-lg ml-2" title={t("edit")} />
                                                     </div>
                                                     <span className="text-[10px] font-black uppercase tracking-widest text-primary/60 bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
                                                         {student.gender}
@@ -570,9 +581,9 @@ export default function DisabledStudentsPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-2 max-w-xs">
-                                        <p className="text-red-400 font-bold text-sm">No data available in table</p>
+                                        <p className="text-red-400 font-bold text-sm">{t("no_data_available_in_table")}</p>
                                         <button className="flex items-center gap-2 text-primary hover:underline font-bold text-sm mx-auto transition-all hover:gap-3" onClick={() => fetchStudents(1)}>
-                                            <span>←</span> Refresh or search with different criteria.
+                                            <span>←</span> {t("refresh_or_search_with_different_criteria")}
                                         </button>
                                     </div>
                                 </div>
@@ -580,7 +591,7 @@ export default function DisabledStudentsPage() {
                         </div>
 
                         <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium print:hidden">
-                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Showing {from} to {to} of {total} entries</p>
+                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{t("showing_x_to_y_of_z", { from, to, total })}</p>
                             <div className="flex items-center gap-2">
                                 <Button
                                     variant="outline"
@@ -644,7 +655,7 @@ export default function DisabledStudentsPage() {
                                     </div>
                                     <div className="text-center md:text-left space-y-3">
                                         <Badge variant="secondary" className="px-4 py-1.5 rounded-full bg-primary/10 text-primary border-primary/20 text-xs font-bold uppercase tracking-widest shadow-sm">
-                                            Student Profile
+                                            {t("student_profile")}
                                         </Badge>
                                         <DialogTitle className="text-4xl font-black tracking-tight text-foreground">
                                             {selectedStudent?.name} {selectedStudent?.last_name}
@@ -652,7 +663,7 @@ export default function DisabledStudentsPage() {
                                         <div className="flex flex-wrap justify-center md:justify-start gap-4">
                                             <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
                                                 <BadgeCheck className="h-4 w-4 text-primary" />
-                                                ADM: {selectedStudent?.admission_no}
+                                                {t("adm")}: {selectedStudent?.admission_no}
                                             </div>
                                             <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
                                                 <GraduationCap className="h-4 w-4 text-indigo-500" />
@@ -667,41 +678,41 @@ export default function DisabledStudentsPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     {/* Personal Info */}
                                     <div className="space-y-6">
-                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 px-1">Personal Details</h4>
+                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 px-1">{t("personal_details")}</h4>
                                         <div className="grid grid-cols-1 gap-4">
-                                            <InfoField label="Date of Birth" value={formatDate(selectedStudent?.dob)} icon={Calendar} />
-                                            <InfoField label="Gender" value={selectedStudent?.gender} icon={User} />
-                                            <InfoField label="Blood Group" value={selectedStudent?.blood_group || "-"} icon={BadgeCheck} />
-                                            <InfoField label="Religion" value={selectedStudent?.religion || "-"} icon={BadgeCheck} />
+                                            <InfoField label={t("date_of_birth")} value={formatDate(selectedStudent?.dob)} icon={Calendar} />
+                                            <InfoField label={t("gender")} value={selectedStudent?.gender} icon={User} />
+                                            <InfoField label={t("blood_group")} value={selectedStudent?.blood_group || "-"} icon={BadgeCheck} />
+                                            <InfoField label={t("religion")} value={selectedStudent?.religion || "-"} icon={BadgeCheck} />
                                         </div>
                                     </div>
                                     
                                     {/* Contact & Parent Info */}
                                     <div className="space-y-6">
-                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">Contact & Guardian</h4>
+                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">{t("contact_and_guardian")}</h4>
                                         <div className="grid grid-cols-1 gap-4">
-                                            <InfoField label="Mobile Number" value={selectedStudent?.phone} icon={Phone} />
-                                            <InfoField label="Email Address" value={selectedStudent?.email || "-"} icon={Mail} />
-                                            <InfoField label="Father Name" value={selectedStudent?.father_name} icon={User} />
-                                            <InfoField label="Category" value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} />
+                                            <InfoField label={t("mobile_number")} value={selectedStudent?.phone} icon={Phone} />
+                                            <InfoField label={t("email_address")} value={selectedStudent?.email || "-"} icon={Mail} />
+                                            <InfoField label={t("father_name")} value={selectedStudent?.father_name} icon={User} />
+                                            <InfoField label={t("category")} value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} />
                                             <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
                                                 <div className="p-2.5 bg-white rounded-lg shadow-sm border border-muted group-hover:scale-110 transition-transform">
                                                     <BadgeCheck className="h-4 w-4 text-primary" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Status</p>
+                                                    <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("status")}</p>
                                                     <Badge className={cn(
                                                         "mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border-none",
-                                                        selectedStudent?.active 
-                                                            ? "bg-green-500/10 text-green-600" 
+                                                        selectedStudent?.active
+                                                            ? "bg-green-500/10 text-green-600"
                                                             : "bg-red-500/10 text-red-600"
                                                     )}>
-                                                        {selectedStudent?.active ? "Active" : "Disabled"}
+                                                        {selectedStudent?.active ? t("active") : t("disabled")}
                                                     </Badge>
                                                 </div>
                                             </div>
-                                            <InfoField label="Disable Reason" value={selectedStudent?.reason?.reason || selectedStudent?.disable_reason} icon={FileText} />
-                                            <InfoField label="Disable Date" value={formatDate(selectedStudent?.disable_date)} icon={Calendar} />
+                                            <InfoField label={t("disable_reason")} value={selectedStudent?.reason?.reason || selectedStudent?.disable_reason} icon={FileText} />
+                                            <InfoField label={t("disable_date")} value={formatDate(selectedStudent?.disable_date)} icon={Calendar} />
                                         </div>
                                     </div>
                                 </div>
@@ -709,10 +720,10 @@ export default function DisabledStudentsPage() {
                             
                             <DialogFooter className="p-6 bg-muted/20 border-t border-muted/50 flex flex-row gap-3">
                                 <Button variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setViewDialogOpen(false)}>
-                                    Close
+                                    {t("close")}
                                 </Button>
-                                <Button 
-                                    variant="gradient" 
+                                <Button
+                                    variant="gradient"
                                     className="flex-1 rounded-lg h-12 font-bold"
                                     onClick={() => {
                                         setViewDialogOpen(false);
@@ -720,7 +731,7 @@ export default function DisabledStudentsPage() {
                                     }}
                                 >
                                     <Pencil className="h-4 w-4 mr-2" />
-                                    Edit Profile
+                                    {t("edit_profile")}
                                 </Button>
                             </DialogFooter>
                         </>
@@ -745,10 +756,10 @@ export default function DisabledStudentsPage() {
                                     </div>
                                     <div>
                                         <DialogTitle className="text-2xl font-black tracking-tight text-foreground">
-                                            Edit Student Information
+                                            {t("edit_student_information")}
                                         </DialogTitle>
                                         <DialogDescription className="text-muted-foreground font-medium">
-                                            Update the details for <span className="text-primary font-bold">{editingStudent?.name || ""} {editingStudent?.last_name || ""}</span>
+                                            {t("update_the_details_for")} <span className="text-primary font-bold">{editingStudent?.name || ""} {editingStudent?.last_name || ""}</span>
                                         </DialogDescription>
                                     </div>
                                 </div>
@@ -764,46 +775,46 @@ export default function DisabledStudentsPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* Core Identification */}
                                         <div className="space-y-4">
-                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">Identification</h4>
+                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">{t("identification")}</h4>
                                             <div className="space-y-2">
-                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Admission No</label>
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("admission_no")}</label>
                                                 <Input name="admission_no" defaultValue={editingStudent?.admission_no} className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Roll No</label>
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("roll_no")}</label>
                                                 <Input name="roll_no" defaultValue={editingStudent?.roll_no} className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
                                             </div>
                                         </div>
 
                                         {/* Name & Basic Info */}
                                         <div className="space-y-4">
-                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 px-1">Basic Information</h4>
+                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 px-1">{t("basic_information")}</h4>
                                             <div className="space-y-2">
-                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">First Name</label>
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("first_name")}</label>
                                                 <Input name="name" defaultValue={editingStudent?.name} className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Last Name</label>
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("last_name")}</label>
                                                 <Input name="last_name" defaultValue={editingStudent?.last_name} className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
                                             </div>
                                         </div>
 
                                         {/* Class & Contact */}
                                         <div className="space-y-4">
-                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">Academic & Contact</h4>
+                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">{t("academic_and_contact")}</h4>
                                             <div className="space-y-2">
-                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Mobile Number</label>
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("mobile_number")}</label>
                                                 <Input name="phone" defaultValue={editingStudent?.phone} className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white focus:ring-primary/20 transition-all" />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Disable Reason</label>
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("disable_reason")}</label>
                                                 <div className="relative">
                                                     <select 
                                                         name="disable_reason" 
                                                         defaultValue={editingStudent?.disable_reason}
                                                         className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all appearance-none cursor-pointer"
                                                     >
-                                                        <option value="">Select Reason</option>
+                                                        <option value="">{t("select_reason")}</option>
                                                         {disableReasons.map(r => (
                                                             <option key={r.id} value={r.id}>{r.reason}</option>
                                                         ))}
@@ -812,7 +823,7 @@ export default function DisabledStudentsPage() {
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Disable Date</label>
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("disable_date")}</label>
                                                 <Input 
                                                     name="disable_date" 
                                                     type="date" 
@@ -826,16 +837,16 @@ export default function DisabledStudentsPage() {
 
                                 <DialogFooter className="p-6 bg-muted/20 border-t border-muted/50 flex flex-row gap-3">
                                     <Button type="button" variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setEditDialogOpen(false)}>
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
-                                    <Button 
-                                        type="submit" 
-                                        variant="gradient" 
+                                    <Button
+                                        type="submit"
+                                        variant="gradient"
                                         className="flex-1 rounded-lg h-12 font-bold shadow-lg shadow-primary/20"
                                         disabled={loading}
                                     >
                                         {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Save className="h-5 w-5 mr-2" />}
-                                        Save Changes
+                                        {t("save_changes")}
                                     </Button>
                                 </DialogFooter>
                             </form>

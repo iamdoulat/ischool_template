@@ -10,6 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, Loader2, Filter, TrendingUp } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import api from "@/lib/api";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -58,6 +60,8 @@ interface Section {
 
 export default function PromoteStudentsPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     // Dropdown Data
     const [sessions, setSessions] = useState<AcademicSession[]>([]);
     const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -106,7 +110,7 @@ export default function PromoteStudentsPage() {
                 }
             } catch (error) {
                 console.error("Error fetching prerequisites:", error);
-                toast("error", "Failed to load prerequisite data");
+                tt.error("failed_to_load");
             } finally {
                 setLoading(false);
             }
@@ -116,7 +120,7 @@ export default function PromoteStudentsPage() {
 
     const handleSearch = async () => {
         if (!currentSessionId || !currentClassId || !currentSectionId) {
-            toast("error", "Please select all search criteria");
+            tt.error("please_select_all_search_criteria");
             return;
         }
 
@@ -139,7 +143,7 @@ export default function PromoteStudentsPage() {
             setHasSearched(true);
         } catch (error) {
             console.error("Error searching students:", error);
-            toast("error", "Failed to fetch students");
+            tt.error("failed_to_fetch");
         } finally {
             setSearching(false);
         }
@@ -147,11 +151,11 @@ export default function PromoteStudentsPage() {
 
     const handlePromote = async () => {
         if (selectedStudentIds.length === 0) {
-            toast("error", "Please select at least one student");
+            tt.error("please_select_at_least_one_student");
             return;
         }
         if (!promoteSessionId || !promoteClassId || !promoteSectionId) {
-            toast("error", "Please select all promotion criteria");
+            tt.error("please_select_all_promotion_criteria");
             return;
         }
 
@@ -171,13 +175,13 @@ export default function PromoteStudentsPage() {
         setPromoting(true);
         try {
             await api.post("/academics/student-promotion", payload);
-            toast("success", "Students promoted successfully");
+            tt.success("students_promoted_successfully");
             setStudents([]);
             setSelectedStudentIds([]);
         } catch (error) {
             console.error("Error promoting students:", error);
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Failed to promote students");
+            tt.error(err.response?.data?.message || "failed_to_promote_students");
         } finally {
             setPromoting(false);
         }
@@ -216,19 +220,19 @@ export default function PromoteStudentsPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Choose session, class &amp; section to find students</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("choose_session_class_section_to_find_students")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <Label className="text-xs font-semibold text-gray-600">
-                                Academic Session <span className="text-red-500">*</span>
+                                {t("academic_session")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={currentSessionId} onValueChange={setCurrentSessionId}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select Session" />
+                                    <SelectValue placeholder={t("select_session")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sessions.map(s => (
@@ -239,11 +243,11 @@ export default function PromoteStudentsPage() {
                         </div>
                         <div className="space-y-2">
                             <Label className="text-xs font-semibold text-gray-600">
-                                Class <span className="text-red-500">*</span>
+                                {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={currentClassId} onValueChange={(val) => { setCurrentClassId(val); setCurrentSectionId(""); }}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select Class" />
+                                    <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => (
@@ -254,11 +258,11 @@ export default function PromoteStudentsPage() {
                         </div>
                         <div className="space-y-2">
                             <Label className="text-xs font-semibold text-gray-600">
-                                Section <span className="text-red-500">*</span>
+                                {t("section")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={currentSectionId} onValueChange={setCurrentSectionId}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select Section" />
+                                    <SelectValue placeholder={t("select_section")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {filteredSections.map(s => (
@@ -275,7 +279,7 @@ export default function PromoteStudentsPage() {
                             className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-6 h-9 text-xs gap-2 transition-all duration-300 shadow-md"
                         >
                             {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                            Search
+                            {t("search")}
                         </Button>
                     </div>
                 </CardContent>
@@ -289,8 +293,8 @@ export default function PromoteStudentsPage() {
                             <TrendingUp className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Loading students…</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("loading_students")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-4">
@@ -299,12 +303,12 @@ export default function PromoteStudentsPage() {
                                 <TableHeader className="bg-gray-50 text-[11px] uppercase">
                                     <TableRow>
                                         <TableHead className="w-[40px] px-4"></TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Admission No</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Student Name</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Father Name</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Date Of Birth</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Current Result</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Next Session Status</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("admission_no")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("student_name")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("father_name")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("date_of_birth")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("current_result")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("next_session_status")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -322,9 +326,9 @@ export default function PromoteStudentsPage() {
                     <div className="bg-orange-50 p-4 rounded-full mb-4">
                         <Search className="h-8 w-8 text-orange-500" />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-800 mb-1">No Students Found</h3>
+                    <h3 className="text-lg font-medium text-gray-800 mb-1">{t("no_students_found")}</h3>
                     <p className="text-sm text-gray-500 max-w-sm">
-                        We couldn&apos;t find any active students for the selected Session, Class, and Section criteria. Please verify your selection and try again.
+                        {t("no_students_found_message")}
                     </p>
                 </div>
             )}
@@ -337,22 +341,22 @@ export default function PromoteStudentsPage() {
                             <TrendingUp className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{selectedStudentIds.length} of {students.length} student{students.length === 1 ? '' : 's'} selected</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_of_y_students_selected", { selected: selectedStudentIds.length, total: students.length })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
                         {/* Promotion Target Criteria */}
                         <div className="bg-indigo-50/50 p-4 rounded-md border border-indigo-100 mb-4">
-                            <h3 className="text-sm font-medium text-indigo-800 mb-3">Target For Promotion</h3>
+                            <h3 className="text-sm font-medium text-indigo-800 mb-3">{t("target_for_promotion")}</h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-2">
                                     <Label className="text-xs font-semibold text-gray-600">
-                                        Promote In Session <span className="text-red-500">*</span>
+                                        {t("promote_in_session")} <span className="text-red-500">*</span>
                                     </Label>
                                     <Select value={promoteSessionId} onValueChange={setPromoteSessionId}>
                                         <SelectTrigger className="bg-white">
-                                            <SelectValue placeholder="Select Session" />
+                                            <SelectValue placeholder={t("select_session")} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {sessions.map(s => (
@@ -363,11 +367,11 @@ export default function PromoteStudentsPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs font-semibold text-gray-600">
-                                        Promote To Class <span className="text-red-500">*</span>
+                                        {t("promote_to_class")} <span className="text-red-500">*</span>
                                     </Label>
                                     <Select value={promoteClassId} onValueChange={(val) => { setPromoteClassId(val); setPromoteSectionId(""); }}>
                                         <SelectTrigger className="bg-white">
-                                            <SelectValue placeholder="Select Class" />
+                                            <SelectValue placeholder={t("select_class")} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {classes.map(c => (
@@ -378,11 +382,11 @@ export default function PromoteStudentsPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs font-semibold text-gray-600">
-                                        Promote To Section <span className="text-red-500">*</span>
+                                        {t("promote_to_section")} <span className="text-red-500">*</span>
                                     </Label>
                                     <Select value={promoteSectionId} onValueChange={setPromoteSectionId}>
                                         <SelectTrigger className="bg-white">
-                                            <SelectValue placeholder="Select Section" />
+                                            <SelectValue placeholder={t("select_section")} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {promoteFilteredSections.map(s => (
@@ -405,12 +409,12 @@ export default function PromoteStudentsPage() {
                                                 className="border-gray-300"
                                             />
                                         </TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Admission No</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Student Name</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Father Name</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Date Of Birth</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Current Result</TableHead>
-                                        <TableHead className="font-semibold text-gray-600">Next Session Status</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("admission_no")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("student_name")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("father_name")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("date_of_birth")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("current_result")}</TableHead>
+                                        <TableHead className="font-semibold text-gray-600">{t("next_session_status")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -435,11 +439,11 @@ export default function PromoteStudentsPage() {
                                                 >
                                                     <div className="flex items-center space-x-1.5">
                                                         <RadioGroupItem value="pass" id={`result-pass-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
-                                                        <Label htmlFor={`result-pass-${student.id}`} className="text-xs font-medium text-gray-700">Pass</Label>
+                                                        <Label htmlFor={`result-pass-${student.id}`} className="text-xs font-medium text-gray-700">{t("pass")}</Label>
                                                     </div>
                                                     <div className="flex items-center space-x-1.5">
                                                         <RadioGroupItem value="fail" id={`result-fail-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
-                                                        <Label htmlFor={`result-fail-${student.id}`} className="text-xs font-medium text-gray-700">Fail</Label>
+                                                        <Label htmlFor={`result-fail-${student.id}`} className="text-xs font-medium text-gray-700">{t("fail")}</Label>
                                                     </div>
                                                 </RadioGroup>
                                             </TableCell>
@@ -451,11 +455,11 @@ export default function PromoteStudentsPage() {
                                                 >
                                                     <div className="flex items-center space-x-1.5">
                                                         <RadioGroupItem value="continue" id={`status-cont-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
-                                                        <Label htmlFor={`status-cont-${student.id}`} className="text-xs font-medium text-gray-700">Continue</Label>
+                                                        <Label htmlFor={`status-cont-${student.id}`} className="text-xs font-medium text-gray-700">{t("continue")}</Label>
                                                     </div>
                                                     <div className="flex items-center space-x-1.5">
                                                         <RadioGroupItem value="leave" id={`status-leave-${student.id}`} className="h-4 w-4 border-indigo-300 text-indigo-600" />
-                                                        <Label htmlFor={`status-leave-${student.id}`} className="text-xs font-medium text-gray-700">Leave</Label>
+                                                        <Label htmlFor={`status-leave-${student.id}`} className="text-xs font-medium text-gray-700">{t("leave")}</Label>
                                                     </div>
                                                 </RadioGroup>
                                             </TableCell>
@@ -471,7 +475,7 @@ export default function PromoteStudentsPage() {
                                 className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-xs shadow-md transition-all duration-300"
                             >
                                 {promoting && <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />}
-                                Promote
+                                {t("promote")}
                             </Button>
                         </div>
                     </CardContent>
@@ -484,8 +488,8 @@ export default function PromoteStudentsPage() {
                         <Search className="h-8 w-8 text-indigo-400 opacity-50" />
                     </div>
                     <div className="space-y-1">
-                        <h3 className="text-sm font-semibold text-gray-700">No Students Found</h3>
-                        <p className="text-xs text-gray-500 max-w-xs">Select criteria and search to find students for promotion.</p>
+                        <h3 className="text-sm font-semibold text-gray-700">{t("no_students_found")}</h3>
+                        <p className="text-xs text-gray-500 max-w-xs">{t("select_criteria_and_search_for_students")}</p>
                     </div>
                 </div>
             )}

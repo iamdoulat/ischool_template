@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "@/hooks/use-translation";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ function SkeletonRow() {
 }
 
 export default function UserAnnualCalendarPage() {
+    const { t } = useTranslation();
     const [entries, setEntries] = useState<CalendarEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -54,7 +56,7 @@ export default function UserAnnualCalendarPage() {
                 const payload = res.data?.data ?? res.data ?? [];
                 setEntries(Array.isArray(payload) ? payload : []);
             } catch {
-                toast.error("Failed to load calendar");
+                toast.error(t("failed_to_load_calendar"));
             } finally {
                 setLoading(false);
             }
@@ -97,8 +99,8 @@ export default function UserAnnualCalendarPage() {
                             <CalendarRange className="h-5 w-5" />
                         </span>
                         <div>
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Annual Calendar</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">Holidays, events, and vacation schedule</p>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("annual_calendar")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("holidays_events_and_vacation_schedule")}</p>
                         </div>
                     </div>
                 </div>
@@ -111,7 +113,7 @@ export default function UserAnnualCalendarPage() {
                     ) : entries.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-3 py-16 text-gray-400">
                             <FolderOpen className="h-12 w-12 opacity-30" />
-                            <p className="text-[12px] font-semibold">No calendar events published.</p>
+                            <p className="text-[12px] font-semibold">{t("no_calendar_events_published")}</p>
                         </div>
                     ) : (
                         <div className="space-y-6">

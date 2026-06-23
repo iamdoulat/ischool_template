@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Table,
@@ -70,7 +71,8 @@ function SectionCard({ icon: Icon, title, subtitle, children }: { icon: React.Co
 const TH = "font-semibold text-gray-600 text-[11px] uppercase whitespace-nowrap";
 
 export default function OverviewPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [data, setData] = useState<OverviewData | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -80,7 +82,7 @@ export default function OverviewPage() {
             const response = await api.get("/multi-branch/overview");
             setData(response.data?.data ?? response.data);
         } catch {
-            toast({ title: "Error", description: "Failed to fetch ecosystem overview", variant: "destructive" });
+            tt.toast("error", "failed_to_fetch_ecosystem_overview");
         } finally {
             setLoading(false);
         }
@@ -100,34 +102,34 @@ export default function OverviewPage() {
                         <Building2 className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Ecosystem Overview</h1>
-                        <p className="text-xs text-gray-500">Real-time aggregation across all campus branches</p>
+                        <h1 className="text-xl font-bold text-gray-800">{t("ecosystem_overview")}</h1>
+                        <p className="text-xs text-gray-500">{t("real_time_aggregation_across_all_campus_branches")}</p>
                     </div>
                 </div>
                 <button
                     onClick={fetchOverview}
                     className="h-9 px-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold shadow-md active:scale-95 transition-all"
                 >
-                    <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+                    <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> {t("refresh")}
                 </button>
             </div>
 
             {/* Fees */}
-            <SectionCard icon={Wallet} title="Institutional Fees" subtitle="Fee collection per branch">
+            <SectionCard icon={Wallet} title={t("institutional_fees")} subtitle={t("fee_collection_per_branch")}>
                 <Table className="min-w-[760px]">
                     <TableHeader className="bg-gray-50">
                         <TableRow className="hover:bg-transparent">
-                            <TableHead className={TH}>Branch</TableHead>
-                            <TableHead className={`${TH} text-center`}>Session</TableHead>
-                            <TableHead className={`${TH} text-center`}>Students</TableHead>
-                            <TableHead className={TH}>Total Fees</TableHead>
-                            <TableHead className={TH}>Paid</TableHead>
-                            <TableHead className={`${TH} text-right`}>Balance</TableHead>
+                            <TableHead className={TH}>{t("branch")}</TableHead>
+                            <TableHead className={`${TH} text-center`}>{t("session")}</TableHead>
+                            <TableHead className={`${TH} text-center`}>{t("students")}</TableHead>
+                            <TableHead className={TH}>{t("total_fees")}</TableHead>
+                            <TableHead className={TH}>{t("paid")}</TableHead>
+                            <TableHead className={`${TH} text-right`}>{t("balance")}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? <SkeletonRows cols={6} /> : !data?.fees_details?.length ? (
-                            <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                         ) : data.fees_details.map((row) => (
                             <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
                                 <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>
@@ -144,18 +146,18 @@ export default function OverviewPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Admission */}
-                <SectionCard icon={UserCheck} title="Student Admission" subtitle="Offline vs online intake">
+                <SectionCard icon={UserCheck} title={t("student_admission")} subtitle={t("offline_vs_online_intake")}>
                     <Table className="min-w-[360px]">
                         <TableHeader className="bg-gray-50">
                             <TableRow className="hover:bg-transparent">
-                                <TableHead className={TH}>Branch</TableHead>
-                                <TableHead className={`${TH} text-center`}>Offline</TableHead>
-                                <TableHead className={`${TH} text-right`}>Online</TableHead>
+                                <TableHead className={TH}>{t("branch")}</TableHead>
+                                <TableHead className={`${TH} text-center`}>{t("offline")}</TableHead>
+                                <TableHead className={`${TH} text-right`}>{t("online")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? <SkeletonRows cols={3} /> : !data?.admission_details?.length ? (
-                                <TableRow><TableCell colSpan={3} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={3} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                             ) : data.admission_details.map((row) => (
                                 <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
                                     <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>
@@ -168,19 +170,19 @@ export default function OverviewPage() {
                 </SectionCard>
 
                 {/* Library */}
-                <SectionCard icon={Library} title="Library" subtitle="Resources and circulation">
+                <SectionCard icon={Library} title={t("library")} subtitle={t("resources_and_circulation")}>
                     <Table className="min-w-[440px]">
                         <TableHeader className="bg-gray-50">
                             <TableRow className="hover:bg-transparent">
-                                <TableHead className={TH}>Branch</TableHead>
-                                <TableHead className={`${TH} text-center`}>Books</TableHead>
-                                <TableHead className={`${TH} text-center`}>Members</TableHead>
-                                <TableHead className={`${TH} text-right`}>Issued</TableHead>
+                                <TableHead className={TH}>{t("branch")}</TableHead>
+                                <TableHead className={`${TH} text-center`}>{t("books")}</TableHead>
+                                <TableHead className={`${TH} text-center`}>{t("members")}</TableHead>
+                                <TableHead className={`${TH} text-right`}>{t("issued")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? <SkeletonRows cols={4} /> : !data?.library_details?.length ? (
-                                <TableRow><TableCell colSpan={4} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={4} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                             ) : data.library_details.map((row) => (
                                 <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
                                     <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>
@@ -195,21 +197,21 @@ export default function OverviewPage() {
             </div>
 
             {/* Payroll */}
-            <SectionCard icon={Users} title="Staff Payroll" subtitle="Payroll generation per branch">
+            <SectionCard icon={Users} title={t("staff_payroll")} subtitle={t("payroll_generation_per_branch")}>
                 <Table className="min-w-[760px]">
                     <TableHeader className="bg-gray-50">
                         <TableRow className="hover:bg-transparent">
-                            <TableHead className={TH}>Branch</TableHead>
-                            <TableHead className={`${TH} text-center`}>Staff</TableHead>
-                            <TableHead className={`${TH} text-center`}>Generated</TableHead>
-                            <TableHead className={`${TH} text-center`}>Paid</TableHead>
-                            <TableHead className={TH}>Net Amount</TableHead>
-                            <TableHead className={`${TH} text-right`}>Paid Amount</TableHead>
+                            <TableHead className={TH}>{t("branch")}</TableHead>
+                            <TableHead className={`${TH} text-center`}>{t("staff")}</TableHead>
+                            <TableHead className={`${TH} text-center`}>{t("generated")}</TableHead>
+                            <TableHead className={`${TH} text-center`}>{t("paid")}</TableHead>
+                            <TableHead className={TH}>{t("net_amount")}</TableHead>
+                            <TableHead className={`${TH} text-right`}>{t("paid_amount")}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? <SkeletonRows cols={6} /> : !data?.payroll_details?.length ? (
-                            <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                         ) : data.payroll_details.map((row) => (
                             <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
                                 <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>
@@ -226,19 +228,19 @@ export default function OverviewPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Attendance */}
-                <SectionCard icon={Activity} title="Staff Attendance" subtitle="Present vs absent">
+                <SectionCard icon={Activity} title={t("staff_attendance")} subtitle={t("present_vs_absent")}>
                     <Table className="min-w-[440px]">
                         <TableHeader className="bg-gray-50">
                             <TableRow className="hover:bg-transparent">
-                                <TableHead className={TH}>Branch</TableHead>
-                                <TableHead className={`${TH} text-center`}>Staff</TableHead>
-                                <TableHead className={`${TH} text-center`}>Present</TableHead>
-                                <TableHead className={`${TH} text-right`}>Absent</TableHead>
+                                <TableHead className={TH}>{t("branch")}</TableHead>
+                                <TableHead className={`${TH} text-center`}>{t("staff")}</TableHead>
+                                <TableHead className={`${TH} text-center`}>{t("present")}</TableHead>
+                                <TableHead className={`${TH} text-right`}>{t("absent")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? <SkeletonRows cols={4} /> : !data?.attendance_details?.length ? (
-                                <TableRow><TableCell colSpan={4} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={4} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                             ) : data.attendance_details.map((row) => (
                                 <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
                                     <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>
@@ -252,18 +254,18 @@ export default function OverviewPage() {
                 </SectionCard>
 
                 {/* Transport */}
-                <SectionCard icon={Bus} title="Transport" subtitle="Transport fee valuation">
+                <SectionCard icon={Bus} title={t("transport")} subtitle={t("transport_fee_valuation")}>
                     <Table className="min-w-[360px]">
                         <TableHeader className="bg-gray-50">
                             <TableRow className="hover:bg-transparent">
-                                <TableHead className={TH}>Branch</TableHead>
-                                <TableHead className={TH}>Total Fees</TableHead>
-                                <TableHead className={`${TH} text-right`}>Balance</TableHead>
+                                <TableHead className={TH}>{t("branch")}</TableHead>
+                                <TableHead className={TH}>{t("total_fees")}</TableHead>
+                                <TableHead className={`${TH} text-right`}>{t("balance")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? <SkeletonRows cols={3} /> : !data?.transport_details?.length ? (
-                                <TableRow><TableCell colSpan={3} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={3} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                             ) : data.transport_details.map((row) => (
                                 <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
                                     <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>

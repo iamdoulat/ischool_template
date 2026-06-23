@@ -20,7 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -65,7 +66,8 @@ export default function StudentCategoriesPage() {
     const [newCategoryName, setNewCategoryName] = useState("");
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
 
     const fetchCategories = useCallback(async () => {
         setLoading(true);
@@ -75,11 +77,11 @@ export default function StudentCategoriesPage() {
             setSelectedIds(new Set());
         } catch (error) {
             console.error("Error fetching categories:", error);
-            toast("error", "Failed to fetch categories.");
+            tt.error("failed_to_fetch_categories");
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [tt]);
 
     useEffect(() => {
         fetchCategories();
@@ -87,7 +89,7 @@ export default function StudentCategoriesPage() {
 
     const handleSave = async () => {
         if (!newCategoryName.trim()) {
-            toast("error", "Category name is required.");
+            tt.error("category_name_is_required");
             return;
         }
 
@@ -95,17 +97,17 @@ export default function StudentCategoriesPage() {
         try {
             if (editingCategory) {
                 await api.put(`/student-categories/${editingCategory.id}`, { category_name: newCategoryName });
-                toast("success", "Category updated successfully.");
+                tt.success("category_updated_successfully");
             } else {
                 await api.post("/student-categories", { category_name: newCategoryName });
-                toast("success", "Category created successfully.");
+                tt.success("category_created_successfully");
             }
             setNewCategoryName("");
             setEditingCategory(null);
             fetchCategories();
         } catch (error) {
             const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to save category.";
-            toast("error", message);
+            tt.error(message);
         } finally {
             setLoading(false);
         }
@@ -115,10 +117,10 @@ export default function StudentCategoriesPage() {
         setLoading(true);
         try {
             await api.delete(`/student-categories/${id}`);
-            toast("success", "Category deleted successfully.");
+            tt.success("category_deleted_successfully");
             fetchCategories();
         } catch (error) {
-            toast("error", "Failed to delete category.");
+            tt.error("failed_to_delete_category");
         } finally {
             setLoading(false);
         }
@@ -130,10 +132,10 @@ export default function StudentCategoriesPage() {
         setLoading(true);
         try {
             await api.post("/student-categories/bulk-delete", { ids: Array.from(selectedIds) });
-            toast("success", "Selected categories deleted successfully.");
+            tt.success("selected_categories_deleted_successfully");
             fetchCategories();
         } catch (error) {
-            toast("error", "Failed to delete selected categories.");
+            tt.error("failed_to_delete_selected_categories");
         } finally {
             setLoading(false);
         }
@@ -172,7 +174,7 @@ export default function StudentCategoriesPage() {
         if (categories.length === 0) return;
         const text = ["Category\tCategory ID", ...categories.map(c => `${c.category_name}\t${c.id}`)].join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
@@ -181,7 +183,7 @@ export default function StudentCategoriesPage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Categories");
         XLSX.writeFile(workbook, "student_categories.xlsx");
-        toast("success", "Excel file downloaded");
+        tt.success("excel_file_downloaded");
     };
 
     const exportToPDF = () => {
@@ -192,7 +194,7 @@ export default function StudentCategoriesPage() {
             body: categories.map(c => [c.category_name, c.id]),
         });
         doc.save("student_categories.pdf");
-        toast("success", "PDF file downloaded");
+        tt.success("pdf_file_downloaded");
     };
 
     return (
@@ -208,34 +210,34 @@ export default function StudentCategoriesPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {editingCategory ? "Edit Category" : "Create Category"}
+                                    {editingCategory ? t("edit_category") : t("create_category")}
                                 </CardTitle>
                                 <p className="text-[11px] text-gray-500 mt-1">
-                                    {editingCategory ? "Update category details" : "Add a new student category"}
+                                    {editingCategory ? t("update_category_details") : t("add_new_student_category")}
                                 </p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Category <span className="text-destructive">*</span>
+                                    {t("category")} <span className="text-destructive">*</span>
                                 </label>
                                 <Input
                                     className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all border-indigo-200"
                                     value={newCategoryName}
                                     onChange={(e) => setNewCategoryName(e.target.value)}
-                                    placeholder="Enter category name"
+                                    placeholder={t("enter_category_name")}
                                 />
                             </div>
                             <div className="flex justify-end gap-2">
                                 {editingCategory && (
                                     <Button variant="outline" className="h-10 px-6" onClick={() => { setEditingCategory(null); setNewCategoryName(""); }}>
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button variant="gradient" className="h-10 px-8" onClick={handleSave} disabled={loading}>
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                                    {editingCategory ? "Update" : "Save"}
+                                    {editingCategory ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </CardContent>
@@ -250,8 +252,8 @@ export default function StudentCategoriesPage() {
                                 <Tag className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Category List</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{categories.length} categories</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("category_list")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("count_categories", { count: categories.length })}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
@@ -260,7 +262,7 @@ export default function StudentCategoriesPage() {
                                 <div className="relative w-full md:w-64">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search"
+                                        placeholder={t("search")}
                                         className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -268,12 +270,12 @@ export default function StudentCategoriesPage() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="flex gap-1">
-                                        <IconButton icon={Printer} onClick={() => window.print()} title="Print" />
-                                        <IconButton icon={Copy} onClick={exportToCopy} title="Copy" />
-                                        <IconButton icon={TableIcon} onClick={exportToExcel} title="Excel" />
-                                        <IconButton icon={FileText} onClick={exportToPDF} title="PDF" />
-                                        <IconButton icon={Download} onClick={exportToExcel} title="Download" />
-                                        <IconButton icon={Columns} title="Columns" />
+                                        <IconButton icon={Printer} onClick={() => window.print()} title={t("print")} />
+                                        <IconButton icon={Copy} onClick={exportToCopy} title={t("copy")} />
+                                        <IconButton icon={TableIcon} onClick={exportToExcel} title={t("excel")} />
+                                        <IconButton icon={FileText} onClick={exportToPDF} title={t("pdf")} />
+                                        <IconButton icon={Download} onClick={exportToExcel} title={t("download")} />
+                                        <IconButton icon={Columns} title={t("columns")} />
                                     </div>
                                 </div>
                             </div>
@@ -291,10 +293,10 @@ export default function StudentCategoriesPage() {
                                                     onChange={(e) => handleSelectAll(e.target.checked)}
                                                 />
                                             </Th>
-                                            <Th>Category</Th>
-                                            <Th>Category ID</Th>
+                                            <Th>{t("category")}</Th>
+                                            <Th>{t("category_id")}</Th>
                                             <Th className="text-right flex items-center justify-end gap-2">
-                                                <span>Action</span>
+                                                <span>{t("action")}</span>
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <button
@@ -303,21 +305,21 @@ export default function StudentCategoriesPage() {
                                                                 "p-1 rounded transition-all shadow-sm active:scale-90",
                                                                 selectedIds.size > 0 ? "bg-red-500 text-white hover:bg-red-600" : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
                                                             )}
-                                                            title="Delete Selected"
+                                                            title={t("delete_selected")}
                                                         >
                                                             <Trash2 className="h-3 w-3" />
                                                         </button>
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
                                                         <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                            <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                This will permanently delete {selectedIds.size} selected categories. This action cannot be undone.
+                                                                {t("permanently_delete_selected_categories", { count: selectedIds.size })}
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">Delete All</AlertDialogAction>
+                                                            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">{t("delete_all")}</AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>
@@ -329,7 +331,7 @@ export default function StudentCategoriesPage() {
                                             <TableSkeleton rows={5} cols={4} />
                                         ) : filteredCategories.length === 0 ? (
                                             <tr>
-                                                <td colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                                <td colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                             </tr>
                                         ) : (
                                             filteredCategories.map((cat) => (
@@ -360,14 +362,14 @@ export default function StudentCategoriesPage() {
                                                                 </AlertDialogTrigger>
                                                                 <AlertDialogContent>
                                                                     <AlertDialogHeader>
-                                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                                                                         <AlertDialogDescription>
-                                                                            This will permanently delete the category &quot;{cat.category_name}&quot;.
+                                                                            {t("permanently_delete_category", { name: cat.category_name })}
                                                                         </AlertDialogDescription>
                                                                     </AlertDialogHeader>
                                                                     <AlertDialogFooter>
-                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                        <AlertDialogAction onClick={() => handleDelete(cat.id)} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                                                                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                                                        <AlertDialogAction onClick={() => handleDelete(cat.id)} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
                                                                     </AlertDialogFooter>
                                                                 </AlertDialogContent>
                                                             </AlertDialog>
@@ -383,7 +385,7 @@ export default function StudentCategoriesPage() {
                             {filteredCategories.length > 0 && (
                                 <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                        Showing 1 to {filteredCategories.length} of {filteredCategories.length} entries
+                                        {t("showing_x_to_y_of_z", { from: 1, to: filteredCategories.length, total: filteredCategories.length })}
                                     </p>
                                     <div className="flex items-center gap-2">
                                         <Button variant="outline" size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all">

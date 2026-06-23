@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface Subject {
     id: number;
@@ -59,14 +60,16 @@ function dayStatus(iso: string): -1 | 0 | 1 | null {
 }
 
 function StatusPill({ iso }: { iso: string }) {
+    const { t } = useTranslation();
     const s = dayStatus(iso);
     if (s === null) return null;
-    if (s === 0) return <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white">Today</span>;
-    if (s === 1) return <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Upcoming</span>;
-    return <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">Done</span>;
+    if (s === 0) return <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white">{t("today")}</span>;
+    if (s === 1) return <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">{t("upcoming")}</span>;
+    return <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">{t("done")}</span>;
 }
 
 export default function UserCBSEExamSchedulePage() {
+    const { t } = useTranslation();
     const [examGroups, setExamGroups] = useState<ExamGroup[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -78,7 +81,7 @@ export default function UserCBSEExamSchedulePage() {
             setExamGroups(response.data?.data || []);
         } catch (error) {
             console.error("Error fetching CBSE exam schedule:", error);
-            toast.error("Failed to load CBSE exam schedule");
+            toast.error(t("failed_to_load_cbse_exam_schedule"));
         } finally {
             setLoading(false);
         }
@@ -119,7 +122,7 @@ export default function UserCBSEExamSchedulePage() {
     const copyToClipboard = () => {
         const text = exportRows().map((r) => Object.values(r).join("\t")).join("\n");
         navigator.clipboard.writeText(text);
-        toast.success("Copied to clipboard");
+        toast.success(t("copied_to_clipboard"));
     };
 
     const exportToExcel = () => {
@@ -153,21 +156,21 @@ export default function UserCBSEExamSchedulePage() {
                             <CalendarClock className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">CBSE Exam Timetable</h1>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("cbse_exam_timetable")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
                                 {loading
-                                    ? "Loading…"
+                                    ? t("loading")
                                     : `${totalExams} exam${totalExams === 1 ? "" : "s"} · ${totalPapers} paper${totalPapers === 1 ? "" : "s"}`}
                             </p>
                         </div>
                     </div>
                     <Button
                         onClick={() => window.print()}
-                        title="Print"
+                        title={t("print")}
                         className="h-9 shrink-0 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
                     >
                         <Printer className="h-4 w-4" />
-                        <span className="hidden sm:inline">Print</span>
+                        <span className="hidden sm:inline">{t("print")}</span>
                     </Button>
                 </div>
 
@@ -177,7 +180,7 @@ export default function UserCBSEExamSchedulePage() {
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search by exam or subject..."
+                                placeholder={t("search_by_exam_or_subject")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-8 h-9 text-sm rounded-[10px]"
@@ -186,10 +189,10 @@ export default function UserCBSEExamSchedulePage() {
 
                         <div className="flex items-center border border-gray-200 rounded-[10px] overflow-hidden">
                             {[
-                                { icon: Copy, label: "Copy", action: copyToClipboard },
-                                { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
-                                { icon: FileDown, label: "PDF", action: exportToPDF },
-                                { icon: Printer, label: "Print", action: () => window.print() },
+                                { icon: Copy, label: t("copy"), action: copyToClipboard },
+                                { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
+                                { icon: FileDown, label: t("pdf"), action: exportToPDF },
+                                { icon: Printer, label: t("print"), action: () => window.print() },
                             ].map(({ icon: Icon, label, action }, i, arr) => (
                                 <Button
                                     key={label}
@@ -211,13 +214,13 @@ export default function UserCBSEExamSchedulePage() {
                     {loading ? (
                         <div className="flex items-center justify-center py-20 gap-2 text-gray-400">
                             <Loader2 className="h-6 w-6 animate-spin" />
-                            <span>Loading exam schedule...</span>
+                            <span>{t("loading_exam_schedule")}</span>
                         </div>
                     ) : filteredData.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                             <CalendarDays className="h-12 w-12 opacity-30 mb-3" />
-                            <p className="text-base font-medium text-gray-500">No exam schedule found.</p>
-                            <p className="text-sm mt-1">Timetables appear here once published by the school.</p>
+                            <p className="text-base font-medium text-gray-500">{t("no_exam_schedule_found")}</p>
+                            <p className="text-sm mt-1">{t("timetables_appear_once_published")}</p>
                         </div>
                     ) : (
                         <div className="space-y-6">
@@ -237,11 +240,11 @@ export default function UserCBSEExamSchedulePage() {
                                         <Table className="min-w-[760px]">
                                             <TableHeader>
                                                 <TableRow className="bg-gray-50 hover:bg-gray-50 border-b border-gray-200">
-                                                    <TableHead className="w-[34%] text-[12px] font-bold text-gray-700 py-3 px-4">Subject</TableHead>
-                                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4">Date</TableHead>
-                                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4">Start Time</TableHead>
-                                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4 text-center">Duration</TableHead>
-                                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4 text-center">Room No.</TableHead>
+                                                    <TableHead className="w-[34%] text-[12px] font-bold text-gray-700 py-3 px-4">{t("subject")}</TableHead>
+                                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4">{t("date")}</TableHead>
+                                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4">{t("start_time")}</TableHead>
+                                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4 text-center">{t("duration")}</TableHead>
+                                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4 text-center">{t("room_no")}</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -313,7 +316,7 @@ export default function UserCBSEExamSchedulePage() {
                                                     </span>
                                                     <span className="flex items-center gap-1.5">
                                                         <MapPin className="h-3.5 w-3.5 text-rose-400" />
-                                                        <span className="font-medium text-gray-700">Room {subject.room || "TBA"}</span>
+                                                        <span className="font-medium text-gray-700">{t("room")} {subject.room || "TBA"}</span>
                                                     </span>
                                                 </div>
                                             </div>

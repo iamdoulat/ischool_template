@@ -38,6 +38,7 @@ import {
 import { Info, CheckCircle2, Search, Save, Loader2, UserCheck, ClipboardCheck, Filter } from "lucide-react";
 import CsvImportDialog from "@/components/attendance/CsvImportDialog";
 import { useSettings } from "@/components/providers/settings-provider";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface StudentAttendanceRecord {
     id: number;
@@ -120,6 +121,7 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 
 export default function StudentAttendancePage() {
     const { settings } = useSettings();
+    const { t } = useTranslation();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<Section[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
@@ -155,13 +157,13 @@ export default function StudentAttendancePage() {
             }
         } catch (error) {
             console.error("Error fetching classes:", error);
-            toast.error("Failed to load classes");
+            toast.error(t("failed_to_load_classes"));
         }
     };
 
     const handleSearch = async () => {
         if (!selectedClass || !selectedSection || !attendanceDate) {
-            toast.error("Please select all criteria");
+            toast.error(t("please_select_all_criteria"));
             return;
         }
 
@@ -234,14 +236,14 @@ export default function StudentAttendancePage() {
                 });
                 setStudents(mappedStudents);
                 setBulkAttendance("");
-                toast.success(`Found ${mappedStudents.length} student(s)`);
+                toast.success(t("found_students", { count: mappedStudents.length }));
             } else {
-                toast.info("No students found for this class and section");
+                toast.info(t("no_students_found_for_class_section"));
             }
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
             console.error("Error searching students:", error);
-            toast.error(err?.response?.data?.message || "Failed to load students");
+            toast.error(err?.response?.data?.message || t("failed_to_load_students"));
         } finally {
             setLoading(false);
         }
@@ -301,7 +303,7 @@ export default function StudentAttendancePage() {
             return { ...s, ...updates };
         }));
 
-        toast.info(`Set all students to ${value}`);
+        toast.info(t("set_all_students_to", { status: t(value) }));
     };
 
     const handleInputChange = (studentId: number, field: keyof StudentAttendanceRecord, value: string) => {
@@ -310,7 +312,7 @@ export default function StudentAttendancePage() {
 
     const handleSave = async () => {
         if (students.length === 0) {
-            toast.error("No attendance data to save");
+            toast.error(t("no_attendance_data_to_save"));
             return;
         }
 
@@ -329,8 +331,8 @@ export default function StudentAttendancePage() {
             });
 
             if (response.data.success) {
-                toast.success("Success!", {
-                    description: "Student attendance records have been updated successfully.",
+                toast.success(t("success"), {
+                    description: t("student_attendance_updated_successfully"),
                     icon: <CheckCircle2 className="h-4 w-4 text-green-500" />
                 });
                 setIsConfirmOpen(false);
@@ -338,7 +340,7 @@ export default function StudentAttendancePage() {
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
             console.error("Error saving attendance:", error);
-            toast.error(err?.response?.data?.message || "Failed to save attendance");
+            toast.error(err?.response?.data?.message || t("failed_to_save_attendance"));
         } finally {
             setSaving(false);
         }
@@ -359,19 +361,19 @@ export default function StudentAttendancePage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter students by class, section &amp; date</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_students_by_class_section_date")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-5">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                Class <span className="text-red-500">*</span>
+                                {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
                                 <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map((cls) => (
@@ -385,11 +387,11 @@ export default function StudentAttendancePage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                Section <span className="text-red-500">*</span>
+                                {t("section")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
                                 <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map((sec) => (
@@ -403,7 +405,7 @@ export default function StudentAttendancePage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                Attendance Date <span className="text-red-500">*</span>
+                                {t("attendance_date")} <span className="text-red-500">*</span>
                             </Label>
                             <Input
                                 type="date"
@@ -421,7 +423,7 @@ export default function StudentAttendancePage() {
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
                         >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                            Search
+                            {t("search")}
                         </Button>
                     </div>
                 </CardContent>
@@ -436,8 +438,8 @@ export default function StudentAttendancePage() {
                                 <ClipboardCheck className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{students.length} student{students.length === 1 ? '' : 's'}</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{students.length} {students.length === 1 ? t("student") : t("students")}</p>
                             </div>
                         </div>
                         <CsvImportDialog
@@ -453,7 +455,7 @@ export default function StudentAttendancePage() {
                         <div className="flex items-center justify-between flex-wrap gap-4 bg-gray-50/50 p-4 rounded-lg border border-gray-100">
                             <div className="flex items-center gap-4 flex-wrap">
                                 <span className="text-[11px] font-semibold text-gray-500">
-                                    Set attendance for all students as
+                                    {t("set_attendance_for_all_students_as")}
                                 </span>
                                 <RadioGroup
                                     value={bulkAttendance}
@@ -477,7 +479,7 @@ export default function StudentAttendancePage() {
                                                     "text-gray-600"
                                                 )}
                                             >
-                                                {opt.label}
+                                                {t(opt.id)}
                                             </label>
                                         </div>
                                     ))}
@@ -490,7 +492,7 @@ export default function StudentAttendancePage() {
                                         className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-lg active:scale-95 flex items-center gap-2"
                                     >
                                         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                        Save Attendance
+                                        {t("save_attendance")}
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl">
@@ -498,16 +500,16 @@ export default function StudentAttendancePage() {
                                         <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
                                             <Info className="h-6 w-6 text-indigo-600" />
                                         </div>
-                                        <AlertDialogTitle className="text-lg font-bold text-gray-800">Confirm Attendance</AlertDialogTitle>
+                                        <AlertDialogTitle className="text-lg font-bold text-gray-800">{t("confirm_attendance")}</AlertDialogTitle>
                                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed">
-                                            You are about to save attendance for <span className="font-bold text-indigo-600">{students.length}</span> students for <span className="font-bold text-gray-700">{attendanceDate}</span>.
+                                            {t("about_to_save_attendance_for")} <span className="font-bold text-indigo-600">{students.length}</span> {t("students_for")} <span className="font-bold text-gray-700">{attendanceDate}</span>.
                                             <br /><br />
-                                            Are you sure you want to proceed with these records?
+                                            {t("are_you_sure_proceed_with_records")}
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter className="mt-6 gap-2">
                                         <AlertDialogCancel className="rounded-full border-gray-100 text-xs font-bold uppercase h-10 px-6">
-                                            Cancel
+                                            {t("cancel")}
                                         </AlertDialogCancel>
                                         <AlertDialogAction
                                             onClick={(e) => {
@@ -516,7 +518,7 @@ export default function StudentAttendancePage() {
                                             }}
                                             className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-bold uppercase h-10 px-8 transition-all active:scale-95"
                                         >
-                                            Confirm &amp; Save
+                                            {t("confirm_and_save")}
                                         </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -529,22 +531,22 @@ export default function StudentAttendancePage() {
                                 <TableHeader>
                                     <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/50">
                                         <TableHead className="py-3 px-4 w-10 text-center">#</TableHead>
-                                        <TableHead className="py-3 px-4">Admission No</TableHead>
-                                        <TableHead className="py-3 px-4">Roll Number</TableHead>
-                                        <TableHead className="py-3 px-4">Name</TableHead>
-                                        <TableHead className="py-3 px-4">Attendance</TableHead>
-                                        <TableHead className="py-3 px-4 text-center">Date</TableHead>
-                                        <TableHead className="py-3 px-4 text-center">Source</TableHead>
-                                        <TableHead className="py-3 px-4">Entry Time</TableHead>
-                                        <TableHead className="py-3 px-4">Exit Time</TableHead>
-                                        <TableHead className="py-3 px-4">Note</TableHead>
+                                        <TableHead className="py-3 px-4">{t("admission_no")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("roll_number")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("attendance")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-center">{t("date")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-center">{t("source")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("entry_time")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("exit_time")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("note")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {loading ? (
                                         <TableSkeleton rows={5} cols={10} />
                                     ) : students.length === 0 ? (
-                                        <tr><td colSpan={10} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
+                                        <tr><td colSpan={10} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td></tr>
                                     ) : (
                                         students.map((student, idx) => (
                                             <TableRow
@@ -570,10 +572,10 @@ export default function StudentAttendancePage() {
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex items-center gap-3">
                                                                 <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-[10px] font-black bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md uppercase tracking-wider animate-pulse">
-                                                                    On Leave
+                                                                    {t("on_leave")}
                                                                 </span>
                                                                 <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50/50 border border-indigo-100/50 px-3 py-1 rounded-full uppercase tracking-tight">
-                                                                    {student.leaveDetails?.leaveType?.name || student.leaveDetails?.leave_type?.name || "Approved Leave"}
+                                                                    {student.leaveDetails?.leaveType?.name || student.leaveDetails?.leave_type?.name || t("approved_leave")}
                                                                 </span>
                                                                 {student.leaveDetails?.reason && (
                                                                     <span className="text-[11px] font-medium text-gray-500 italic max-w-[200px] truncate" title={student.leaveDetails.reason}>
@@ -582,7 +584,7 @@ export default function StudentAttendancePage() {
                                                                 )}
                                                             </div>
                                                             <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white border border-gray-100 px-3 py-1 rounded-full shadow-sm">
-                                                                Leave Range: {student.leaveDetails?.leave_from ? new Date(student.leaveDetails.leave_from).toLocaleDateString() : ""} - {student.leaveDetails?.leave_to ? new Date(student.leaveDetails.leave_to).toLocaleDateString() : ""}
+                                                                {t("leave_range")}: {student.leaveDetails?.leave_from ? new Date(student.leaveDetails.leave_from).toLocaleDateString() : ""} - {student.leaveDetails?.leave_to ? new Date(student.leaveDetails.leave_to).toLocaleDateString() : ""}
                                                             </div>
                                                         </div>
                                                     </TableCell>
@@ -641,7 +643,7 @@ export default function StudentAttendancePage() {
                                                         </TableCell>
                                                         <TableCell className="py-3 px-4">
                                                             <Input
-                                                                placeholder="Note..."
+                                                                placeholder={t("note_placeholder")}
                                                                 value={student.note}
                                                                 onChange={(e) => handleInputChange(student.id, 'note', e.target.value)}
                                                                 className="h-8 text-[11px] border-gray-200 shadow-none rounded w-[100px] focus:ring-2 focus:ring-indigo-500/20"
@@ -666,9 +668,9 @@ export default function StudentAttendancePage() {
                         <UserCheck className="h-8 w-8" />
                     </div>
                     <div className="space-y-1">
-                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No Records Found</p>
+                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t("no_records_found")}</p>
                         <p className="text-[11px] text-gray-400 max-w-[220px] mx-auto leading-relaxed">
-                            Select class, section and date to fetch students.
+                            {t("select_class_section_date_to_fetch")}
                         </p>
                     </div>
                 </div>

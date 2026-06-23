@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -169,6 +171,8 @@ function toFields(s: ApiStudent, extra?: Partial<StudentFields>): StudentFields 
 
 export default function TransferCertificatePage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [classes, setClasses] = useState<ClassOption[]>([]);
     const [sections, setSections] = useState<SectionOption[]>([]);
     const [classId, setClassId] = useState("");
@@ -213,7 +217,7 @@ export default function TransferCertificatePage() {
 
     const handleSearch = async () => {
         if (!classId) {
-            toast({ title: "Validation Error", description: "Please select a Class", variant: "destructive" });
+            toast({ title: t("validation_error"), description: t("please_select_class"), variant: "destructive" });
             return;
         }
         setLoading(true);
@@ -226,7 +230,7 @@ export default function TransferCertificatePage() {
             setStudents(Array.isArray(data) ? data : []);
             setReissueIds([]);
         } catch {
-            toast({ title: "Error", description: "Failed to fetch students", variant: "destructive" });
+            tt.error("failed_to_fetch_students");
         } finally {
             setLoading(false);
         }
@@ -256,7 +260,7 @@ export default function TransferCertificatePage() {
                 reason: reason.trim() || null,
             });
             const tc: IssuedTC = res.data.data;
-            toast({ title: "TC Issued", description: `TC Number: ${tc.tc_number}` });
+            toast({ title: t("tc_issued"), description: `${t("tc_number")}: ${tc.tc_number}` });
             const fields: StudentFields = {
                 ...toFields(student),
                 tc_number: tc.tc_number,
@@ -265,7 +269,7 @@ export default function TransferCertificatePage() {
             const html = renderCertificateHtml(TC_TEMPLATE, fields);
             await downloadCertificatePdf(html, `TC-${tc.tc_number}.pdf`);
         } catch {
-            toast({ title: "Error", description: "Failed to issue transfer certificate", variant: "destructive" });
+            tt.error("failed_to_issue_transfer_certificate");
         } finally {
             setIssuingId(null);
         }
@@ -287,7 +291,7 @@ export default function TransferCertificatePage() {
             const status = (err as { response?: { status?: number } })?.response?.status;
             setVerifyResult(status === 404 ? "not_found" : null);
             if (status !== 404) {
-                toast({ title: "Error", description: "Failed to verify TC", variant: "destructive" });
+                tt.error("failed_to_verify_tc");
             }
         } finally {
             setVerifying(false);
@@ -296,10 +300,10 @@ export default function TransferCertificatePage() {
 
     const handleCopy = () => {
         navigator.clipboard.writeText(filtered.map((s) => `${s.admission_no}\t${studentName(s)}`).join("\n"));
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        tt.success("data_copied_to_clipboard");
     };
     const handleExportCSV = () => {
-        const rows = [["Admission No", "Name", "DOB", "Gender", "Category", "Mobile"],
+        const rows = [[t("admission_no"), t("name"), t("dob"), t("gender"), t("category"), t("mobile")],
             ...filtered.map((s) => [s.admission_no || "", studentName(s), s.dob || "", s.gender || "", s.category || "", s.phone || ""])];
         const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
@@ -326,32 +330,32 @@ export default function TransferCertificatePage() {
                             <FileBadge className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Transfer Certificate</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Issue TC to students leaving the institution</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("transfer_certificate")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("issue_tc_description")}</p>
                         </div>
                     </div>
                     <Button
                         onClick={() => { setVerifyOpen(true); setVerifyInput(""); setVerifyResult(null); }}
                         className="h-9 px-4 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
                     >
-                        <ShieldCheck className="h-4 w-4" /> Verify TC
+                        <ShieldCheck className="h-4 w-4" /> {t("verify_tc")}
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("class")} <span className="text-red-500">*</span></Label>
                             <Select value={classId} onValueChange={setClassId}>
-                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Class" /></SelectTrigger>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select_class")} /></SelectTrigger>
                                 <SelectContent>
                                     {classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("section")}</Label>
                             <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
-                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="All Sections" /></SelectTrigger>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("all_sections")} /></SelectTrigger>
                                 <SelectContent>
                                     {sections.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                                 </SelectContent>
@@ -360,7 +364,7 @@ export default function TransferCertificatePage() {
                     </div>
                     <div className="flex justify-end">
                         <Button onClick={handleSearch} disabled={loading} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} {t("search")}
                         </Button>
                     </div>
                 </CardContent>
@@ -373,13 +377,13 @@ export default function TransferCertificatePage() {
                         <FileText className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student List</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{filtered.length} student{filtered.length === 1 ? "" : "s"}</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{filtered.length} {t("students")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                        <Input placeholder="Search students..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 h-9 text-xs w-full md:w-64" />
+                        <Input placeholder={t("search_students")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 h-9 text-xs w-full md:w-64" />
                         <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500 self-end md:self-auto">
                             {toolbarActions.map((a, i) => (
                                 <Button key={i} variant="ghost" size="icon" onClick={a.onClick} title={a.title} className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200">
@@ -393,20 +397,20 @@ export default function TransferCertificatePage() {
                         <Table className="min-w-[1100px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    {["Admission No", "Student Name", "Date Of Birth", "Gender", "Category", "Mobile Number"].map((h) => (
+                                    {[t("admission_no"), t("student_name"), t("dob"), t("gender"), t("category"), t("mobile_number")].map((h) => (
                                         <TableHead key={h} className="font-semibold text-gray-600"><div className="flex items-center gap-1">{h} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
                                     ))}
-                                    <TableHead className="font-semibold text-gray-600 text-center">Reissue</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center">{t("reissue")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <SkeletonRows />
                                 ) : !searched ? (
-                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">Select class and search to list students</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("select_class_and_search_to_list")}</TableCell></TableRow>
                                 ) : filtered.length === 0 ? (
-                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No students found</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_students_found")}</TableCell></TableRow>
                                 ) : filtered.map((s) => (
                                     <TableRow key={s.id} className={cn("text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap", issuingId === s.id && "opacity-60 pointer-events-none")}>
                                         <TableCell className="py-3 text-gray-700 font-medium">{s.admission_no || "-"}</TableCell>
@@ -423,7 +427,7 @@ export default function TransferCertificatePage() {
                                                 <Button
                                                     size="icon"
                                                     onClick={() => printTc(s)}
-                                                    title="Print TC"
+                                                    title={t("print_tc")}
                                                     className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
                                                 >
                                                     <Printer className="h-3.5 w-3.5" />
@@ -432,7 +436,7 @@ export default function TransferCertificatePage() {
                                                     size="icon"
                                                     onClick={() => openIssueTc(s)}
                                                     disabled={issuingId === s.id}
-                                                    title="Issue & Download TC"
+                                                    title={t("issue_and_download_tc")}
                                                     className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
                                                 >
                                                     {issuingId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
@@ -445,7 +449,7 @@ export default function TransferCertificatePage() {
                         </Table>
                     </div>
                     <div className="text-xs text-gray-500 font-medium pt-2">
-                        Showing {filtered.length} {filtered.length === 1 ? "student" : "students"}
+                        {t("showing_x_students", { count: filtered.length })}
                     </div>
                 </CardContent>
             </Card>
@@ -455,11 +459,11 @@ export default function TransferCertificatePage() {
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <ShieldCheck className="h-5 w-5 text-indigo-500" /> Verify Transfer Certificate
+                            <ShieldCheck className="h-5 w-5 text-indigo-500" /> {t("verify_transfer_certificate")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3">
-                        <Label className="text-xs font-bold text-gray-500 uppercase">TC Number</Label>
+                        <Label className="text-xs font-bold text-gray-500 uppercase">{t("tc_number")}</Label>
                         <div className="flex gap-2">
                             <Input
                                 placeholder="TC-2026-0001"
@@ -475,20 +479,20 @@ export default function TransferCertificatePage() {
 
                         {verifyResult === "not_found" && (
                             <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-xs font-medium">
-                                <XCircle className="h-4 w-4 shrink-0" /> No TC found with that number.
+                                <XCircle className="h-4 w-4 shrink-0" /> {t("no_tc_found_with_that_number")}
                             </div>
                         )}
                         {verifyResult && verifyResult !== "not_found" && (
                             <div className="rounded-lg border border-green-100 bg-green-50 p-4 space-y-2">
                                 <div className="flex items-center gap-2 text-green-700 font-bold text-xs">
-                                    <CheckCircle2 className="h-4 w-4" /> TC Verified
-                                    {verifyResult.is_reissue && <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">Reissue</span>}
+                                    <CheckCircle2 className="h-4 w-4" /> {t("tc_verified")}
+                                    {verifyResult.is_reissue && <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">{t("reissue")}</span>}
                                 </div>
                                 {([
-                                    ["TC Number", verifyResult.tc_number],
-                                    ["Student", verifyResult.student_name],
-                                    ["Admission No", verifyResult.admission_no],
-                                    ["Issue Date", verifyResult.issue_date ? new Date(verifyResult.issue_date).toLocaleDateString("en-US") : "-"],
+                                    [t("tc_number"), verifyResult.tc_number],
+                                    [t("student"), verifyResult.student_name],
+                                    [t("admission_no"), verifyResult.admission_no],
+                                    [t("issue_date"), verifyResult.issue_date ? new Date(verifyResult.issue_date).toLocaleDateString("en-US") : "-"],
                                 ] as [string, string][]).map(([k, v]) => (
                                     <div key={k} className="flex justify-between text-xs">
                                         <span className="text-gray-500 font-medium">{k}</span>
@@ -499,7 +503,7 @@ export default function TransferCertificatePage() {
                         )}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setVerifyOpen(false)} className="h-9 text-xs">Close</Button>
+                        <Button variant="outline" onClick={() => setVerifyOpen(false)} className="h-9 text-xs">{t("close")}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -508,24 +512,24 @@ export default function TransferCertificatePage() {
             <AlertDialog open={reasonDialogId !== null} onOpenChange={(o) => !o && setReasonDialogId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Issue Transfer Certificate</AlertDialogTitle>
+                        <AlertDialogTitle>{t("issue_transfer_certificate")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Enter a reason for leaving (optional). A PDF will be downloaded after issuing.
+                            {t("issue_tc_reason_description")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <Input
-                        placeholder="Reason for transfer (optional)"
+                        placeholder={t("reason_for_transfer_optional")}
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         className="mt-1 text-xs h-9"
                     />
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={issueTc}
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white"
                         >
-                            Issue & Download
+                            {t("issue_and_download")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

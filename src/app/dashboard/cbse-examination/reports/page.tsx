@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,6 +43,8 @@ interface StudentReport {
 
 export default function ReportsPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [activeTab, setActiveTab] = useState("subject-marks");
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
@@ -60,7 +64,7 @@ export default function ReportsPage() {
             const response = await api.get('/examination/cbse-reports/criteria');
             setExams(response.data.exams || []);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to load criteria", variant: "destructive" });
+            toast({ title: t("error"), description: t("failed_to_load_criteria"), variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -68,7 +72,7 @@ export default function ReportsPage() {
 
     const handleSearch = async () => {
         if (!selectedExamId) {
-            toast({ title: "Validation Error", description: "Please select an exam", variant: "destructive" });
+            toast({ title: t("validation_error"), description: t("please_select_an_exam"), variant: "destructive" });
             return;
         }
 
@@ -80,7 +84,7 @@ export default function ReportsPage() {
             setStudents(response.data.students || []);
             setSubjects(response.data.subjects || []);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to generate report", variant: "destructive" });
+            toast({ title: t("error"), description: t("failed_to_generate_report"), variant: "destructive" });
         } finally {
             setSearching(false);
         }
@@ -107,13 +111,15 @@ export default function ReportsPage() {
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             {/* Header */}
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
-                <div>
-                    <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
-                        <Presentation className="h-6 w-6 text-indigo-500" />
-                        CBSE Analytical Reporting
-                    </h1>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Cross-sectional board performance & metric analysis</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Presentation className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("cbse_analytical_reporting")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("board_performance_metric_analysis")}</p>
+                    </div>
                 </div>
             </div>
 
@@ -130,7 +136,7 @@ export default function ReportsPage() {
                         )}
                     >
                         <BarChart3 className="h-4 w-4" />
-                        Subject Marks Index
+                        {t("subject_marks_index")}
                     </button>
                     <button
                         onClick={() => setActiveTab("template-marks")}
@@ -142,7 +148,7 @@ export default function ReportsPage() {
                         )}
                     >
                         <LayoutList className="h-4 w-4" />
-                        Template Aggregate Report
+                        {t("template_aggregate_report")}
                     </button>
                 </div>
 
@@ -154,11 +160,11 @@ export default function ReportsPage() {
                             <div className="bg-gray-50/30 p-6 rounded-lg border border-gray-100 flex flex-col md:flex-row items-end justify-between gap-6">
                                 <div className="space-y-2 w-full md:w-1/2">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                        Examination Cycle <span className="text-red-500">*</span>
+                                        {t("examination_cycle")} <span className="text-red-500">*</span>
                                     </Label>
                                     <Select value={selectedExamId} onValueChange={setSelectedExamId}>
                                         <SelectTrigger className="h-11 border-gray-100 bg-white rounded-lg focus:ring-indigo-500 shadow-none">
-                                            <SelectValue placeholder="Select Target Exam" />
+                                            <SelectValue placeholder={t("select_target_exam")} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {exams.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.name}</SelectItem>)}
@@ -171,7 +177,7 @@ export default function ReportsPage() {
                                     className="btn-gradient text-white px-10 h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex gap-2"
                                 >
                                     {searching ? <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" /> : <Search className="h-4 w-4" />}
-                                    Generate Report
+                                    {t("generate_report")}
                                 </Button>
                             </div>
 
@@ -185,10 +191,10 @@ export default function ReportsPage() {
                                 {students.length > 0 && (
                                     <div className="flex items-center gap-4 bg-indigo-50/30 px-4 py-2 rounded-full border border-indigo-100">
                                         <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
-                                            <Trophy className="h-3 w-3" /> Students: {students.length}
+                                            <Trophy className="h-3 w-3" /> {t("students")}: {students.length}
                                         </span>
                                         <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
-                                            <BookMarked className="h-3 w-3" /> Subjects: {subjects.length}
+                                            <BookMarked className="h-3 w-3" /> {t("subjects")}: {subjects.length}
                                         </span>
                                     </div>
                                 )}
@@ -199,9 +205,9 @@ export default function ReportsPage() {
                                 <Table className="border-collapse">
                                     <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-500">
                                         <TableRow className="hover:bg-transparent">
-                                            <TableHead rowSpan={2} className="py-4 px-6 min-w-[180px] border-r border-gray-100">Student Profile</TableHead>
-                                            <TableHead rowSpan={2} className="py-4 px-6 min-w-[120px] border-r border-gray-100">Admission No</TableHead>
-                                            <TableHead rowSpan={2} className="py-4 px-6 min-w-[150px] border-r border-gray-100">Father Name</TableHead>
+                                            <TableHead rowSpan={2} className="py-4 px-6 min-w-[180px] border-r border-gray-100">{t("student_profile")}</TableHead>
+                                            <TableHead rowSpan={2} className="py-4 px-6 min-w-[120px] border-r border-gray-100">{t("admission_no")}</TableHead>
+                                            <TableHead rowSpan={2} className="py-4 px-6 min-w-[150px] border-r border-gray-100">{t("father_name")}</TableHead>
 
                                             {subjects.map(subject => (
                                                 <TableHead key={subject.id} colSpan={2} className="py-4 px-6 text-center border-r border-gray-100 bg-indigo-50/10">
@@ -212,15 +218,15 @@ export default function ReportsPage() {
                                                 </TableHead>
                                             ))}
 
-                                            <TableHead rowSpan={2} className="py-4 px-6 w-[120px] text-center bg-indigo-50/20 border-r border-gray-100">Total Score</TableHead>
-                                            <TableHead rowSpan={2} className="py-4 px-6 w-[100px] text-center bg-indigo-50/20 border-r border-gray-100">Percent (%)</TableHead>
-                                            <TableHead rowSpan={2} className="py-4 px-6 w-[80px] text-center bg-indigo-50/20">Rank</TableHead>
+                                            <TableHead rowSpan={2} className="py-4 px-6 w-[120px] text-center bg-indigo-50/20 border-r border-gray-100">{t("total_score")}</TableHead>
+                                            <TableHead rowSpan={2} className="py-4 px-6 w-[100px] text-center bg-indigo-50/20 border-r border-gray-100">{t("percent")} (%)</TableHead>
+                                            <TableHead rowSpan={2} className="py-4 px-6 w-[80px] text-center bg-indigo-50/20">{t("rank")}</TableHead>
                                         </TableRow>
                                         <TableRow className="hover:bg-transparent bg-gray-50/30">
                                             {subjects.map(subject => (
                                                 <div key={`sub-${subject.id}`} className="contents">
-                                                    <TableHead className="py-2 px-3 text-[9px] text-center font-bold text-gray-400 border-r border-gray-100 uppercase tracking-tighter">Theory</TableHead>
-                                                    <TableHead className="py-2 px-3 text-[9px] text-center font-bold text-gray-400 border-r border-gray-100 uppercase tracking-tighter">Prac.</TableHead>
+                                                    <TableHead className="py-2 px-3 text-[9px] text-center font-bold text-gray-400 border-r border-gray-100 uppercase tracking-tighter">{t("theory")}</TableHead>
+                                                    <TableHead className="py-2 px-3 text-[9px] text-center font-bold text-gray-400 border-r border-gray-100 uppercase tracking-tighter">{t("prac")}</TableHead>
                                                 </div>
                                             ))}
                                         </TableRow>
@@ -231,7 +237,7 @@ export default function ReportsPage() {
                                                 <TableCell colSpan={subjects.length * 2 + 6} className="h-64 text-center">
                                                     <div className="flex flex-col items-center justify-center space-y-4">
                                                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500" />
-                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Aggregating Board Analytics...</p>
+                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("aggregating_board_analytics")}</p>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -240,7 +246,7 @@ export default function ReportsPage() {
                                                 <TableCell colSpan={subjects.length * 2 + 6} className="h-48 text-center">
                                                     <div className="flex flex-col items-center justify-center space-y-3 opacity-40">
                                                         <ShieldAlert className="h-10 w-10 text-gray-300" />
-                                                        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Select examination parameters to generate analytical report</p>
+                                                        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">{t("select_examination_parameters")}</p>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -298,8 +304,8 @@ export default function ReportsPage() {
                     {activeTab === "template-marks" && (
                         <div className="flex flex-col items-center justify-center py-24 space-y-4 opacity-40">
                             <Presentation className="h-12 w-12 text-indigo-500" />
-                            <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-gray-500">Aggregate Module Pending</h3>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center max-w-[300px]">Template-based reporting will be enabled upon finalizing institutional marksheet architecture</p>
+                            <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-gray-500">{t("aggregate_module_pending")}</h3>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center max-w-[300px]">{t("template_based_reporting_info")}</p>
                         </div>
                     )}
                 </div>

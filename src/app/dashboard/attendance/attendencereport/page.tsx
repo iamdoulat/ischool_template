@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Loader2, Filter, BarChart3, BookOpen, Copy, FileSpreadsheet, FileText, Printer, Columns } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface Student {
     id: number;
@@ -49,6 +50,7 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function AttendanceReportPage() {
+    const { t } = useTranslation();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
@@ -84,7 +86,7 @@ export default function AttendanceReportPage() {
 
     const handleSearch = async () => {
         if (!selectedClass || !selectedSection || !attendanceDate) {
-            toast.error("Please select class, section and date");
+            toast.error(t("please_select_class_section_date"));
             return;
         }
 
@@ -102,12 +104,12 @@ export default function AttendanceReportPage() {
             if (response.data.success) {
                 setStudents(response.data.data);
                 if (response.data.data.length === 0) {
-                    toast.info("No students found for this class and section");
+                    toast.info(t("no_students_found_for_class_section"));
                 }
             }
         } catch (error) {
             console.error("Error searching attendance:", error);
-            toast.error("Failed to load attendance report");
+            toast.error(t("failed_to_load_attendance_report"));
         } finally {
             setLoading(false);
         }
@@ -140,19 +142,19 @@ export default function AttendanceReportPage() {
     const getStatusBadge = (status: string) => {
         switch (status.toLowerCase()) {
             case "present":
-                return <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Present</Badge>;
+                return <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">{t("present")}</Badge>;
             case "absent":
-                return <Badge className="bg-red-50 text-red-700 hover:bg-red-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Absent</Badge>;
+                return <Badge className="bg-red-50 text-red-700 hover:bg-red-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">{t("absent")}</Badge>;
             case "late":
-                return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Late</Badge>;
+                return <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">{t("late")}</Badge>;
             case "half_day":
-                return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Half Day</Badge>;
+                return <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">{t("half_day")}</Badge>;
             case "holiday":
-                return <Badge className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Holiday</Badge>;
+                return <Badge className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">{t("holiday")}</Badge>;
             case "on_leave":
-                return <Badge className="bg-purple-50 text-purple-700 hover:bg-purple-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all flex items-center gap-1"><span className="text-purple-500 text-[11px]">●</span> On Leave</Badge>;
+                return <Badge className="bg-purple-50 text-purple-700 hover:bg-purple-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all flex items-center gap-1"><span className="text-purple-500 text-[11px]">●</span> {t("on_leave")}</Badge>;
             default:
-                return <Badge className="bg-gray-50 text-gray-400 hover:bg-gray-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">Not Marked</Badge>;
+                return <Badge className="bg-gray-50 text-gray-400 hover:bg-gray-100 border-none px-3 py-0.5 text-[9px] uppercase font-black rounded-full transition-all">{t("not_marked")}</Badge>;
         }
     };
 
@@ -165,19 +167,19 @@ export default function AttendanceReportPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Choose class, section &amp; date</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("choose_class_section_date")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="px-5 pb-5">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                Class <span className="text-red-500">*</span>
+                                {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
                                 <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(cls => (
@@ -189,11 +191,11 @@ export default function AttendanceReportPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                Section <span className="text-red-500">*</span>
+                                {t("section")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
                                 <SelectTrigger className="h-8 text-[11px] border-gray-200 shadow-none rounded">
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(sec => (
@@ -205,7 +207,7 @@ export default function AttendanceReportPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                Attendance Date <span className="text-red-500">*</span>
+                                {t("attendance_date")} <span className="text-red-500">*</span>
                             </Label>
                             <Input
                                 type="date"
@@ -224,7 +226,7 @@ export default function AttendanceReportPage() {
                             className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
                         >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                            Search
+                            {t("search")}
                         </Button>
                     </div>
                 </CardContent>
@@ -239,8 +241,8 @@ export default function AttendanceReportPage() {
                                 <BarChart3 className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Student Attendance Report</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{students.length} record{students.length === 1 ? '' : 's'}</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_attendance_report")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{students.length} {students.length === 1 ? t("record") : t("records")}</p>
                             </div>
                         </div>
 
@@ -259,13 +261,13 @@ export default function AttendanceReportPage() {
                                 <TableHeader>
                                     <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/50">
                                         <TableHead className="py-4 px-6 w-16 text-center">#</TableHead>
-                                        <TableHead className="py-4 px-6">Admission No</TableHead>
-                                        <TableHead className="py-4 px-6">Roll No</TableHead>
-                                        <TableHead className="py-4 px-6">Student Name</TableHead>
-                                        <TableHead className="py-4 px-6 text-center">Attendance</TableHead>
-                                        <TableHead className="py-4 px-6 text-center">Entry Time</TableHead>
-                                        <TableHead className="py-4 px-6 text-center">Exit Time</TableHead>
-                                        <TableHead className="py-4 px-6">Note</TableHead>
+                                        <TableHead className="py-4 px-6">{t("admission_no")}</TableHead>
+                                        <TableHead className="py-4 px-6">{t("roll_no")}</TableHead>
+                                        <TableHead className="py-4 px-6">{t("student_name")}</TableHead>
+                                        <TableHead className="py-4 px-6 text-center">{t("attendance")}</TableHead>
+                                        <TableHead className="py-4 px-6 text-center">{t("entry_time")}</TableHead>
+                                        <TableHead className="py-4 px-6 text-center">{t("exit_time")}</TableHead>
+                                        <TableHead className="py-4 px-6">{t("note")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -279,8 +281,8 @@ export default function AttendanceReportPage() {
                                                         <BookOpen className="h-8 w-8" />
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No Records Found</p>
-                                                        <p className="text-[11px] text-gray-400 max-w-[200px] mx-auto leading-relaxed">We couldn&apos;t find any student records for the selected parameters.</p>
+                                                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t("no_records_found")}</p>
+                                                        <p className="text-[11px] text-gray-400 max-w-[200px] mx-auto leading-relaxed">{t("no_student_records_for_parameters")}</p>
                                                     </div>
                                                 </div>
                                             </TableCell>

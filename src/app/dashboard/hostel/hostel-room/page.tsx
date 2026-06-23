@@ -36,7 +36,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -83,7 +84,8 @@ function SkeletonRows({ rows = 6, cols }: { rows?: number; cols: number }) {
 }
 
 export default function HostelRoomPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [rooms, setRooms] = useState<HostelRoom[]>([]);
     const [hostels, setHostels] = useState<Hostel[]>([]);
     const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
@@ -117,7 +119,7 @@ export default function HostelRoomPage() {
             setHostels(hostelsRes.data.data || []);
             setRoomTypes(typesRes.data.data || []);
         } catch (error) {
-            toast("error", "Failed to fetch data");
+            tt.error("failed_to_fetch_data");
         } finally {
             setFetching(false);
         }
@@ -129,7 +131,7 @@ export default function HostelRoomPage() {
 
     const handleSave = async () => {
         if (!form.room_number || !form.hostel_id || !form.room_type_id || !form.number_of_bed || !form.cost_per_bed) {
-            toast("error", "Please fill required fields");
+            tt.error("please_fill_required_fields");
             return;
         }
 
@@ -145,15 +147,15 @@ export default function HostelRoomPage() {
         try {
             if (form.id) {
                 await api.put(`/rooms/${form.id}`, submitData);
-                toast("success", "Room updated successfully");
+                tt.success("room_updated_successfully");
             } else {
                 await api.post("/rooms", submitData);
-                toast("success", "Room created successfully");
+                tt.success("room_created_successfully");
             }
             setForm({ id: null, room_number: "", hostel_id: "", room_type_id: "", number_of_bed: "", cost_per_bed: "", description: "" });
             fetchData();
         } catch (error) {
-            toast("error", "Failed to save room");
+            tt.error("failed_to_save_room");
         } finally {
             setLoading(false);
         }
@@ -173,13 +175,13 @@ export default function HostelRoomPage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this room?")) return;
+        if (!confirm(t("are_you_sure_delete_room"))) return;
         try {
             await api.delete(`/rooms/${id}`);
-            toast("success", "Room deleted successfully");
+            tt.success("room_deleted_successfully");
             fetchData();
         } catch (error) {
-            toast("error", "Failed to delete room");
+            tt.error("failed_to_delete_room");
         }
     };
 
@@ -195,11 +197,11 @@ export default function HostelRoomPage() {
 
     const exportToExcel = () => {
         const data = filteredRooms.map(r => ({
-            'Room Number': r.room_number,
-            'Hostel': r.hostel?.name,
-            'Room Type': r.room_type?.name,
-            'Beds': r.number_of_bed,
-            'Cost': r.cost_per_bed
+            [t("room_number_name")]: r.room_number,
+            [t("hostel")]: r.hostel?.name,
+            [t("room_type")]: r.room_type?.name,
+            [t("number_of_bed")]: r.number_of_bed,
+            [t("cost_per_bed")]: r.cost_per_bed
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -209,9 +211,9 @@ export default function HostelRoomPage() {
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Hostel Room List", 14, 15);
+        doc.text(t("hostel_room_list"), 14, 15);
         autoTable(doc, {
-            head: [['Room Number', 'Hostel', 'Room Type', 'Beds', 'Cost']],
+            head: [[t("room_number_name"), t("hostel"), t("room_type"), t("number_of_bed"), t("cost_per_bed")]],
             body: filteredRooms.map(r => [r.room_number, r.hostel?.name || '', r.room_type?.name || '', r.number_of_bed, r.cost_per_bed]),
             startY: 20,
         });
@@ -221,7 +223,7 @@ export default function HostelRoomPage() {
     const copyToClipboard = () => {
         const text = filteredRooms.map(r => `${r.room_number}\t${r.hostel?.name}\t${r.room_type?.name}\t${r.number_of_bed}\t${r.cost_per_bed}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     return (
@@ -235,14 +237,14 @@ export default function HostelRoomPage() {
                                 <DoorOpen className="h-5 w-5" />
                             </span>
                             <div className="min-w-0">
-                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{form.id ? "Edit Hostel Room" : "Add Hostel Room"}</h2>
-                                <p className="text-[11px] text-gray-500">Hostel room record</p>
+                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{form.id ? t("edit_hostel_room") : t("add_hostel_room")}</h2>
+                                <p className="text-[11px] text-gray-500">{t("hostel_room_record")}</p>
                             </div>
                         </div>
                         <div className="p-4 space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Room Number / Name <span className="text-red-500 font-bold">*</span>
+                                    {t("room_number_name")} <span className="text-red-500 font-bold">*</span>
                                 </Label>
                                 <Input
                                     value={form.room_number}
@@ -254,11 +256,11 @@ export default function HostelRoomPage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Hostel <span className="text-red-500 font-bold">*</span>
+                                    {t("hostel")} <span className="text-red-500 font-bold">*</span>
                                 </Label>
                                 <Select value={form.hostel_id} onValueChange={(val) => setForm({ ...form, hostel_id: val })}>
                                     <SelectTrigger className="h-8 border-gray-200 text-[11px] focus:ring-indigo-500 rounded shadow-none">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {hostels.map((h) => (
@@ -270,11 +272,11 @@ export default function HostelRoomPage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Room Type <span className="text-red-500 font-bold">*</span>
+                                    {t("room_type")} <span className="text-red-500 font-bold">*</span>
                                 </Label>
                                 <Select value={form.room_type_id} onValueChange={(val) => setForm({ ...form, room_type_id: val })}>
                                     <SelectTrigger className="h-8 border-gray-200 text-[11px] focus:ring-indigo-500 rounded shadow-none">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {roomTypes.map((t) => (
@@ -286,7 +288,7 @@ export default function HostelRoomPage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Number Of Bed <span className="text-red-500 font-bold">*</span>
+                                    {t("number_of_bed")} <span className="text-red-500 font-bold">*</span>
                                 </Label>
                                 <Input
                                     value={form.number_of_bed}
@@ -298,7 +300,7 @@ export default function HostelRoomPage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Cost Per Bed <span className="text-red-500 font-bold">*</span>
+                                    {t("cost_per_bed")} <span className="text-red-500 font-bold">*</span>
                                 </Label>
                                 <Input
                                     value={form.cost_per_bed}
@@ -309,7 +311,7 @@ export default function HostelRoomPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Description</Label>
+                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("description")}</Label>
                                 <Textarea
                                     value={form.description}
                                     onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -325,7 +327,7 @@ export default function HostelRoomPage() {
                                     variant="gradient"
                                     className="px-8 h-10 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg min-w-[100px]"
                                 >
-                                    {loading ? "Saving..." : "Save"}
+                                    {loading ? t("saving") : t("save")}
                                 </Button>
                             </div>
                         </div>
@@ -340,8 +342,8 @@ export default function HostelRoomPage() {
                                 <DoorOpen className="h-5 w-5" />
                             </span>
                             <div className="min-w-0">
-                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Hostel Room List</h2>
-                                <p className="text-[11px] text-gray-500">{filteredRooms.length} room{filteredRooms.length === 1 ? "" : "s"}</p>
+                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{t("hostel_room_list")}</h2>
+                                <p className="text-[11px] text-gray-500">{t("x_rooms", { count: filteredRooms.length })}</p>
                             </div>
                         </div>
                         <div className="p-4 space-y-4">
@@ -350,7 +352,7 @@ export default function HostelRoomPage() {
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
@@ -397,21 +399,21 @@ export default function HostelRoomPage() {
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                            <div className="flex items-center gap-1 cursor-pointer">Room Number / Name <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                            <div className="flex items-center gap-1 cursor-pointer">{t("room_number_name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                            <div className="flex items-center gap-1 cursor-pointer">Hostel <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                            <div className="flex items-center gap-1 cursor-pointer">{t("hostel")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                            <div className="flex items-center gap-1 cursor-pointer">Room Type <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                            <div className="flex items-center gap-1 cursor-pointer">{t("room_type")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1 cursor-pointer">Number Of Bed <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                            <div className="flex items-center justify-end gap-1 cursor-pointer">{t("number_of_bed")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1 cursor-pointer">Cost Per Bed <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                            <div className="flex items-center justify-end gap-1 cursor-pointer">{t("cost_per_bed")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -419,7 +421,7 @@ export default function HostelRoomPage() {
                                         <SkeletonRows cols={6} />
                                     ) : paginatedRooms.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-10 text-gray-400 italic">No rooms found</TableCell>
+                                            <TableCell colSpan={6} className="text-center py-10 text-gray-400 italic">{t("no_rooms_found")}</TableCell>
                                         </TableRow>
                                     ) : (
                                         paginatedRooms.map((room) => (
@@ -450,7 +452,7 @@ export default function HostelRoomPage() {
                         {totalPages > 1 && (
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-4 border-t border-gray-100">
                                 <div>
-                                    Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredRooms.length)} of {filteredRooms.length} entries
+                                    {t("showing_x_to_y_of_z", { from: startIndex + 1, to: Math.min(startIndex + itemsPerPage, filteredRooms.length), total: filteredRooms.length })}
                                 </div>
                                 <div className="flex gap-1.5 items-center">
                                     <Button

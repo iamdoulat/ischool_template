@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
 
 type Period = {
@@ -36,6 +37,7 @@ const TODAY_NAME = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]
 
 /* ── Animated period card ── */
 function PeriodCard({ period, colors, delay }: { period: Period; colors: typeof DAY_COLORS[string]; delay: number }) {
+    const { t } = useTranslation();
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
@@ -73,7 +75,7 @@ function PeriodCard({ period, colors, delay }: { period: Period; colors: typeof 
                     {period.room && (
                         <div className="flex items-start gap-1.5">
                             <Building className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                            <span className={cn("leading-tight text-[11px]", colors.text)}>Room {period.room}</span>
+                            <span className={cn("leading-tight text-[11px]", colors.text)}>{t("room")} {period.room}</span>
                         </div>
                     )}
                 </div>
@@ -83,6 +85,7 @@ function PeriodCard({ period, colors, delay }: { period: Period; colors: typeof 
 }
 
 export default function UserClassTimetablePage() {
+    const { t } = useTranslation();
     const [timetable, setTimetable] = useState<Timetable>({});
     const [className, setClassName] = useState<string | null>(null);
     const [sectionName, setSectionName] = useState<string | null>(null);
@@ -105,16 +108,16 @@ export default function UserClassTimetablePage() {
                         setTimetable(payload ?? {});
                     }
                 } else {
-                    toast({ variant: "destructive", title: "Error", description: res.data.message || "Failed to load timetable." });
+                    toast({ variant: "destructive", title: t("error"), description: res.data.message || t("failed_to_load_timetable") });
                 }
             } catch {
-                toast({ variant: "destructive", title: "Error", description: "Failed to load class timetable." });
+                toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_class_timetable") });
             } finally {
                 setLoading(false);
             }
         };
         fetchTimetable();
-    }, [toast]);
+    }, [toast, t]);
 
     const totalPeriods = DAYS.reduce((acc, d) => acc + (timetable[d]?.length ?? 0), 0);
 
@@ -129,29 +132,29 @@ export default function UserClassTimetablePage() {
                         </span>
                         <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                                <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Class Timetable</h1>
+                                <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("class_timetable")}</h1>
                                 {!loading && (className || sectionName) && (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-white/70 border border-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-600">
-                                        {className || "—"}{sectionName ? ` · Sec ${sectionName}` : ""}
+                                        {className || "—"}{sectionName ? ` · ${t("sec")} ${sectionName}` : ""}
                                     </span>
                                 )}
                             </div>
                             <p className="text-[11px] text-gray-500 mt-1">
                                 {loading
-                                    ? "Loading schedule…"
+                                    ? t("loading_schedule")
                                     : (className || sectionName)
-                                        ? `Your schedule for ${className ?? ""}${sectionName ? ` — Section ${sectionName}` : ""} · ${totalPeriods} period${totalPeriods === 1 ? "" : "s"}`
-                                        : `${totalPeriods} period${totalPeriods === 1 ? "" : "s"} scheduled this week`}
+                                        ? `${t("your_schedule_for")} ${className ?? ""}${sectionName ? ` — ${t("section")} ${sectionName}` : ""} · ${totalPeriods} ${totalPeriods === 1 ? t("period") : t("periods")}`
+                                        : `${totalPeriods} ${totalPeriods === 1 ? t("period") : t("periods")} ${t("scheduled_this_week")}`}
                             </p>
                         </div>
                     </div>
                     <Button
                         onClick={() => window.print()}
-                        title="Print"
+                        title={t("print")}
                         className="h-9 shrink-0 ml-auto px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
                     >
                         <Printer className="h-4 w-4" />
-                        <span className="hidden sm:inline">Print</span>
+                        <span className="hidden sm:inline">{t("print")}</span>
                     </Button>
                 </div>
 
@@ -159,26 +162,26 @@ export default function UserClassTimetablePage() {
                     {loading ? (
                         <div className="flex items-center justify-center py-20 gap-2 text-gray-400">
                             <Loader2 className="h-6 w-6 animate-spin" />
-                            <span>Loading timetable...</span>
+                            <span>{t("loading")}</span>
                         </div>
                     ) : totalPeriods === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                             <CalendarDays className="h-12 w-12 opacity-30 mb-3" />
                             {!className && !sectionName ? (
                                 <>
-                                    <p className="text-base font-semibold text-gray-500">No class or section assigned.</p>
-                                    <p className="text-sm mt-1 text-gray-400">Please contact the admin to assign your class and section.</p>
+                                    <p className="text-base font-semibold text-gray-500">{t("no_class_or_section_assigned")}</p>
+                                    <p className="text-sm mt-1 text-gray-400">{t("please_contact_the_admin_to_assign_your_class_and_section")}</p>
                                 </>
                             ) : (
                                 <>
-                                    <p className="text-base font-semibold text-gray-500">No timetable found.</p>
+                                    <p className="text-base font-semibold text-gray-500">{t("no_timetable_found")}</p>
                                     <p className="text-sm mt-1 text-gray-400">
-                                        The admin hasn&apos;t scheduled classes for{" "}
+                                        {t("the_admin_hasnt_scheduled_classes_for")}{" "}
                                         <span className="font-semibold text-indigo-500">
                                             {className ?? ""}
-                                            {sectionName ? ` — Section ${sectionName}` : ""}
+                                            {sectionName ? ` — ${t("section")} ${sectionName}` : ""}
                                         </span>{" "}
-                                        yet.
+                                        {t("yet")}.
                                     </p>
                                 </>
                             )}
@@ -208,7 +211,7 @@ export default function UserClassTimetablePage() {
                                                 "text-[10px] mt-0.5 font-medium px-1.5 py-px rounded-full",
                                                 isToday ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white" : "text-gray-400"
                                             )}>
-                                                {isToday ? "Today" : `${count} cls`}
+                                                {isToday ? t("today") : `${count} ${t("cls")}`}
                                             </span>
                                         </button>
                                     );
@@ -220,17 +223,17 @@ export default function UserClassTimetablePage() {
                                 <div className="flex items-center gap-2 mb-4">
                                     <span className="text-[13px] font-bold text-gray-700">{activeDay}</span>
                                     {activeDay === TODAY_NAME && (
-                                        <span className="text-[11px] px-2 py-0.5 rounded-full text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] font-semibold">Today</span>
+                                        <span className="text-[11px] px-2 py-0.5 rounded-full text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] font-semibold">{t("today")}</span>
                                     )}
                                     <span className="text-[11px] text-gray-400 ml-auto">
-                                        {timetable[activeDay]?.length ?? 0} period{(timetable[activeDay]?.length ?? 0) !== 1 ? "s" : ""}
+                                        {timetable[activeDay]?.length ?? 0} {(timetable[activeDay]?.length ?? 0) !== 1 ? t("periods") : t("period")}
                                     </span>
                                 </div>
 
                                 {(timetable[activeDay]?.length ?? 0) === 0 ? (
                                     <div className="flex items-center gap-2 rounded-lg border border-gray-200 p-4 text-gray-400">
                                         <XCircle className="h-4 w-4 text-red-400 shrink-0" />
-                                        <span className="text-[13px]">No classes scheduled for {activeDay}.</span>
+                                        <span className="text-[13px]">{t("no_classes_scheduled_for")} {activeDay}.</span>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -273,7 +276,7 @@ export default function UserClassTimetablePage() {
                                                                         <p className="font-semibold">{p.subject}</p>
                                                                         <p className="text-gray-600">{p.time}</p>
                                                                         {p.teacher && <p className="text-gray-500">{p.teacher}</p>}
-                                                                        {p.room && <p className="text-gray-500">Room: {p.room}</p>}
+                                                                        {p.room && <p className="text-gray-500">{t("room")}: {p.room}</p>}
                                                                     </div>
                                                                 ))}
                                                             </div>

@@ -14,8 +14,6 @@ import {
 import {
     Card,
     CardContent,
-    CardHeader,
-    CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -23,10 +21,12 @@ import {
     MessageSquare,
     Loader2,
     X,
-    Info
+    Info,
+    Bell
 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface NotificationEvent {
     id: number;
@@ -52,6 +52,7 @@ function EditModal({
     onClose: () => void;
     onSaved: (updated: NotificationEvent) => void;
 }) {
+    const { t } = useTranslation();
     const { toast } = useToast();
     const [form, setForm] = useState({
         sms_template_id: item.sms_template_id ?? "",
@@ -66,12 +67,12 @@ function EditModal({
             const payload = { settings: [{ id: item.id, ...form }] };
             const res = await api.post('/system-setting/notification-settings/bulk-update', payload);
             if (res.data.status === "success") {
-                toast({ title: "Success", description: "Template updated successfully" });
+                toast({ title: t("success_title"), description: t("template_updated_successfully") });
                 onSaved({ ...item, ...form });
                 onClose();
             }
         } catch {
-            toast({ variant: "destructive", title: "Error", description: "Failed to update template" });
+            toast({ variant: "destructive", title: t("error"), description: t("failed_to_update_template") });
         } finally {
             setSaving(false);
         }
@@ -82,7 +83,7 @@ function EditModal({
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
             <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <h2 className="text-gray-800 font-semibold text-sm tracking-tight">Template</h2>
+                    <h2 className="text-gray-800 font-semibold text-sm tracking-tight">{t("template")}</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-800 transition-colors">
                         <X className="h-4 w-4" />
                     </button>
@@ -93,43 +94,43 @@ function EditModal({
 
                     <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                            SMS Template ID <span className="ml-1 text-gray-400 font-normal normal-case">(Required only for Indian SMS Gateway)</span>
+                            {t("sms_template_id")} <span className="ml-1 text-gray-400 font-normal normal-case">({t("required_only_for_indian_sms_gateway")})</span>
                         </label>
                         <input
                             type="text"
                             value={form.sms_template_id}
                             onChange={(e) => setForm({ ...form, sms_template_id: e.target.value })}
-                            placeholder="Enter SMS Template ID"
+                            placeholder={t("enter_sms_template_id")}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
                         />
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">WhatsApp Template ID</label>
+                        <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">{t("whatsapp_template_id")}</label>
                         <input
                             type="text"
                             value={form.whatsapp_template_id}
                             onChange={(e) => setForm({ ...form, whatsapp_template_id: e.target.value })}
-                            placeholder="Enter WhatsApp Template ID"
+                            placeholder={t("enter_whatsapp_template_id")}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
                         />
                     </div>
 
                     <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                            Template <span className="text-red-500">*</span>
+                            {t("template")} <span className="text-red-500">*</span>
                         </label>
                         <textarea
                             rows={5}
                             value={form.sample_message}
                             onChange={(e) => setForm({ ...form, sample_message: e.target.value })}
-                            placeholder="Enter template message..."
+                            placeholder={t("enter_template_message")}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent resize-none transition"
                         />
                     </div>
 
                     <div className="bg-indigo-50 rounded-lg px-3 py-2 space-y-1">
-                        <p className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wide">You Can Use Variables</p>
+                        <p className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wide">{t("you_can_use_variables")}</p>
                         <p className="text-[10px] text-indigo-500 leading-relaxed font-mono">
                             {item.sample_message ? Array.from(item.sample_message.matchAll(/\{\{(\w+)\}\}/g))
                                 .map((m) => `{{${m[1]}}}`)
@@ -144,7 +145,7 @@ function EditModal({
                         disabled={saving}
                         className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white h-9 px-7 text-[11px] font-bold rounded-full shadow-md disabled:opacity-50 transition-opacity"
                     >
-                        {saving ? <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Saving...</> : "Save"}
+                        {saving ? <><Loader2 className="mr-1 h-3 w-3 animate-spin" />{t("loading")}</> : t("save")}
                     </Button>
                 </div>
             </div>
@@ -154,12 +155,13 @@ function EditModal({
 
 // ─── View Modal ─────────────────────────────────────────────────────────────────
 function ViewModal({ item, onClose }: { item: NotificationEvent; onClose: () => void }) {
+    const { t } = useTranslation();
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
             <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <h2 className="text-gray-800 font-semibold text-sm tracking-tight">Sample Message</h2>
+                    <h2 className="text-gray-800 font-semibold text-sm tracking-tight">{t("sample_message")}</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-800 transition-colors">
                         <X className="h-4 w-4" />
                     </button>
@@ -172,13 +174,13 @@ function ViewModal({ item, onClose }: { item: NotificationEvent; onClose: () => 
                     </div>
                     {item.sms_template_id && (
                         <div className="space-y-1">
-                            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">SMS Template ID</p>
+                            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">{t("sms_template_id")}</p>
                             <p className="font-mono text-[10px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{item.sms_template_id}</p>
                         </div>
                     )}
                     {item.whatsapp_template_id && (
                         <div className="space-y-1">
-                            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">WhatsApp Template ID</p>
+                            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">{t("whatsapp_template_id")}</p>
                             <p className="font-mono text-[10px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded break-all">{item.whatsapp_template_id}</p>
                         </div>
                     )}
@@ -186,7 +188,7 @@ function ViewModal({ item, onClose }: { item: NotificationEvent; onClose: () => 
 
                 <div className="px-5 py-3 border-t border-gray-100 flex justify-end bg-gray-50/50">
                     <Button onClick={onClose} variant="outline" className="h-8 px-6 text-[11px] font-semibold rounded-lg border-gray-200">
-                        Close
+                        {t("close")}
                     </Button>
                 </div>
             </div>
@@ -213,6 +215,7 @@ function TableSkeleton() {
 
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 export default function NotificationSettingPage() {
+    const { t } = useTranslation();
     const [events, setEvents] = useState<NotificationEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -229,7 +232,7 @@ export default function NotificationSettingPage() {
             const res = await api.get('/system-setting/notification-settings');
             if (res.data.status === "success") setEvents(res.data.data);
         } catch {
-            toast({ variant: "destructive", title: "Error", description: "Failed to load notification settings" });
+            toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_notification_settings") });
         } finally {
             setLoading(false);
         }
@@ -252,10 +255,10 @@ export default function NotificationSettingPage() {
         try {
             const res = await api.post('/system-setting/notification-settings/bulk-update', { settings: events });
             if (res.data.status === "success") {
-                toast({ title: "Success", description: "Notification settings saved successfully" });
+                toast({ title: t("success_title"), description: t("notification_settings_saved_successfully") });
             }
         } catch {
-            toast({ variant: "destructive", title: "Error", description: "Failed to save notification settings" });
+            toast({ variant: "destructive", title: t("error"), description: t("failed_to_save_notification_settings") });
         } finally {
             setSaving(false);
         }
@@ -271,31 +274,37 @@ export default function NotificationSettingPage() {
             {viewItem && <ViewModal item={viewItem} onClose={() => setViewItem(null)} />}
 
             <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans text-xs">
-                <Card>
-                    <CardHeader className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] rounded-t-lg">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-gray-800 text-sm font-bold">Notification Setting</CardTitle>
-                            {!loading && (
-                                <Button
-                                    onClick={handleBulkSave}
-                                    disabled={saving}
-                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-[11px] font-bold uppercase rounded-full shadow-md border-none transition-all"
-                                >
-                                    {saving ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
-                                    {saving ? "Saving..." : "Save Changes"}
-                                </Button>
-                            )}
+                <Card className="pt-0 overflow-hidden">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Bell className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("notification_setting")}</h1>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("configure_event_notifications_and_message_templates")}</p>
+                            </div>
                         </div>
-                    </CardHeader>
+                        {!loading && (
+                            <Button
+                                onClick={handleBulkSave}
+                                disabled={saving}
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-[11px] font-bold uppercase rounded-full shadow-md border-none transition-all"
+                            >
+                                {saving ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
+                                {saving ? t("loading") : t("save_changes")}
+                            </Button>
+                        )}
+                    </div>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1500px]">
                                 <TableHeader className="bg-gray-100 border-b border-gray-200">
                                     <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500">
-                                        <TableHead className="py-3 px-4 w-[200px]">Event</TableHead>
+                                        <TableHead className="py-3 px-4 w-[200px]">{t("event")}</TableHead>
                                         <TableHead className="py-3 px-4 w-[180px]">
                                             <div className="flex items-center gap-1">
-                                                Destination
+                                                {t("destination")}
                                                 <div className="group/tooltip relative">
                                                     <Info className="h-3 w-3 text-muted-foreground hover:text-indigo-500 cursor-pointer" />
                                                     <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 hidden group-hover/tooltip:block w-48 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg normal-case font-medium z-50 text-center">
@@ -304,10 +313,10 @@ export default function NotificationSettingPage() {
                                                 </div>
                                             </div>
                                         </TableHead>
-                                        <TableHead className="py-3 px-4 w-[150px]">Recipient</TableHead>
-                                        <TableHead className="py-3 px-4 w-[180px]">SMS Template ID</TableHead>
-                                        <TableHead className="py-3 px-4 w-[220px]">WhatsApp Template Id</TableHead>
-                                        <TableHead className="py-3 px-4">Sample Message</TableHead>
+                                        <TableHead className="py-3 px-4 w-[150px]">{t("recipient")}</TableHead>
+                                        <TableHead className="py-3 px-4 w-[180px]">{t("sms_template_id")}</TableHead>
+                                        <TableHead className="py-3 px-4 w-[220px]">{t("whatsapp_template_id")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("sample_message")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -371,7 +380,7 @@ export default function NotificationSettingPage() {
                                                             <Button
                                                                 variant="outline"
                                                                 size="icon"
-                                                                title="Edit template"
+                                                                title={t("edit_template")}
                                                                 onClick={() => setEditItem(item)}
                                                                 className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
                                                             >
@@ -380,7 +389,7 @@ export default function NotificationSettingPage() {
                                                             <Button
                                                                 variant="outline"
                                                                 size="icon"
-                                                                title="View sample message"
+                                                                title={t("view_sample_message")}
                                                                 onClick={() => setViewItem(item)}
                                                                 className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
                                                             >
@@ -394,7 +403,7 @@ export default function NotificationSettingPage() {
                                     ) : (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center py-10 text-gray-400">
-                                                No notification events found
+                                                {t("no_notification_events_found")}
                                             </TableCell>
                                         </TableRow>
                                     )}

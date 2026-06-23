@@ -158,6 +158,18 @@ export default function ContentTypePage() {
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <FileText className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Content Type</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Manage download content categories</p>
+                    </div>
+                </div>
+            </div>
             <div className="flex flex-col lg:flex-row gap-6">
                 {/* Left Section: Add Content Type */}
                 <div className="w-full lg:w-1/3 xl:w-1/4">

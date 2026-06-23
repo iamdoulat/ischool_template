@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -44,6 +45,7 @@ function SkeletonRow() {
 }
 
 export default function UserBehaviourPage() {
+    const { t } = useTranslation();
     const [data, setData] = useState<BehaviourData | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -54,7 +56,7 @@ export default function UserBehaviourPage() {
                 const payload = res.data?.data ?? res.data;
                 setData(payload);
             } catch {
-                toast.error("Failed to load behaviour records");
+                toast.error(t("failed_to_load_behaviour_records"));
             } finally {
                 setLoading(false);
             }
@@ -76,8 +78,8 @@ export default function UserBehaviourPage() {
                             <ShieldCheck className="h-5 w-5" />
                         </span>
                         <div>
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">Behaviour Records</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">Your incident history and behaviour points</p>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("behaviour_records")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("your_incident_history_and_behaviour_points")}</p>
                         </div>
                     </div>
                 </div>
@@ -96,7 +98,7 @@ export default function UserBehaviourPage() {
                                 <div className={cn("h-1 w-full bg-gradient-to-r", positivePoints ? "from-green-500 to-emerald-400" : "from-red-500 to-rose-400")} />
                                 <div className="px-4 py-3 flex items-center justify-between">
                                     <div>
-                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none">Total Points</p>
+                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none">{t("total_points")}</p>
                                         <p className={cn("mt-1.5 text-2xl font-bold", positivePoints ? "text-green-700" : "text-red-700")}>
                                             {positivePoints ? "+" : ""}{totalPoints}
                                         </p>
@@ -110,7 +112,7 @@ export default function UserBehaviourPage() {
                                 <div className="h-1 w-full bg-gradient-to-r from-[#FF9800] to-[#6366F1]" />
                                 <div className="px-4 py-3 flex items-center justify-between">
                                     <div>
-                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none">Total Incidents</p>
+                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none">{t("total_incidents")}</p>
                                         <p className="mt-1.5 text-2xl font-bold text-indigo-700">{totalIncidents}</p>
                                     </div>
                                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
@@ -124,7 +126,7 @@ export default function UserBehaviourPage() {
                     {/* ── Incident list ── */}
                     <div className="border border-gray-200 rounded-xl overflow-hidden">
                         <div className="px-4 py-3 bg-gray-50/80 border-b border-gray-200">
-                            <h2 className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">Incident History</h2>
+                            <h2 className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">{t("incident_history")}</h2>
                         </div>
 
                         {loading ? (
@@ -137,8 +139,8 @@ export default function UserBehaviourPage() {
                         ) : !data?.incidents?.length ? (
                             <div className="flex flex-col items-center justify-center gap-3 py-16 text-gray-400">
                                 <FolderOpen className="h-12 w-12 opacity-30" />
-                                <p className="text-[12px] font-semibold">No behaviour records found.</p>
-                                <p className="text-[11px] text-gray-400">You currently have a clean record. Keep it up!</p>
+                                <p className="text-[12px] font-semibold">{t("no_behaviour_records_found")}</p>
+                                <p className="text-[11px] text-gray-400">{t("clean_record_keep_it_up")}</p>
                             </div>
                         ) : (
                             <div className="divide-y divide-gray-100">
@@ -151,7 +153,7 @@ export default function UserBehaviourPage() {
                                                     {positive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                                                 </span>
                                                 <div className="min-w-0">
-                                                    <p className="text-[13px] font-bold text-gray-800 leading-tight">{item.title || "Incident"}</p>
+                                                    <p className="text-[13px] font-bold text-gray-800 leading-tight">{item.title || t("incident")}</p>
                                                     {item.description && (
                                                         <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">{item.description}</p>
                                                     )}

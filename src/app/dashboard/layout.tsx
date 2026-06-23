@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useSettings } from "@/components/providers/settings-provider";
 import { LanguageProvider } from "@/components/providers/language-provider";
 import { CurrencyProvider } from "@/components/providers/currency-provider";
+import { useTranslation } from "@/hooks/use-translation";
 
 import { useTheme, ThemeProvider } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ function DashboardLayoutContent({
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const { settings, loading } = useSettings();
     const { setTheme } = useTheme();
+    const { t } = useTranslation();
 
     // Set dashboard page title and sync theme settings
     useEffect(() => {
@@ -87,11 +89,11 @@ function DashboardLayoutContent({
                 <footer className="h-14 flex-shrink-0 border-t bg-background flex items-center justify-between px-4 md:px-8 z-20">
                     <div className="flex items-center gap-4 hidden md:flex">
                         <p className="text-[12px] text-muted-foreground/60 font-medium">
-                            Version {settings?.app_version || "5.1.0"}
+                            {t("version_x", { version: settings?.app_version || "5.1.0" })}
                         </p>
                     </div>
                     <p className="text-[12px] text-muted-foreground font-medium">
-                        © 2026 {loading ? "" : (settings?.school_name || "Smart School")}. All rights reserved.
+                        © 2026 {loading ? t("loading") : (settings?.school_name || t("smart_school"))}. {t("all_rights_reserved")}
                     </p>
                 </footer>
             </div>

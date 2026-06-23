@@ -36,6 +36,8 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     Dialog,
     DialogContent,
@@ -90,6 +92,8 @@ const EMPTY_FORM = { route_id: "", pickup_point_id: "", monthly_fees: "", distan
 
 export default function RoutePickupPointPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const { settings } = useSettings();
     const [currencySymbol, setCurrencySymbol] = useState("₹");
     const [searchTerm, setSearchTerm] = useState("");
@@ -125,7 +129,7 @@ export default function RoutePickupPointPage() {
             }
         } catch (error) {
             console.error("Error fetching transport data:", error);
-            toast("error", "Failed to load transport data");
+            tt.error("failed_to_load_transport_data");
         } finally {
             setLoading(false);
         }
@@ -137,23 +141,23 @@ export default function RoutePickupPointPage() {
 
     const handleSubmit = async () => {
         if (!formState.route_id || !formState.pickup_point_id || !formState.monthly_fees) {
-            toast("error", "Please fill in required fields");
+            toast("error", t("fill_required_fields"));
             return;
         }
         try {
             if (isEditModalOpen && editingMapping) {
                 await api.put(`/transport/route-pickup-points/${editingMapping.id}`, formState);
-                toast("success", "Mapping updated successfully");
+                tt.success("mapping_updated_successfully");
             } else {
                 await api.post("/transport/route-pickup-points", formState);
-                toast("success", "Mapping added successfully");
+                tt.success("mapping_added_successfully");
             }
             setIsAddModalOpen(false);
             setIsEditModalOpen(false);
             setFormState({ ...EMPTY_FORM });
             fetchData();
         } catch (error: any) {
-            toast("error", error.response?.data?.message || "Failed to save mapping");
+            tt.error("failed_to_save_mapping");
         }
     };
 
@@ -170,13 +174,13 @@ export default function RoutePickupPointPage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this mapping?")) return;
+        if (!confirm(t("delete_mapping_confirmation"))) return;
         try {
             await api.delete(`/transport/route-pickup-points/${id}`);
-            toast("success", "Mapping deleted successfully");
+            tt.success("mapping_deleted_successfully");
             fetchData();
         } catch (error) {
-            toast("error", "Failed to delete mapping");
+            tt.error("failed_to_delete_mapping");
         }
     };
 
@@ -207,15 +211,15 @@ export default function RoutePickupPointPage() {
     const copyToClipboard = () => {
         const text = mappings.flatMap(route => route.pickup_points.map((stop) => `${route.title}\t${stop.name}\t${stop.pivot.monthly_fees}\t${stop.pivot.distance}\t${stop.pivot.pickup_time}`)).join('\n');
         navigator.clipboard.writeText(text);
-        toast("success", "Data copied to clipboard");
+        tt.success("data_copied_to_clipboard");
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: copyToClipboard, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: exportToExcel, title: "Excel" },
-        { Icon: FileText, onClick: exportToPDF, title: "PDF" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: copyToClipboard, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: exportToExcel, title: t("excel") },
+        { Icon: FileText, onClick: exportToPDF, title: t("pdf") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     return (
@@ -226,16 +230,16 @@ export default function RoutePickupPointPage() {
                         <MapPinned className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Route Pickup Point</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{allFilteredData.length} route{allFilteredData.length === 1 ? "" : "s"} mapped</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("route_pickup_point")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{allFilteredData.length} {allFilteredData.length === 1 ? t("route").toLowerCase() : t("routes").toLowerCase()} {t("mapped").toLowerCase()}</p>
                     </div>
                     <Button onClick={() => { setFormState({ ...EMPTY_FORM }); setIsAddModalOpen(true); }} className="ml-auto h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
-                        <Plus className="h-4 w-4" /> Add
+                        <Plus className="h-4 w-4" /> {t("add")}
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                        <Input placeholder="Search..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="h-9 text-xs w-full md:w-64" />
+                        <Input placeholder={t("search")} value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="h-9 text-xs w-full md:w-64" />
                         <div className="flex items-center gap-2">
                             <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
                                 <SelectTrigger className="w-[70px] h-9 text-xs"><SelectValue /></SelectTrigger>
@@ -260,19 +264,19 @@ export default function RoutePickupPointPage() {
                         <Table className="min-w-[1100px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600">Route</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Pickup Point</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Monthly Fees ({currencySymbol})</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Distance (km)</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Pickup Time</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Action</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("route")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("pickup_point")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("monthly_fees")} ({currencySymbol})</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("distance_km")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("pickup_time")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <SkeletonRows rows={6} cols={TABLE_COLS} />
                                 ) : allFilteredData.length === 0 ? (
-                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No mappings found</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_mappings_found")}</TableCell></TableRow>
                                 ) : paginatedData.map((item) => (
                                     <TableRow key={item.id} className="text-xs hover:bg-gray-50/60 transition-colors align-top">
                                         <TableCell className="py-4 text-gray-700 font-medium">{item.title}</TableCell>
@@ -303,7 +307,7 @@ export default function RoutePickupPointPage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                        <div>Showing {allFilteredData.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, allFilteredData.length)} of {allFilteredData.length} entries</div>
+                        <div>{t("showing_x_to_y_of_z", { from: allFilteredData.length === 0 ? 0 : startIndex + 1, to: Math.min(startIndex + itemsPerPage, allFilteredData.length), total: allFilteredData.length })}</div>
                         <div className="flex gap-1 items-center">
                             <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -319,40 +323,40 @@ export default function RoutePickupPointPage() {
             <Dialog open={isAddModalOpen || isEditModalOpen} onOpenChange={(open) => { if (!open) { setIsAddModalOpen(false); setIsEditModalOpen(false); } }}>
                 <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-none shadow-2xl bg-white">
                     <DialogHeader className="p-6 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-left">
-                        <DialogTitle className="text-white text-xl font-bold tracking-tight">{isEditModalOpen ? "Edit Mapping" : "Add Route Mapping"}</DialogTitle>
-                        <p className="text-indigo-100 text-xs font-medium opacity-90">Assign pickup points to routes and set fees.</p>
+                        <DialogTitle className="text-white text-xl font-bold tracking-tight">{isEditModalOpen ? t("edit_mapping") : t("add_route_mapping")}</DialogTitle>
+                        <p className="text-indigo-100 text-xs font-medium opacity-90">{t("assign_pickup_points_to_routes_and_set_fees")}</p>
                     </DialogHeader>
                     <div className="p-6 space-y-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="route">Route <span className="text-red-500">*</span></Label>
+                            <Label htmlFor="route">{t("route")} <span className="text-red-500">*</span></Label>
                             <Select value={formState.route_id} onValueChange={(val) => setFormState({ ...formState, route_id: val })}>
-                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="Select Route" /></SelectTrigger>
+                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder={t("select_route")} /></SelectTrigger>
                                 <SelectContent>{routes.map((r) => <SelectItem key={r.id} value={r.id.toString()}>{r.title}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="point">Pickup Point <span className="text-red-500">*</span></Label>
+                            <Label htmlFor="point">{t("pickup_point")} <span className="text-red-500">*</span></Label>
                             <Select value={formState.pickup_point_id} onValueChange={(val) => setFormState({ ...formState, pickup_point_id: val })}>
-                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="Select Point" /></SelectTrigger>
+                                <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder={t("select_point")} /></SelectTrigger>
                                 <SelectContent>{pickupPoints.map((p) => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="fees">Monthly Fees <span className="text-red-500">*</span></Label>
+                            <Label htmlFor="fees">{t("monthly_fees")} <span className="text-red-500">*</span></Label>
                             <Input id="fees" type="number" value={formState.monthly_fees} onChange={(e) => setFormState({ ...formState, monthly_fees: e.target.value })} className="h-8 text-[11px]" />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="distance">Distance (km)</Label>
+                            <Label htmlFor="distance">{t("distance_km")}</Label>
                             <Input id="distance" type="number" value={formState.distance} onChange={(e) => setFormState({ ...formState, distance: e.target.value })} className="h-8 text-[11px]" />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="time">Pickup Time</Label>
-                            <Input id="time" value={formState.pickup_time} onChange={(e) => setFormState({ ...formState, pickup_time: e.target.value })} className="h-8 text-[11px]" placeholder="e.g. 9:00 AM" />
+                            <Label htmlFor="time">{t("pickup_time")}</Label>
+                            <Input id="time" value={formState.pickup_time} onChange={(e) => setFormState({ ...formState, pickup_time: e.target.value })} className="h-8 text-[11px]" placeholder={t("pickup_time_placeholder")} />
                         </div>
                     </div>
                     <DialogFooter className="p-6 bg-gray-50/50 block sm:flex sm:justify-end gap-3 border-t border-gray-100">
-                        <Button variant="outline" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} className="w-full sm:w-auto h-10 px-6 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-gray-100 transition-all shadow-sm">Cancel</Button>
-                        <Button onClick={handleSubmit} className="w-full sm:w-auto h-10 px-8 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all">Save Changes</Button>
+                        <Button variant="outline" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} className="w-full sm:w-auto h-10 px-6 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-gray-100 transition-all shadow-sm">{t("cancel")}</Button>
+                        <Button onClick={handleSubmit} className="w-full sm:w-auto h-10 px-8 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all">{t("save_changes")}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

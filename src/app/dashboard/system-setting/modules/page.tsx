@@ -21,6 +21,11 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
+    Card,
+    CardContent,
+} from "@/components/ui/card";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import {
     Copy,
     FileSpreadsheet,
     FileText,
@@ -29,12 +34,14 @@ import {
     ArrowUpDown,
     ChevronLeft,
     ChevronRight,
-    Loader2
+    Loader2,
+    Boxes
 } from "lucide-react";
 import { useEffect, useCallback, useMemo } from "react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useToast } from "@/components/ui/toast";
+import { exportData } from "@/lib/export-utils";
 
 interface Module {
     id: number;
@@ -111,7 +118,7 @@ export default function ModulesPage() {
     };
 
     const filteredAndSortedModules = useMemo(() => {
-        let result = [...moduleList].filter(m =>
+        const result = [...moduleList].filter(m =>
             m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             m.alias.toLowerCase().includes(searchTerm.toLowerCase())
         );
@@ -135,14 +142,20 @@ export default function ModulesPage() {
         currentPage * itemsPerPage
     );
 
-    const handleExport = (type: string) => {
-        // Implement export logic based on current filtered/sorted data
-        console.log(`Exporting as ${type}...`);
-        toast("success", `Exporting data as ${type.toUpperCase()}`);
+    const handleExport = (type: "copy" | "excel" | "pdf" | "print") => {
+        exportData(type, {
+            filename: `modules-${activeTab}`,
+            title: `Modules (${activeTab})`,
+            columns: ["Name", "Status"],
+            rows: filteredAndSortedModules.map((m) => {
+                const isActive = activeTab === "system" ? m.is_active_system : activeTab === "student" ? m.is_active_student : m.is_active_parent;
+                return [m.name, isActive ? "Enabled" : "Disabled"];
+            }),
+        });
     };
 
     const renderTable = (scope: string) => (
-        <div className="border border-gray-100 rounded overflow-hidden">
+        <div className="border border-gray-100 rounded overflow-x-auto">
             <Table>
                 <TableHeader className="bg-gray-50/50">
                     <TableRow className="border-b border-gray-100 hover:bg-transparent text-[11px]">
@@ -178,17 +191,10 @@ export default function ModulesPage() {
                             </TableRow>
                         );
                     })}
-                    {paginatedModules.length === 0 && !loading && (
+                    {paginatedModules.length === 0 && (
                         <TableRow>
                             <TableCell colSpan={2} className="h-24 text-center text-[11px] text-gray-400">
                                 No matching records found
-                            </TableCell>
-                        </TableRow>
-                    )}
-                    {loading && (
-                        <TableRow>
-                            <TableCell colSpan={2} className="h-24 text-center">
-                                <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600" />
                             </TableCell>
                         </TableRow>
                     )}
@@ -198,149 +204,102 @@ export default function ModulesPage() {
     );
 
     return (
-        <div className="p-2 bg-transparent min-h-screen font-sans space-y-2">
-
-            {/* Page Layout */}
-            <div className="bg-transparent rounded-md border border-slate-200/60 shadow-none overflow-hidden flex flex-col">
-
-                {/* Header with Tabs */}
-                <div className="flex flex-col md:flex-row justify-between items-center px-4 py-2 border-b border-gray-100 relative">
-                    <h1 className="text-[16px] font-medium text-gray-700">{t("modules")}</h1>
-
-                    <Tabs value={activeTab} className="w-full md:w-auto mt-2 md:mt-0" onValueChange={(val) => {
-                        setActiveTab(val);
-                        setCurrentPage(1);
-                    }}>
-                        <TabsList className="bg-transparent border-b-0 h-10 p-0 space-x-6">
-                            <TabsTrigger
-                                value="system"
-                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-4 pb-2 h-full shadow-none bg-transparent"
-                            >
-                                {t("system")}
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="student"
-                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-4 pb-2 h-full shadow-none bg-transparent"
-                            >
-                                {t("student")}
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="parent"
-                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-4 pb-2 h-full shadow-none bg-transparent"
-                            >
-                                {t("parent")}
-                            </TabsTrigger>
+        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
+            <Card className="pt-0 overflow-hidden">
+                {/* Gradient header with icon + tabs */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Boxes className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("modules")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">Enable or disable system modules</p>
+                        </div>
+                    </div>
+                    <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); setCurrentPage(1); }}>
+                        <TabsList className="bg-white/60 h-9 p-1 rounded-lg">
+                            <TabsTrigger value="system" className="rounded-md data-[state=active]:bg-white data-[state=active]:text-indigo-600 text-gray-500 text-[12px] font-medium px-4">{t("system")}</TabsTrigger>
+                            <TabsTrigger value="student" className="rounded-md data-[state=active]:bg-white data-[state=active]:text-indigo-600 text-gray-500 text-[12px] font-medium px-4">{t("student")}</TabsTrigger>
+                            <TabsTrigger value="parent" className="rounded-md data-[state=active]:bg-white data-[state=active]:text-indigo-600 text-gray-500 text-[12px] font-medium px-4">{t("parent")}</TabsTrigger>
                         </TabsList>
                     </Tabs>
                 </div>
 
-                {/* Toolbar */}
-                <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-100 bg-transparent">
-                    <div className="relative w-full md:w-64">
-                        <Input
-                            placeholder={`${t("search")}...`}
-                            value={searchTerm}
-                            onChange={(e) => {
-                                setSearchTerm(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="h-8 text-[11px] pl-3 border-gray-200 shadow-none rounded bg-gray-50/50 focus:bg-white transition-colors"
-                        />
-                    </div>
+                <CardContent className="p-0">
+                    {loading ? (
+                        <TableSkeleton rows={10} columns={1} />
+                    ) : (
+                        <>
+                            {/* Toolbar */}
+                            <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-100">
+                                <div className="relative w-full md:w-64">
+                                    <Input
+                                        placeholder={`${t("search")}...`}
+                                        value={searchTerm}
+                                        onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                                        className="h-8 text-[11px] pl-3 border-gray-200 shadow-none rounded bg-gray-50/50 focus:bg-white transition-colors"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(Number(val)); setCurrentPage(1); }}>
+                                        <SelectTrigger className="h-7 w-16 text-[11px] border-gray-200 shadow-none rounded">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="10">10</SelectItem>
+                                            <SelectItem value="25">25</SelectItem>
+                                            <SelectItem value="50">50</SelectItem>
+                                            <SelectItem value="100">100</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <div className="flex items-center gap-1">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('copy')}><Copy className="h-3.5 w-3.5" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('excel')}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('pdf')}><FileText className="h-3.5 w-3.5" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('print')}><Printer className="h-3.5 w-3.5" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Columns className="h-3.5 w-3.5" /></Button>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <Select
-                                value={itemsPerPage.toString()}
-                                onValueChange={(val) => {
-                                    setItemsPerPage(Number(val));
-                                    setCurrentPage(1);
-                                }}
-                            >
-                                <SelectTrigger className="h-7 w-16 text-[11px] border-gray-200 shadow-none rounded">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                            {/* Table */}
+                            <div className="p-4">
+                                {activeTab === "system" && renderTable("system")}
+                                {activeTab === "student" && renderTable("student")}
+                                {activeTab === "parent" && renderTable("parent")}
 
-                        <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('copy')}><Copy className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('excel')}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('pdf')}><FileText className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => handleExport('print')}><Printer className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Columns className="h-3.5 w-3.5" /></Button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-auto bg-transparent p-4">
-                    {activeTab === "system" && renderTable("system")}
-                    {activeTab === "student" && renderTable("student")}
-                    {activeTab === "parent" && renderTable("parent")}
-
-                    {/* Pagination */}
-                    <div className="flex items-center justify-between pt-4 px-1">
-                        <p className="text-[10px] text-gray-500 font-medium">
-                            {t("showing")} {filteredAndSortedModules.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} {t("to")} {Math.min(currentPage * itemsPerPage, filteredAndSortedModules.length)} {t("of")} {filteredAndSortedModules.length} {t("entries")}
-                        </p>
-                        <div className="flex items-center gap-1">
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-6 w-6 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50"
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}
-                            >
-                                <ChevronLeft className="h-3 w-3" />
-                            </Button>
-
-                            {/* Dynamic Pagination Buttons */}
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                let pageNum = 1;
-                                if (totalPages <= 5) {
-                                    pageNum = i + 1;
-                                } else if (currentPage <= 3) {
-                                    pageNum = i + 1;
-                                } else if (currentPage >= totalPages - 2) {
-                                    pageNum = totalPages - 4 + i;
-                                } else {
-                                    pageNum = currentPage - 2 + i;
-                                }
-
-                                const isActive = currentPage === pageNum;
-
-                                return (
-                                    <Button
-                                        key={pageNum}
-                                        onClick={() => setCurrentPage(pageNum)}
-                                        variant={isActive ? "pagination-active" : "pagination-inactive"}
-                                        className="h-6 w-6 p-0 text-[10px]"
-                                    >
-                                        {pageNum}
-                                    </Button>
-                                );
-                            })}
-
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-6 w-6 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50"
-                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                disabled={currentPage === totalPages || totalPages === 0}
-                            >
-                                <ChevronRight className="h-3 w-3" />
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
+                                {/* Pagination */}
+                                <div className="flex items-center justify-between pt-4 px-1">
+                                    <p className="text-[10px] text-gray-500 font-medium">
+                                        {t("showing")} {filteredAndSortedModules.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} {t("to")} {Math.min(currentPage * itemsPerPage, filteredAndSortedModules.length)} {t("of")} {filteredAndSortedModules.length} {t("entries")}
+                                    </p>
+                                    <div className="flex items-center gap-1">
+                                        <Button variant="outline" size="icon" className="h-6 w-6 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50" onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1}>
+                                            <ChevronLeft className="h-3 w-3" />
+                                        </Button>
+                                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                            let pageNum = 1;
+                                            if (totalPages <= 5) { pageNum = i + 1; }
+                                            else if (currentPage <= 3) { pageNum = i + 1; }
+                                            else if (currentPage >= totalPages - 2) { pageNum = totalPages - 4 + i; }
+                                            else { pageNum = currentPage - 2 + i; }
+                                            return (
+                                                <Button key={pageNum} onClick={() => setCurrentPage(pageNum)} variant={currentPage === pageNum ? "pagination-active" : "pagination-inactive"} className="h-6 w-6 p-0 text-[10px]">
+                                                    {pageNum}
+                                                </Button>
+                                            );
+                                        })}
+                                        <Button variant="outline" size="icon" className="h-6 w-6 text-gray-400 border-gray-200 hover:text-indigo-600 disabled:opacity-50" onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages || totalPages === 0}>
+                                            <ChevronRight className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }

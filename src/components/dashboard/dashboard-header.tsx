@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface DashboardHeaderProps {
     onRefresh: () => void;
@@ -13,11 +14,11 @@ interface DashboardHeaderProps {
     lastUpdated: Date | null;
 }
 
-function getGreeting(): string {
+function getGreeting(t: (key: string) => string): string {
     const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
+    if (h < 12) return t("good_morning");
+    if (h < 17) return t("good_afternoon");
+    return t("good_evening");
 }
 
 function formatLastUpdated(date: Date | null): string {
@@ -26,6 +27,7 @@ function formatLastUpdated(date: Date | null): string {
 }
 
 export function DashboardHeader({ onRefresh, refreshing, lastUpdated }: DashboardHeaderProps) {
+    const { t } = useTranslation();
     const [user, setUser] = useState<{ name?: string; role?: string } | null>(null);
     const [session, setSession] = useState<string>("");
     const [now, setNow] = useState(new Date());
@@ -64,7 +66,7 @@ export function DashboardHeader({ onRefresh, refreshing, lastUpdated }: Dashboar
                 <div className="flex items-center gap-2 flex-wrap">
                     <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
                     <h2 className="text-lg md:text-2xl font-extrabold tracking-tight text-foreground truncate">
-                        {getGreeting()}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
+                        {getGreeting(t)}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
                     </h2>
                     {user?.role && (
                         <Badge
@@ -94,13 +96,13 @@ export function DashboardHeader({ onRefresh, refreshing, lastUpdated }: Dashboar
                         variant="outline"
                         className="text-[11px] font-bold uppercase tracking-widest border-indigo-200 text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-400 px-3 py-1 rounded-lg"
                     >
-                        Session {session}
+                        {t("session_x", { session })}
                     </Badge>
                 )}
                 <div className="flex items-center gap-1.5">
                     {lastUpdated && (
                         <span className="text-[10px] text-muted-foreground/70 font-medium hidden sm:inline">
-                            Updated {formatLastUpdated(lastUpdated)}
+                            {t("updated_at", { time: formatLastUpdated(lastUpdated) })}
                         </span>
                     )}
                     <Button
@@ -113,7 +115,7 @@ export function DashboardHeader({ onRefresh, refreshing, lastUpdated }: Dashboar
                         )}
                     >
                         <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
-                        {refreshing ? "Refreshing…" : "Refresh"}
+                        {refreshing ? t("refreshing") : t("refresh")}
                     </Button>
                 </div>
             </div>

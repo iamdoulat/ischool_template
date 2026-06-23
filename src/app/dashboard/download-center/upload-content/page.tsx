@@ -198,8 +198,16 @@ export default function UploadContentPage() {
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
              {/* Header */}
-            <div className="flex justify-between items-center mb-2">
-                <h1 className="text-sm font-medium text-gray-800">Content List</h1>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <CloudUpload className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Content List</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Uploaded files and document library</p>
+                    </div>
+                </div>
                 <Button onClick={() => setIsDialogOpen(true)} className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
                     <CloudUpload className="h-4 w-4" /> Upload Content
                 </Button>

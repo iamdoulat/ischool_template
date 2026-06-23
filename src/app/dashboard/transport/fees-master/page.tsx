@@ -11,6 +11,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Save, ReceiptText } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useCurrency } from "@/components/providers/currency-provider";
 import { DatePicker } from "@/components/ui/date-picker";
 
@@ -43,6 +45,8 @@ function FormSkeleton() {
 
 export default function TransportFeesMasterPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const { selectedCurrency } = useCurrency();
     const currencySymbol = selectedCurrency?.symbol || "₹";
 
@@ -76,7 +80,7 @@ export default function TransportFeesMasterPage() {
             }
         } catch (error) {
             console.error("Error fetching fees master:", error);
-            toast("error", "Failed to load fees settings");
+            tt.error("failed_to_load_fees_settings");
         } finally {
             setFetching(false);
         }
@@ -111,10 +115,10 @@ export default function TransportFeesMasterPage() {
         setLoading(true);
         try {
             await api.post("/transport/fees-master", { fees });
-            toast("success", "Transport fees master saved successfully");
+            tt.success("transport_fees_master_saved_successfully");
             fetchData();
         } catch (error) {
-            toast("error", "Failed to save fees settings");
+            tt.error("failed_to_save_fees_settings");
         } finally {
             setLoading(false);
         }
@@ -128,8 +132,8 @@ export default function TransportFeesMasterPage() {
                         <ReceiptText className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Transport Fees Master</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Configure monthly due dates and fines</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("transport_fees_master")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("configure_monthly_due_dates_and_fines")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4 text-xs text-gray-700">
@@ -139,7 +143,7 @@ export default function TransportFeesMasterPage() {
                         <>
                             <div className="flex items-center space-x-2 pb-2">
                                 <Checkbox id="copy-all" checked={copyAll} onCheckedChange={(checked) => handleCopyAllToggle(checked as boolean)} className="h-3.5 w-3.5 border-gray-300 accent-indigo-500 rounded" />
-                                <Label htmlFor="copy-all" className="text-[10px] font-bold text-gray-400 uppercase tracking-tight cursor-pointer select-none">Copy First Fees Detail For All Months</Label>
+                                <Label htmlFor="copy-all" className="text-[10px] font-bold text-gray-400 uppercase tracking-tight cursor-pointer select-none">{t("copy_first_fees_detail_for_all_months")}</Label>
                             </div>
 
                             <div className="space-y-1">
@@ -149,16 +153,16 @@ export default function TransportFeesMasterPage() {
                                             <span className="text-[11px] font-bold text-gray-700">{fee.month}</span>
                                         </div>
                                         <div className="flex-1 max-w-xs space-y-1.5">
-                                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Due Date</Label>
+                                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("due_date")}</Label>
                                             <DatePicker value={fee.due_date} onChange={(val) => handleChange(idx, 'due_date', val)} className="h-8 border-gray-200 text-[11px] focus-visible:ring-indigo-500 rounded shadow-none" />
                                         </div>
                                         <div className="flex flex-col lg:flex-row flex-[3] gap-6 lg:items-center">
                                             <div className="space-y-1.5 min-w-[120px]">
-                                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Fine Type</Label>
+                                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("fine_type")}</Label>
                                                 <RadioGroup value={fee.fine_type} onValueChange={(val) => handleChange(idx, 'fine_type', val)} className="flex items-center space-x-4 h-8">
                                                     <div className="flex items-center space-x-1.5">
                                                         <RadioGroupItem value="none" id={`${fee.month}-none`} className="h-3 w-3" />
-                                                        <Label htmlFor={`${fee.month}-none`} className="text-[10px] font-medium text-gray-500">None</Label>
+                                                        <Label htmlFor={`${fee.month}-none`} className="text-[10px] font-medium text-gray-500">{t("none")}</Label>
                                                     </div>
                                                 </RadioGroup>
                                             </div>
@@ -167,7 +171,7 @@ export default function TransportFeesMasterPage() {
                                                     <RadioGroup value={fee.fine_type} onValueChange={(val) => handleChange(idx, 'fine_type', val)}>
                                                         <RadioGroupItem value="percentage" id={`${fee.month}-pct`} className="h-3 w-3" />
                                                     </RadioGroup>
-                                                    <Label htmlFor={`${fee.month}-pct`} className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Percentage (%)</Label>
+                                                    <Label htmlFor={`${fee.month}-pct`} className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("percentage")} (%)</Label>
                                                 </div>
                                                 <Input disabled={fee.fine_type !== 'percentage'} value={fee.fine_percentage} onChange={(e) => handleChange(idx, 'fine_percentage', e.target.value)} className="h-8 border-gray-200 text-[11px] focus-visible:ring-indigo-500 rounded shadow-none" placeholder="0.00" />
                                             </div>
@@ -176,7 +180,7 @@ export default function TransportFeesMasterPage() {
                                                     <RadioGroup value={fee.fine_type} onValueChange={(val) => handleChange(idx, 'fine_type', val)}>
                                                         <RadioGroupItem value="fix" id={`${fee.month}-fix`} className="h-3 w-3" />
                                                     </RadioGroup>
-                                                    <Label htmlFor={`${fee.month}-fix`} className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Fix Amount ({currencySymbol})</Label>
+                                                    <Label htmlFor={`${fee.month}-fix`} className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("fix_amount")} ({currencySymbol})</Label>
                                                 </div>
                                                 <Input disabled={fee.fine_type !== 'fix'} value={fee.fine_amount} onChange={(e) => handleChange(idx, 'fine_amount', e.target.value)} className="h-8 border-gray-200 text-[11px] focus-visible:ring-indigo-500 rounded shadow-none" placeholder="0.00" />
                                             </div>
@@ -187,7 +191,7 @@ export default function TransportFeesMasterPage() {
 
                             <div className="flex justify-end pt-4">
                                 <Button disabled={loading} onClick={handleSave} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all min-w-[120px]">
-                                    <Save className="h-4 w-4" /> {loading ? "Saving..." : "Save"}
+                                    <Save className="h-4 w-4" /> {loading ? t("saving") : t("save")}
                                 </Button>
                             </div>
                         </>

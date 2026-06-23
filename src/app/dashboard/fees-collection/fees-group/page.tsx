@@ -21,7 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -62,7 +63,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function FeesGroupPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [feesGroups, setFeesGroups] = useState<FeeGroup[]>([]);
     const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
     const [loading, setLoading] = useState(true);
@@ -104,11 +106,11 @@ export default function FeesGroupPage() {
             setFeesGroups(response.data.data.data || response.data.data);
         } catch (error) {
             console.error("Error fetching fees groups:", error);
-            toast("error", "Failed to load fees groups");
+            tt.error("failed_to_load_fees_groups");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, toast]);
+    }, [searchQuery, tt]);
 
     const fetchClasses = async () => {
         try {
@@ -129,18 +131,16 @@ export default function FeesGroupPage() {
         try {
             if (isEdit && editId) {
                 await api.put(`/fees-groups/${editId}`, formData);
-                toast("success", "Fees group updated successfully");
+                tt.success("fees_group_updated_successfully");
             } else {
                 await api.post("/fees-groups", formData);
-                toast("success", "Fees group added successfully");
+                tt.success("fees_group_added_successfully");
             }
             fetchFeesGroups();
             resetForm();
         } catch (error) {
             console.error("Error saving fees group:", error);
-            const err = error as { response?: { data?: { message?: string }, status?: number } };
-            const message = err.response?.data?.message || "Failed to save fees group";
-            toast("error", message);
+            tt.error("failed_to_save_fees_group");
         }
     };
 
@@ -148,26 +148,26 @@ export default function FeesGroupPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/fees-groups/${deleteId}`);
-            toast("success", "Fees group deleted successfully");
+            tt.success("fees_group_deleted_successfully");
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
             fetchFeesGroups();
         } catch (error) {
             console.error("Error deleting fees group:", error);
-            toast("error", "Failed to delete fees group");
+            tt.error("failed_to_delete_fees_group");
         }
     };
 
     const handleBulkDelete = async () => {
         try {
             await api.post("/fees-groups/bulk-delete", { ids: selectedIds });
-            toast("success", "Selected fees groups deleted successfully");
+            tt.success("selected_fees_groups_deleted_successfully");
             setIsBulkDeleteDialogOpen(false);
             setSelectedIds([]);
             fetchFeesGroups();
         } catch (error) {
             console.error("Error bulk deleting fees groups:", error);
-            toast("error", "Failed to delete selected entries");
+            tt.error("failed_to_delete_selected_entries");
         }
     };
 
@@ -213,7 +213,7 @@ export default function FeesGroupPage() {
     const handleCopy = () => {
         const text = feesGroups.map(g => `${g.name}\t${g.description || ""}`).join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const handlePrint = () => {
@@ -228,7 +228,7 @@ export default function FeesGroupPage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Fees Groups");
         XLSX.writeFile(workbook, "fees_groups.xlsx");
-        toast("success", "Exported to Excel successfully");
+        tt.success("exported_to_excel_successfully");
     };
 
     const handleExportCSV = () => {
@@ -246,12 +246,12 @@ export default function FeesGroupPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast("success", "Exported to CSV successfully");
+        tt.success("exported_to_csv_successfully");
     };
 
     const handleExportPDF = () => {
         const doc = new jsPDF();
-        doc.text("Fees Groups Report", 14, 15);
+        doc.text(t("fees_groups_report"), 14, 15);
 
         const tableColumn = ["Name", "Description"];
         const tableRows = feesGroups.map(g => [
@@ -266,7 +266,7 @@ export default function FeesGroupPage() {
         });
 
         doc.save("fees_groups.pdf");
-        toast("success", "Exported to PDF successfully");
+        tt.success("exported_to_pdf_successfully");
     };
 
     return (
@@ -280,10 +280,10 @@ export default function FeesGroupPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {isEdit ? "Edit Fees Group" : "Add Fees Group"}
+                                {isEdit ? t("edit_fees_group") : t("add_fees_group")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {isEdit ? "Update fees group details" : "Create a new fees group"}
+                                {isEdit ? t("update_fees_group_details") : t("create_new_fees_group")}
                             </p>
                         </div>
                     </CardHeader>
@@ -292,11 +292,11 @@ export default function FeesGroupPage() {
                             {/* Name */}
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Name <span className="text-destructive font-black">*</span>
+                                    {t("name")} <span className="text-destructive font-black">*</span>
                                 </label>
                                 <Input
                                     required
-                                    placeholder="Enter group name"
+                                    placeholder={t("enter_group_name")}
                                     className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium border-[#4F39F6]/20 focus-visible:border-[#4F39F6]"
                                     value={formData.name || ""}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -306,10 +306,10 @@ export default function FeesGroupPage() {
                             {/* Description */}
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Description
+                                    {t("description")}
                                 </label>
                                 <Textarea
-                                    placeholder="Enter description"
+                                    placeholder={t("enter_description")}
                                     className="min-h-[120px] rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium resize-none text-xs"
                                     value={formData.description || ""}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -319,14 +319,14 @@ export default function FeesGroupPage() {
                             {/* Class Assignment */}
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Assign to Class <span className="text-muted-foreground/50 font-normal normal-case tracking-normal">(optional — leave blank for all classes)</span>
+                                    {t("assign_to_class")} <span className="text-muted-foreground/50 font-normal normal-case tracking-normal">{t("optional_leave_blank_for_all_classes")}</span>
                                 </label>
                                 <select
                                     value={formData.school_class_id || ""}
                                     onChange={(e) => setFormData({ ...formData, school_class_id: e.target.value || "" })}
                                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                 >
-                                    <option value="">All Classes</option>
+                                    <option value="">{t("all_classes")}</option>
                                     {classes.map((c) => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
@@ -336,11 +336,11 @@ export default function FeesGroupPage() {
                             <div className="pt-4 flex justify-end gap-2">
                                 {isEdit && (
                                     <Button type="button" variant="outline" className="h-11 px-6 rounded-lg font-bold" onClick={resetForm}>
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button type="submit" variant="gradient" className="h-11 px-10 rounded-lg font-bold tracking-tight shadow-lg shadow-primary/25">
-                                    {isEdit ? "Update Group" : "Save Group"}
+                                    {isEdit ? t("update_group") : t("save_group")}
                                 </Button>
                             </div>
                         </form>
@@ -356,8 +356,8 @@ export default function FeesGroupPage() {
                             <FolderTree className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Fees Group List</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{feesGroups.length} total entr{feesGroups.length === 1 ? 'y' : 'ies'}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("fees_group_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_total_entries", { count: feesGroups.length })}</p>
                         </div>
                     </CardHeader>
 
@@ -367,7 +367,7 @@ export default function FeesGroupPage() {
                             <div className="relative w-full max-sm group">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 <Input
-                                    placeholder="Search groups..."
+                                    placeholder={t("search_groups")}
                                     className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -412,13 +412,13 @@ export default function FeesGroupPage() {
                                                 />
                                             </th>
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
-                                                Name
+                                                {t("name")}
                                             </th>
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
-                                                Description
+                                                {t("description")}
                                             </th>
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
-                                                Class
+                                                {t("class")}
                                             </th>
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap text-right">
                                                 <div className="flex justify-end pr-1 text-slate-700">
@@ -428,10 +428,10 @@ export default function FeesGroupPage() {
                                                             className="bg-red-500 hover:bg-red-600 p-1.5 rounded transition-colors flex items-center gap-1 text-white px-2"
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
-                                                            <span className="text-xs font-bold leading-none translate-y-[1px]">Delete</span>
+                                                            <span className="text-xs font-bold leading-none translate-y-[1px]">{t("delete")}</span>
                                                         </button>
                                                     ) : (
-                                                        "Action"
+                                                        t("action")
                                                     )}
                                                 </div>
                                             </th>
@@ -442,7 +442,7 @@ export default function FeesGroupPage() {
                                             <TableSkeleton rows={5} cols={5} />
                                         ) : feesGroups.length === 0 ? (
                                             <tr>
-                                                <td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                                <td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                             </tr>
                                         ) : (
                                             paginatedGroups.map((group) => (
@@ -470,7 +470,7 @@ export default function FeesGroupPage() {
                                                     <td className="px-6 py-4 text-xs font-bold text-muted-foreground">
                                                         {group.school_class_id
                                                             ? classes.find(c => c.id.toString() === group.school_class_id?.toString())?.name || "—"
-                                                            : <span className="text-primary/60 italic font-normal">All Classes</span>}
+                                                            : <span className="text-primary/60 italic font-normal">{t("all_classes")}</span>}
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center justify-end gap-1.5 pr-2">
@@ -502,7 +502,7 @@ export default function FeesGroupPage() {
                         {feesGroups.length > 0 && (
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                    Showing {Math.min((currentPage - 1) * pageSize + 1, feesGroups.length)} to {Math.min(currentPage * pageSize, feesGroups.length)} of {feesGroups.length} entries
+                                    {t("showing_x_to_y_of_z", { from: Math.min((currentPage - 1) * pageSize + 1, feesGroups.length), to: Math.min(currentPage * pageSize, feesGroups.length), total: feesGroups.length })}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -537,14 +537,14 @@ export default function FeesGroupPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the fees group.
+                            {t("delete_fees_group_confirmation")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">Delete</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -553,14 +553,14 @@ export default function FeesGroupPage() {
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Bulk Delete Entries</AlertDialogTitle>
+                        <AlertDialogTitle>{t("bulk_delete_entries")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete {selectedIds.length} selected fees groups? This action cannot be undone.
+                            {t("delete_selected_fees_groups_confirmation", { count: selectedIds.length })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">Delete Selected</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">{t("delete_selected")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

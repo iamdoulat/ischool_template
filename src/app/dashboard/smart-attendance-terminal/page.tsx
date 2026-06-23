@@ -8,13 +8,14 @@ import { toast } from "sonner";
 import api from "@/lib/api";
 import * as faceapi from "face-api.js";
 import jsQR from "jsqr";
-import { 
+import {
   ScanFace, ScanLine, Smartphone, Loader2, CheckCircle2, AlertCircle,
   Clock, UserCheck, QrCode, SmartphoneNfc, RefreshCw, Camera, Wifi, WifiOff,
   Maximize2, Minimize2
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useImageUrl } from "@/lib/image-url";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface User {
   id: number; name: string; role: string; avatar: string | null;
@@ -80,6 +81,7 @@ function buildCameraProxyUrl(settings: QrSettings): string | null {
 }
 
 export default function SmartAttendanceTerminalPage() {
+  const { t } = useTranslation();
   const getImageUrl = useImageUrl();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -189,11 +191,11 @@ export default function SmartAttendanceTerminalPage() {
         fetchRecords();
       } catch (err) {
         console.error("Initialization error:", err);
-        toast.error("Failed to initialize terminal");
+        toast.error(t("failed_to_initialize_terminal"));
       }
     };
     init();
-  }, [fetchRecords]);
+  }, [fetchRecords, t]);
 
   useEffect(() => {
     if (!settings) return;
@@ -251,7 +253,7 @@ export default function SmartAttendanceTerminalPage() {
         console.error(`Webcam attempt ${attempt}/${retries} failed:`, err);
       }
     }
-    toast.error("Could not access camera after multiple attempts.");
+    toast.error(t("could_not_access_camera_after_attempts"));
   };
 
   const stopWebcam = () => {
@@ -293,8 +295,8 @@ export default function SmartAttendanceTerminalPage() {
       if (displayUser) {
         setMatchedUser(displayUser);
         const message = alreadyMarked
-          ? `${displayUser.name} already recorded at ${time}`
-          : `Attendance ${status} Record Successful — ${displayUser.name}`;
+          ? t("already_recorded_at", { name: displayUser.name, time })
+          : t("attendance_record_successful", { status: status || "", name: displayUser.name });
         setMatchMessage(message);
         toast.success(message);
         fetchRecords();
@@ -302,7 +304,7 @@ export default function SmartAttendanceTerminalPage() {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to mark attendance");
+      toast.error(t("failed_to_mark_attendance"));
       setTimeout(() => setIsProcessing(false), 2000);
     }
   };
@@ -403,7 +405,7 @@ export default function SmartAttendanceTerminalPage() {
   useEffect(() => {
     if (activeMode !== 'nfc') return;
     if (!('NDEFReader' in window)) {
-      toast.warning("Web NFC not supported on this browser.");
+      toast.warning(t("web_nfc_not_supported"));
       return;
     }
     let ndef: any;
@@ -413,15 +415,15 @@ export default function SmartAttendanceTerminalPage() {
         ndef.onreading = (event: any) => {
           if (processingRef.current || matchedUserRef.current) return;
           const serialNumber: string = event.serialNumber;
-          toast.info(`NFC Tag: ${serialNumber}`);
+          toast.info(t("nfc_tag_detected", { serialNumber }));
           const matched = nfcLookup.current.get(serialNumber);
           if (matched) markAttendance(matched.id, 'nfc');
-          else toast.error("No user found for this NFC tag");
+          else toast.error(t("no_user_found_for_nfc_tag"));
         };
-      }).catch((err: any) => { toast.error("NFC error: " + err.message); });
+      }).catch((err: any) => { toast.error(t("nfc_error", { message: err.message })); });
     } catch (error) { console.error(error); }
     return () => { try { if (ndef) ndef.onreading = null; } catch {} };
-  }, [activeMode]);
+  }, [activeMode, t]);
 
   if (!settings) {
     return (
@@ -438,7 +440,7 @@ export default function SmartAttendanceTerminalPage() {
         <div className="flex h-[60vh] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Loading terminal...</p>
+            <p className="text-sm text-muted-foreground">{t("loading_terminal")}</p>
           </div>
         </div>
       </div>
@@ -455,8 +457,8 @@ export default function SmartAttendanceTerminalPage() {
               <QrCode className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">Smart Attendance Terminal</h1>
-              <p className="text-[11px] text-gray-500 mt-1">{cameraSource === 'ip' ? 'IP Camera Connected' : 'Select your check-in method'}</p>
+              <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("smart_attendance_terminal")}</h1>
+              <p className="text-[11px] text-gray-500 mt-1">{cameraSource === 'ip' ? t("ip_camera_connected") : t("select_check_in_method")}</p>
             </div>
           </div>
         </div>
@@ -470,21 +472,21 @@ export default function SmartAttendanceTerminalPage() {
               <Button variant={activeMode === 'qr' ? 'default' : 'ghost'}
                 className={`flex-1 rounded-xl h-14 text-base ${activeMode === 'qr' ? 'shadow-md bg-green-600 hover:bg-green-700' : ''}`}
                 onClick={() => setActiveMode('qr')}>
-                <ScanLine className="mr-2 h-5 w-5" /> QR Code
+                <ScanLine className="mr-2 h-5 w-5" /> {t("qr_code")}
               </Button>
             )}
             {settings.is_face_enabled && (
               <Button variant={activeMode === 'face' ? 'default' : 'ghost'}
                 className={`flex-1 rounded-xl h-14 text-base ${activeMode === 'face' ? 'shadow-md bg-blue-600 hover:bg-blue-700' : ''}`}
                 onClick={() => setActiveMode('face')}>
-                <ScanFace className="mr-2 h-5 w-5" /> Face Scan
+                <ScanFace className="mr-2 h-5 w-5" /> {t("face_scan")}
               </Button>
             )}
             {settings.is_nfc_enabled && (
               <Button variant={activeMode === 'nfc' ? 'default' : 'ghost'}
                 className={`flex-1 rounded-xl h-14 text-base ${activeMode === 'nfc' ? 'shadow-md bg-purple-600 hover:bg-purple-700' : ''}`}
                 onClick={() => setActiveMode('nfc')}>
-                <Smartphone className="mr-2 h-5 w-5" /> NFC Tap
+                <Smartphone className="mr-2 h-5 w-5" /> {t("nfc_tap")}
               </Button>
             )}
           </div>
@@ -510,13 +512,13 @@ export default function SmartAttendanceTerminalPage() {
                 {cameraSource === 'ip' && (
                   <button onClick={() => { setCameraError(false); setReconnectAttempt(0); setIpCamTick(n => n + 1); }}
                     className="absolute top-3 right-12 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white/80 hover:bg-black/70 hover:text-white transition-all"
-                    title="Refresh Camera">
+                    title={t("refresh_camera")}>
                     <RefreshCw className="h-4 w-4" />
                   </button>
                 )}
                 <button onClick={toggleFullscreen}
                   className="absolute top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white/80 hover:bg-black/70 hover:text-white transition-all"
-                  title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}>
+                  title={isFullscreen ? t("exit_fullscreen") : t("fullscreen")}>
                   {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </button>
 
@@ -532,16 +534,16 @@ export default function SmartAttendanceTerminalPage() {
                         <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none" />
                         <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/60 text-white text-xs px-3 py-1.5 rounded-full">
                           {cameraError ? <WifiOff className="h-3 w-3 text-rose-400" /> : <Wifi className="h-3 w-3 text-green-400" />}
-                          {cameraError ? 'Reconnecting...' : 'IP Camera'}
+                          {cameraError ? t("reconnecting") : t("ip_camera")}
                         </div>
                         {cameraError && (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10">
                             <WifiOff className="h-10 w-10 text-rose-500 mb-3" />
-                            <p className="text-white font-medium text-lg">Camera Connection Lost</p>
-                            <p className="text-sm text-slate-400 mt-1">Retrying automatically...</p>
+                            <p className="text-white font-medium text-lg">{t("camera_connection_lost")}</p>
+                            <p className="text-sm text-slate-400 mt-1">{t("retrying_automatically")}</p>
                             <Button variant="outline" size="sm" className="mt-4 text-black"
                               onClick={() => { setCameraError(false); setReconnectAttempt(0); }}>
-                              <RefreshCw className="h-4 w-4 mr-2" /> Retry Now
+                              <RefreshCw className="h-4 w-4 mr-2" /> {t("retry_now")}
                             </Button>
                           </div>
                         )}
@@ -553,8 +555,8 @@ export default function SmartAttendanceTerminalPage() {
                         {!isWebcamPlaying && !matchedUser && (
                           <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50 bg-black">
                             <Camera className="h-10 w-10 mb-4 opacity-40" />
-                            <p className="text-lg">Camera Offline</p>
-                            <p className="text-sm text-slate-500 mt-1">Configure an IP camera in QR Attendance Settings, or allow camera access.</p>
+                            <p className="text-lg">{t("camera_offline")}</p>
+                            <p className="text-sm text-slate-500 mt-1">{t("configure_ip_camera_or_allow_webcam")}</p>
                           </div>
                         )}
                       </>
@@ -575,7 +577,7 @@ export default function SmartAttendanceTerminalPage() {
                     {activeMode === 'face' && !isModelsLoaded && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-white/80 bg-black/60 backdrop-blur-sm z-10">
                         <Loader2 className="h-10 w-10 animate-spin mb-4 text-blue-500" />
-                        <p className="font-medium text-lg">Loading AI Vision Models...</p>
+                        <p className="font-medium text-lg">{t("loading_ai_vision_models")}</p>
                       </div>
                     )}
                   </>
@@ -588,19 +590,19 @@ export default function SmartAttendanceTerminalPage() {
                       <div className="absolute inset-0 rounded-full border-4 border-purple-500 border-t-transparent animate-spin" style={{ animationDuration: '3s' }} />
                       <Smartphone className="h-20 w-20 text-purple-400 animate-pulse" />
                     </div>
-                    <h3 className="text-2xl font-bold mb-2">Ready to Scan</h3>
-                    <p className="text-slate-400 text-center max-w-sm text-lg">Tap your NFC ID Card or Smartphone against the reader.</p>
+                    <h3 className="text-2xl font-bold mb-2">{t("ready_to_scan")}</h3>
+                    <p className="text-slate-400 text-center max-w-sm text-lg">{t("tap_nfc_card_on_reader")}</p>
                     {!("NDEFReader" in window) && (
                       <div className="mt-8 p-4 bg-slate-800 rounded-lg text-sm text-slate-300 text-center">
                         <AlertCircle className="h-5 w-5 mx-auto mb-2 text-amber-500" />
-                        Web NFC not supported on this browser.
+                        {t("web_nfc_not_supported")}
                         <Button variant="outline" className="w-full mt-4 text-black"
                           onClick={() => {
                             const nfcUser = users.find(u => u.nfc_uid);
                             if (nfcUser) markAttendance(nfcUser.id, 'nfc');
-                            else if (users.length > 0) toast.error("No users with NFC tags assigned");
+                            else if (users.length > 0) toast.error(t("no_users_with_nfc_tags"));
                           }}>
-                          Mock NFC Tap (Demo)
+                          {t("mock_nfc_tap_demo")}
                         </Button>
                       </div>
                     )}
@@ -610,14 +612,14 @@ export default function SmartAttendanceTerminalPage() {
 
               <div className="p-4 bg-muted/30 text-center border-t flex items-center justify-center gap-3">
                 <p className="text-sm text-muted-foreground font-medium">
-                  {activeMode === 'face' && "Align your face within the frame. AI will automatically recognize you."}
-                  {activeMode === 'qr' && "Hold your ID card's QR code steadily in front of the camera."}
-                  {activeMode === 'nfc' && "Hold your NFC card or phone against the terminal."}
-                  {!activeMode && "Select a check-in method above."}
+                  {activeMode === 'face' && t("align_face_within_frame")}
+                  {activeMode === 'qr' && t("hold_qr_code_in_front_of_camera")}
+                  {activeMode === 'nfc' && t("hold_nfc_card_on_terminal")}
+                  {!activeMode && t("select_check_in_method_above")}
                 </p>
                 {cameraUrl && cameraSource === 'ip' && (
                   <span className="inline-flex items-center gap-1 text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">
-                    <Wifi className="h-3 w-3" /> IP Camera
+                    <Wifi className="h-3 w-3" /> {t("ip_camera")}
                   </span>
                 )}
               </div>
@@ -630,14 +632,14 @@ export default function SmartAttendanceTerminalPage() {
           <Card className="border-0 shadow-lg ring-1 ring-border/50 h-full">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Clock className="h-4 w-4" /> Today&apos;s Check-ins
+                <Clock className="h-4 w-4" /> {t("todays_check_ins")}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {records.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <UserCheck className="h-8 w-8 mb-2 opacity-30" />
-                  <p className="text-sm">No check-ins yet today</p>
+                  <p className="text-sm">{t("no_check_ins_yet_today")}</p>
                 </div>
               ) : (
                 <div className="divide-y max-h-[500px] overflow-y-auto">
@@ -648,15 +650,15 @@ export default function SmartAttendanceTerminalPage() {
                         <AvatarFallback className="text-xs">{r.user?.name?.charAt(0) || '?'}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{r.user?.name || 'Unknown'}</p>
+                        <p className="text-sm font-medium truncate">{r.user?.name || t("unknown")}</p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${methodColors[r.method] || ''}`}>
-                            {methodIcons[r.method]} {r.method.toUpperCase()}
+                            {methodIcons[r.method]} {t(r.method)}
                           </span>
                           <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
                             r.status === 'Out' ? 'text-amber-600 bg-amber-50' : 'text-emerald-600 bg-emerald-50'
                           }`}>
-                            {r.status === 'Out' ? 'OUT' : 'IN'}
+                            {r.status === 'Out' ? t("out") : t("in")}
                           </span>
                           <span className="text-[11px] text-muted-foreground">{r.attendance_time}</span>
                         </div>

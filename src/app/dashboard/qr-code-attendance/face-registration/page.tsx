@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,6 +91,8 @@ export default function FaceRegistrationPage() {
   const descriptorRef = useRef<Float32Array | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const { t } = useTranslation();
+
   // Load AI models
   useEffect(() => {
     const loadModels = async () => {
@@ -101,10 +104,10 @@ export default function FaceRegistrationPage() {
           faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
         ]);
         setLoadingModels(false);
-        toast.success("AI Face Recognition models loaded!");
+        toast.success(t("ai_face_recognition_models_loaded"));
       } catch (error) {
         console.error("Error loading models:", error);
-        toast.error("Failed to load AI models. Check public/models directory.");
+        toast.error(t("failed_to_load_ai_models"));
       }
     };
     loadModels();
@@ -119,7 +122,7 @@ export default function FaceRegistrationPage() {
       const res = await api.get(`/smart-attendance/users?search=${encodeURIComponent(query)}${roleQuery}`);
       if (res.data?.success) setUsers(res.data.data);
     } catch {
-      toast.error("Error searching users.");
+      toast.error(t("error_searching_users"));
     } finally {
       setSearching(false);
     }
@@ -187,7 +190,7 @@ export default function FaceRegistrationPage() {
       return;
     }
 
-    toast.error("No camera found. Use photo upload instead.");
+    toast.error(t("no_camera_found_use_photo_upload"));
     setIsCameraActive(false);
     setCaptureMode(null);
   };
@@ -235,7 +238,7 @@ export default function FaceRegistrationPage() {
             ctx.strokeRect(box.x, box.y, box.width, box.height);
             ctx.fillStyle = "#4F46E5";
             ctx.font = "14px Inter";
-            ctx.fillText("Face Ready for Registration", box.x, box.y - 10);
+            ctx.fillText(t("face_ready_for_registration"), box.x, box.y - 10);
           }
         } else {
           setFaceDetected(false);
@@ -273,8 +276,8 @@ export default function FaceRegistrationPage() {
 
   // Register face to DB
   const handleRegisterFace = async () => {
-    if (!selectedUser) { toast.error("Select a student or staff member first!"); return; }
-    if (!descriptorRef.current) { toast.error("No face detected! Look into the camera or upload a clear photo."); return; }
+    if (!selectedUser) { toast.error(t("select_person_first")); return; }
+    if (!descriptorRef.current) { toast.error(t("no_face_detected")); return; }
     setCapturing(true);
     try {
       const descriptorArray = Array.from(descriptorRef.current);
@@ -283,14 +286,14 @@ export default function FaceRegistrationPage() {
         face_descriptor: descriptorArray,
       });
       if (res.data?.success) {
-        toast.success(res.data.message || "Face registered successfully!");
+        toast.success(res.data.message || t("face_registered_successfully"));
         const updated = { ...selectedUser, has_face: true };
         setSelectedUser(updated);
         setUsers(prev => prev.map(u => u.id === selectedUser.id ? updated : u));
         clearUpload();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to register face.");
+      toast.error(err.response?.data?.message || t("failed_to_register_face"));
     } finally {
       setCapturing(false);
     }
@@ -305,8 +308,8 @@ export default function FaceRegistrationPage() {
             <Sparkles className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">AI Biometric Face Registration</h1>
-            <p className="text-[11px] text-gray-500 mt-1">Register faces to enable automated attendance via AI recognition. Use webcam or upload a photo.</p>
+            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("ai_biometric_face_registration")}</h1>
+            <p className="text-[11px] text-gray-500 mt-1">{t("register_faces_description")}</p>
           </div>
         </div>
       </div>
@@ -329,7 +332,7 @@ export default function FaceRegistrationPage() {
             <div className="h-4 w-40 rounded bg-gray-200 animate-pulse" />
             <div className="aspect-video w-full rounded-2xl bg-gray-100 animate-pulse flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-              <p className="text-xs text-gray-400">Initializing AI Framework — loading neural models...</p>
+              <p className="text-xs text-gray-400">{t("initializing_ai_framework")}</p>
             </div>
           </div>
         </div>
@@ -339,29 +342,29 @@ export default function FaceRegistrationPage() {
           <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col gap-4">
             <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
               <UserCheck className="w-5 h-5 text-indigo-500" />
-              1. Select Person
+              {t("select_person")}
             </h2>
             <div className="space-y-3">
               <div className="relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                <Input placeholder="Search by name, ID or roll..." value={searchQuery}
+                <Input placeholder={t("search_by_name_id_roll")} value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-11 border-slate-200 focus-visible:ring-indigo-500" />
               </div>
               <div className="flex gap-2">
-                <Button variant={roleFilter === "all" ? "default" : "outline"} onClick={() => setRoleFilter("all")} className="flex-1 h-9">All</Button>
-                <Button variant={roleFilter === "Student" ? "default" : "outline"} onClick={() => setRoleFilter("Student")} className="flex-1 h-9">Students</Button>
-                <Button variant={roleFilter === "Staff" ? "default" : "outline"} onClick={() => setRoleFilter("Staff")} className="flex-1 h-9">Staff</Button>
+                <Button variant={roleFilter === "all" ? "default" : "outline"} onClick={() => setRoleFilter("all")} className="flex-1 h-9">{t("all")}</Button>
+                <Button variant={roleFilter === "Student" ? "default" : "outline"} onClick={() => setRoleFilter("Student")} className="flex-1 h-9">{t("students")}</Button>
+                <Button variant={roleFilter === "Staff" ? "default" : "outline"} onClick={() => setRoleFilter("Staff")} className="flex-1 h-9">{t("staff")}</Button>
               </div>
             </div>
             <div className="border border-slate-100 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
               {searching ? (
                 <div className="p-6 text-center text-slate-400 text-sm flex justify-center items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> Searching...
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> {t("searching")}
                 </div>
               ) : users.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 text-sm">
                   <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                  {searchQuery ? "No matching users found." : "Type above to search."}
+                  {searchQuery ? t("no_matching_users_found") : t("type_above_to_search")}
                 </div>
               ) : (
                 users.map(user => (
@@ -377,17 +380,17 @@ export default function FaceRegistrationPage() {
                         <span className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
                           <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-medium">{user.role}</span>
                           <span>•</span>
-                          <span>{user.role === 'Student' ? `Reg: ${user.admission_no || 'N/A'}` : `ID: ${user.staff_id || 'N/A'}`}</span>
+                          <span>{user.role === 'Student' ? `${t("reg")}: ${user.admission_no || t("not_applicable")}` : `${t("id")}: ${user.staff_id || t("not_applicable")}`}</span>
                         </span>
                       </div>
                     </div>
                     {user.has_face ? (
                       <span className="text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-                        <CheckCircle className="w-3.5 h-3.5" /> Ready
+                        <CheckCircle className="w-3.5 h-3.5" /> {t("ready")}
                       </span>
                     ) : (
                       <span className="text-rose-500 bg-rose-50 px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-                        <ShieldAlert className="w-3.5 h-3.5" /> No Face
+                        <ShieldAlert className="w-3.5 h-3.5" /> {t("no_face")}
                       </span>
                     )}
                   </div>
@@ -400,14 +403,14 @@ export default function FaceRegistrationPage() {
           <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col gap-4">
             <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
               <Camera className="w-5 h-5 text-indigo-500" />
-              2. AI Face Capture
+              {t("ai_face_capture")}
             </h2>
 
             {!selectedUser ? (
               <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-12 text-center flex flex-col items-center justify-center min-h-[350px]">
                 <UserCheck className="w-12 h-12 text-slate-300 mb-3" />
-                <h3 className="text-base font-semibold text-slate-700">Select a Person First</h3>
-                <p className="text-xs text-slate-400 max-w-sm mt-1">Choose a user from the left panel.</p>
+                <h3 className="text-base font-semibold text-slate-700">{t("select_person_first_title")}</h3>
+                <p className="text-xs text-slate-400 max-w-sm mt-1">{t("choose_user_from_left_panel")}</p>
               </div>
             ) : (
               <div className="flex flex-col gap-4">
@@ -416,15 +419,15 @@ export default function FaceRegistrationPage() {
                   <div>
                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">{selectedUser.role}</span>
                     <h3 className="text-lg font-bold text-slate-800 mt-0.5">{selectedUser.name}</h3>
-                    <p className="text-xs text-slate-500">{selectedUser.role === 'Student' ? `Admission: ${selectedUser.admission_no || 'N/A'}` : `ID: ${selectedUser.staff_id || 'N/A'}`}</p>
+                    <p className="text-xs text-slate-500">{selectedUser.role === 'Student' ? `${t("admission")}: ${selectedUser.admission_no || t("not_applicable")}` : `${t("id")}: ${selectedUser.staff_id || t("not_applicable")}`}</p>
                   </div>
                   {selectedUser.has_face ? (
                     <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-full inline-flex items-center gap-1.5">
-                      <CheckCircle className="w-4 h-4" /> Registered
+                      <CheckCircle className="w-4 h-4" /> {t("registered")}
                     </span>
                   ) : (
                     <span className="text-xs font-bold text-rose-500 bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-full inline-flex items-center gap-1.5">
-                      <AlertCircle className="w-4 h-4 animate-bounce" /> Not Registered
+                      <AlertCircle className="w-4 h-4 animate-bounce" /> {t("not_registered")}
                     </span>
                   )}
                 </div>
@@ -434,19 +437,19 @@ export default function FaceRegistrationPage() {
                   <Button variant={captureMode === 'webcam' ? 'default' : 'outline'} size="sm" onClick={startCamera}
                     disabled={isCameraActive && captureMode === 'webcam'}
                     className={captureMode === 'webcam' ? 'bg-indigo-600' : ''}>
-                    <Camera className="w-4 h-4 mr-1.5" /> Webcam
+                    <Camera className="w-4 h-4 mr-1.5" /> {t("webcam")}
                   </Button>
                   {cameraUrl && (
                     <Button variant={captureMode === 'ipcam' ? 'default' : 'outline'} size="sm"
                       onClick={() => { stopCamera(); setCaptureMode('ipcam'); setIsCameraActive(true); }}
                       className={captureMode === 'ipcam' ? 'bg-indigo-600' : ''}>
-                      <Wifi className="w-4 h-4 mr-1.5" /> IP Camera
+                      <Wifi className="w-4 h-4 mr-1.5" /> {t("ip_camera")}
                     </Button>
                   )}
                   <Button variant={captureMode === 'upload' ? 'default' : 'outline'} size="sm"
                     onClick={() => fileInputRef.current?.click()}
                     className={captureMode === 'upload' ? 'bg-indigo-600' : ''}>
-                    <Upload className="w-4 h-4 mr-1.5" /> Upload Photo
+                    <Upload className="w-4 h-4 mr-1.5" /> {t("upload_photo")}
                   </Button>
                   <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
                 </div>
@@ -459,20 +462,20 @@ export default function FaceRegistrationPage() {
                         <video ref={videoRef} className="w-full h-full object-cover scale-x-[-1]" playsInline muted />
                       )}
                       {captureMode === 'ipcam' && cameraUrl && (
-                        <img ref={cameraImgRef} src={`${cameraUrl}&_t=${ipCamTick}`} className="w-full h-full object-contain" alt="IP Camera"
+                        <img ref={cameraImgRef} src={`${cameraUrl}&_t=${ipCamTick}`} className="w-full h-full object-contain" alt={t("ip_camera")}
                           onLoad={(e) => { cameraImgRef.current = e.currentTarget; startFaceDetectionLoop(e.currentTarget); }}
-                          onError={() => { toast.error("IP camera unreachable."); setIsCameraActive(false); setCaptureMode(null); }}
+                          onError={() => { toast.error(t("ip_camera_unreachable")); setIsCameraActive(false); setCaptureMode(null); }}
                         />
                       )}
                       {captureMode === 'upload' && uploadedImage && (
-                        <img ref={uploadImgRef} src={uploadedImage} className="w-full h-full object-contain" alt="Uploaded"
+                        <img ref={uploadImgRef} src={uploadedImage} className="w-full h-full object-contain" alt={t("uploaded")}
                           onLoad={(e) => { uploadImgRef.current = e.currentTarget; startFaceDetectionLoop(e.currentTarget); }}
                         />
                       )}
                       <canvas ref={canvasRef} className={cn("absolute inset-0 w-full h-full object-cover", captureMode === 'webcam' && "scale-x-[-1]")} />
                       <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-sm border border-slate-700 px-3 py-1.5 rounded-full text-xs font-medium text-white flex items-center gap-2">
                         <span className={cn("w-2.5 h-2.5 rounded-full animate-ping", faceDetected ? "bg-emerald-500" : "bg-yellow-500")} />
-                        {faceDetected ? "Face Detected" : "Align face inside frame"}
+                        {faceDetected ? t("face_detected") : t("align_face_inside_frame")}
                       </div>
                     </>
                   ) : (
@@ -480,9 +483,9 @@ export default function FaceRegistrationPage() {
                       <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center border border-slate-800 text-indigo-400">
                         <Camera className="w-8 h-8" />
                       </div>
-                      <h4 className="font-semibold text-slate-200 mt-4 text-sm">Capture Source Offline</h4>
+                      <h4 className="font-semibold text-slate-200 mt-4 text-sm">{t("capture_source_offline")}</h4>
                       <p className="text-xs text-slate-500 mt-1 max-w-xs">
-                        Click Webcam or Upload Photo above to start.
+                        {t("click_webcam_or_upload_photo")}
                       </p>
                     </div>
                   )}
@@ -497,14 +500,14 @@ export default function FaceRegistrationPage() {
                           ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:shadow-indigo-500/20 hover:-translate-y-0.5"
                           : "bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed shadow-none")}>
                       {capturing ? (
-                        <><Loader2 className="w-4 h-4 animate-spin" /> Saving Biometric Map...</>
+                        <><Loader2 className="w-4 h-4 animate-spin" /> {t("saving_biometric_map")}</>
                       ) : (
-                        <><UserCheck className="w-5 h-5" /> Register &amp; Save Biometric Data</>
+                        <><UserCheck className="w-5 h-5" /> {t("register_save_biometric_data")}</>
                       )}
                     </Button>
                     <Button variant="outline" onClick={captureMode === 'upload' ? clearUpload : stopCamera} disabled={capturing}
                       className="h-12 border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50">
-                      {captureMode === 'upload' ? 'Clear Photo' : 'Close Feed'}
+                      {captureMode === 'upload' ? t("clear_photo") : t("close_feed")}
                     </Button>
                   </div>
                 )}

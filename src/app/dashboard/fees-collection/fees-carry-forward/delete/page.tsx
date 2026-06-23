@@ -152,15 +152,20 @@ export default function DeleteCarryForwardPage() {
 
     return (
         <div className="p-6 space-y-6 animate-in fade-in duration-500">
-            <div className="flex items-center gap-4">
-                <Link href="/dashboard/fees-collection/fees-carry-forward">
-                    <Button variant="outline" size="icon" className="h-10 w-10 shrink-0">
-                        <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                </Link>
-                <div className="flex flex-col gap-1">
-                    <h1 className="text-2xl font-bold tracking-tight">Delete Carry Forward</h1>
-                    <p className="text-sm text-muted-foreground">Remove fees carried forward from previous session.</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <Link href="/dashboard/fees-collection/fees-carry-forward">
+                        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 bg-white/70">
+                            <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                    </Link>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Trash2 className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Delete Carry Forward</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Remove fees carried from previous session</p>
+                    </div>
                 </div>
             </div>
 

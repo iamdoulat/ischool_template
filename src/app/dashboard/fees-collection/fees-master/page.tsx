@@ -21,7 +21,8 @@ import { Switch } from "@/components/ui/switch";
 import { cn, formatDate } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import {
     AlertDialog,
@@ -88,7 +89,8 @@ interface GroupedFeeMaster {
 }
 
 export default function FeesMasterPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [feeMasters, setFeeMasters] = useState<FeeMaster[]>([]);
     const [feeGroups, setFeeGroups] = useState<FeeGroup[]>([]);
     const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
@@ -133,11 +135,11 @@ export default function FeesMasterPage() {
             if (sessions.length > 0) setSessionName(sessions[0].session);
         } catch (error) {
             console.error("Error fetching data:", error);
-            toast("error", "Failed to load data");
+            tt.error("failed_to_load_data");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, toast]);
+    }, [searchQuery]);
 
     useEffect(() => {
         fetchData();
@@ -156,10 +158,10 @@ export default function FeesMasterPage() {
 
             if (isEdit && editId) {
                 await api.put(`/fees-masters/${editId}`, data);
-                toast("success", "Fees master updated successfully");
+                tt.success("fees_master_updated_successfully");
             } else {
                 await api.post("/fees-masters", data);
-                toast("success", "Fees master added successfully");
+                tt.success("fees_master_added_successfully");
             }
             fetchData();
             resetForm();
@@ -167,7 +169,7 @@ export default function FeesMasterPage() {
             console.error("Error saving fees master:", error);
             const err = error as { response?: { data?: { message?: string }, status?: number } };
             const message = err.response?.data?.message || "Failed to save fees master";
-            toast("error", message);
+            tt.error(message);
         }
     };
 
@@ -175,13 +177,13 @@ export default function FeesMasterPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/fees-masters/${deleteId}`);
-            toast("success", "Fees master deleted successfully");
+            tt.success("fees_master_deleted_successfully");
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
             fetchData();
         } catch (error) {
             console.error("Error deleting fees master:", error);
-            toast("error", "Failed to delete fees master");
+            tt.error("failed_to_delete_fees_master");
         }
     };
 
@@ -259,7 +261,7 @@ export default function FeesMasterPage() {
             `${m.fee_group?.name}\t${m.fee_type?.name}\t${m.amount}\t${m.fine_type}\t${m.due_date}`
         ).join("\n");
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     const handlePrint = () => { window.print(); };
@@ -277,7 +279,7 @@ export default function FeesMasterPage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Fees Master");
         XLSX.writeFile(workbook, "fees_master.xlsx");
-        toast("success", "Exported to Excel");
+        tt.success("exported_to_excel");
     };
 
     const handleExportCSV = () => {
@@ -296,7 +298,7 @@ export default function FeesMasterPage() {
         link.href = URL.createObjectURL(blob);
         link.download = "fees_master.csv";
         link.click();
-        toast("success", "Exported to CSV");
+        tt.success("exported_to_csv");
     };
 
     const handleExportPDF = () => {
@@ -312,7 +314,7 @@ export default function FeesMasterPage() {
         ]);
         autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
         doc.save("fees_master.pdf");
-        toast("success", "Exported to PDF");
+        tt.success("exported_to_pdf");
     };
 
     return (

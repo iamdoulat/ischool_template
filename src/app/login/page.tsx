@@ -22,17 +22,44 @@ export default function LoginPage() {
     const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; base_url?: string } | null>(null);
     const getImageUrl = useImageUrl();
 
+    // Captcha (driven by system-setting → captcha-setting, "User login" / "Login" aliases)
+    const [captchaEnabled, setCaptchaEnabled] = useState(false);
+    const [captcha, setCaptcha] = useState({ a: 0, b: 0 });
+    const [captchaAnswer, setCaptchaAnswer] = useState("");
+
+    const regenerateCaptcha = () => {
+        // Deterministic-free small operands; identity is not security-sensitive here.
+        const a = 1 + Math.floor((Date.now() % 9));
+        const b = 1 + Math.floor((Date.now() / 7) % 9);
+        setCaptcha({ a, b });
+        setCaptchaAnswer("");
+    };
+
     useEffect(() => {
         api.get("/system-setting/general-setting").then(r => {
             const data = r.data?.data || r.data || {};
             setSettings(data);
         }).catch(() => {});
+
+        api.get("/system-setting/captcha-settings/public").then(r => {
+            const map = r.data?.data || {};
+            const enabled = !!(map.user_login || map.login);
+            setCaptchaEnabled(enabled);
+            if (enabled) regenerateCaptcha();
+        }).catch(() => {});
     }, []);
 
     const handleLogin = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        setLoading(true);
         setError("");
+
+        if (captchaEnabled && Number(captchaAnswer) !== captcha.a + captcha.b) {
+            setError("Incorrect captcha answer. Please try again.");
+            regenerateCaptcha();
+            return;
+        }
+
+        setLoading(true);
 
         try {
             const response = await api.post("/login", { email_or_username: emailOrUsername, password });
@@ -184,6 +211,29 @@ export default function LoginPage() {
                                         </div>
                                     </div>
                                     
+                                    {captchaEnabled && (
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-300 text-xs font-medium">Captcha Verification</Label>
+                                            <div className="flex items-center gap-3">
+                                                <div
+                                                    className="select-none px-4 h-12 flex items-center justify-center bg-white text-slate-800 font-bold text-lg rounded-md tracking-widest cursor-pointer"
+                                                    onClick={regenerateCaptcha}
+                                                    title="Click to refresh"
+                                                >
+                                                    {captcha.a} + {captcha.b} = ?
+                                                </div>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="Answer"
+                                                    required
+                                                    value={captchaAnswer}
+                                                    onChange={(e) => setCaptchaAnswer(e.target.value)}
+                                                    className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-12 text-base rounded-md flex-1"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <Button
                                         type="submit"
                                         className="w-full h-12 mt-2 text-lg font-bold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-[#4caf50] hover:bg-[#43a047] text-white shadow-lg shadow-green-600/20 rounded-md"

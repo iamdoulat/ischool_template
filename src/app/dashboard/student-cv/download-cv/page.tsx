@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   Copy, FileSpreadsheet, FileBox, Printer, Columns,
   ChevronLeft, ChevronRight, Search, ArrowUpDown, Download, ChevronDown,
-  Loader2,
+  Loader2, FileUser,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StudentCVTemplate, type StudentCVData } from "./StudentCVTemplate";
@@ -246,11 +246,20 @@ export default function DownloadCVPage() {
       </div>
 
       {/* ── Criteria Filtering Section ── */}
-      <div className="bg-white rounded border border-gray-100 p-4 shadow-sm space-y-4">
-        <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-          <span className="text-sm font-semibold tracking-tight text-gray-800">Select Criteria</span>
+      <div className="bg-white rounded border border-gray-100 shadow-sm space-y-4 overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+              <FileUser className="h-5 w-5" />
+            </span>
+            <div>
+              <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Download Student CV</h1>
+              <p className="text-[11px] text-gray-500 mt-1">Select class and section to download student CVs</p>
+            </div>
+          </div>
         </div>
 
+        <div className="p-4 pt-0 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Class */}
           <div className="space-y-1">
@@ -299,6 +308,7 @@ export default function DownloadCVPage() {
           >
             <Search className="h-3.5 w-3.5" /> Search
           </Button>
+        </div>
         </div>
       </div>
 

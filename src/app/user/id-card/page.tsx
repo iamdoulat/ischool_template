@@ -14,6 +14,7 @@ import {
     printIdCards,
     downloadCertificatePdf,
 } from "@/lib/certificate";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface PortalStudent {
     name?: string;
@@ -71,6 +72,7 @@ function SkeletonCard() {
 }
 
 export default function UserIdCardPage() {
+    const { t } = useTranslation();
     const { toast } = useToast();
     const [data, setData] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -82,7 +84,7 @@ export default function UserIdCardPage() {
                 const res = await api.get("/user/id-card");
                 setData(res.data?.data ?? res.data);
             } catch {
-                toast({ title: "Error", description: "Failed to load ID cards", variant: "destructive" });
+                toast({ title: t("error"), description: t("failed_to_load_id_cards"), variant: "destructive" });
             } finally {
                 setLoading(false);
             }
@@ -104,7 +106,7 @@ export default function UserIdCardPage() {
             const html = `<div style="padding:20px;background:#fff;display:inline-block;">${renderIdCardHtml(card, person, "student")}</div>`;
             await downloadCertificatePdf(html, `${card.title.replace(/\s+/g, "-")}.pdf`);
         } catch {
-            toast({ title: "Error", description: "Failed to generate PDF", variant: "destructive" });
+            toast({ title: t("error"), description: t("failed_to_generate_pdf"), variant: "destructive" });
         } finally {
             setDownloadingId(null);
         }
@@ -118,8 +120,8 @@ export default function UserIdCardPage() {
                     <CreditCard className="h-5 w-5" />
                 </span>
                 <div>
-                    <h1 className="text-xl font-bold text-gray-800">My ID Card</h1>
-                    <p className="text-xs text-gray-500">Preview, print, and download your identity card</p>
+                    <h1 className="text-xl font-bold text-gray-800">{t("my_id_card")}</h1>
+                    <p className="text-xs text-gray-500">{t("preview_print_and_download_your_identity_card")}</p>
                 </div>
             </div>
 
@@ -141,7 +143,7 @@ export default function UserIdCardPage() {
             ) : data?.student ? (
                 <Card className="shadow-sm border-0 p-0 gap-0 overflow-hidden">
                     <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                        <h3 className="text-sm font-bold text-slate-800">Student Information</h3>
+                        <h3 className="text-sm font-bold text-slate-800">{t("student_information")}</h3>
                     </div>
                     <CardContent className="p-4">
                         <div className="flex flex-col sm:flex-row gap-4 items-start">
@@ -152,12 +154,12 @@ export default function UserIdCardPage() {
                             </div>
                             <div className="flex-1 grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">
                                 {([
-                                    ["Name", data.student.name],
-                                    ["Admission No", data.student.admission_no],
-                                    ["Class", `${data.student.class || ""}${data.student.section ? ` (${data.student.section})` : ""}`],
-                                    ["Roll Number", data.student.roll_no],
-                                    ["Father Name", data.student.father_name],
-                                    ["Blood Group", data.student.blood_group],
+                                    [t("name"), data.student.name],
+                                    [t("admission_no"), data.student.admission_no],
+                                    [t("class"), `${data.student.class || ""}${data.student.section ? ` (${data.student.section})` : ""}`],
+                                    [t("roll_no"), data.student.roll_no],
+                                    [t("father_name"), data.student.father_name],
+                                    [t("blood_group"), data.student.blood_group],
                                 ] as [string, string | undefined][]).map(([label, value]) => (
                                     <div key={label}>
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{label}</p>
@@ -179,8 +181,8 @@ export default function UserIdCardPage() {
                 <Card className="shadow-sm border-0">
                     <CardContent className="flex flex-col items-center justify-center py-16 text-gray-400">
                         <CreditCard className="h-12 w-12 opacity-25 mb-3" />
-                        <p className="text-base font-medium text-gray-500">No ID card available.</p>
-                        <p className="text-xs text-gray-400 mt-1">Contact your school administrator to create an ID card template.</p>
+                        <p className="text-base font-medium text-gray-500">{t("no_id_card_available")}</p>
+                        <p className="text-xs text-gray-400 mt-1">{t("contact_your_school_administrator_to_create_an_id_card_template")}</p>
                     </CardContent>
                 </Card>
             ) : (
@@ -212,7 +214,7 @@ export default function UserIdCardPage() {
                                         "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-none"
                                     )}
                                 >
-                                    <Printer className="h-3.5 w-3.5" /> Print
+                                    <Printer className="h-3.5 w-3.5" /> {t("print")}
                                 </Button>
                                 <Button
                                     onClick={() => handleDownload(card)}

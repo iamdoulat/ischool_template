@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface LiveClass {
     id: number;
@@ -42,6 +43,7 @@ interface LiveClass {
 }
 
 export default function UserGmeetLiveClassesPage() {
+    const { t } = useTranslation();
     const [classes, setClasses] = useState<LiveClass[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -65,7 +67,7 @@ export default function UserGmeetLiveClassesPage() {
             setCurrentPage(res.current_page || page);
         } catch (error) {
             console.error("Error fetching live classes:", error);
-            toast.error("Failed to load live classes");
+            toast.error(t("failed_to_load_live_classes"));
         } finally {
             setLoading(false);
         }
@@ -114,7 +116,7 @@ export default function UserGmeetLiveClassesPage() {
             disabled={!url}
             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-2.5 h-7 text-[11px] font-bold rounded-lg shadow-sm flex items-center gap-1 transition-all active:scale-95 border-0 disabled:opacity-40"
         >
-            <Video className="h-3 w-3" /> Join
+            <Video className="h-3 w-3" /> {t("join")}
         </Button>
     );
 
@@ -129,7 +131,7 @@ export default function UserGmeetLiveClassesPage() {
                     </span>
                     <div>
                         <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">
-                            Google Meet — Live Classes
+                            {t("google_meet_live_classes")}
                         </h1>
                         <p className="text-[11px] text-gray-500 mt-1">
                             {totalEntries} class{totalEntries === 1 ? "" : "es"} scheduled
@@ -144,7 +146,7 @@ export default function UserGmeetLiveClassesPage() {
                         <div className="relative w-full md:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Search classes..."
+                                placeholder={t("search_classes")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
@@ -185,25 +187,25 @@ export default function UserGmeetLiveClassesPage() {
                             <TableHeader className="bg-gray-50/80 border-b border-gray-100">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
                                     <TableHead className="py-3 px-4 h-auto">
-                                        Class Title <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
+                                        {t("class_title")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
                                     </TableHead>
                                     <TableHead className="py-3 px-4 h-auto">
-                                        Date Time <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
+                                        {t("date_time")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
                                     </TableHead>
                                     <TableHead className="py-3 px-4 h-auto">
-                                        Duration (Min) <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
+                                        {t("duration_min")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
                                     </TableHead>
                                     <TableHead className="py-3 px-4 h-auto">
-                                        Class <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
+                                        {t("class")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
                                     </TableHead>
                                     <TableHead className="py-3 px-4 h-auto">
-                                        Host <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
+                                        {t("host")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
                                     </TableHead>
-                                    <TableHead className="py-3 px-4 h-auto">Description</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto">{t("description")}</TableHead>
                                     <TableHead className="py-3 px-4 h-auto text-center">
-                                        Status <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
+                                        {t("status")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" />
                                     </TableHead>
-                                    <TableHead className="py-3 px-4 h-auto text-right">Action</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -212,7 +214,7 @@ export default function UserGmeetLiveClassesPage() {
                                         <TableCell colSpan={8} className="text-center py-12">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                                Loading live classes...
+                                                {t("loading_live_classes")}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -222,7 +224,7 @@ export default function UserGmeetLiveClassesPage() {
                                             <div className="flex flex-col items-center text-gray-400">
                                                 <MonitorPlay className="h-10 w-10 opacity-30 mb-2" />
                                                 <p className="text-[11px] font-bold uppercase tracking-widest">
-                                                    No live classes available
+                                                    {t("no_live_classes_available")}
                                                 </p>
                                             </div>
                                         </TableCell>
@@ -266,7 +268,7 @@ export default function UserGmeetLiveClassesPage() {
                             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                                 <MonitorPlay className="h-12 w-12 opacity-30 mb-3" />
                                 <p className="font-bold uppercase text-[11px] tracking-widest">
-                                    No live classes available
+                                    {t("no_live_classes_available")}
                                 </p>
                             </div>
                         ) : (
@@ -317,7 +319,7 @@ export default function UserGmeetLiveClassesPage() {
                                             disabled={!item.url}
                                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-8 text-[11px] font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 border-0 w-full mt-1 disabled:opacity-40"
                                         >
-                                            <Video className="h-3.5 w-3.5" /> Join Class
+                                            <Video className="h-3.5 w-3.5" /> {t("join_class")}
                                         </Button>
                                     </div>
                                 ))}
@@ -328,8 +330,8 @@ export default function UserGmeetLiveClassesPage() {
                     {/* ── Pagination ──────────────────────────────────────────── */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
-                            Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
+                            {Math.min(startIndex + sizeNum, totalEntries)} {t("of")} {totalEntries} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (

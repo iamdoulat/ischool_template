@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import api from "@/lib/api";
 import { Loader2, Settings, Smartphone, ScanFace, ScanLine, Save } from "lucide-react";
 
@@ -14,12 +15,6 @@ interface SmartSettings {
     is_qr_enabled: boolean;
     is_nfc_enabled: boolean;
 }
-
-const METHODS = [
-    { key: "is_face_enabled" as const, label: "Face Recognition", desc: "Allow students/staff to mark attendance using AI face scan.", Icon: ScanFace, color: "text-blue-600 bg-blue-50" },
-    { key: "is_qr_enabled" as const, label: "QR Code Scan", desc: "Allow users to scan their personal QR code ID cards.", Icon: ScanLine, color: "text-emerald-600 bg-emerald-50" },
-    { key: "is_nfc_enabled" as const, label: "NFC System", desc: "Allow tapping NFC tags or NFC-enabled smartphones.", Icon: Smartphone, color: "text-purple-600 bg-purple-50" },
-];
 
 function MethodSkeleton() {
     return (
@@ -41,6 +36,14 @@ export default function SmartAttendanceSettingsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
+    const { t } = useTranslation();
+
+    const METHODS = [
+        { key: "is_face_enabled" as const, label: t("face_recognition"), desc: t("face_recognition_desc"), Icon: ScanFace, color: "text-blue-600 bg-blue-50" },
+        { key: "is_qr_enabled" as const, label: t("qr_code_scan"), desc: t("qr_code_scan_desc"), Icon: ScanLine, color: "text-emerald-600 bg-emerald-50" },
+        { key: "is_nfc_enabled" as const, label: t("nfc_system"), desc: t("nfc_system_desc"), Icon: Smartphone, color: "text-purple-600 bg-purple-50" },
+    ];
+
     useEffect(() => {
         (async () => {
             try {
@@ -54,7 +57,7 @@ export default function SmartAttendanceSettingsPage() {
                     });
                 }
             } catch {
-                toast.error("Failed to load attendance settings");
+                toast.error(t("failed_to_load_attendance_settings"));
             } finally {
                 setIsLoading(false);
             }
@@ -65,9 +68,9 @@ export default function SmartAttendanceSettingsPage() {
         setIsSaving(true);
         try {
             await api.post("/smart-attendance/settings", settings);
-            toast.success("Settings saved successfully!");
+            toast.success(t("settings_saved_successfully"));
         } catch {
-            toast.error("Failed to save settings");
+            toast.error(t("failed_to_save_settings"));
         } finally {
             setIsSaving(false);
         }
@@ -82,8 +85,8 @@ export default function SmartAttendanceSettingsPage() {
                             <Settings className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Smart Attendance Settings</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Toggle the methods available on the attendance terminal</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("smart_attendance_settings")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("toggle_methods_available")}</p>
                         </div>
                     </div>
                     <Button
@@ -91,7 +94,7 @@ export default function SmartAttendanceSettingsPage() {
                         disabled={isSaving || isLoading}
                         className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
                     >
-                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("save")}
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">

@@ -37,9 +37,12 @@ import {
     Check,
     Save,
     X,
-    LayoutDashboard
+    LayoutDashboard,
+    Monitor
 } from "lucide-react";
 import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
+import { portalMenuPermissions } from "@/lib/portal-menu-permissions";
 import {
     Popover,
     PopoverContent,
@@ -524,9 +527,10 @@ const Tooltip = ({ children, content }: { children: React.ReactNode; content: st
 };
 
 export default function RolesPermissionsPage() {
+    const { t } = useTranslation();
     const [roles, setRoles] = useState<any[]>([]);
     const [paginationMeta, setPaginationMeta] = useState<any>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [roleName, setRoleName] = useState("");
     const [editingRole, setEditingRole] = useState<any>(null);
@@ -746,10 +750,10 @@ export default function RolesPermissionsPage() {
                     widgets: [...checkedWidgets]
                 }),
             ]);
-            toast.success(permRes.data?.message || "Permissions saved successfully");
+            toast.success(permRes.data?.message || t("updated_successfully"));
             handleCancel();
         } catch (error: any) {
-            const msg = error.response?.data?.message || error.message || "Failed to save permissions";
+            const msg = error.response?.data?.message || error.message || t("failed_to_save");
             toast.error(msg);
         } finally {
             setSavingPermissions(false);
@@ -760,10 +764,10 @@ export default function RolesPermissionsPage() {
         if (deleteId === null) return;
         try {
             await api.delete(`/roles/${deleteId}`);
-            toast.success("Role deleted successfully");
+            toast.success(t("deleted_successfully"));
             fetchRoles();
         } catch (error: any) {
-            toast.error(error.response?.data?.message || "Failed to delete role");
+            toast.error(error.response?.data?.message || t("failed_to_delete"));
         } finally {
             setIsDeleteDialogOpen(false);
             setDeleteId(null);
@@ -835,6 +839,44 @@ export default function RolesPermissionsPage() {
             const next = new Set(prev);
             if (next.has(modKey)) next.delete(modKey);
             else next.add(modKey);
+            return next;
+        });
+    };
+
+    // ----- Student Portal menu permission helpers -----
+    // The Module Permissions tree controls the student portal sidebar menus.
+    // Each portal menu maps directly to a single permission name (see
+    // src/lib/portal-menu-permissions.ts).
+    const portalMenuPermNames = (menuName: string): string[] => {
+        const node = portalMenuPermissions.find(m => m.name === menuName);
+        if (!node) return [];
+        return [node.permission, ...(node.submenus?.map(s => s.permission) ?? [])];
+    };
+
+    const getPortalMenuCheckState = (menuName: string): boolean | "indeterminate" => {
+        const names = portalMenuPermNames(menuName);
+        if (names.length === 0) return false;
+        const checked = names.filter(n => checkedPermNames.has(n)).length;
+        if (checked === 0) return false;
+        if (checked === names.length) return true;
+        return "indeterminate";
+    };
+
+    const togglePortalMenu = (menuName: string) => {
+        const names = portalMenuPermNames(menuName);
+        setCheckedPermNames(prev => {
+            const next = new Set(prev);
+            const allChecked = names.every(n => next.has(n));
+            for (const n of names) allChecked ? next.delete(n) : next.add(n);
+            return next;
+        });
+    };
+
+    const togglePortalSubmenu = (permission: string) => {
+        setCheckedPermNames(prev => {
+            const next = new Set(prev);
+            if (next.has(permission)) next.delete(permission);
+            else next.add(permission);
             return next;
         });
     };
@@ -911,17 +953,26 @@ export default function RolesPermissionsPage() {
     };
 
     const permissionRoleId = editingRole?.id;
+    // Student & Parent roles use the student portal sidebar; every other role
+    // uses the admin panel sidebar. Show the matching module tree accordingly.
+    const isPortalRole = ["Student", "Parent"].includes(editingRole?.name ?? "");
 
     return (
         <div className="p-4 grid grid-cols-1 lg:grid-cols-4 gap-6 bg-gray-50/10 min-h-screen font-sans">
 
             {/* Left Panel - Role Form + Module Tree */}
             <div className="lg:col-span-1 space-y-4">
-                <Card className="border-none shadow-sm">
-                    <CardHeader className="pb-3 border-b border-gray-50 flex flex-row items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-gray-700">
-                            {editingRole ? "Edit Role" : "New Role"}
-                        </CardTitle>
+                <Card className="border-none shadow-sm pt-0 overflow-hidden">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <ShieldCheck className="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{editingRole ? t("edit_role") : t("new_role")}</h1>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("manage_roles_and_access_permissions")}</p>
+                            </div>
+                        </div>
                         {editingRole && (
                             <Button
                                 variant="ghost"
@@ -932,15 +983,15 @@ export default function RolesPermissionsPage() {
                                 <X className="h-3.5 w-3.5" />
                             </Button>
                         )}
-                    </CardHeader>
+                    </div>
                     <form onSubmit={handleChange}>
                         <CardContent className="pt-4 space-y-3">
                             <div className="space-y-2">
-                                <label className="text-[11px] font-medium text-gray-500">Role Name <span className="text-red-500">*</span></label>
+                                <label className="text-[11px] font-medium text-gray-500">{t("role_name")} <span className="text-red-500">*</span></label>
                                 <Input
                                     value={roleName}
                                     onChange={(e) => setRoleName(e.target.value)}
-                                    placeholder="Enter role name"
+                                    placeholder={t("enter_role_name")}
                                     className="h-9 text-[12px] border-gray-200 focus:ring-1 focus:ring-indigo-500"
                                 />
                             </div>
@@ -951,7 +1002,7 @@ export default function RolesPermissionsPage() {
                                 disabled={submitting}
                                 className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white text-[12px] px-8 h-9 rounded-full shadow-md transition-all"
                             >
-                                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? "UPDATE" : "CREATE"}
+                                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? t("update") : t("create")}
                             </Button>
                         </CardFooter>
                     </form>
@@ -961,7 +1012,7 @@ export default function RolesPermissionsPage() {
                     <Card className="border-none shadow-sm">
                         <CardHeader className="pb-3 border-b border-gray-50">
                             <CardTitle className="text-sm font-medium text-gray-700">
-                                Module Permissions
+                                {t("module_permissions")}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-4 space-y-1 max-h-[500px] overflow-y-auto">
@@ -969,7 +1020,7 @@ export default function RolesPermissionsPage() {
                                 <div className="px-1 py-1 mb-2">
                                     <div className="flex items-center gap-2 mb-2">
                                         <LayoutDashboard className="h-3.5 w-3.5 text-indigo-500" />
-                                        <span className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide">Dashboard Cards</span>
+                                        <span className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide">{t("dashboard_cards")}</span>
                                     </div>
                                     <div className="space-y-1">
                                         {dashboardWidgets.filter(w => !w.section).map((w) => (
@@ -1014,7 +1065,7 @@ export default function RolesPermissionsPage() {
                                                 }}
                                                 className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
                                             />
-                                            <span className="text-[11px] font-medium text-indigo-600">Summary Cards</span>
+                                            <span className="text-[11px] font-medium text-indigo-600">{t("summary_cards")}</span>
                                         </div>
                                         <div className="ml-6 space-y-0.5 border-l-2 border-indigo-100 pl-3">
                                             {summaryCardWidgets.map((c) => (
@@ -1035,66 +1086,135 @@ export default function RolesPermissionsPage() {
                             {permissionsLoading ? (
                                 <div className="flex items-center justify-center py-8">
                                     <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
-                                    <span className="ml-2 text-xs text-gray-400">Loading permissions...</span>
+                                    <span className="ml-2 text-xs text-gray-400">{t("loading_permissions")}</span>
                                 </div>
-                            ) : moduleKeys.map((modKey) => {
-                                const subs = moduleSubmenus[modKey] || [];
-                                const label = sidebarModuleLabels[modKey] || modKey.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
-                                const checkState = getModuleCheckState(modKey);
-                                const hasSubs = subs.length > 0;
-                                const expanded = expandedModules.has(modKey);
-                                const hasPartial = hasSubs && subs.some(s => {
-                                    const pn = buildSubmenuPermNames(modKey, s.name);
-                                    return pn.length > 0 && pn.some(n => checkedPermNames.has(n));
-                                });
-                                const showExpanded = expanded || hasPartial;
-
-                                return (
-                                    <div key={modKey} className="border border-gray-100 rounded-md mb-1">
-                                        <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/50 rounded-md transition-colors">
-                                            {hasSubs && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => toggleExpand(modKey)}
-                                                    className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-                                                >
-                                                    {showExpanded ? (
-                                                        <ChevronDown className="h-3.5 w-3.5" />
-                                                    ) : (
-                                                        <ChevronRightIcon className="h-3.5 w-3.5" />
-                                                    )}
-                                                </button>
-                                            )}
-                                            {!hasSubs && <div className="w-3.5 flex-shrink-0" />}
-                                            <Checkbox
-                                                checked={checkState}
-                                                onCheckedChange={() => toggleModule(modKey)}
-                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
-                                            />
-                                            <span className="text-[12px] font-medium text-gray-700">{label}</span>
-                                        </div>
-
-                                        {hasSubs && showExpanded && (
-                                            <div className="ml-8 pb-2 space-y-0.5 border-l-2 border-indigo-100 pl-3">
-                                                {subs.map((sub) => {
-                                                    const subChecked = isSubmenuChecked(modKey, sub.name);
-                                                    return (
-                                                        <div key={sub.name} className="flex items-center gap-2 py-0.5">
-                                                            <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
-                                                            <Checkbox
-                                                                checked={subChecked}
-                                                                onCheckedChange={() => toggleSubmenu(modKey, sub.name)}
-                                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-3.5 w-3.5 rounded"
-                                                            />
-                                                            <span className={`text-[11px] ${subChecked ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>{sub.label}</span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
+                            ) : isPortalRole ? (
+                                <>
+                                    <div className="flex items-center gap-2 px-1 mb-2">
+                                        <Monitor className="h-3.5 w-3.5 text-indigo-500" />
+                                        <span className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide">{t("student_portal_menus")}</span>
                                     </div>
-                                );
-                            })}
+                                    {portalMenuPermissions.map((menu) => {
+                                        const subs = menu.submenus || [];
+                                        const hasSubs = subs.length > 0;
+                                        const checkState = getPortalMenuCheckState(menu.name);
+                                        const expanded = expandedModules.has(menu.name);
+                                        const hasPartial = hasSubs && subs.some(s => checkedPermNames.has(s.permission));
+                                        const showExpanded = expanded || hasPartial;
+
+                                        return (
+                                            <div key={menu.name} className="border border-gray-100 rounded-md mb-1">
+                                                <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/50 rounded-md transition-colors">
+                                                    {hasSubs && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleExpand(menu.name)}
+                                                            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                                                        >
+                                                            {showExpanded ? (
+                                                                <ChevronDown className="h-3.5 w-3.5" />
+                                                            ) : (
+                                                                <ChevronRightIcon className="h-3.5 w-3.5" />
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                    {!hasSubs && <div className="w-3.5 flex-shrink-0" />}
+                                                    <Checkbox
+                                                        checked={checkState}
+                                                        onCheckedChange={() => togglePortalMenu(menu.name)}
+                                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
+                                                    />
+                                                    <span className="text-[12px] font-medium text-gray-700">{menu.label}</span>
+                                                </div>
+
+                                                {hasSubs && showExpanded && (
+                                                    <div className="ml-8 pb-2 space-y-0.5 border-l-2 border-indigo-100 pl-3">
+                                                        {subs.map((sub) => {
+                                                            const subChecked = checkedPermNames.has(sub.permission);
+                                                            return (
+                                                                <div key={sub.name} className="flex items-center gap-2 py-0.5">
+                                                                    <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
+                                                                    <Checkbox
+                                                                        checked={subChecked}
+                                                                        onCheckedChange={() => togglePortalSubmenu(sub.permission)}
+                                                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-3.5 w-3.5 rounded"
+                                                                    />
+                                                                    <span className={`text-[11px] ${subChecked ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>{sub.label}</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-2 px-1 mb-2">
+                                        <LayoutDashboard className="h-3.5 w-3.5 text-indigo-500" />
+                                        <span className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide">{t("admin_panel_modules")}</span>
+                                    </div>
+                                    {moduleKeys.map((modKey) => {
+                                        const subs = moduleSubmenus[modKey] || [];
+                                        const label = sidebarModuleLabels[modKey] || modKey.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+                                        const checkState = getModuleCheckState(modKey);
+                                        const hasSubs = subs.length > 0;
+                                        const expanded = expandedModules.has(modKey);
+                                        const hasPartial = hasSubs && subs.some(s => {
+                                            const pn = buildSubmenuPermNames(modKey, s.name);
+                                            return pn.length > 0 && pn.some(n => checkedPermNames.has(n));
+                                        });
+                                        const showExpanded = expanded || hasPartial;
+
+                                        return (
+                                            <div key={modKey} className="border border-gray-100 rounded-md mb-1">
+                                                <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/50 rounded-md transition-colors">
+                                                    {hasSubs && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleExpand(modKey)}
+                                                            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                                                        >
+                                                            {showExpanded ? (
+                                                                <ChevronDown className="h-3.5 w-3.5" />
+                                                            ) : (
+                                                                <ChevronRightIcon className="h-3.5 w-3.5" />
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                    {!hasSubs && <div className="w-3.5 flex-shrink-0" />}
+                                                    <Checkbox
+                                                        checked={checkState}
+                                                        onCheckedChange={() => toggleModule(modKey)}
+                                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
+                                                    />
+                                                    <span className="text-[12px] font-medium text-gray-700">{label}</span>
+                                                </div>
+
+                                                {hasSubs && showExpanded && (
+                                                    <div className="ml-8 pb-2 space-y-0.5 border-l-2 border-indigo-100 pl-3">
+                                                        {subs.map((sub) => {
+                                                            const subChecked = isSubmenuChecked(modKey, sub.name);
+                                                            return (
+                                                                <div key={sub.name} className="flex items-center gap-2 py-0.5">
+                                                                    <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
+                                                                    <Checkbox
+                                                                        checked={subChecked}
+                                                                        onCheckedChange={() => toggleSubmenu(modKey, sub.name)}
+                                                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-3.5 w-3.5 rounded"
+                                                                    />
+                                                                    <span className={`text-[11px] ${subChecked ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>{sub.label}</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </>
+                            )}
 
                         </CardContent>
                         <CardFooter className="flex justify-end pt-2 pb-4 px-6 border-t border-gray-50">
@@ -1108,7 +1228,7 @@ export default function RolesPermissionsPage() {
                                 ) : (
                                     <Save className="h-3.5 w-3.5" />
                                 )}
-                                SAVE PERMISSIONS
+                                {t("save_permissions")}
                             </Button>
                         </CardFooter>
                     </Card>
@@ -1117,16 +1237,22 @@ export default function RolesPermissionsPage() {
 
             {/* Right Panel - Role List */}
             <div className="lg:col-span-3">
-                <Card className="border-none shadow-sm min-h-[500px] flex flex-col">
-                    <CardHeader className="pb-3 border-b border-gray-50">
-                        <CardTitle className="text-sm font-medium text-gray-700">Role List</CardTitle>
-                    </CardHeader>
+                <Card className="border-none shadow-sm pt-0 min-h-[500px] flex flex-col overflow-hidden">
+                    <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <LayoutDashboard className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("role_list")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("all_system_and_custom_roles")}</p>
+                        </div>
+                    </div>
 
                     <div className="p-3 pb-0 flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder="Search..."
+                                placeholder={t("search")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="h-8 text-[11px] pl-8 border-gray-200 shadow-none rounded bg-gray-50/50 focus:bg-white transition-colors"
@@ -1148,7 +1274,7 @@ export default function RolesPermissionsPage() {
                             </Select>
 
                             <div className="flex items-center gap-1">
-                                <Tooltip content="Copy">
+                                <Tooltip content={t("copy")}>
                                     <Button
                                         variant="ghost"
                                         size="icon"
@@ -1158,7 +1284,7 @@ export default function RolesPermissionsPage() {
                                         <Copy className="h-3.5 w-3.5" />
                                     </Button>
                                 </Tooltip>
-                                <Tooltip content="Excel">
+                                <Tooltip content={t("excel")}>
                                     <Button
                                         variant="ghost"
                                         size="icon"
@@ -1168,7 +1294,7 @@ export default function RolesPermissionsPage() {
                                         <FileSpreadsheet className="h-3.5 w-3.5" />
                                     </Button>
                                 </Tooltip>
-                                <Tooltip content="PDF">
+                                <Tooltip content={t("pdf")}>
                                     <Button
                                         variant="ghost"
                                         size="icon"
@@ -1178,7 +1304,7 @@ export default function RolesPermissionsPage() {
                                         <FileText className="h-3.5 w-3.5" />
                                     </Button>
                                 </Tooltip>
-                                <Tooltip content="Print">
+                                <Tooltip content={t("print")}>
                                     <Button
                                         variant="ghost"
                                         size="icon"
@@ -1188,7 +1314,7 @@ export default function RolesPermissionsPage() {
                                         <Printer className="h-3.5 w-3.5" />
                                     </Button>
                                 </Tooltip>
-                                <Tooltip content="Column">
+                                <Tooltip content={t("column")}>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50 outline-none">
@@ -1198,9 +1324,9 @@ export default function RolesPermissionsPage() {
                                         <PopoverContent className="w-32 p-1" align="end">
                                             <div className="space-y-0.5">
                                                 {([
-                                                    { id: 'role', label: 'Role' },
-                                                    { id: 'type', label: 'Type' },
-                                                    { id: 'action', label: 'Action' }
+                                                    { id: 'role', label: t("role") },
+                                                    { id: 'type', label: t("type") },
+                                                    { id: 'action', label: t("action") }
                                                 ] as const).map((col) => (
                                                     <div
                                                         key={col.id}
@@ -1225,21 +1351,34 @@ export default function RolesPermissionsPage() {
                         <Table className="table-fixed w-full border-collapse">
                             <TableHeader className="bg-gray-50/40">
                                 <TableRow className="border-b border-gray-100 hover:bg-transparent text-[11px]">
-                                    {visibleColumns.role && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase w-auto">Role</TableHead>}
-                                    {visibleColumns.type && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase w-[100px]">Type</TableHead>}
-                                    {visibleColumns.action && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase text-right w-[140px]">Action</TableHead>}
+                                    {visibleColumns.role && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase w-auto">{t("role")}</TableHead>}
+                                    {visibleColumns.type && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase w-[100px]">{t("type")}</TableHead>}
+                                    {visibleColumns.action && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase text-right w-[140px]">{t("action")}</TableHead>}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={visibleColumns.role ? (visibleColumns.type ? (visibleColumns.action ? 3 : 2) : (visibleColumns.action ? 2 : 1)) : (visibleColumns.type ? (visibleColumns.action ? 2 : 1) : 1)} className="h-32 text-center">
-                                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
-                                        </TableCell>
-                                    </TableRow>
+                                    Array.from({ length: 6 }).map((_, i) => (
+                                        <TableRow key={`sk-${i}`} className="border-b border-gray-50 h-11">
+                                            {visibleColumns.role && (
+                                                <TableCell className="py-2 px-3"><div className="h-3 rounded bg-gray-200/60 animate-pulse" style={{ width: `${55 + ((i * 7) % 30)}%` }} /></TableCell>
+                                            )}
+                                            {visibleColumns.type && (
+                                                <TableCell className="py-2 px-3"><div className="h-3 w-14 rounded bg-gray-200/60 animate-pulse" /></TableCell>
+                                            )}
+                                            {visibleColumns.action && (
+                                                <TableCell className="py-2 px-3">
+                                                    <div className="flex justify-end gap-1">
+                                                        <div className="h-6 w-6 rounded bg-gray-200/60 animate-pulse" />
+                                                        <div className="h-6 w-6 rounded bg-gray-200/60 animate-pulse" />
+                                                    </div>
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    ))
                                 ) : roles.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={visibleColumns.role ? (visibleColumns.type ? (visibleColumns.action ? 3 : 2) : (visibleColumns.action ? 2 : 1)) : (visibleColumns.type ? (visibleColumns.action ? 2 : 1) : 1)} className="h-32 text-center text-gray-400 text-xs">No roles found.</TableCell>
+                                        <TableCell colSpan={visibleColumns.role ? (visibleColumns.type ? (visibleColumns.action ? 3 : 2) : (visibleColumns.action ? 2 : 1)) : (visibleColumns.type ? (visibleColumns.action ? 2 : 1) : 1)} className="h-32 text-center text-gray-400 text-xs">{t("no_records_found")}</TableCell>
                                     </TableRow>
                                 ) : (
                                     roles.map((role) => (
@@ -1249,11 +1388,11 @@ export default function RolesPermissionsPage() {
                                                     {role.name}
                                                 </TableCell>
                                             )}
-                                            {visibleColumns.type && <TableCell className="py-2 px-3 text-[12px] text-gray-400 truncate">{role.is_system ? "System" : "Custom"}</TableCell>}
+                                            {visibleColumns.type && <TableCell className="py-2 px-3 text-[12px] text-gray-400 truncate">{role.is_system ? t("system") : t("custom")}</TableCell>}
                                             {visibleColumns.action && (
                                                 <TableCell className="py-2 px-3 text-right">
                                                     <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                        <Tooltip content={editingRole?.id === role.id ? "Currently editing" : "Edit & Assign Permissions"}>
+                                                        <Tooltip content={editingRole?.id === role.id ? t("currently_editing") : t("edit_and_assign_permissions")}>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
@@ -1264,7 +1403,7 @@ export default function RolesPermissionsPage() {
                                                                 <ShieldCheck className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </Tooltip>
-                                                        <Tooltip content="Delete Role">
+                                                        <Tooltip content={t("delete_role")}>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
@@ -1288,7 +1427,7 @@ export default function RolesPermissionsPage() {
                     {paginationMeta && (
                         <CardFooter className="py-3 items-center justify-between border-t border-gray-50">
                             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                                Showing {paginationMeta.from || 0} to {paginationMeta.to || 0} of {paginationMeta.total || 0} entries
+                                {t("showing")} {paginationMeta.from || 0} {t("to")} {paginationMeta.to || 0} {t("of")} {paginationMeta.total || 0} {t("entries")}
                             </p>
                             <div className="flex gap-2">
                                 <Button
@@ -1325,14 +1464,14 @@ export default function RolesPermissionsPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete this role.
+                            {t("delete_role_confirmation")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-500 hover:bg-red-600 text-white">Delete</AlertDialogAction>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-500 hover:bg-red-600 text-white">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

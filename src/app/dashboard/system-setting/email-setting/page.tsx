@@ -10,12 +10,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function EmailSettingPage() {
+    const { t } = useTranslation();
     const { toast } = useToast();
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -41,8 +43,8 @@ export default function EmailSettingPage() {
         } catch (error) {
             toast({
                 variant: "destructive",
-                title: "Error",
-                description: "Failed to fetch email settings",
+                title: t("error"),
+                description: t("failed_to_fetch_email_settings"),
             });
         } finally {
             setLoading(false);
@@ -63,15 +65,15 @@ export default function EmailSettingPage() {
             const response = await api.post("/system-setting/email-setting", formData);
             if (response.data.status === "Success") {
                 toast({
-                    title: "Success",
-                    description: "Email settings updated successfully!",
+                    title: t("success_title"),
+                    description: t("email_settings_updated_successfully"),
                 });
             }
         } catch (error: any) {
             toast({
                 variant: "destructive",
-                title: "Error",
-                description: error.response?.data?.message || "Failed to save email settings.",
+                title: t("error"),
+                description: error.response?.data?.message || t("failed_to_save_email_settings"),
             });
         } finally {
             setSaving(false);
@@ -82,22 +84,33 @@ export default function EmailSettingPage() {
         return (
             <div className="flex flex-col items-center justify-center py-20 space-y-4 h-full">
                 <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
-                <p className="text-sm text-gray-400 font-medium">Loading email settings...</p>
+                <p className="text-sm text-gray-400 font-medium">{t("loading")}</p>
             </div>
         );
     }
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            <h1 className="text-sm font-medium text-gray-800 tracking-tight mb-2">Email Gateway</h1>
-
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col items-center">
+
+                {/* Header */}
+                <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Mail className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("email_setting")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("configure_smtp_and_outgoing_mail_settings")}</p>
+                        </div>
+                    </div>
+                </div>
 
                 {/* Form Container */}
                 <div className="w-full max-w-4xl p-8 space-y-5 animate-in fade-in duration-300">
 
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                        <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">Email Engine <span className="text-red-500">*</span></Label>
+                        <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">{t("email_engine")} <span className="text-red-500">*</span></Label>
                         <div className="md:col-span-3">
                             <Select
                                 value={formData.mail_mailer}
@@ -117,7 +130,7 @@ export default function EmailSettingPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                        <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">Email <span className="text-red-500">*</span></Label>
+                        <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">{t("email")} <span className="text-red-500">*</span></Label>
                         <div className="md:col-span-3">
                             <Input
                                 value={formData.mail_from_address}
@@ -128,7 +141,7 @@ export default function EmailSettingPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                        <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">From Name <span className="text-red-500">*</span></Label>
+                        <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">{t("from_name")} <span className="text-red-500">*</span></Label>
                         <div className="md:col-span-3">
                             <Input
                                 value={formData.mail_from_name}
@@ -141,7 +154,7 @@ export default function EmailSettingPage() {
                     {formData.mail_mailer === "smtp" && (
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                                <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">SMTP Username <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">{t("smtp_username")} <span className="text-red-500">*</span></Label>
                                 <div className="md:col-span-3">
                                     <Input
                                         value={formData.mail_username}
@@ -152,7 +165,7 @@ export default function EmailSettingPage() {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                                <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">SMTP Password <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">{t("smtp_password")} <span className="text-red-500">*</span></Label>
                                 <div className="md:col-span-3 relative">
                                     <Input
                                         type={showPassword ? "text" : "password"}
@@ -171,7 +184,7 @@ export default function EmailSettingPage() {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                                <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">SMTP Server <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">{t("smtp_server")} <span className="text-red-500">*</span></Label>
                                 <div className="md:col-span-3">
                                     <Input
                                         value={formData.mail_host}
@@ -182,7 +195,7 @@ export default function EmailSettingPage() {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                                <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">SMTP Port <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">{t("smtp_port")} <span className="text-red-500">*</span></Label>
                                 <div className="md:col-span-3">
                                     <Input
                                         value={formData.mail_port}
@@ -193,7 +206,7 @@ export default function EmailSettingPage() {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                                <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">SMTP Security <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">{t("smtp_security")} <span className="text-red-500">*</span></Label>
                                 <div className="md:col-span-3">
                                     <Select
                                         value={formData.mail_encryption}
@@ -223,7 +236,7 @@ export default function EmailSettingPage() {
                         className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-8 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-md border-b-2 border-indigo-700 min-w-[120px]"
                     >
                         {saving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
-                        {saving ? "Saving..." : "Save"}
+                        {saving ? t("loading") : t("save")}
                     </Button>
                 </div>
             </div>

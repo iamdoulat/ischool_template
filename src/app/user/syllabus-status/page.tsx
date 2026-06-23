@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 type Topic = {
     id: number;
@@ -90,6 +91,7 @@ function getColor(idx: number) {
 
 /* ── Expandable lesson row ── */
 function LessonRow({ lesson, color }: { lesson: Lesson; color: string }) {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
 
     return (
@@ -126,8 +128,8 @@ function LessonRow({ lesson, color }: { lesson: Lesson; color: string }) {
                                 topic.is_completed ? "text-green-600 font-medium" : "text-gray-400"
                             )}>
                                 {topic.is_completed
-                                    ? `Complete${topic.completion_date ? " (" + topic.completion_date + ")" : ""}`
-                                    : "Incomplete"}
+                                    ? `${t("complete")}${topic.completion_date ? " (" + topic.completion_date + ")" : ""}`
+                                    : t("incomplete")}
                             </span>
                         </div>
                     ))}
@@ -139,6 +141,7 @@ function LessonRow({ lesson, color }: { lesson: Lesson; color: string }) {
 
 /* ── Main page ── */
 export default function UserSyllabusStatusPage() {
+    const { t } = useTranslation();
     const [data, setData] = useState<SubjectSyllabus[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
@@ -150,10 +153,10 @@ export default function UserSyllabusStatusPage() {
                 if (res.data.success) {
                     setData(res.data.data ?? []);
                 } else {
-                    toast({ variant: "destructive", title: "Error", description: res.data.message || "Failed to load syllabus." });
+                    toast({ variant: "destructive", title: t("error"), description: res.data.message || t("failed_to_load_syllabus") });
                 }
             } catch {
-                toast({ variant: "destructive", title: "Error", description: "Failed to load syllabus status." });
+                toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_syllabus_status") });
             } finally {
                 setLoading(false);
             }
@@ -166,11 +169,11 @@ export default function UserSyllabusStatusPage() {
             `${s.subject}: ${s.completion}% (${s.completed_topics}/${s.total_topics})\n` +
             s.lessons.map((l) =>
                 `  ${l.title}: ${l.completion}%\n` +
-                l.topics.map((t) => `    ${t.title}: ${t.is_completed ? "Complete" : "Incomplete"}`).join("\n")
+                l.topics.map((tp) => `    ${tp.title}: ${tp.is_completed ? t("complete") : t("incomplete")}`).join("\n")
             ).join("\n")
         ).join("\n\n");
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied to clipboard" });
+        toast({ title: t("copied_to_clipboard") });
     };
 
     const totalTopics = data.reduce((a, s) => a + s.total_topics, 0);
@@ -187,13 +190,13 @@ export default function UserSyllabusStatusPage() {
                             <GraduationCap className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">Syllabus Status</h1>
+                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("syllabus_status")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
                                 {loading
-                                    ? "Loading syllabus…"
+                                    ? t("loading_syllabus")
                                     : data.length === 0
-                                        ? "No syllabus available"
-                                        : `${overall}% overall · ${completedTopics}/${totalTopics} topics across ${data.length} subject${data.length === 1 ? "" : "s"}`}
+                                        ? t("no_syllabus_available")
+                                        : `${overall}% ${t("overall")} · ${completedTopics}/${totalTopics} ${t("topics_across")} ${data.length} ${t("subject")}${data.length === 1 ? "" : "s"}`}
                             </p>
                         </div>
                     </div>
@@ -203,18 +206,18 @@ export default function UserSyllabusStatusPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={copyToClipboard}
-                                title="Copy"
+                                title={t("copy")}
                                 className="h-9 w-9 rounded-[10px] hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 text-gray-500 transition-all print:hidden"
                             >
                                 <Copy className="h-4 w-4" />
                             </Button>
                             <Button
                                 onClick={() => window.print()}
-                                title="Print"
+                                title={t("print")}
                                 className="h-9 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
                             >
                                 <Printer className="h-4 w-4" />
-                                <span className="hidden sm:inline">Print</span>
+                                <span className="hidden sm:inline">{t("print")}</span>
                             </Button>
                         </div>
                     )}
@@ -224,13 +227,13 @@ export default function UserSyllabusStatusPage() {
                     {loading ? (
                         <div className="flex items-center justify-center py-20 text-gray-400 gap-2">
                             <Loader2 className="h-6 w-6 animate-spin" />
-                            <span>Loading syllabus...</span>
+                            <span>{t("loading_syllabus_dots")}</span>
                         </div>
                     ) : data.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                             <BookOpen className="h-12 w-12 opacity-30 mb-3" />
-                            <p className="text-base font-semibold text-gray-500">No syllabus data found.</p>
-                            <p className="text-sm mt-1 text-gray-400">Syllabus will appear here once the admin adds topics for your class.</p>
+                            <p className="text-base font-semibold text-gray-500">{t("no_syllabus_data_found")}</p>
+                            <p className="text-sm mt-1 text-gray-400">{t("syllabus_will_appear_here_once_the_admin_adds_topics_for_your_class")}</p>
                         </div>
                     ) : (
                         <>
@@ -250,9 +253,9 @@ export default function UserSyllabusStatusPage() {
                                                     className="text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm"
                                                     style={{ backgroundColor: color }}
                                                 >
-                                                    {s.completion}% Complete
+                                                    {s.completion}% {t("complete")}
                                                 </div>
-                                                <p className="text-[11px] text-gray-400">{s.completed_topics}/{s.total_topics} Topics</p>
+                                                <p className="text-[11px] text-gray-400">{s.completed_topics}/{s.total_topics} {t("topics")}</p>
                                             </div>
                                         );
                                     })}
@@ -263,7 +266,7 @@ export default function UserSyllabusStatusPage() {
                             <div className="border-t border-gray-100">
                                 {/* Sub-header */}
                                 <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/40">
-                                    <h2 className="font-semibold text-[13px] text-gray-700">Subject — Lesson — Topic Status</h2>
+                                    <h2 className="font-semibold text-[13px] text-gray-700">{t("subject_lesson_topic_status")}</h2>
                                 </div>
 
                                 <div className="text-[12px]">
@@ -279,13 +282,13 @@ export default function UserSyllabusStatusPage() {
                                                     </div>
                                                     <div className="flex items-center gap-3 w-full sm:w-auto sm:min-w-[180px]">
                                                         <ProgressBar value={subject.completion} color={color} />
-                                                        <span className="text-[12px] font-bold text-gray-700 w-16 text-right shrink-0">{subject.completion}% Done</span>
+                                                        <span className="text-[12px] font-bold text-gray-700 w-16 text-right shrink-0">{subject.completion}% {t("done")}</span>
                                                     </div>
                                                 </div>
 
                                                 {/* Lessons */}
                                                 {subject.lessons.length === 0 ? (
-                                                    <div className="pl-6 py-2 text-[12px] text-gray-400 italic border-b border-gray-50">No lessons added yet.</div>
+                                                    <div className="pl-6 py-2 text-[12px] text-gray-400 italic border-b border-gray-50">{t("no_lessons_added_yet")}</div>
                                                 ) : (
                                                     subject.lessons.map((lesson, lIdx) => (
                                                         <LessonRow key={`${subject.subject}-${lIdx}`} lesson={lesson} color={color} />

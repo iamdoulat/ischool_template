@@ -59,6 +59,7 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface Staff {
     id: number;
@@ -116,6 +117,7 @@ function CardSkeleton({ count = 6 }: { count?: number }) {
 export default function StaffDirectoryPage() {
     const router = useRouter();
     const { toast } = useToast();
+    const { t } = useTranslation();
     const [view, setView] = useState("card");
     const [staffList, setStaffList] = useState<Staff[]>([]);
     const [roles, setRoles] = useState<Role[]>([]);
@@ -209,8 +211,8 @@ export default function StaffDirectoryPage() {
 
             if (response.data.status === "Success") {
                 toast({
-                    title: "Success",
-                    description: "Staff deleted successfully!",
+                    title: t("success"),
+                    description: t("staff_deleted_successfully"),
                 });
                 fetchStaff(keyword, selectedRole, selectedStatus);
                 setDeleteDialogOpen(false);
@@ -219,8 +221,8 @@ export default function StaffDirectoryPage() {
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
             toast({
-                title: "Error",
-                description: err.response?.data?.message || "Failed to delete staff. Please try again.",
+                title: t("error"),
+                description: err.response?.data?.message || t("failed_to_delete_staff"),
                 variant: "destructive",
             });
         }
@@ -232,15 +234,15 @@ export default function StaffDirectoryPage() {
 
             if (response.data.status === "Success") {
                 toast({
-                    title: "Success",
-                    description: "Password reset link has been sent to the staff member's email.",
+                    title: t("success"),
+                    description: t("password_reset_link_sent"),
                 });
             }
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
             toast({
-                title: "Error",
-                description: err.response?.data?.message || "Failed to send reset link. Please try again.",
+                title: t("error"),
+                description: err.response?.data?.message || t("failed_to_send_reset_link"),
                 variant: "destructive",
             });
         }
@@ -258,8 +260,8 @@ export default function StaffDirectoryPage() {
 
             if (response.data.status === "Success") {
                 toast({
-                    title: `Staff Member ${actionText === "enabled" ? "Enabled" : "Disabled"}`,
-                    description: `${staffToToggle.name} has been successfully ${actionText}.`,
+                    title: actionText === "enabled" ? t("staff_member_enabled") : t("staff_member_disabled"),
+                    description: `${staffToToggle.name} ${actionText === "enabled" ? t("has_been_enabled") : t("has_been_disabled")}`,
                     variant: "default",
                 });
                 fetchStaff(keyword, selectedRole, selectedStatus);
@@ -270,8 +272,8 @@ export default function StaffDirectoryPage() {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
             console.error(`Error toggling staff:`, error);
             toast({
-                title: "Error",
-                description: err.response?.data?.message || `Failed to update status for ${staffToToggle.name}. Please try again.`,
+                title: t("error"),
+                description: err.response?.data?.message || `${t("failed_to_update_status_for")} ${staffToToggle.name}. ${t("please_try_again")}`,
                 variant: "destructive",
             });
             setStatusDialogOpen(false);
@@ -288,14 +290,14 @@ export default function StaffDirectoryPage() {
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <Users className="h-5 w-5" />
                     </span>
-                    <h1 className="text-lg font-bold text-gray-800 uppercase tracking-widest">Staff Directory</h1>
+                    <h1 className="text-lg font-bold text-gray-800 uppercase tracking-widest">{t("staff_directory")}</h1>
                 </div>
                 {hasPerm("human-resource.staff.add") && (
                     <Button
                         onClick={() => router.push('/dashboard/hr/staff-directory/create')}
                         className={`${gradientBtn} gap-2 h-10 px-6 text-sm font-semibold`}
                     >
-                        <Plus className="h-4 w-4" /> Add Staff
+                        <Plus className="h-4 w-4" /> {t("add_staff")}
                     </Button>
                 )}
             </div>
@@ -307,8 +309,8 @@ export default function StaffDirectoryPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter staff by role or keyword</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_staff_by_role_or_keyword")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
@@ -316,14 +318,14 @@ export default function StaffDirectoryPage() {
                         <div className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                                    Role <span className="text-red-500">*</span>
+                                    {t("role")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select value={selectedRole} onValueChange={setSelectedRole}>
                                     <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 transition-all rounded-lg">
-                                        <SelectValue placeholder="Select Role" />
+                                        <SelectValue placeholder={t("select_role")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Select">Select</SelectItem>
+                                        <SelectItem value="Select">{t("select")}</SelectItem>
                                         {roles.map((role) => (
                                             <SelectItem key={role.name} value={role.name}>
                                                 {role.name}
@@ -334,7 +336,7 @@ export default function StaffDirectoryPage() {
                             </div>
                             <div className="flex justify-end">
                                 <Button onClick={handleSearch} className={`${gradientBtn} gap-2 h-10 px-8 text-sm font-semibold`}>
-                                    <Search className="h-4 w-4" /> Search
+                                    <Search className="h-4 w-4" /> {t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -342,19 +344,19 @@ export default function StaffDirectoryPage() {
                         <div className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                                    Search By Keyword
+                                    {t("search_by_keyword")}
                                 </Label>
                                 <Input
                                     value={keyword}
                                     onChange={(e) => setKeyword(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    placeholder="Search By Staff ID, Name, Role etc..."
+                                    placeholder={t("search_by_staff_id_name_role")}
                                     className="h-11 border-gray-200 text-sm focus-visible:ring-indigo-500 rounded-lg"
                                 />
                             </div>
                             <div className="flex justify-end">
                                 <Button onClick={handleSearch} className={`${gradientBtn} gap-2 h-10 px-8 text-sm font-semibold`}>
-                                    <Search className="h-4 w-4" /> Search
+                                    <Search className="h-4 w-4" /> {t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -369,8 +371,8 @@ export default function StaffDirectoryPage() {
                         <Users className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Staff Directory</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{staffList.length} staff member{staffList.length !== 1 ? "s" : ""}</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("staff_directory")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{staffList.length} {staffList.length !== 1 ? t("staff_members") : t("staff_member")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -381,13 +383,13 @@ export default function StaffDirectoryPage() {
                                     value="card"
                                     className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-14 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all"
                                 >
-                                    <LayoutGrid className="h-4 w-4 mr-2" /> Card View
+                                    <LayoutGrid className="h-4 w-4 mr-2" /> {t("card_view")}
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="list"
                                     className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-14 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all"
                                 >
-                                    <ListIcon className="h-4 w-4 mr-2" /> List View
+                                    <ListIcon className="h-4 w-4 mr-2" /> {t("list_view")}
                                 </TabsTrigger>
                             </TabsList>
 
@@ -400,12 +402,12 @@ export default function StaffDirectoryPage() {
                                     }}
                                 >
                                     <SelectTrigger className="h-9 w-[140px] border-gray-200 text-xs font-semibold text-gray-600 focus:ring-indigo-500 transition-all rounded-lg">
-                                        <SelectValue placeholder="Status" />
+                                        <SelectValue placeholder={t("status")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Staff</SelectItem>
-                                        <SelectItem value="true">Active Staff</SelectItem>
-                                        <SelectItem value="false">Disabled Staff</SelectItem>
+                                        <SelectItem value="all">{t("all_staff")}</SelectItem>
+                                        <SelectItem value="true">{t("active_staff")}</SelectItem>
+                                        <SelectItem value="false">{t("disabled_staff_filter")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -444,18 +446,18 @@ export default function StaffDirectoryPage() {
                                                         {person.name}
                                                     </h3>
                                                     <div className="text-[11px] font-bold text-indigo-500/70 mt-0.5">
-                                                        {person.staff_id || "N/A"}
+                                                        {person.staff_id || t("n_a")}
                                                     </div>
                                                 </div>
 
                                                 <div className="space-y-1 mt-2">
                                                     <div className="flex items-center gap-2 text-[10px] font-medium text-gray-400">
                                                         <Phone className="h-3 w-3 text-indigo-400/70" />
-                                                        <span>{person.phone || "No phone"}</span>
+                                                        <span>{person.phone || t("no_phone")}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2 text-[10px] font-medium text-gray-400">
                                                         <MapPin className="h-3 w-3 text-indigo-400/70" />
-                                                        <span className="truncate">{person.department || "General"} - {person.role}</span>
+                                                        <span className="truncate">{person.department || t("general")} - {person.role}</span>
                                                     </div>
                                                 </div>
 
@@ -465,7 +467,7 @@ export default function StaffDirectoryPage() {
                                                     </span>
                                                     {(person.active === false || person.active === 0) && (
                                                         <span className="px-2 py-0.5 bg-red-100 text-red-600 text-[9px] font-bold rounded-md uppercase tracking-tight">
-                                                            Disabled
+                                                            {t("disabled")}
                                                         </span>
                                                     )}
                                                 </div>
@@ -485,9 +487,9 @@ export default function StaffDirectoryPage() {
                                                                 className={`cursor-pointer ${person.active === false || person.active === 0 ? "text-green-600 focus:text-green-600" : "text-amber-600 focus:text-amber-600"}`}
                                                             >
                                                                 {person.active === false || person.active === 0 ? (
-                                                                    <><CheckCircle className="h-4 w-4 mr-2" /> Enable Staff</>
+                                                                    <><CheckCircle className="h-4 w-4 mr-2" /> {t("enable_staff")}</>
                                                                 ) : (
-                                                                    <><Ban className="h-4 w-4 mr-2" /> Disable Staff</>
+                                                                    <><Ban className="h-4 w-4 mr-2" /> {t("disable_staff")}</>
                                                                 )}
                                                             </DropdownMenuItem>
                                                         )}
@@ -497,7 +499,7 @@ export default function StaffDirectoryPage() {
                                                                 className="cursor-pointer"
                                                             >
                                                                 <Edit className="h-4 w-4 mr-2" />
-                                                                Edit
+                                                                {t("edit")}
                                                             </DropdownMenuItem>
                                                         )}
                                                         {hasPerm("human-resource.staff.edit") && (
@@ -506,7 +508,7 @@ export default function StaffDirectoryPage() {
                                                                 className="cursor-pointer"
                                                             >
                                                                 <KeyRound className="h-4 w-4 mr-2" />
-                                                                Reset Password
+                                                                {t("reset_password")}
                                                             </DropdownMenuItem>
                                                         )}
                                                         {hasPerm("human-resource.staff.delete") && (
@@ -515,7 +517,7 @@ export default function StaffDirectoryPage() {
                                                                 className="cursor-pointer text-red-600 focus:text-red-600"
                                                             >
                                                                 <Trash2 className="h-4 w-4 mr-2" />
-                                                                Delete
+                                                                {t("delete")}
                                                             </DropdownMenuItem>
                                                         )}
                                                     </DropdownMenuContent>
@@ -527,7 +529,7 @@ export default function StaffDirectoryPage() {
                             ) : (
                                 <div className="text-center py-20">
                                     <User className="h-12 w-12 text-gray-200 mx-auto mb-4" />
-                                    <p className="text-sm text-gray-400 font-medium">No staff members found.</p>
+                                    <p className="text-sm text-gray-400 font-medium">{t("no_staff_found")}</p>
                                 </div>
                             )}
                         </TabsContent>
@@ -537,13 +539,13 @@ export default function StaffDirectoryPage() {
                                 <table className="w-full">
                                     <thead className="bg-gray-50 border-b border-gray-200">
                                         <tr>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Staff ID</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Phone</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Designation</th>
-                                            <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("staff_id")}</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("name")}</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("role")}</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("phone")}</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("department")}</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("designation")}</th>
+                                            <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">{t("actions")}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-100">
@@ -551,15 +553,15 @@ export default function StaffDirectoryPage() {
                                             <TableSkeleton rows={5} cols={7} />
                                         ) : staffList.length === 0 ? (
                                             <tr>
-                                                <td colSpan={7} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td>
+                                                <td colSpan={7} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                             </tr>
                                         ) : (
                                             staffList.map((person) => (
                                                 <tr key={person.id} className={`hover:bg-gray-50 transition-colors group ${person.active === false || person.active === 0 ? "opacity-60 grayscale hover:grayscale-0 hover:opacity-100" : ""}`}>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm font-bold text-purple-600">{person.staff_id || "N/A"}</div>
+                                                        <div className="text-sm font-bold text-purple-600">{person.staff_id || t("n_a")}</div>
                                                         {(person.active === false || person.active === 0) && (
-                                                            <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase inline-block mt-1">Disabled</span>
+                                                            <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase inline-block mt-1">{t("disabled")}</span>
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -591,7 +593,7 @@ export default function StaffDirectoryPage() {
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <div className="flex items-center gap-2 text-sm text-gray-600">
                                                             <Phone className="h-4 w-4 text-purple-400" />
-                                                            <span>{person.phone || "N/A"}</span>
+                                                            <span>{person.phone || t("n_a")}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -615,9 +617,9 @@ export default function StaffDirectoryPage() {
                                                                             className={`cursor-pointer ${person.active === false || person.active === 0 ? "text-green-600 focus:text-green-600" : "text-amber-600 focus:text-amber-600"}`}
                                                                         >
                                                                             {person.active === false || person.active === 0 ? (
-                                                                                <><CheckCircle className="h-4 w-4 mr-2" /> Enable Staff</>
+                                                                                <><CheckCircle className="h-4 w-4 mr-2" /> {t("enable_staff")}</>
                                                                             ) : (
-                                                                                <><Ban className="h-4 w-4 mr-2" /> Disable Staff</>
+                                                                                <><Ban className="h-4 w-4 mr-2" /> {t("disable_staff")}</>
                                                                             )}
                                                                         </DropdownMenuItem>
                                                                     )}
@@ -627,7 +629,7 @@ export default function StaffDirectoryPage() {
                                                                             className="cursor-pointer"
                                                                         >
                                                                             <Edit className="h-4 w-4 mr-2" />
-                                                                            Edit
+                                                                            {t("edit")}
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     {hasPerm("human-resource.staff.edit") && (
@@ -636,7 +638,7 @@ export default function StaffDirectoryPage() {
                                                                             className="cursor-pointer"
                                                                         >
                                                                             <KeyRound className="h-4 w-4 mr-2" />
-                                                                            Reset Password
+                                                                            {t("reset_password")}
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     {hasPerm("human-resource.staff.delete") && (
@@ -645,7 +647,7 @@ export default function StaffDirectoryPage() {
                                                                             className="cursor-pointer text-red-600 focus:text-red-600"
                                                                         >
                                                                             <Trash2 className="h-4 w-4 mr-2" />
-                                                                            Delete
+                                                                            {t("delete")}
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                 </DropdownMenuContent>
@@ -667,19 +669,19 @@ export default function StaffDirectoryPage() {
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the staff member{" "}
+                            {t("delete_warning_message")}{" "}
                             <span className="font-bold text-gray-900">{staffToDelete?.name}</span> (ID: {staffToDelete?.staff_id}) from the database.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setStaffToDelete(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setStaffToDelete(null)}>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeleteConfirm}
                             className="bg-red-600 hover:bg-red-700 text-white"
                         >
-                            Delete
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -691,22 +693,22 @@ export default function StaffDirectoryPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>
                             {staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0)
-                                ? "Enable Staff Member?"
-                                : "Disable Staff Member?"}
+                                ? t("enable_staff_member_question")
+                                : t("disable_staff_member_question")}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                             {staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0)
-                                ? `Are you sure you want to enable ${staffToToggle.name}? They will regain access to the system.`
-                                : `Are you sure you want to disable ${staffToToggle?.name}? They will lose access to the system until re-enabled.`}
+                                ? <>{t("enable_confirmation_prefix")} {staffToToggle.name}? {t("enable_confirmation_suffix")}</>
+                                : <>{t("disable_confirmation_prefix")} {staffToToggle?.name}? {t("disable_confirmation_suffix")}</>}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setStaffToToggle(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setStaffToToggle(null)}>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleConfirmToggleStatus}
                             className={staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0) ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-600 hover:bg-amber-700 text-white"}
                         >
-                            {staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0) ? "Enable" : "Disable"}
+                            {staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0) ? t("enable") : t("disable")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

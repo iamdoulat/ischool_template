@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Building2, Globe, ExternalLink, Search } from "lucide-react";
@@ -26,6 +27,7 @@ function SkeletonCard() {
 }
 
 export default function UserBranchesPage() {
+    const { t } = useTranslation();
     const { toast } = useToast();
     const [branches, setBranches] = useState<Branch[]>([]);
     const [loading, setLoading] = useState(true);
@@ -38,7 +40,7 @@ export default function UserBranchesPage() {
                 const payload = res.data?.data ?? res.data;
                 setBranches(payload?.branches ?? []);
             } catch {
-                toast({ title: "Error", description: "Failed to load branches", variant: "destructive" });
+                toast({ title: t("error"), description: t("failed_to_load_branches"), variant: "destructive" });
             } finally {
                 setLoading(false);
             }
@@ -60,13 +62,13 @@ export default function UserBranchesPage() {
                         <Globe className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Our Branches</h1>
-                        <p className="text-xs text-gray-500">Explore other campuses of our institution</p>
+                        <h1 className="text-xl font-bold text-gray-800">{t("branches")}</h1>
+                        <p className="text-xs text-gray-500">{t("explore_other_campuses_of_our_institution")}</p>
                     </div>
                 </div>
                 <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input placeholder="Search branches..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 h-9 text-xs" />
+                    <Input placeholder={t("search")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 h-9 text-xs" />
                 </div>
             </div>
 
@@ -78,7 +80,7 @@ export default function UserBranchesPage() {
                 <Card className="shadow-sm border-0">
                     <CardContent className="flex flex-col items-center justify-center py-16 text-gray-400">
                         <Building2 className="h-12 w-12 opacity-25 mb-3" />
-                        <p className="text-base font-medium text-gray-500">No branches available.</p>
+                        <p className="text-base font-medium text-gray-500">{t("no_branches_available")}</p>
                     </CardContent>
                 </Card>
             ) : (
@@ -99,7 +101,7 @@ export default function UserBranchesPage() {
                                     rel="noopener noreferrer"
                                     className="flex items-center justify-center gap-1.5 h-9 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold shadow-sm active:scale-95 transition-all"
                                 >
-                                    Visit Campus <ExternalLink className="h-3.5 w-3.5" />
+                                    {t("visit_campus")} <ExternalLink className="h-3.5 w-3.5" />
                                 </a>
                             </div>
                         </div>

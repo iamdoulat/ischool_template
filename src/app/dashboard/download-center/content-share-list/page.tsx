@@ -26,6 +26,7 @@ import {
     Eye,
     Trash2,
     ArrowUpDown,
+    Share2,
 } from "lucide-react";
 import {
     Select,
@@ -130,8 +131,16 @@ export default function ContentShareListPage() {
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
             {/* Header Section */}
-            <div className="flex justify-between items-center mb-2">
-                <h1 className="text-sm font-medium text-gray-800">Content Share List</h1>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Share2 className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Content Share List</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Shared documents and recipient records</p>
+                    </div>
+                </div>
             </div>
 
              {/* Main Content Area */}

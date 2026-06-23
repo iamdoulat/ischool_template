@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Table,
@@ -32,11 +34,11 @@ interface ReportItem {
 }
 
 const REPORT_TYPES = [
-    { id: "daily", label: "Daily Collection", icon: FileText },
-    { id: "expense", label: "Expenses", icon: Wallet },
-    { id: "payroll", label: "Payroll", icon: Users },
-    { id: "income", label: "Income", icon: BarChart },
-    { id: "userlog", label: "System Activity", icon: Activity },
+    { id: "daily", label: "daily_collection", icon: FileText },
+    { id: "expense", label: "expenses", icon: Wallet },
+    { id: "payroll", label: "payroll", icon: Users },
+    { id: "income", label: "income", icon: BarChart },
+    { id: "userlog", label: "system_activity", icon: Activity },
 ];
 
 const TABLE_COLS = 6;
@@ -59,6 +61,8 @@ function SkeletonRows({ rows = 6 }: { rows?: number }) {
 
 export default function ReportPage() {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const { selectedCurrency } = useCurrency();
     const cur = selectedCurrency?.symbol || "$";
 
@@ -75,7 +79,7 @@ export default function ReportPage() {
             setReportData(response.data.data || []);
             setGrandTotal(response.data.grand_total || 0);
         } catch {
-            toast({ title: "Error", description: "Failed to fetch report", variant: "destructive" });
+            tt.toast("error", "failed_to_fetch_report");
         } finally {
             setLoading(false);
         }
@@ -90,7 +94,7 @@ export default function ReportPage() {
 
     const handleCopy = () => {
         navigator.clipboard.writeText(reportData.map((r) => `${r.branch}\t${r.name}\t${r.invoice}\t${r.head}\t${r.date}\t${r.amount}`).join("\n"));
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        toast({ title: t("copied"), description: t("data_copied_to_clipboard") });
     };
     const handleExportCSV = () => {
         const rows = [["Branch", "Name", "Invoice", "Head", "Date", "Amount"],
@@ -103,13 +107,13 @@ export default function ReportPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
     ];
 
-    const activeLabel = REPORT_TYPES.find((r) => r.id === activeReport)?.label || activeReport;
+    const activeLabel = t(REPORT_TYPES.find((r) => r.id === activeReport)?.label || activeReport);
 
     return (
         <div className="space-y-6">
@@ -136,7 +140,7 @@ export default function ReportPage() {
                                 <Icon className="h-5 w-5" />
                             </span>
                             <span className={cn("text-[10px] font-bold uppercase tracking-wide text-center", isActive ? "text-slate-800" : "text-gray-500")}>
-                                {report.label}
+                                {t(report.label)}
                             </span>
                         </button>
                     );
@@ -150,17 +154,17 @@ export default function ReportPage() {
                         <PieChart className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{activeLabel} Report</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Cross-branch aggregated records</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{activeLabel} {t("report")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("cross_branch_aggregated_records")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {/* Toolbar */}
                     <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
                         <form onSubmit={(e) => { e.preventDefault(); fetchReport(); }} className="flex items-center gap-2 w-full md:w-auto">
-                            <Input placeholder="Search records..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 h-9 text-xs w-full md:w-64" />
+                            <Input placeholder={t("search_records")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 h-9 text-xs w-full md:w-64" />
                             <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                                <Search className="h-4 w-4" /> Search
+                                <Search className="h-4 w-4" /> {t("search")}
                             </Button>
                         </form>
                         <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500 self-end md:self-auto">
@@ -174,19 +178,19 @@ export default function ReportPage() {
                         <Table className="min-w-[820px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600">Branch</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Name</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Invoice</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">Head</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-center">Date</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">Amount ({cur})</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("branch")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("name")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("invoice")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600">{t("head")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-center">{t("date")}</TableHead>
+                                    <TableHead className="font-semibold text-gray-600 text-right">{t("amount")} ({cur})</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <SkeletonRows />
                                 ) : reportData.length === 0 ? (
-                                    <TableRow><TableCell colSpan={TABLE_COLS} className="py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No records found</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={TABLE_COLS} className="py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_records_found")}</TableCell></TableRow>
                                 ) : reportData.map((row) => (
                                     <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
                                         <TableCell className="py-3">
@@ -208,9 +212,9 @@ export default function ReportPage() {
 
                     {/* Footer */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                        <div>Showing {reportData.length} {reportData.length === 1 ? "entry" : "entries"}</div>
+                        <div>{t("showing")} {reportData.length} {reportData.length === 1 ? t("entry") : t("entries")}</div>
                         <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Grand Total:</span>
+                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{t("grand_total")}:</span>
                             <span className={cn(
                                 "px-4 py-1.5 rounded-[10px] font-bold text-sm tabular-nums shadow-sm",
                                 activeReport === "income" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"

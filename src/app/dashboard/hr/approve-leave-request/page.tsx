@@ -45,7 +45,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -86,7 +87,8 @@ interface Meta {
 }
 
 export default function ApproveLeaveRequestPage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [keyword, setKeyword] = useState("");
     const [requests, setRequests] = useState<LeaveRequest[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
@@ -141,7 +143,7 @@ export default function ApproveLeaveRequestPage() {
             }
         } catch (error) {
             console.error(error);
-            toast("error", "Failed to load leave requests");
+            tt.error("failed_to_load_leave_requests");
         } finally {
             setLoading(false);
         }
@@ -159,14 +161,14 @@ export default function ApproveLeaveRequestPage() {
                 admin_remark: adminRemark
             });
             if (res.data?.success) {
-                toast("success", `Leave request ${status.toLowerCase()} successfully`);
+                tt.success(status === "Approved" ? "leave_request_approved" : "leave_request_disapproved");
                 setIsViewOpen(false);
                 fetchRequests();
                 setAdminRemark("");
             }
         } catch (error) {
             const err = error as { response?: { data?: { message?: string }, status?: number } };
-            toast("error", err.response?.data?.message || "Failed to update status");
+            tt.error(err.response?.data?.message || "failed_to_update_status");
         } finally {
             setUpdateLoading(false);
         }
@@ -181,7 +183,7 @@ export default function ApproveLeaveRequestPage() {
         if (!requests.length) return;
         const text = requests.map(r => `${r.staff}\t${r.leaveType}\t${r.leaveDate}\t${r.days}\t${r.status}`).join('\n');
         navigator.clipboard.writeText("Staff\tLeave Type\tLeave Date\tDays\tStatus\n" + text);
-        toast("success", "Copied to clipboard!");
+        tt.success("copied_to_clipboard");
     };
 
     const handleExportCSV = () => {
@@ -193,7 +195,7 @@ export default function ApproveLeaveRequestPage() {
             "Status": r.status
         })));
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Leave Approvals");
+        XLSX.utils.book_append_sheet(wb, ws, t("leave_approvals"));
         XLSX.writeFile(wb, "leave_approvals.xlsx");
     };
 
@@ -202,13 +204,13 @@ export default function ApproveLeaveRequestPage() {
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             <div className="flex justify-between items-center">
-                <h1 className="text-xl font-medium text-gray-800">Approve Leave Request</h1>
+                <h1 className="text-xl font-medium text-gray-800">{t("approve_leave_request")}</h1>
                 <Button
                     onClick={() => window.history.back()}
                     variant="outline"
                     className="gap-2 h-9 px-6 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-white shadow-sm flex items-center"
                 >
-                    <History className="h-4 w-4" /> Back
+                    <History className="h-4 w-4" /> {t("back")}
                 </Button>
             </div>
 
@@ -218,15 +220,15 @@ export default function ApproveLeaveRequestPage() {
                         <CalendarCheck className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Approve Leave Request</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{meta?.total ?? requests.length} request(s)</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("approve_leave_request")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("x_requests", { count: meta?.total ?? requests.length })}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="flex items-center gap-2 w-full md:w-auto">
                             <Input
-                                placeholder="Search..."
+                                placeholder={t("search_dotdotdot")}
                                 value={keyword}
                                 onChange={(e) => setKeyword(e.target.value)}
                                 onKeyDown={e => e.key === "Enter" && handleSearch()}
@@ -239,7 +241,7 @@ export default function ApproveLeaveRequestPage() {
                                 className="gap-2 h-8 px-6 text-[11px] font-bold uppercase rounded shadow-sm flex items-center"
                             >
                                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                                Search
+                                {t("search")}
                             </Button>
                         </div>
 
@@ -280,8 +282,8 @@ export default function ApproveLeaveRequestPage() {
                         <Table>
                             <TableHeader className="bg-gray-50/50">
                                 <TableRow className="hover:bg-transparent border-gray-100">
-                                    {["Staff", "Leave Type", "Half Day", "Leave Date", "Days", "Apply Date", "Status", "Action"].map(h => (
-                                        <TableHead key={h} className={`text-[10px] font-bold uppercase text-gray-600 py-3 ${h === "Action" ? "text-right" : ""}`}>{h}</TableHead>
+                                    {["staff", "leave_type", "half_day", "leave_date", "days", "apply_date", "status", "action"].map(h => (
+                                        <TableHead key={h} className={`text-[10px] font-bold uppercase text-gray-600 py-3 ${h === "action" ? "text-right" : ""}`}>{t(h)}</TableHead>
                                     ))}
                                 </TableRow>
                             </TableHeader>
@@ -289,7 +291,7 @@ export default function ApproveLeaveRequestPage() {
                                 {loading ? (
                                     <TableSkeleton rows={5} cols={8} />
                                 ) : requests.length === 0 ? (
-                                    <TableRow><TableCell colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell></TableRow>
                                 ) : requests.map((req) => (
                                     <TableRow key={req.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
                                         <TableCell className="py-3.5 text-gray-700 font-medium">{req.staff}</TableCell>
@@ -305,7 +307,7 @@ export default function ApproveLeaveRequestPage() {
                                                 req.status === "Approved" && "bg-green-600 text-white",
                                                 req.status === "Disapproved" && "bg-red-600 text-white"
                                             )}>
-                                                {req.status}
+                                                {req.status === "Pending" ? t("pending") : req.status === "Approved" ? t("approved") : t("disapproved")}
                                             </span>
                                         </TableCell>
                                         <TableCell className="py-3.5 text-right">
@@ -314,7 +316,7 @@ export default function ApproveLeaveRequestPage() {
                                                     size="icon"
                                                     variant="ghost"
                                                     className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors shadow-sm"
-                                                    title="View & Approve"
+                                                    title={t("view_and_approve")}
                                                     onClick={() => {
                                                         setSelectedRequest(req);
                                                         setAdminRemark(req.adminRemark || "");
@@ -374,54 +376,54 @@ export default function ApproveLeaveRequestPage() {
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
                 <DialogContent className="sm:max-w-[500px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-lg">
                     <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-4 text-white">
-                        <DialogTitle className="text-sm font-bold uppercase tracking-wider">Review Leave Request</DialogTitle>
+                        <DialogTitle className="text-sm font-bold uppercase tracking-wider">{t("review_leave_request")}</DialogTitle>
                     </DialogHeader>
                     {selectedRequest && (
                         <div className="p-6 space-y-6">
                             <div className="grid grid-cols-2 gap-6 text-sm">
                                 <div className="space-y-1">
-                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Staff</span>
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("staff")}</span>
                                     <span className="text-gray-800 font-semibold">{selectedRequest.staff}</span>
                                 </div>
                                 <div className="space-y-1">
-                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Leave Type</span>
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("leave_type")}</span>
                                     <span className="text-gray-800 font-semibold">{selectedRequest.leaveType}</span>
                                 </div>
                                 <div className="space-y-1">
-                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Leave Date</span>
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("leave_date")}</span>
                                     <span className="text-gray-800 font-medium">{selectedRequest.leaveDate}</span>
                                 </div>
                                 <div className="space-y-1">
-                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Days</span>
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("days")}</span>
                                     <span className="text-gray-800 font-bold text-indigo-600">{selectedRequest.days}</span>
                                 </div>
                                 <div className="col-span-2 space-y-1.5">
-                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">Current Status</span>
+                                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("current_status")}</span>
                                     <span className={cn(
                                         "text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter inline-block shadow-sm",
                                         selectedRequest.status === "Pending" && "bg-orange-500 text-white",
                                         selectedRequest.status === "Approved" && "bg-green-600 text-white",
                                         selectedRequest.status === "Disapproved" && "bg-red-600 text-white"
                                     )}>
-                                        {selectedRequest.status}
+                                        {selectedRequest.status === "Pending" ? t("pending") : selectedRequest.status === "Approved" ? t("approved") : t("disapproved")}
                                     </span>
                                 </div>
                             </div>
 
                             <div className="pt-4 border-t border-gray-100">
-                                <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest mb-2">Reason for Leave</span>
+                                <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest mb-2">{t("reason_for_leave")}</span>
                                 <div className="text-[12px] text-gray-700 bg-gray-50 p-4 rounded-lg border border-gray-100 leading-relaxed italic shadow-inner">
-                                    {selectedRequest.reason || 'No reason provided.'}
+                                    {selectedRequest.reason || t("no_reason_provided")}
                                 </div>
                             </div>
 
                             <div className="pt-4 border-t border-gray-100 space-y-3">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Admin Remark / Feedback</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("admin_remark_feedback")}</Label>
                                 <Textarea
                                     value={adminRemark}
                                     onChange={(e) => setAdminRemark(e.target.value)}
                                     className="text-xs resize-none h-24 border-gray-200 rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500"
-                                    placeholder="Add notes about your decision..."
+                                    placeholder={t("add_notes_about_decision")}
                                 />
                             </div>
 
@@ -433,7 +435,7 @@ export default function ApproveLeaveRequestPage() {
                                         variant="outline"
                                         className="h-10 text-[11px] font-bold uppercase tracking-widest rounded-lg border-red-200 text-red-600 hover:bg-red-50 gap-2"
                                     >
-                                        <XCircle className="h-4 w-4" /> Disapprove
+                                        <XCircle className="h-4 w-4" /> {t("disapprove")}
                                     </Button>
                                     <Button
                                         onClick={() => handleUpdateStatus(selectedRequest.id, "Approved")}
@@ -441,7 +443,7 @@ export default function ApproveLeaveRequestPage() {
                                         variant="gradient"
                                         className="h-10 text-[11px] font-bold uppercase tracking-widest rounded-lg gap-2 shadow-md"
                                     >
-                                        <CheckCircle className="h-4 w-4" /> Approve
+                                        <CheckCircle className="h-4 w-4" /> {t("approve")}
                                     </Button>
                                 </div>
                             ) : (
@@ -451,7 +453,7 @@ export default function ApproveLeaveRequestPage() {
                                         variant="outline"
                                         className="w-full h-10 text-[11px] font-bold uppercase tracking-widest rounded-lg"
                                     >
-                                        Close
+                                        {t("close")}
                                     </Button>
                                 </div>
                             )}

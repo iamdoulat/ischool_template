@@ -43,6 +43,8 @@ export function AboutSection({ about }: { about?: { section_title?: string; sect
                             <img
                                 src={about?.image_url || "https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1000&auto=format&fit=crop"}
                                 alt="About"
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-105"
                             />
                         </div>

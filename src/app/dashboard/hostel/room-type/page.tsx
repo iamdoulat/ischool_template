@@ -36,7 +36,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -67,7 +68,8 @@ function SkeletonRows({ rows = 6, cols }: { rows?: number; cols: number }) {
 }
 
 export default function RoomTypePage() {
-    const { toast } = useToast();
+    const { t } = useTranslation();
+    const tt = useTranslateToast();
     const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
@@ -89,7 +91,7 @@ export default function RoomTypePage() {
             const res = await api.get("/room-types");
             setRoomTypes(res.data.data || []);
         } catch (error) {
-            toast("error", "Failed to fetch room types");
+            tt.error("failed_to_fetch_room_types");
         } finally {
             setFetching(false);
         }
@@ -101,7 +103,7 @@ export default function RoomTypePage() {
 
     const handleSave = async () => {
         if (!form.name) {
-            toast("error", "Please fill required fields");
+            tt.error("please_fill_required_fields");
             return;
         }
 
@@ -109,15 +111,15 @@ export default function RoomTypePage() {
         try {
             if (form.id) {
                 await api.put(`/room-types/${form.id}`, form);
-                toast("success", "Room type updated successfully");
+                tt.success("room_type_updated_successfully");
             } else {
                 await api.post("/room-types", form);
-                toast("success", "Room type created successfully");
+                tt.success("room_type_created_successfully");
             }
             setForm({ id: null, name: "", description: "" });
             fetchRoomTypes();
         } catch (error) {
-            toast("error", "Failed to save room type");
+            tt.error("failed_to_save_room_type");
         } finally {
             setLoading(false);
         }
@@ -133,13 +135,13 @@ export default function RoomTypePage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this room type?")) return;
+        if (!confirm(t("are_you_sure_delete_room_type"))) return;
         try {
             await api.delete(`/room-types/${id}`);
-            toast("success", "Room type deleted successfully");
+            tt.success("room_type_deleted_successfully");
             fetchRoomTypes();
         } catch (error) {
-            toast("error", "Failed to delete room type");
+            tt.error("failed_to_delete_room_type");
         }
     };
 
@@ -154,8 +156,8 @@ export default function RoomTypePage() {
 
     const exportToExcel = () => {
         const data = filteredTypes.map(t => ({
-            'Room Type': t.name,
-            'Description': t.description
+            [t("room_type")]: t.name,
+            [t("description")]: t.description
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -165,9 +167,9 @@ export default function RoomTypePage() {
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Room Type List", 14, 15);
+        doc.text(t("room_type_list"), 14, 15);
         autoTable(doc, {
-            head: [['Room Type', 'Description']],
+            head: [[t("room_type"), t("description")]],
             body: filteredTypes.map(t => [t.name, t.description]),
             startY: 20,
         });
@@ -177,7 +179,7 @@ export default function RoomTypePage() {
     const copyToClipboard = () => {
         const text = filteredTypes.map(t => `${t.name}\t${t.description}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast("success", "Copied to clipboard");
+        tt.success("copied_to_clipboard");
     };
 
     return (
@@ -191,14 +193,14 @@ export default function RoomTypePage() {
                                 <BedDouble className="h-5 w-5" />
                             </span>
                             <div className="min-w-0">
-                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{form.id ? "Edit Room Type" : "Add Room Type"}</h2>
-                                <p className="text-[11px] text-gray-500">Room type master record</p>
+                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{form.id ? t("edit_room_type") : t("add_room_type")}</h2>
+                                <p className="text-[11px] text-gray-500">{t("room_type_master_record")}</p>
                             </div>
                         </div>
                         <div className="p-4 space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Room Type <span className="text-red-500 font-bold">*</span>
+                                    {t("room_type")} <span className="text-red-500 font-bold">*</span>
                                 </Label>
                                 <Input
                                     value={form.name}
@@ -209,7 +211,7 @@ export default function RoomTypePage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Description</Label>
+                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("description")}</Label>
                                 <Textarea
                                     value={form.description}
                                     onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -225,7 +227,7 @@ export default function RoomTypePage() {
                                     variant="gradient"
                                     className="px-8 h-10 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg min-w-[100px]"
                                 >
-                                    {loading ? "Saving..." : "Save"}
+                                    {loading ? t("saving") : t("save")}
                                 </Button>
                             </div>
                         </div>
@@ -240,8 +242,8 @@ export default function RoomTypePage() {
                                 <BedDouble className="h-5 w-5" />
                             </span>
                             <div className="min-w-0">
-                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Room Type List</h2>
-                                <p className="text-[11px] text-gray-500">{filteredTypes.length} room type{filteredTypes.length === 1 ? "" : "s"}</p>
+                                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{t("room_type_list")}</h2>
+                                <p className="text-[11px] text-gray-500">{t("x_room_types", { count: filteredTypes.length })}</p>
                             </div>
                         </div>
                         <div className="p-4 space-y-4">
@@ -250,7 +252,7 @@ export default function RoomTypePage() {
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
                             <div className="relative w-full md:w-64">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder={t("search")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
@@ -297,9 +299,9 @@ export default function RoomTypePage() {
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                            <div className="flex items-center gap-1 cursor-pointer">Room Type <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                            <div className="flex items-center gap-1 cursor-pointer">{t("room_type")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -307,7 +309,7 @@ export default function RoomTypePage() {
                                         <SkeletonRows cols={2} />
                                     ) : paginatedTypes.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={2} className="text-center py-10 text-gray-400 italic">No room types found</TableCell>
+                                            <TableCell colSpan={2} className="text-center py-10 text-gray-400 italic">{t("no_room_types_found")}</TableCell>
                                         </TableRow>
                                     ) : (
                                         paginatedTypes.map((type) => (
@@ -334,7 +336,7 @@ export default function RoomTypePage() {
                         {totalPages > 1 && (
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-4 border-t border-gray-100">
                                 <div>
-                                    Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTypes.length)} of {filteredTypes.length} entries
+                                    {t("showing_x_to_y_of_z", { from: startIndex + 1, to: Math.min(startIndex + itemsPerPage, filteredTypes.length), total: filteredTypes.length })}
                                 </div>
                                 <div className="flex gap-1.5 items-center">
                                     <Button

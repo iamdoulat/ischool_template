@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useCurrency } from "@/components/providers/currency-provider";
+import { useTranslation } from "@/hooks/use-translation";
 import {
     Printer, CreditCard, Copy, FileSpreadsheet, FileDown,
     User, Loader2, Wallet, ArrowLeft, ChevronRight, Receipt,
@@ -61,6 +62,7 @@ const fmt = (n: number) =>
     n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function StatusBadge({ status }: { status: string }) {
+    const { t } = useTranslation();
     const map: Record<string, string> = {
         Paid: "bg-green-100 text-green-700 border-green-200",
         Unpaid: "bg-red-100 text-red-600 border-red-200",
@@ -68,7 +70,7 @@ function StatusBadge({ status }: { status: string }) {
     };
     return (
         <span className={cn("px-2 py-0.5 text-[10px] font-bold rounded-full uppercase border", map[status] ?? "bg-gray-100 text-gray-600 border-gray-200")}>
-            {status}
+            {t(status.toLowerCase())}
         </span>
     );
 }
@@ -92,6 +94,7 @@ function CountUp({ value, prefix }: { value: number; prefix: string }) {
 }
 
 export default function StudentFeesPage() {
+    const { t } = useTranslation();
     const [data, setData] = useState<FeesData | null>(null);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<number[]>([]);
@@ -106,10 +109,10 @@ export default function StudentFeesPage() {
                 if (res.data.success) {
                     setData(res.data.data);
                 } else {
-                    toast({ variant: "destructive", title: "Error", description: res.data.message || "Failed to load fees." });
+                    toast({ variant: "destructive", title: t("error"), description: res.data.message || t("failed_to_load_fees") });
                 }
             } catch {
-                toast({ variant: "destructive", title: "Error", description: "Failed to load fees." });
+                toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_fees") });
             } finally {
                 setLoading(false);
             }
@@ -172,13 +175,13 @@ export default function StudentFeesPage() {
             [`${f.name} (${f.code})`, f.due_date, f.status, fmt(f.amount), fmt(f.paid_amount), fmt(f.balance)].join("\t")
         ).join("\n");
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied to clipboard" });
-    }, [fees, toast]);
+        toast({ title: t("copied_to_clipboard") });
+    }, [fees, toast, t]);
 
     if (loading) {
         return (
             <div className="flex h-[400px] items-center justify-center gap-2 text-gray-400">
-                <Loader2 className="h-6 w-6 animate-spin" /> <span>Loading fees...</span>
+                <Loader2 className="h-6 w-6 animate-spin" /> <span>{t("loading_fees")}</span>
             </div>
         );
     }
@@ -189,7 +192,7 @@ export default function StudentFeesPage() {
                 <Card className="shadow-sm">
                     <CardContent className="flex flex-col items-center justify-center py-16 text-gray-400">
                         <Wallet className="h-12 w-12 opacity-30 mb-3" />
-                        <p className="text-base font-medium text-gray-500">No fee records found.</p>
+                        <p className="text-base font-medium text-gray-500">{t("no_fee_records_found")}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -203,9 +206,9 @@ export default function StudentFeesPage() {
             {/* ── Summary stat cards ── */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
-                    { label: "Total Fees", value: totals.amount, color: "from-[#6366F1] to-[#818cf8]", icon: Wallet },
-                    { label: "Total Paid", value: totals.paid, color: "from-[#10b981] to-[#34d399]", icon: CreditCard },
-                    { label: "Balance Due", value: totals.balance, color: "from-[#FF9800] to-[#fb923c]", icon: Receipt },
+                    { label: t("total_fees"), value: totals.amount, color: "from-[#6366F1] to-[#818cf8]", icon: Wallet },
+                    { label: t("total_paid"), value: totals.paid, color: "from-[#10b981] to-[#34d399]", icon: CreditCard },
+                    { label: t("balance_due"), value: totals.balance, color: "from-[#FF9800] to-[#fb923c]", icon: Receipt },
                 ].map((s) => (
                     <div key={s.label} className={cn("relative overflow-hidden rounded-xl p-4 text-white shadow-md bg-gradient-to-r", s.color)}>
                         <s.icon className="absolute -top-3 -right-3 h-20 w-20 text-white/15 rotate-12 pointer-events-none" />
@@ -220,12 +223,12 @@ export default function StudentFeesPage() {
             {/* ── Student Info Card ── */}
             <Card className="shadow-sm border-0 p-0 gap-0 overflow-hidden">
                 <div className="px-4 py-2.5 flex items-center justify-between border-b border-gray-200 bg-white">
-                    <h3 className="text-[15px] font-bold text-gray-800">Student Fees</h3>
+                    <h3 className="text-[15px] font-bold text-gray-800">{t("student_fees")}</h3>
                     <Link
                         href="/user/dashboard"
                         className="flex items-center gap-1 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1.5 rounded-[10px] hover:opacity-90 transition-opacity"
                     >
-                        <ArrowLeft className="h-3.5 w-3.5" /> Back
+                        <ArrowLeft className="h-3.5 w-3.5" /> {t("back")}
                     </Link>
                 </div>
                 <CardContent className="p-4">
@@ -237,14 +240,14 @@ export default function StudentFeesPage() {
                         </div>
                         <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2 text-sm">
                             {[
-                                ["Name", student.name, "text-[#6366F1] font-semibold", true],
-                                ["Class (Section)", student.class_section, "text-gray-800", true],
-                                ["Father Name", student.father_name || "—", "text-[#6366F1] font-medium", true],
-                                ["Admission No", student.admission_no || "—", "text-gray-800", true],
-                                ["Mobile Number", student.mobile || "—", "text-gray-800", true],
-                                ["Roll Number", student.roll_no || "—", "text-gray-800", true],
-                                ["Category", student.category || "—", "text-gray-800", true],
-                                ["RTE", student.rte, "text-red-500 font-semibold", true],
+                                [t("name"), student.name, "text-[#6366F1] font-semibold", true],
+                                [t("class_section"), student.class_section, "text-gray-800", true],
+                                [t("father_name"), student.father_name || "—", "text-[#6366F1] font-medium", true],
+                                [t("admission_no"), student.admission_no || "—", "text-gray-800", true],
+                                [t("mobile_number"), student.mobile || "—", "text-gray-800", true],
+                                [t("roll_number"), student.roll_no || "—", "text-gray-800", true],
+                                [t("category"), student.category || "—", "text-gray-800", true],
+                                [t("rte"), student.rte, "text-red-500 font-semibold", true],
                             ].map(([label, value, cls, boldLabel]) => (
                                 <div key={label as string}>
                                     <span className={boldLabel ? "text-gray-700 font-bold text-sm" : "text-gray-500 text-xs"}>{label}</span>
@@ -259,7 +262,7 @@ export default function StudentFeesPage() {
             {/* ── Fees Table Card ── */}
             <Card className="shadow-sm border-0 p-0 gap-0 overflow-hidden">
                 <div className="px-4 py-2.5 flex items-center border-b border-gray-200 bg-white">
-                    <h3 className="text-[15px] font-bold text-gray-800">Fees Details</h3>
+                    <h3 className="text-[15px] font-bold text-gray-800">{t("fees_details")}</h3>
                 </div>
 
                 <CardContent className="p-0">
@@ -271,19 +274,19 @@ export default function StudentFeesPage() {
                                 className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1.5 rounded-[10px] hover:opacity-90 transition-opacity disabled:opacity-40"
                                 disabled={selected.length === 0}
                             >
-                                <Printer className="h-3.5 w-3.5" /> Print Selected
+                                <Printer className="h-3.5 w-3.5" /> {t("print_selected")}
                             </button>
                             <button
-                                onClick={() => toast({ title: "Online payment", description: "Payment gateway coming soon." })}
+                                onClick={() => toast({ title: t("online_payment"), description: t("payment_gateway_coming_soon") })}
                                 className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1.5 rounded-[10px] hover:opacity-90 transition-opacity disabled:opacity-40"
                                 disabled={selected.length === 0}
                             >
-                                <CreditCard className="h-3.5 w-3.5" /> Pay Selected
+                                <CreditCard className="h-3.5 w-3.5" /> {t("pay_selected")}
                             </button>
                         </div>
 
                         <span className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold px-4 py-1.5 rounded-[10px] shadow-sm mx-auto">
-                            Session: {session || "—"}
+                            {t("session")}: {session || "—"}
                         </span>
 
                         <div className="w-0 sm:w-[1px]" />
@@ -292,10 +295,10 @@ export default function StudentFeesPage() {
                     {/* Export Icons */}
                     <div className="flex justify-end gap-1 px-4 py-2 border-b border-gray-100">
                         {[
-                            { icon: Copy, label: "Copy", action: copyToClipboard },
-                            { icon: FileSpreadsheet, label: "Excel", action: exportToExcel },
-                            { icon: FileDown, label: "PDF", action: exportToPDF },
-                            { icon: Printer, label: "Print", action: () => window.print() },
+                            { icon: Copy, label: t("copy"), action: copyToClipboard },
+                            { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
+                            { icon: FileDown, label: t("pdf"), action: exportToPDF },
+                            { icon: Printer, label: t("print"), action: () => window.print() },
                         ].map(({ icon: Icon, label, action }) => (
                             <Button key={label} variant="ghost" size="icon" title={label} onClick={action}
                                 className="h-8 w-8 rounded hover:bg-gray-100 text-gray-500">
@@ -312,22 +315,22 @@ export default function StudentFeesPage() {
                                     <th className="w-8 px-2 py-3 text-center">
                                         <input type="checkbox" checked={allChecked} onChange={toggleAll} className="rounded cursor-pointer accent-[#6366F1]" />
                                     </th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700 min-w-[180px]">Fees</th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700 whitespace-nowrap">Due Date</th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700">Status</th>
-                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">Amount ({cur})</th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700 whitespace-nowrap">Payment ID</th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700">Mode</th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700">Date</th>
-                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">Discount ({cur})</th>
-                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">Fine ({cur})</th>
-                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">Paid ({cur})</th>
-                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">Balance ({cur})</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 min-w-[180px]">{t("fees")}</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 whitespace-nowrap">{t("due_date")}</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700">{t("status")}</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">{t("amount")} ({cur})</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 whitespace-nowrap">{t("payment_id")}</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700">{t("mode")}</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700">{t("date")}</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">{t("discount")} ({cur})</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">{t("fine")} ({cur})</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">{t("paid")} ({cur})</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">{t("balance")} ({cur})</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {fees.length === 0 ? (
-                                    <tr><td colSpan={12} className="text-center py-10 text-gray-400">No fees assigned.</td></tr>
+                                    <tr><td colSpan={12} className="text-center py-10 text-gray-400">{t("no_fees_assigned")}</td></tr>
                                 ) : (
                                     fees.map((fee, idx) => {
                                         const checked = selected.includes(fee.id);
@@ -347,7 +350,7 @@ export default function StudentFeesPage() {
                                 {fees.length > 0 && (
                                     <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
                                         <td></td>
-                                        <td className="px-2 py-3 text-sm text-gray-700" colSpan={3}>Grand Total</td>
+                                        <td className="px-2 py-3 text-sm text-gray-700" colSpan={3}>{t("grand_total")}</td>
                                         <td className="px-2 py-3 text-right text-gray-800 whitespace-nowrap">
                                             {cur}{fmt(totals.amount)}
                                             {totals.fine > 0 && <span className="text-orange-500 ml-1">+ {fmt(totals.fine)}</span>}

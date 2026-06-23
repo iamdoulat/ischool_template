@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -117,6 +118,8 @@ export default function QrCodeSettingPage() {
         notify_whatsapp: false
     });
 
+    const { t } = useTranslation();
+
     useEffect(() => {
         fetchSettings();
     }, []);
@@ -144,7 +147,7 @@ export default function QrCodeSettingPage() {
                 });
             }
         } catch {
-            toast.error("Failed to load settings");
+            toast.error(t("failed_to_load_settings"));
         } finally {
             setLoading(false);
         }
@@ -156,9 +159,9 @@ export default function QrCodeSettingPage() {
         try {
             const response = await api.post('/attendance/discover-cameras', { subnet: scanSubnet });
             setDiscoveredCameras(response.data.data || []);
-            toast.success(`Scan complete: ${response.data.message || 'cameras found'}`);
+            toast.success(t("scan_complete_cameras_found", { message: response.data.message || 'cameras found' }));
         } catch {
-            toast.error("Network scan failed");
+            toast.error(t("network_scan_failed"));
         } finally {
             setScanning(false);
         }
@@ -167,16 +170,16 @@ export default function QrCodeSettingPage() {
     const selectCamera = (camera: any) => {
         setSettings({ ...settings, ip_camera_url: camera.ip, ip_camera_brand: camera.brand === 'generic' ? 'generic' : camera.brand });
         setScanDialogOpen(false);
-        toast.success(`Selected: ${camera.name}`);
+        toast.success(t("selected_camera", { name: camera.name }));
     };
 
     const handleSave = async () => {
         setSaving(true);
         try {
             await api.post('/attendance/qr-settings', settings);
-            toast.success("QR Attendance settings updated");
+            toast.success(t("qr_attendance_settings_updated"));
         } catch {
-            toast.error("Failed to save settings");
+            toast.error(t("failed_to_save_settings"));
         } finally {
             setSaving(false);
         }
@@ -192,8 +195,8 @@ export default function QrCodeSettingPage() {
                             <Settings2 className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">QR Attendance Protocol</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Configure hardware interfaces & automated attendance logic</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("qr_attendance_protocol")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("configure_hardware_interfaces")}</p>
                         </div>
                     </div>
                     <Button
@@ -201,7 +204,7 @@ export default function QrCodeSettingPage() {
                         disabled={saving || loading}
                         className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
                     >
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("save")}
                     </Button>
                 </CardHeader>
             </Card>
@@ -220,7 +223,7 @@ export default function QrCodeSettingPage() {
                                 <Monitor className="h-4 w-4" />
                             </span>
                             <div>
-                                <CardTitle className="text-sm font-bold text-slate-800 leading-none">Hardware Configuration</CardTitle>
+                                <CardTitle className="text-sm font-bold text-slate-800 leading-none">{t("hardware_configuration")}</CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent className="p-4 space-y-5">
@@ -237,7 +240,7 @@ export default function QrCodeSettingPage() {
                                         <ScanLine className={cn("h-4 w-4", settings.use_sensor_device ? "text-indigo-600" : "text-gray-400")} />
                                         <Checkbox checked={settings.use_sensor_device} className="data-[state=checked]:bg-indigo-600 h-3 w-3" />
                                     </div>
-                                    <h4 className="text-[10px] font-bold uppercase text-gray-800">HID / NFC Sensor</h4>
+                                    <h4 className="text-[10px] font-bold uppercase text-gray-800">{t("hid_nfc_sensor")}</h4>
                                 </div>
 
                                 <div
@@ -251,35 +254,35 @@ export default function QrCodeSettingPage() {
                                         <Camera className={cn("h-4 w-4", settings.use_camera_device ? "text-indigo-600" : "text-gray-400")} />
                                         <Checkbox checked={settings.use_camera_device} className="data-[state=checked]:bg-indigo-600 h-3 w-3" />
                                     </div>
-                                    <h4 className="text-[10px] font-bold uppercase text-gray-800">Visual Camera</h4>
+                                    <h4 className="text-[10px] font-bold uppercase text-gray-800">{t("visual_camera")}</h4>
                                 </div>
                             </div>
 
                             {/* Camera Source */}
                             {settings.use_camera_device && (
                                 <div className="space-y-3 pt-2 border-t border-gray-100">
-                                    <Label className="text-[10px] font-bold text-gray-600 uppercase">Camera Source</Label>
+                                    <Label className="text-[10px] font-bold text-gray-600 uppercase">{t("camera_source")}</Label>
                                     <div className="flex gap-4">
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input type="radio" name="camera_type" value="primary" checked={settings.camera_type === 'primary'} onChange={(e) => setSettings({ ...settings, camera_type: e.target.value })} className="text-indigo-600" />
-                                            <span className="text-[11px] font-medium text-gray-700">Back/Primary</span>
+                                            <span className="text-[11px] font-medium text-gray-700">{t("back_primary")}</span>
                                         </label>
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input type="radio" name="camera_type" value="secondary" checked={settings.camera_type === 'secondary'} onChange={(e) => setSettings({ ...settings, camera_type: e.target.value })} className="text-indigo-600" />
-                                            <span className="text-[11px] font-medium text-gray-700">Front/Secondary</span>
+                                            <span className="text-[11px] font-medium text-gray-700">{t("front_secondary")}</span>
                                         </label>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-bold text-gray-600 uppercase">Camera Manufacturer</Label>
+                                            <Label className="text-[10px] font-bold text-gray-600 uppercase">{t("camera_manufacturer")}</Label>
                                             <Select value={settings.ip_camera_brand} onValueChange={(val) => setSettings({ ...settings, ip_camera_brand: val })}>
                                                 <SelectTrigger className="h-8 text-[11px]">
-                                                    <SelectValue placeholder="Select Brand" />
+                                                    <SelectValue placeholder={t("select_brand")} />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="generic">Generic / Direct Stream</SelectItem>
-                                                    <SelectItem value="onvif">ONVIF Standard</SelectItem>
+                                                    <SelectItem value="generic">{t("generic_direct_stream")}</SelectItem>
+                                                    <SelectItem value="onvif">{t("onvif_standard")}</SelectItem>
                                                     <SelectItem value="hikvision">Hikvision</SelectItem>
                                                     <SelectItem value="dahua">Dahua</SelectItem>
                                                     <SelectItem value="zk">ZK (ZKTeco)</SelectItem>
@@ -291,10 +294,10 @@ export default function QrCodeSettingPage() {
                                         </div>
 
                                         <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-bold text-gray-600 uppercase">RTSP Transport</Label>
+                                            <Label className="text-[10px] font-bold text-gray-600 uppercase">{t("rtsp_transport")}</Label>
                                             <Select value={settings.ip_camera_rtsp_transport} onValueChange={(val) => setSettings({ ...settings, ip_camera_rtsp_transport: val })}>
                                                 <SelectTrigger className="h-8 text-[11px]">
-                                                    <SelectValue placeholder="Protocol" />
+                                                    <SelectValue placeholder={t("protocol")} />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="auto">Auto</SelectItem>
@@ -308,77 +311,76 @@ export default function QrCodeSettingPage() {
 
                                     <div className="space-y-1.5">
                                         <Label className="text-[10px] font-bold text-gray-600 uppercase flex items-center gap-1.5">
-                                            <Wifi className="h-3 w-3 text-gray-400" /> IP Camera Address / URL
+                                            <Wifi className="h-3 w-3 text-gray-400" /> {t("ip_camera_address_url")}
                                         </Label>
                                         <div className="flex gap-2">
                                             <Input
                                                 value={settings.ip_camera_url}
                                                 onChange={(e) => setSettings({ ...settings, ip_camera_url: e.target.value })}
-                                                placeholder="e.g. 192.168.1.100 or full http:// stream URL"
+                                                placeholder={t("ip_camera_address_placeholder")}
                                                 className="h-8 text-[11px] flex-1"
                                             />
                                             <Dialog open={scanDialogOpen} onOpenChange={setScanDialogOpen}>
                                                 <DialogTrigger asChild>
                                                     <Button type="button" variant="outline" className="h-8 text-[10px] border-indigo-200 text-indigo-600 hover:bg-indigo-50 flex gap-1 items-center px-2">
-                                                        <Network className="h-3 w-3" /> Scan
+                                                        <Network className="h-3 w-3" /> {t("scan")}
                                                     </Button>
                                                 </DialogTrigger>
                                                 <DialogContent className="sm:max-w-lg">
                                                     <DialogHeader>
                                                         <DialogTitle className="text-sm flex items-center gap-2">
                                                             <Search className="h-4 w-4 text-indigo-500" />
-                                                            Scan Network for IP Cameras
+                                                            {t("scan_network_for_ip_cameras")}
                                                         </DialogTitle>
                                                         <DialogDescription className="text-[11px]">
-                                                            Enter the subnet to scan for IP cameras on common ports (80, 8080, 81).
-                                                            This may take up to 30 seconds for a full /24 scan.
+                                                            {t("enter_subnet_to_scan")}
                                                         </DialogDescription>
                                                     </DialogHeader>
                                                     <div className="space-y-3 py-2">
                                                         <div className="flex items-center gap-2">
-                                                            <Label className="text-[10px] font-bold text-gray-600 whitespace-nowrap">Subnet:</Label>
-                                                            <Input value={scanSubnet} onChange={(e) => setScanSubnet(e.target.value)} placeholder="e.g. 192.168.1" className="h-8 text-[11px] flex-1" disabled={scanning} />
+                                                            <Label className="text-[10px] font-bold text-gray-600 whitespace-nowrap">{t("subnet")}:</Label>
+                                                            <Input value={scanSubnet} onChange={(e) => setScanSubnet(e.target.value)} placeholder={t("subnet_placeholder")} className="h-8 text-[11px] flex-1" disabled={scanning} />
                                                             <Button onClick={handleScanNetwork} disabled={scanning || !scanSubnet} className="h-8 text-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-3 flex gap-1 items-center">
                                                                 {scanning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Network className="h-3 w-3" />}
-                                                                {scanning ? "Scanning..." : "Start Scan"}
+                                                                {scanning ? t("scanning") : t("start_scan")}
                                                             </Button>
                                                         </div>
                                                         {scanning && (
                                                             <div className="flex items-center gap-2 text-[11px] text-indigo-600 animate-pulse">
-                                                                <Loader2 className="h-3 w-3 animate-spin" /> Scanning 254 IPs across 3 ports...
+                                                                <Loader2 className="h-3 w-3 animate-spin" /> {t("scanning_254_ips")}
                                                             </div>
                                                         )}
                                                         {discoveredCameras.length > 0 ? (
                                                             <TableSkeleton />
                                                         ) : !scanning && (
-                                                            <p className="text-[10px] text-gray-400 text-center py-4">No cameras found. Try a different subnet.</p>
+                                                            <p className="text-[10px] text-gray-400 text-center py-4">{t("no_cameras_found_try_different_subnet")}</p>
                                                         )}
                                                     </div>
                                                     <DialogFooter>
-                                                        <Button variant="outline" onClick={() => setScanDialogOpen(false)} className="h-8 text-[10px]">Close</Button>
+                                                        <Button variant="outline" onClick={() => setScanDialogOpen(false)} className="h-8 text-[10px]">{t("close")}</Button>
                                                     </DialogFooter>
                                                 </DialogContent>
                                             </Dialog>
                                         </div>
-                                        <p className="text-[9px] text-gray-400">Leave empty to use local webcams, or use Scan to find IP cameras</p>
+                                        <p className="text-[9px] text-gray-400">{t("leave_empty_to_use_local_webcams")}</p>
                                     </div>
 
                                     {/* IP Camera Auth */}
                                     <div className="space-y-2 pt-2 border-t border-gray-100">
                                         <div className="flex items-center justify-between">
                                             <Label className="text-[10px] font-bold text-gray-600 uppercase flex items-center gap-1.5">
-                                                <ShieldCheck className="h-3 w-3 text-gray-400" /> IP Camera Authentication
+                                                <ShieldCheck className="h-3 w-3 text-gray-400" /> {t("ip_camera_authentication")}
                                             </Label>
                                             <Switch checked={settings.ip_camera_auth_enabled} onCheckedChange={(val) => setSettings({ ...settings, ip_camera_auth_enabled: val })} className="data-[state=checked]:bg-indigo-500 scale-75" />
                                         </div>
                                         {settings.ip_camera_auth_enabled && (
                                             <div className="grid grid-cols-2 gap-2 mt-2">
                                                 <div className="space-y-1.5">
-                                                    <Label className="text-[9px] font-bold text-gray-500 uppercase">Username</Label>
+                                                    <Label className="text-[9px] font-bold text-gray-500 uppercase">{t("username")}</Label>
                                                     <Input value={settings.ip_camera_username || ''} onChange={(e) => setSettings({ ...settings, ip_camera_username: e.target.value })} placeholder="admin" className="h-7 text-[10px]" />
                                                 </div>
                                                 <div className="space-y-1.5">
-                                                    <Label className="text-[9px] font-bold text-gray-500 uppercase">Password</Label>
+                                                    <Label className="text-[9px] font-bold text-gray-500 uppercase">{t("password")}</Label>
                                                     <Input type="password" value={settings.ip_camera_password || ''} onChange={(e) => setSettings({ ...settings, ip_camera_password: e.target.value })} placeholder="••••••••" className="h-7 text-[10px]" />
                                                 </div>
                                             </div>
@@ -396,15 +398,15 @@ export default function QrCodeSettingPage() {
                                 <QrCode className="h-4 w-4" />
                             </span>
                             <div>
-                                <CardTitle className="text-sm font-bold text-slate-800 leading-none">Processing & Notifications</CardTitle>
+                                <CardTitle className="text-sm font-bold text-slate-800 leading-none">{t("processing_notifications")}</CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent className="p-4 space-y-6">
                             {/* Auto Attendance */}
                             <div className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50/30">
                                 <div className="flex flex-col">
-                                    <span className="text-[11px] font-bold text-gray-700 uppercase">Automated Entry</span>
-                                    <span className="text-[10px] text-gray-400">Auto-submit without manual click</span>
+                                    <span className="text-[11px] font-bold text-gray-700 uppercase">{t("automated_entry")}</span>
+                                    <span className="text-[10px] text-gray-400">{t("auto_submit_without_manual_click")}</span>
                                 </div>
                                 <Switch checked={settings.auto_attendance} onCheckedChange={(val) => setSettings({ ...settings, auto_attendance: val })} className="data-[state=checked]:bg-indigo-500" />
                             </div>
@@ -412,16 +414,16 @@ export default function QrCodeSettingPage() {
                             {/* Notification Triggers */}
                             <div className="space-y-3">
                                 <Label className="text-[10px] font-bold text-gray-600 uppercase flex items-center gap-1.5 border-b border-gray-100 pb-2">
-                                    <Bell className="h-3 w-3 text-indigo-500" /> Notification Triggers
+                                    <Bell className="h-3 w-3 text-indigo-500" /> {t("notification_triggers")}
                                 </Label>
                                 <div className="grid grid-cols-2 gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded-lg">
                                         <Checkbox checked={settings.notify_in} onCheckedChange={(val) => setSettings({ ...settings, notify_in: !!val })} className="data-[state=checked]:bg-indigo-600" />
-                                        <span className="text-[11px] font-medium text-gray-700">Attendance IN</span>
+                                        <span className="text-[11px] font-medium text-gray-700">{t("attendance_in")}</span>
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded-lg">
                                         <Checkbox checked={settings.notify_out} onCheckedChange={(val) => setSettings({ ...settings, notify_out: !!val })} className="data-[state=checked]:bg-indigo-600" />
-                                        <span className="text-[11px] font-medium text-gray-700">Attendance OUT</span>
+                                        <span className="text-[11px] font-medium text-gray-700">{t("attendance_out")}</span>
                                     </label>
                                 </div>
                             </div>
@@ -429,7 +431,7 @@ export default function QrCodeSettingPage() {
                             {/* Action Channels */}
                             <div className="space-y-3">
                                 <Label className="text-[10px] font-bold text-gray-600 uppercase border-b border-gray-100 pb-2 flex items-center gap-1.5">
-                                    <MessageSquare className="h-3 w-3 text-emerald-500" /> Action Channels
+                                    <MessageSquare className="h-3 w-3 text-emerald-500" /> {t("action_channels")}
                                 </Label>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div
@@ -443,7 +445,7 @@ export default function QrCodeSettingPage() {
                                             <MessageSquare className={cn("h-4 w-4", settings.notify_sms ? "text-indigo-600" : "text-gray-400")} />
                                             <Checkbox checked={settings.notify_sms} className="data-[state=checked]:bg-indigo-600 h-3 w-3" />
                                         </div>
-                                        <h4 className="text-[10px] font-bold uppercase text-gray-800">Send SMS</h4>
+                                        <h4 className="text-[10px] font-bold uppercase text-gray-800">{t("send_sms")}</h4>
                                     </div>
 
                                     <div
@@ -457,7 +459,7 @@ export default function QrCodeSettingPage() {
                                             <Phone className={cn("h-4 w-4", settings.notify_whatsapp ? "text-emerald-600" : "text-gray-400")} />
                                             <Checkbox checked={settings.notify_whatsapp} className="data-[state=checked]:bg-emerald-600 h-3 w-3" />
                                         </div>
-                                        <h4 className="text-[10px] font-bold uppercase text-gray-800">WhatsApp Alert</h4>
+                                        <h4 className="text-[10px] font-bold uppercase text-gray-800">{t("whatsapp_alert")}</h4>
                                     </div>
                                 </div>
                             </div>
