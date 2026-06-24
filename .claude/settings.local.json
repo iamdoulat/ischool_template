@@ -32,7 +32,9 @@
       "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan config:clear)",
       "Bash(\"/c/Program Files/FlyEnv-Data/app/php-8.3.31/php\" artisan test)",
       "Bash(echo \"=== exit code: $? ===\")",
-      "Bash(echo \"=== exit: $? ===\")"
+      "Bash(echo \"=== exit: $? ===\")",
+      "Bash('/c/Program Files/FlyEnv-Data/app/php-8.3.31/php' artisan tinker '--execute=echo '\\\\''count='\\\\'' . \\\\App\\\\Models\\\\AdmissionEnquiry::count\\(\\); echo PHP_EOL; $col = \\\\DB::selectOne\\(\"SHOW COLUMNS FROM admission_enquiries WHERE Field='\\\\''status'\\\\''\"\\); echo '\\\\''status_type='\\\\'' . $col->Type;')",
+      "Bash('/c/Program Files/FlyEnv-Data/app/php-8.3.31/php' artisan migrate)"
     ]
   }
 }

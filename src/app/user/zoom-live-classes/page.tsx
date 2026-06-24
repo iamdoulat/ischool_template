@@ -104,7 +104,7 @@ export default function UserZoomLiveClassesPage() {
         return (
             <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold", getStatusStyle(status))}>
                 {Icon && <Icon className="h-3 w-3" />}
-                {status}
+                {t(s)}
             </span>
         );
     };
@@ -119,7 +119,7 @@ export default function UserZoomLiveClassesPage() {
                     </span>
                     <div>
                         <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("live_classes")}</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">{totalEntries} class{totalEntries === 1 ? "" : "es"} scheduled</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("classes_scheduled", { count: totalEntries })}</p>
                     </div>
                 </div>
 
@@ -287,7 +287,7 @@ export default function UserZoomLiveClassesPage() {
                                         </div>
                                         <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-gray-600">
                                             <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.date_time}</span>
-                                            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.duration} min</span>
+                                            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.duration} {t("minutes_short")}</span>
                                             <span className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.class}</span>
                                             <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.host}</span>
                                         </div>

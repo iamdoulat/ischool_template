@@ -125,10 +125,12 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
             if (!looksEnglish) result = translations[key];
         }
 
-        // 2. Locale-specific fallbacks (Bengali, etc.)
+        // 2. Locale-specific fallbacks (Bengali, etc.). An intentionally blank
+        //    translation ("") is a valid value, so only skip when the key is
+        //    truly absent — not merely falsy.
         if (result === undefined && langCode !== "en" && langCode) {
             const localeFallbacks = getLocaleFallbacks(langCode);
-            if (localeFallbacks && localeFallbacks[key]) result = localeFallbacks[key];
+            if (localeFallbacks && localeFallbacks[key] !== undefined) result = localeFallbacks[key];
         }
 
         // 3. Built-in English fallbacks
@@ -136,8 +138,9 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
             result = i18nFallbacks[key];
         }
 
-        // 4. Ultimate fallback: humanize the key itself
-        if (!result) {
+        // 4. Ultimate fallback: humanize the key itself (only when truly missing;
+        //    an empty-string translation above is respected as-is).
+        if (result === undefined) {
             result = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
         }
 

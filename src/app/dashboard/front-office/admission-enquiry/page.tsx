@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
     Search,
     Plus,
@@ -19,8 +19,22 @@ import {
     ChevronLeft,
     ChevronRight,
     Users,
-    RefreshCw
+    RefreshCw,
+    Mail,
+    MapPin,
+    User,
+    FileEdit,
+    StickyNote,
+    CalendarDays,
+    CalendarClock,
+    UserCheck,
+    GitBranch,
+    Radio,
+    GraduationCap,
+    Baby,
+    CircleDot
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,7 +61,6 @@ import {
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
     DialogTitle,
     DialogTrigger,
     DialogFooter,
@@ -59,6 +72,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface AdmissionEnquiry {
     id: number;
@@ -88,7 +102,9 @@ export default function AdmissionEnquiryPage() {
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sources, setSources] = useState<any[]>([]);
     const [references, setReferences] = useState<any[]>([]);
+    const [staffList, setStaffList] = useState<{ id: number; name: string; role?: string }[]>([]);
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -96,6 +112,13 @@ export default function AdmissionEnquiryPage() {
     const [editingEnquiry, setEditingEnquiry] = useState<AdmissionEnquiry | null>(null);
     const tt = useTranslateToast();
     const { t } = useTranslation();
+
+    // useTranslateToast() returns a fresh object every render, so depending on it
+    // directly in useCallback recreates the data-fetching callbacks each render —
+    // which made the auto-fetch effect loop forever and left the Search/Save
+    // buttons permanently spinning. Hold the latest helper in a ref instead.
+    const ttRef = useRef(tt);
+    ttRef.current = tt;
 
     // Filters state
     const [filters, setFilters] = useState({
@@ -160,11 +183,11 @@ export default function AdmissionEnquiryPage() {
             setSelectedIds(new Set());
         } catch (error) {
             console.error("Error fetching enquiries:", error);
-            tt.error("failed_to_fetch_enquiries");
+            ttRef.current.error("failed_to_fetch_enquiries");
         } finally {
             setLoading(false);
         }
-    }, [filters, page, limit, debouncedSearch, tt]);
+    }, [filters, page, limit, debouncedSearch]);
 
     const fetchClasses = useCallback(async () => {
         try {
@@ -198,6 +221,19 @@ export default function AdmissionEnquiryPage() {
         }
     }, []);
 
+    // Staff/teachers list for the "Assigned" field (excludes Students/Parents on the backend)
+    const fetchStaff = useCallback(async () => {
+        try {
+            const response = await api.get("/hr/staff-directory", { params: { no_paginate: true, active: "all" } });
+            const data = response.data.data?.data || response.data.data || response.data || [];
+            if (Array.isArray(data)) {
+                setStaffList(data.map((s: { id: number; name: string; role?: string }) => ({ id: s.id, name: s.name, role: s.role })));
+            }
+        } catch (error) {
+            console.error("Error fetching staff:", error);
+        }
+    }, []);
+
     // Debounce the search box → server-side search, reset to first page
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -215,7 +251,8 @@ export default function AdmissionEnquiryPage() {
         fetchClasses();
         fetchSources();
         fetchReferences();
-    }, [fetchClasses, fetchSources, fetchReferences]);
+        fetchStaff();
+    }, [fetchClasses, fetchSources, fetchReferences, fetchStaff]);
 
     const handleSave = async () => {
         if (!formData.name || !formData.phone || !formData.date) {
@@ -223,7 +260,7 @@ export default function AdmissionEnquiryPage() {
             return;
         }
 
-        setLoading(true);
+        setSaving(true);
         try {
             if (editingEnquiry) {
                 await api.put(`/admission-enquiries/${editingEnquiry.id}`, formData);
@@ -239,7 +276,7 @@ export default function AdmissionEnquiryPage() {
         } catch (error: any) {
             tt.error(error.response?.data?.message || "failed_to_save_enquiry");
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
 
@@ -438,26 +475,22 @@ export default function AdmissionEnquiryPage() {
 
                         <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("enquiry_from_date")}</label>
-                            <div className="relative">
-                                <Input
-                                    type="date"
-                                    className="h-10 rounded-lg bg-muted/30 border-muted/50"
-                                    value={filters.from_date}
-                                    onChange={(e) => setFilters({ ...filters, from_date: e.target.value })}
-                                />
-                            </div>
+                            <DatePicker
+                                value={filters.from_date}
+                                onChange={(val) => setFilters({ ...filters, from_date: val })}
+                                placeholder={t("from_date")}
+                                className="h-10 bg-muted/30 border-muted/50 group-hover:border-indigo-200 transition-colors"
+                            />
                         </div>
 
                         <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("enquiry_to_date")}</label>
-                            <div className="relative">
-                                <Input
-                                    type="date"
-                                    className="h-10 rounded-lg bg-muted/30 border-muted/50"
-                                    value={filters.to_date}
-                                    onChange={(e) => setFilters({ ...filters, to_date: e.target.value })}
-                                />
-                            </div>
+                            <DatePicker
+                                value={filters.to_date}
+                                onChange={(val) => setFilters({ ...filters, to_date: val })}
+                                placeholder={t("to_date")}
+                                className="h-10 bg-muted/30 border-muted/50 group-hover:border-indigo-200 transition-colors"
+                            />
                         </div>
 
                         <div className="space-y-2 group">
@@ -508,193 +541,185 @@ export default function AdmissionEnquiryPage() {
                                 <Plus className="h-4 w-4 mr-1" /> {t("add")}
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl">
-                            <div className="bg-[#4F39F6] px-6 py-4 flex items-center justify-between">
-                                <DialogTitle className="text-xl font-bold text-white">{t("admission_enquiry")}</DialogTitle>
+                        <DialogContent className="max-w-4xl sm:!max-w-[80vw] lg:!max-w-[68rem] p-0 overflow-hidden border-none shadow-2xl gap-0">
+                            {/* Gradient header */}
+                            <div className="relative bg-gradient-to-r from-[#FF9800] to-[#6366F1] px-6 py-5 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm text-white ring-1 ring-white/30">
+                                        {editingEnquiry ? <FileEdit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                                    </span>
+                                    <div>
+                                        <DialogTitle className="text-lg font-bold text-white leading-tight">
+                                            {editingEnquiry ? t("edit_enquiry") : t("add_enquiry")}
+                                        </DialogTitle>
+                                        <p className="text-xs text-white/80 mt-0.5">{t("manage_follow_up_admission_leads")}</p>
+                                    </div>
+                                </div>
                                 <button
                                     onClick={() => setIsDialogOpen(false)}
-                                    className="text-white/80 hover:text-white transition-colors"
+                                    className="text-white/80 hover:text-white hover:bg-white/15 rounded-lg p-1.5 transition-colors"
                                 >
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
 
-                            <div className="p-6 space-y-6 bg-white overflow-y-auto max-h-[80vh]">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("name")} <span className="text-destructive">*</span></label>
-                                        <Input
-                                            className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
-                                            value={formData.name}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            placeholder=""
-                                        />
+                            <div className="p-6 space-y-6 bg-white overflow-y-auto max-h-[72vh]">
+                                {/* Section: Contact Information */}
+                                <ModalSection icon={User} title={t("contact_information")}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
+                                        <Field icon={User} label={t("name")} required>
+                                            <Input
+                                                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                value={formData.name}
+                                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                placeholder={t("enter_full_name")}
+                                            />
+                                        </Field>
+                                        <Field icon={Phone} label={t("phone")} required>
+                                            <Input
+                                                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                value={formData.phone}
+                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                                placeholder={t("enter_phone_number")}
+                                            />
+                                        </Field>
+                                        <Field icon={Mail} label={t("email")}>
+                                            <Input
+                                                type="email"
+                                                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                value={formData.email || ""}
+                                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                                placeholder="name@example.com"
+                                            />
+                                        </Field>
+                                        <Field icon={MapPin} label={t("address")}>
+                                            <Input
+                                                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                value={formData.address || ""}
+                                                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                                placeholder={t("enter_address")}
+                                            />
+                                        </Field>
                                     </div>
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("phone")} <span className="text-destructive">*</span></label>
-                                        <Input
-                                            className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
-                                            value={formData.phone}
-                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                            placeholder=""
-                                        />
-                                    </div>
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("email")}</label>
-                                        <Input
-                                            className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
-                                            value={formData.email || ""}
-                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                            placeholder=""
-                                        />
-                                    </div>
-                                </div>
+                                </ModalSection>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("address")}</label>
-                                        <Input
-                                            className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
-                                            value={formData.address || ""}
-                                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("description")}</label>
-                                        <Input
-                                            className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
-                                            value={formData.description || ""}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("note")}</label>
-                                        <Input
-                                            className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
-                                            value={formData.note || ""}
-                                            onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("date")} <span className="text-destructive">*</span></label>
-                                        <Input
-                                            type="date"
-                                            className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
-                                            value={formData.date || ""}
-                                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("next_follow_up_date")} <span className="text-destructive">*</span></label>
-                                        <Input
-                                            type="date"
-                                            className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
-                                            value={formData.next_follow_up_date || ""}
-                                            onChange={(e) => setFormData({ ...formData, next_follow_up_date: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("assigned")}</label>
-                                        <div className="relative">
-                                            <select
-                                                className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
-                                                value={formData.assigned || ""}
-                                                onChange={(e) => setFormData({ ...formData, assigned: e.target.value })}
-                                            >
-                                                <option value="">{t("select")}</option>
-                                                <option value="Staff 1">{t("staff")} 1</option>
-                                            </select>
-                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pb-6">
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("reference")}</label>
-                                        <div className="relative">
-                                            <select
-                                                className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
-                                                value={formData.reference || ""}
-                                                onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
-                                            >
-                                                <option value="">{t("select")}</option>
-                                                {references.map(ref => (
-                                                    <option key={ref.id} value={ref.name}>{ref.name}</option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("source")} <span className="text-destructive">*</span></label>
-                                        <div className="relative">
-                                            <select
-                                                className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+                                {/* Section: Enquiry Details */}
+                                <ModalSection icon={GraduationCap} title={t("enquiry_details")}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-4">
+                                        <Field icon={CalendarDays} label={t("date")} required>
+                                            <DatePicker
+                                                value={formData.date || ""}
+                                                onChange={(val) => setFormData({ ...formData, date: val })}
+                                                placeholder={t("select_date")}
+                                                className="bg-slate-50/50 border-slate-200"
+                                            />
+                                        </Field>
+                                        <Field icon={Radio} label={t("source")}>
+                                            <ModalSelect
                                                 value={formData.source || ""}
-                                                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                                            >
-                                                <option value="">{t("select")}</option>
-                                                {sources.map(src => (
-                                                    <option key={src.id} value={src.name}>{src.name}</option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                                        </div>
+                                                onChange={(val) => setFormData({ ...formData, source: val })}
+                                                placeholder={t("select")}
+                                                options={sources.map(src => ({ value: src.name, label: src.name }))}
+                                            />
+                                        </Field>
+                                        <Field icon={GraduationCap} label={t("class")}>
+                                            <ModalSelect
+                                                value={formData.class_id ? String(formData.class_id) : ""}
+                                                onChange={(val) => setFormData({ ...formData, class_id: val ? parseInt(val) : null })}
+                                                placeholder={t("select")}
+                                                options={classes.map(cls => ({ value: String(cls.id), label: cls.name }))}
+                                            />
+                                        </Field>
+                                        <Field icon={Baby} label={t("number_of_child")}>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                value={formData.no_of_child}
+                                                onChange={(e) => setFormData({ ...formData, no_of_child: parseInt(e.target.value) || 1 })}
+                                            />
+                                        </Field>
                                     </div>
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("class")}</label>
-                                        <div className="relative">
-                                            <select
-                                                className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
-                                                value={formData.class_id || ""}
-                                                onChange={(e) => setFormData({ ...formData, class_id: e.target.value ? parseInt(e.target.value) : null })}
-                                            >
-                                                <option value="">{t("select")}</option>
-                                                {classes.map(cls => (
-                                                    <option key={cls.id} value={cls.id}>{cls.name}</option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                                        </div>
+                                </ModalSection>
+
+                                {/* Section: Follow-up & Assignment */}
+                                <ModalSection icon={CalendarClock} title={t("follow_up_assignment")}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-4">
+                                        <Field icon={CalendarClock} label={t("next_follow_up_date")}>
+                                            <DatePicker
+                                                value={formData.next_follow_up_date || ""}
+                                                onChange={(val) => setFormData({ ...formData, next_follow_up_date: val })}
+                                                placeholder={t("select_date")}
+                                                className="bg-slate-50/50 border-slate-200"
+                                            />
+                                        </Field>
+                                        <Field icon={UserCheck} label={t("assigned")}>
+                                            <ModalSelect
+                                                value={formData.assigned || ""}
+                                                onChange={(val) => setFormData({ ...formData, assigned: val })}
+                                                placeholder={t("select")}
+                                                options={staffList.map((s) => ({
+                                                    value: s.name,
+                                                    label: s.role ? `${s.name} (${s.role})` : s.name,
+                                                }))}
+                                            />
+                                        </Field>
+                                        <Field icon={GitBranch} label={t("reference")}>
+                                            <ModalSelect
+                                                value={formData.reference || ""}
+                                                onChange={(val) => setFormData({ ...formData, reference: val })}
+                                                placeholder={t("select")}
+                                                options={references.map(ref => ({ value: ref.name, label: ref.name }))}
+                                            />
+                                        </Field>
+                                        <Field icon={CircleDot} label={t("status")}>
+                                            <ModalSelect
+                                                value={formData.status || "Active"}
+                                                onChange={(val) => setFormData({ ...formData, status: val as AdmissionEnquiry["status"] })}
+                                                options={[
+                                                    { value: "Active", label: t("active") },
+                                                    { value: "Passive", label: t("passive") },
+                                                    { value: "Dead", label: t("dead") },
+                                                    { value: "Won", label: t("won") },
+                                                    { value: "Lost", label: t("lost") },
+                                                ]}
+                                            />
+                                        </Field>
                                     </div>
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("number_of_child")}</label>
-                                        <Input
-                                            type="number"
-                                            min="1"
-                                            className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
-                                            value={formData.no_of_child}
-                                            onChange={(e) => setFormData({ ...formData, no_of_child: parseInt(e.target.value) })}
-                                        />
+                                </ModalSection>
+
+                                {/* Section: Notes */}
+                                <ModalSection icon={StickyNote} title={t("additional_notes")}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
+                                        <Field icon={FileText} label={t("description")}>
+                                            <Textarea
+                                                rows={3}
+                                                className="rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20 resize-none"
+                                                value={formData.description || ""}
+                                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                                placeholder={t("enter_description")}
+                                            />
+                                        </Field>
+                                        <Field icon={StickyNote} label={t("note")}>
+                                            <Textarea
+                                                rows={3}
+                                                className="rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20 resize-none"
+                                                value={formData.note || ""}
+                                                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                                                placeholder={t("enter_note")}
+                                            />
+                                        </Field>
                                     </div>
-                                    <div className="space-y-2 group">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">{t("status")}</label>
-                                        <div className="relative">
-                                            <select
-                                                className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
-                                                value={formData.status}
-                                                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                                            >
-                                                <option value="Active">{t("active")}</option>
-                                                <option value="Passive">{t("passive")}</option>
-                                                <option value="Dead">{t("dead")}</option>
-                                                <option value="Won">{t("won")}</option>
-                                                <option value="Lost">{t("lost")}</option>
-                                            </select>
-                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                                        </div>
-                                    </div>
-                                </div>
+                                </ModalSection>
                             </div>
 
-                            <DialogFooter className="bg-slate-50/80 px-6 py-4 border-t border-slate-200">
-                                <Button variant="gradient" className="h-10 px-8 rounded-lg font-bold shadow-lg shadow-primary/20" onClick={handleSave} disabled={loading}>
-                                    {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                                    {t("save")}
+                            <DialogFooter className="bg-slate-50/80 px-6 py-4 border-t border-slate-200 sm:justify-end gap-2">
+                                <Button variant="outline" className="h-10 px-6 rounded-lg font-semibold" onClick={() => setIsDialogOpen(false)} disabled={saving}>
+                                    {t("cancel")}
+                                </Button>
+                                <Button variant="gradient" className="h-10 px-8 rounded-lg font-bold shadow-lg shadow-primary/20" onClick={handleSave} disabled={saving}>
+                                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                                    {editingEnquiry ? t("update") : t("save")}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -951,6 +976,55 @@ function ActionBtn({ icon: Icon, className, onClick, title }: { icon: any, class
         >
             <Icon className="h-3.5 w-3.5" />
         </button>
+    );
+}
+
+// Grouped section inside the modal with a small icon heading + divider
+function ModalSection({ icon: Icon, title, children }: { icon: LucideIcon, title: string, children: React.ReactNode }) {
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10 text-indigo-600">
+                    <Icon className="h-4 w-4" />
+                </span>
+                <h3 className="text-sm font-bold text-slate-800 tracking-tight">{title}</h3>
+                <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent" />
+            </div>
+            {children}
+        </div>
+    );
+}
+
+// Field wrapper: icon label + required marker + control
+function Field({ icon: Icon, label, required, children }: { icon: LucideIcon, label: string, required?: boolean, children: React.ReactNode }) {
+    return (
+        <div className="space-y-1.5">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 ml-0.5">
+                <Icon className="h-3.5 w-3.5 text-slate-400" />
+                {label}
+                {required && <span className="text-destructive">*</span>}
+            </label>
+            {children}
+        </div>
+    );
+}
+
+// Styled native select used inside the modal (matches the modal field aesthetic)
+function ModalSelect({ value, onChange, options, placeholder }: { value: string, onChange: (val: string) => void, options: { value: string, label: string }[], placeholder?: string }) {
+    return (
+        <div className="relative">
+            <select
+                className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white appearance-none cursor-pointer transition-all"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+            >
+                {placeholder !== undefined && <option value="">{placeholder}</option>}
+                {options.map((opt, idx) => (
+                    <option key={`${opt.value}-${idx}`} value={opt.value}>{opt.label}</option>
+                ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+        </div>
     );
 }
 

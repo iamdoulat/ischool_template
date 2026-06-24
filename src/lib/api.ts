@@ -26,8 +26,22 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        // No `error.response` means the request never got an HTTP reply: the
+        // backend is down/restarting, the network dropped, or the request was
+        // cancelled (e.g. Fast Refresh / navigation). Surface a clear message
+        // instead of a raw "Network Error" and skip the 401 redirect logic.
+        if (!error.response) {
+            if (axios.isCancel?.(error) || error.code === 'ERR_CANCELED') {
+                return Promise.reject(error);
+            }
+            if (typeof window !== 'undefined') {
+                toast.error('Cannot reach the server. Please check that the API is running and try again.');
+            }
+            return Promise.reject(error);
+        }
+
         const message = error.response?.data?.message || error.message || 'Something went wrong';
-        
+
         if (error.response?.status === 401) {
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('auth_token');

@@ -944,7 +944,7 @@ function ExamTab() {
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <span className="text-[13px] font-semibold text-gray-800">{subj.name}</span>
                   {exam.type === "result" ? (
-                    <span className={cn("px-2 py-0.5 text-[10px] font-bold rounded text-white", subj.result === "Pass" ? "bg-[#5cb85c]" : "bg-red-500")}>{subj.result}</span>
+                    <span className={cn("px-2 py-0.5 text-[10px] font-bold rounded text-white", subj.result === "Pass" ? "bg-[#5cb85c]" : "bg-red-500")}>{t((subj.result || "").toLowerCase())}</span>
                   ) : (
                     <span className="px-2 py-0.5 text-[11px] font-bold rounded bg-indigo-50 text-indigo-600">{subj.grade}</span>
                   )}
@@ -1889,8 +1889,8 @@ export default function UserProfilePage() {
               </div>
               <h2 className="text-lg font-bold text-gray-800 mt-2 truncate max-w-full">{basic.name}</h2>
               <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-500">
-                <span>Adm: <span className="text-indigo-500 font-medium">{basic.admissionNo}</span></span>
-                <span>Roll: <span className="text-indigo-500 font-medium">{basic.rollNumber}</span></span>
+                <span>{t("adm")}: <span className="text-indigo-500 font-medium">{basic.admissionNo}</span></span>
+                <span>{t("roll")}: <span className="text-indigo-500 font-medium">{basic.rollNumber}</span></span>
               </div>
             </div>
           </div>
