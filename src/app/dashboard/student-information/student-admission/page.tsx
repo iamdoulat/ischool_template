@@ -653,15 +653,15 @@ export default function StudentAdmissionPage() {
                             <TextAreaField label={t("permanent_address")} rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
                         </div>
                         <div className="lg:col-span-4 space-y-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("previous_academic_record", "Previous Academic Record")}</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("previous_academic_record") || "Previous Academic Record"}</label>
                             <div className="border rounded-xl overflow-hidden overflow-x-auto">
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-muted text-muted-foreground border-b">
                                         <tr>
-                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("name_of_previous_school", "Name of the previous school & location")}</th>
-                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("class")}</th>
-                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("year_of_study", "Year of Study")}</th>
-                                            <th className="px-3 py-2 font-bold text-[11px]">{t("percentage_grade", "Percentage/Grade")}</th>
+                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("name_of_previous_school") || "Name of the previous school & location"}</th>
+                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("class") || "Class"}</th>
+                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("year_of_study") || "Year of Study"}</th>
+                                            <th className="px-3 py-2 font-bold text-[11px]">{t("percentage_grade") || "Percentage/Grade"}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
