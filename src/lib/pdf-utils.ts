@@ -59,6 +59,9 @@ export interface AdmissionFormData {
   mother_avatar?: string | null;
   father_avatar?: string | null;
   guardian_avatar?: string | null;
+  second_language?: string;
+  appraisal_achievements?: string;
+  general_behaviour?: string;
 }
 
 export interface SchoolInfo {
@@ -709,16 +712,24 @@ export async function downloadAdmissionFormPdf(
   writeText(doc, "Appraisal of your Child", M + 5, Y, 10, "bold", C.textDark);
   advance(6);
   writeText(doc, "Please mention the achievements, if any, of your child in academics/extra/co-curricular activities", M + 5, Y, 9, "normal", C.textDark);
+  const appraisalText = data.appraisal_achievements || "";
+  const appraisalLines = doc.splitTextToSize(appraisalText, CW - 10);
   advance(8);
-  drawFieldLine("", "", M + 5, Y, 0, CW - 10);
+  drawFieldLine("", appraisalLines[0] || "", M + 5, Y, 0, CW - 10);
   advance(8);
-  drawFieldLine("", "", M + 5, Y, 0, CW - 10);
+  drawFieldLine("", appraisalLines[1] || "", M + 5, Y, 0, CW - 10);
+  if (appraisalLines.length > 2) {
+    for (let i = 2; i < appraisalLines.length; i++) {
+        advance(8);
+        drawFieldLine("", appraisalLines[i], M + 5, Y, 0, CW - 10);
+    }
+  }
   
   advance(12);
   writeText(doc, "General Behaviour:", M + 5, Y, 9, "normal", C.textDark);
-  drawCheckbox(M + 35, Y, false, "Mild");
-  drawCheckbox(M + 55, Y, false, "Normal");
-  drawCheckbox(M + 75, Y, false, "Hyperactive");
+  drawCheckbox(M + 35, Y, data.general_behaviour === "Mild", "Mild");
+  drawCheckbox(M + 55, Y, data.general_behaviour === "Normal", "Normal");
+  drawCheckbox(M + 75, Y, data.general_behaviour === "Hyperactive", "Hyperactive");
   
   advance(10);
   writeText(doc, "Please mention, in brief, if there is any history of previous illness, allergy or physical /psychological illness.", M + 5, Y, 9, "normal", C.textDark);
@@ -727,9 +738,15 @@ export async function downloadAdmissionFormPdf(
   
   advance(12);
   writeText(doc, "Second Language:", M + 5, Y, 9, "normal", C.textDark);
-  drawCheckbox(M + 35, Y, false, "English");
-  drawCheckbox(M + 60, Y, false, "Arabic");
-  drawCheckbox(M + 82, Y, false, "Others");
+  const isEnglish = data.second_language === "English";
+  const isArabic = data.second_language === "Arabic";
+  const isOthers = !!data.second_language && !isEnglish && !isArabic;
+  drawCheckbox(M + 35, Y, isEnglish, "English");
+  drawCheckbox(M + 60, Y, isArabic, "Arabic");
+  drawCheckbox(M + 82, Y, isOthers, "Others");
+  if (isOthers) {
+      writeText(doc, `(${data.second_language})`, M + 102, Y, 9, "normal", C.textDark);
+  }
   
   // --- PARENTS SECTION ---
   need(90);

@@ -603,7 +603,7 @@ export default function StudentAdmissionPage() {
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
                             <InputField label={t("mother_tongue")} value={formData.mother_tongue} onChange={(val) => handleChange("mother_tongue", val)} />
                             <div>
-                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">{t("general_behaviour") || "GENERAL BEHAVIOUR:"}</label>
+                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">GENERAL BEHAVIOUR:</label>
                                 <div className="flex items-center gap-5">
                                     {["Mild", "Normal", "Hyperactive"].map(b => (
                                         <label key={b} className="flex items-center gap-2 cursor-pointer group">
@@ -624,7 +624,7 @@ export default function StudentAdmissionPage() {
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">{t("second_language") || "SECOND LANGUAGE:"}</label>
+                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">SECOND LANGUAGE:</label>
                                 <div className="flex items-center gap-5">
                                     {["English", "Arabic", "Others"].map(l => (
                                         <label key={l} className="flex items-center gap-2 cursor-pointer group">
@@ -733,7 +733,7 @@ export default function StudentAdmissionPage() {
                             <TextAreaField label={t("medical_history")} rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
                         </div>
                         <div className="lg:col-span-2">
-                            <label className="text-[12px] font-semibold text-gray-700 block mb-1.5">{t("appraisal_and_behaviour") || "APPRAISAL & BEHAVIOUR"}</label>
+                            <label className="text-[12px] font-semibold text-gray-700 block mb-1.5">APPRAISAL & BEHAVIOUR</label>
                             <textarea
                                 className="w-full min-h-[68px] text-[12px] border border-gray-200 rounded-md p-2.5 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y bg-white"
                                 value={formData.appraisal_achievements}
