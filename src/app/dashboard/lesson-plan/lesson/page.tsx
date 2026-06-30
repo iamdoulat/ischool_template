@@ -527,10 +527,7 @@ export default function LessonPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="py-4 px-3 align-top text-right">
-                                                    <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                                                        <Button size="icon" variant="ghost" className="h-7 w-7 bg-green-500 hover:bg-green-600 text-white rounded-md transition-all shadow-sm">
-                                                            <Phone className="h-3.5 w-3.5" />
-                                                        </Button>
+                                                    <div className="flex items-center justify-end gap-1.5">
                                                         <Button size="icon" variant="ghost" onClick={() => handleEdit(entry)} className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-all shadow-sm">
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>

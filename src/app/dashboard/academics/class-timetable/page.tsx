@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useSettings } from "@/components/providers/settings-provider";
+import { formatTime } from "@/lib/utils";
 
 interface TimetableEntry {
     id: number;
@@ -78,6 +79,7 @@ export default function ClassTimetablePage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
     const { settings } = useSettings();
+    const tf = settings?.time_format === "12" ? "12" : "24" as const;
 
     // Derived ordered days based on settings
     const orderedDays = useMemo(() => {
@@ -121,11 +123,11 @@ export default function ClassTimetablePage() {
             setLoading(true);
             try {
                 const [classRes, subjectGroupRes] = await Promise.all([
-                    api.get("/academics/classes?no_paginate=true"),
-                    api.get("/academics/subject-groups?no_paginate=true"),
+                    api.get("/academics/classes?no_paginate=true").catch(() => ({ data: [] })),
+                    api.get("/academics/subject-groups?no_paginate=true").catch(() => ({ data: [] })),
                 ]);
-                setClasses(classRes.data.data?.data || classRes.data.data || []);
-                setSubjectGroups(subjectGroupRes.data.data?.data || subjectGroupRes.data.data || []);
+                setClasses(classRes.data?.data || classRes.data || []);
+                setSubjectGroups(subjectGroupRes.data?.data || subjectGroupRes.data || []);
             } catch (error) {
                 console.error("Error fetching prerequisites:", error);
                 tt.error("failed_to_load");
@@ -348,7 +350,7 @@ export default function ClassTimetablePage() {
                                                             </div>
                                                             <div className="flex items-start gap-2">
                                                                 <Clock className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                                <span className="text-green-700 font-medium">{entry.start_time} - {entry.end_time}</span>
+                                                                <span className="text-green-700 font-medium">{formatTime(entry.start_time, tf)} - {formatTime(entry.end_time, tf)}</span>
                                                             </div>
                                                             <div className="flex items-start gap-2">
                                                                 <User className="h-3.5 w-3.5 text-gray-400 mt-0.5" />

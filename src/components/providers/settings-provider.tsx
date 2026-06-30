@@ -48,6 +48,7 @@ interface GeneralSettings {
     biometric_attendance: boolean;
     devices: string;
     low_attendance_limit: string;
+    time_format: string;
     staff_attendance_settings: Array<{ type: string; from: string; upto: string; total: string }>;
     student_attendance_settings: Array<{ type: string; from: string; upto: string; total: string }>;
     footer_contact_title?: string;
@@ -75,6 +76,7 @@ function createDefaultSettings(): GeneralSettings {
         session: "2026",
         session_start_month: "4",
         date_format: "d/m/Y",
+        time_format: "12",
         timezone: "UTC",
         start_day_of_week: "monday",
         currency_format: "USD",
@@ -156,7 +158,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 // Fields to normalize
                 const fields = [
                     'school_name', 'school_slogan', 'school_description', 'school_code', 'address', 'phone', 'email',
-                    'session', 'session_start_month', 'date_format', 'timezone',
+                    'session', 'session_start_month', 'date_format', 'time_format', 'timezone',
                     'start_day_of_week', 'currency_format', 'base_url', 'file_upload_path',
                     'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo',
                     'login_page_background_admin', 'login_page_background_user',

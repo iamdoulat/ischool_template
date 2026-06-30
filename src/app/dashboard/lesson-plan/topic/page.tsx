@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -104,6 +104,9 @@ export default function TopicPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(50);
 
+    // Lesson data for dropdown
+    const [lessonsList, setLessonsList] = useState<{ className: string; section: string; subjectGroup: string; subject: string; lessons: string[] }[]>([]);
+
     // Form State
     const [editMode, setEditMode] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -115,6 +118,23 @@ export default function TopicPage() {
         lesson: ""
     });
 
+    // Filtered lesson names based on selected class/section/subject_group/subject
+    const lessonNames = useMemo(() => {
+        if (!lessonsList.length) return [];
+        const hasFilter = formData.class_name || formData.section || formData.subject_group || formData.subject;
+        if (!hasFilter) return Array.from(new Set(lessonsList.flatMap(g => g.lessons))).sort();
+        return lessonsList
+            .filter(g =>
+                (!formData.class_name || g.className === formData.class_name) &&
+                (!formData.section || g.section === formData.section) &&
+                (!formData.subject_group || g.subjectGroup === formData.subject_group) &&
+                (!formData.subject || g.subject === formData.subject)
+            )
+            .flatMap(g => g.lessons)
+            .filter((v, i, a) => a.indexOf(v) === i)
+            .sort();
+    }, [lessonsList, formData.class_name, formData.section, formData.subject_group, formData.subject]);
+
     // Dialog State
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -124,10 +144,11 @@ export default function TopicPage() {
 
     const fetchInitialData = async () => {
         try {
-            const [classesRes, groupsRes, subjectsRes] = await Promise.all([
+            const [classesRes, groupsRes, subjectsRes, lessonsRes] = await Promise.all([
                 api.get('/academics/classes?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/academics/subject-groups?no_paginate=true').catch(() => ({ data: [] })),
-                api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] }))
+                api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] })),
+                api.get('/lesson-plan/lessons').catch(() => ({ data: [] }))
             ]);
 
             const extractData = (res: { data?: unknown }): OptionItem[] => {
@@ -142,6 +163,9 @@ export default function TopicPage() {
             setClasses(extractData(classesRes));
             setSubjectGroups(extractData(groupsRes));
             setSubjects(extractData(subjectsRes));
+
+            const lessonsData = lessonsRes.data?.data || lessonsRes.data || [];
+            setLessonsList(Array.isArray(lessonsData) ? lessonsData : []);
         } catch (error) {
             console.error("Failed to load initial dropdowns", error);
         }
@@ -421,9 +445,11 @@ export default function TopicPage() {
                                         <SelectValue placeholder="Select" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Alice in Wonderland">Alice in Wonderland</SelectItem>
-                                        <SelectItem value="First Day at School">First Day at School</SelectItem>
-                                        <SelectItem value="Tables and Shares">Tables and Shares</SelectItem>
+                                        {lessonNames.length > 0 ? lessonNames.map((name) => (
+                                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                                        )) : (
+                                            <div className="p-2 text-xs text-gray-400 text-center">No lessons found</div>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -577,7 +603,7 @@ export default function TopicPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="py-4 px-3 align-top text-right">
-                                                    <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                                                    <div className="flex items-center justify-end gap-1.5">
                                                         <Button size="icon" variant="ghost" onClick={() => handleEdit(entry)} className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-all shadow-sm">
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>

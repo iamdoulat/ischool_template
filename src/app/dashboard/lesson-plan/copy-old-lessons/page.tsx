@@ -39,6 +39,7 @@ interface OptionItem {
     name?: string;
     group_name?: string;
     session?: string;
+    school_class_id?: string | number;
 }
 
 interface RawTopic {
@@ -49,6 +50,15 @@ interface RawTopic {
     subject: string;
     lesson: string;
     topics: { id: string; name: string }[];
+}
+
+interface SubjectGroupFull {
+    id: string | number;
+    name: string;
+    group_name?: string;
+    school_class_id?: string | number;
+    subjects?: { id: string | number; name: string; code?: string; type?: string }[];
+    sections?: { id: string | number; name: string; pivot?: { subject_group_id: number; section_id: number } }[];
 }
 
 function CardSkeleton({ count = 6 }: { count?: number }) {
@@ -74,10 +84,17 @@ function CardSkeleton({ count = 6 }: { count?: number }) {
 export default function CopyOldLessonsPage() {
     const { toast } = useToast();
     const [classes, setClasses] = useState<OptionItem[]>([]);
-    const [sections, setSections] = useState<OptionItem[]>([]);
-    const [subjectGroups, setSubjectGroups] = useState<OptionItem[]>([]);
+    const [allSections, setAllSections] = useState<OptionItem[]>([]);
     const [subjects, setSubjects] = useState<OptionItem[]>([]);
     const [sessions, setSessions] = useState<OptionItem[]>([]);
+
+    // Separate subject groups for From and To criteria
+    const [fromSubjectGroups, setFromSubjectGroups] = useState<SubjectGroupFull[]>([]);
+    const [toSubjectGroups, setToSubjectGroups] = useState<SubjectGroupFull[]>([]);
+
+    // Filtered subjects per criteria
+    const [fromFilteredSubjects, setFromFilteredSubjects] = useState<OptionItem[]>([]);
+    const [toFilteredSubjects, setToFilteredSubjects] = useState<OptionItem[]>([]);
 
     const [sourceLessons, setSourceLessons] = useState<Lesson[]>([]);
     const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
@@ -86,7 +103,8 @@ export default function CopyOldLessonsPage() {
 
     // Filter States
     const [fromCriteria, setFromCriteria] = useState({
-        session: "2025-26",
+        session: "",
+        class_id: "",
         class_name: "",
         section: "",
         subject_group: "",
@@ -94,6 +112,7 @@ export default function CopyOldLessonsPage() {
     });
 
     const [toCriteria, setToCriteria] = useState({
+        class_id: "",
         class_name: "",
         section: "",
         subject_group: "",
@@ -104,37 +123,153 @@ export default function CopyOldLessonsPage() {
         fetchInitialData();
     }, []);
 
+    const extractData = (res: { data?: unknown }): OptionItem[] => {
+        const apiData = res.data as { data?: unknown; success?: boolean } | unknown[] | undefined;
+        if (Array.isArray(apiData)) return apiData as OptionItem[];
+        const nested = apiData as { data?: unknown };
+        if (nested && Array.isArray(nested.data)) return nested.data as OptionItem[];
+        return [];
+    };
+
     const fetchInitialData = async () => {
         try {
-            const [classesRes, sectionsRes, groupsRes, subjectsRes, sessionsRes] = await Promise.all([
+            const [classesRes, sectionsRes, subjectsRes, sessionsRes] = await Promise.all([
                 api.get('/academics/classes?no_paginate=true').catch(() => ({ data: [] })),
-                api.get('/academics/sections?no_paginate=true').catch(() => ({ data: [] })),
-                api.get('/academics/subject-groups?no_paginate=true').catch(() => ({ data: [] })),
+                api.get('/academics/sections?with_class=true&no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/system-setting/sessions').catch(() => ({ data: { data: [] } }))
             ]);
 
-            const extractData = (res: { data?: unknown }): OptionItem[] => {
-                const data = res.data as { data?: unknown } | unknown[] | undefined;
-                if (Array.isArray(data)) return data as OptionItem[];
-                if (data && Array.isArray((data as { data?: unknown }).data)) {
-                    return (data as { data: OptionItem[] }).data;
-                }
-                return [];
-            };
-
             setClasses(extractData(classesRes));
-            setSections(extractData(sectionsRes));
-            setSubjectGroups(extractData(groupsRes));
+            setAllSections(extractData(sectionsRes));
             setSubjects(extractData(subjectsRes));
-            setSessions(extractData(sessionsRes));
+
+            const sessionList = extractData(sessionsRes);
+            setSessions(sessionList);
+            const active = sessionList.find((s: any) => s.is_active);
+            if (active) {
+                setFromCriteria(prev => ({ ...prev, session: active.session || "" }));
+            } else if (sessionList.length > 0) {
+                setFromCriteria(prev => ({ ...prev, session: sessionList[0].session || "" }));
+            }
         } catch (error) {
             console.error("Failed to load initial dropdowns", error);
         }
     };
 
+    const fetchFilteredSubjectGroups = async (classId: string, sectionName: string, target: 'from' | 'to') => {
+        const params: Record<string, string> = { no_paginate: 'true' };
+        if (classId) params.school_class_id = classId;
+        if (classId && sectionName) {
+            const sec = allSections.find((s) => s.name === sectionName && String(s.school_class_id) === String(classId));
+            if (sec) params.section_id = String(sec.id);
+        }
+        try {
+            const res = await api.get('/academics/subject-groups', { params });
+            const rawData = res.data?.data || res.data || [];
+            const list = Array.isArray(rawData) ? rawData : [];
+            if (target === 'from') {
+                setFromSubjectGroups(list);
+                // Also reset from subject and filtered subjects
+                setFromFilteredSubjects([]);
+            } else {
+                setToSubjectGroups(list);
+                setToFilteredSubjects([]);
+            }
+        } catch {
+            if (target === 'from') {
+                setFromSubjectGroups([]);
+                setFromFilteredSubjects([]);
+            } else {
+                setToSubjectGroups([]);
+                setToFilteredSubjects([]);
+            }
+        }
+    };
+
+    /** Extract subjects belonging to a given subject group name */
+    const getSubjectsForGroup = (groupName: string, groups: SubjectGroupFull[]): OptionItem[] => {
+        const group = groups.find(
+            (g) => g.name === groupName || g.group_name === groupName
+        );
+        if (group?.subjects && group.subjects.length > 0) {
+            return group.subjects.map((s) => ({
+                id: s.id,
+                name: s.name,
+            }));
+        }
+        // Fallback: show all subjects if the group has no subjects data
+        return subjects;
+    };
+
+    const handleFromCriteriaChange = (field: string, value: string) => {
+        const prev = fromCriteria;
+        const updated = { ...prev, [field]: value };
+
+        // Cascade reset dependent fields
+        if (field === 'class_name') {
+            const cls = classes.find((c) => c.name === value);
+            updated.class_id = cls?.id?.toString() ?? '';
+            updated.section = '';
+            updated.subject_group = '';
+            updated.subject = '';
+        }
+        if (field === 'section') {
+            updated.subject_group = '';
+            updated.subject = '';
+        }
+        if (field === 'subject_group') {
+            updated.subject = '';
+        }
+
+        setFromCriteria(updated);
+
+        // Side effects (data fetching) after computing new criteria
+        if (field === 'class_name') {
+            fetchFilteredSubjectGroups(updated.class_id, '', 'from');
+        }
+        if (field === 'section') {
+            fetchFilteredSubjectGroups(updated.class_id, value, 'from');
+        }
+        if (field === 'subject_group') {
+            setFromFilteredSubjects(getSubjectsForGroup(value, fromSubjectGroups));
+        }
+    };
+
+    const handleToCriteriaChange = (field: string, value: string) => {
+        const prev = toCriteria;
+        const updated = { ...prev, [field]: value };
+
+        if (field === 'class_name') {
+            const cls = classes.find((c) => c.name === value);
+            updated.class_id = cls?.id?.toString() ?? '';
+            updated.section = '';
+            updated.subject_group = '';
+            updated.subject = '';
+        }
+        if (field === 'section') {
+            updated.subject_group = '';
+            updated.subject = '';
+        }
+        if (field === 'subject_group') {
+            updated.subject = '';
+        }
+
+        setToCriteria(updated);
+
+        if (field === 'class_name') {
+            fetchFilteredSubjectGroups(updated.class_id, '', 'to');
+        }
+        if (field === 'section') {
+            fetchFilteredSubjectGroups(updated.class_id, value, 'to');
+        }
+        if (field === 'subject_group') {
+            setToFilteredSubjects(getSubjectsForGroup(value, toSubjectGroups));
+        }
+    };
+
     const handleSearch = async () => {
-        if (!fromCriteria.class_name || !fromCriteria.section || !fromCriteria.subject_group || !fromCriteria.subject) {
+        if (!fromCriteria.session || !fromCriteria.class_name || !fromCriteria.section || !fromCriteria.subject_group || !fromCriteria.subject) {
             toast({ title: "Error", description: "Please select all 'From' criteria", variant: "destructive" });
             return;
         }
@@ -142,7 +277,7 @@ export default function CopyOldLessonsPage() {
         setLoading(true);
         try {
             const response = await api.get('/lesson-plan/topics');
-            const allTopics: RawTopic[] = response.data;
+            const allTopics: RawTopic[] = response.data?.data || response.data || [];
 
             // Filter based on fromCriteria
             const filtered = allTopics.filter(t =>
@@ -236,11 +371,9 @@ export default function CopyOldLessonsPage() {
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {sessions.length > 0 ? sessions.map(s => (
+                                    {sessions.map(s => (
                                         <SelectItem key={s.id} value={s.session || ""}>{s.session}</SelectItem>
-                                    )) : (
-                                        <SelectItem value="2025-26">2025-26</SelectItem>
-                                    )}
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -249,7 +382,7 @@ export default function CopyOldLessonsPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Class <span className="text-red-500">*</span>
                             </Label>
-                            <Select value={fromCriteria.class_name} onValueChange={(val) => setFromCriteria({...fromCriteria, class_name: val})}>
+                            <Select value={fromCriteria.class_name} onValueChange={(val) => handleFromCriteriaChange('class_name', val)}>
                                 <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
@@ -265,12 +398,12 @@ export default function CopyOldLessonsPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Section <span className="text-red-500">*</span>
                             </Label>
-                            <Select value={fromCriteria.section} onValueChange={(val) => setFromCriteria({...fromCriteria, section: val})}>
+                            <Select value={fromCriteria.section} onValueChange={(val) => handleFromCriteriaChange('section', val)} disabled={!fromCriteria.class_name}>
                                 <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {sections.map(s => (
+                                    {allSections.filter(s => String(s.school_class_id) === String(fromCriteria.class_id)).map(s => (
                                         <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
                                     ))}
                                 </SelectContent>
@@ -281,12 +414,12 @@ export default function CopyOldLessonsPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Subject Group <span className="text-red-500">*</span>
                             </Label>
-                            <Select value={fromCriteria.subject_group} onValueChange={(val) => setFromCriteria({...fromCriteria, subject_group: val})}>
+                            <Select value={fromCriteria.subject_group} onValueChange={(val) => handleFromCriteriaChange('subject_group', val)} disabled={!fromCriteria.section}>
                                 <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {subjectGroups.map(g => (
+                                    {fromSubjectGroups.map(g => (
                                         <SelectItem key={g.id} value={g.name || g.group_name || ""}>{g.name || g.group_name}</SelectItem>
                                     ))}
                                 </SelectContent>
@@ -297,14 +430,19 @@ export default function CopyOldLessonsPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Subject <span className="text-red-500">*</span>
                             </Label>
-                            <Select value={fromCriteria.subject} onValueChange={(val) => setFromCriteria({...fromCriteria, subject: val})}>
+                            <Select value={fromCriteria.subject} onValueChange={(val) => handleFromCriteriaChange('subject', val)} disabled={!fromCriteria.subject_group}>
                                 <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {subjects.map(s => (
-                                        <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
-                                    ))}
+                                    {fromFilteredSubjects.length > 0
+                                        ? fromFilteredSubjects.map(s => (
+                                            <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                        ))
+                                        : subjects.map(s => (
+                                            <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                        ))
+                                    }
                                 </SelectContent>
                             </Select>
                         </div>
@@ -416,7 +554,7 @@ export default function CopyOldLessonsPage() {
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                             Class <span className="text-red-500">*</span>
                                         </Label>
-                                        <Select value={toCriteria.class_name} onValueChange={(val) => setToCriteria({...toCriteria, class_name: val})}>
+                                        <Select value={toCriteria.class_name} onValueChange={(val) => handleToCriteriaChange('class_name', val)}>
                                             <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                                 <SelectValue placeholder="Select" />
                                             </SelectTrigger>
@@ -432,12 +570,12 @@ export default function CopyOldLessonsPage() {
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                             Section <span className="text-red-500">*</span>
                                         </Label>
-                                        <Select value={toCriteria.section} onValueChange={(val) => setToCriteria({...toCriteria, section: val})}>
+                                        <Select value={toCriteria.section} onValueChange={(val) => handleToCriteriaChange('section', val)} disabled={!toCriteria.class_name}>
                                             <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                                 <SelectValue placeholder="Select" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {sections.map(s => (
+                                                {allSections.filter(s => String(s.school_class_id) === String(toCriteria.class_id)).map(s => (
                                                     <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -448,12 +586,12 @@ export default function CopyOldLessonsPage() {
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                             Subject Group <span className="text-red-500">*</span>
                                         </Label>
-                                        <Select value={toCriteria.subject_group} onValueChange={(val) => setToCriteria({...toCriteria, subject_group: val})}>
+                                        <Select value={toCriteria.subject_group} onValueChange={(val) => handleToCriteriaChange('subject_group', val)} disabled={!toCriteria.section}>
                                             <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                                 <SelectValue placeholder="Select" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {subjectGroups.map(g => (
+                                                {toSubjectGroups.map(g => (
                                                     <SelectItem key={g.id} value={g.name || g.group_name || ""}>{g.name || g.group_name}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -464,14 +602,19 @@ export default function CopyOldLessonsPage() {
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                             Subject <span className="text-red-500">*</span>
                                         </Label>
-                                        <Select value={toCriteria.subject} onValueChange={(val) => setToCriteria({...toCriteria, subject: val})}>
+                                        <Select value={toCriteria.subject} onValueChange={(val) => handleToCriteriaChange('subject', val)} disabled={!toCriteria.subject_group}>
                                             <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
                                                 <SelectValue placeholder="Select" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {subjects.map(s => (
-                                                    <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
-                                                ))}
+                                                {toFilteredSubjects.length > 0
+                                                    ? toFilteredSubjects.map(s => (
+                                                        <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                                    ))
+                                                    : subjects.map(s => (
+                                                        <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                                    ))
+                                                }
                                             </SelectContent>
                                         </Select>
                                     </div>

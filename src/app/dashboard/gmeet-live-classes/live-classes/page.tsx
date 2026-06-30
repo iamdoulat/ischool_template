@@ -28,7 +28,8 @@ import {
     ArrowUpDown, Video, Copy, FileSpreadsheet,
     FileBox, Printer, Columns, Calendar, X
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
+import { useSettings } from "@/components/providers/settings-provider";
 import {
     Dialog,
     DialogContent,
@@ -64,6 +65,8 @@ interface GmeetClass {
 
 export default function LiveClassesPage() {
     const { t } = useTranslation();
+    const { settings } = useSettings();
+    const tf = settings?.time_format === "12" ? "12" : "24" as const;
     const [searchTerm, setSearchTerm] = useState("");
     const [classes, setClasses] = useState<GmeetClass[]>([]);
     const [loading, setLoading] = useState(false);
@@ -254,13 +257,11 @@ export default function LiveClassesPage() {
             const mm = pad(d.getMonth() + 1);
             const dd = pad(d.getDate());
             const yyyy = d.getFullYear();
-            const hh = pad(d.getHours());
-            const min = pad(d.getMinutes());
-            const ss = pad(d.getSeconds());
+            const timeStr = formatTime(d, tf);
             return (
                 <div className="flex flex-col text-slate-600 text-[11px] leading-tight">
                     <span>{`${mm}/${dd}/${yyyy}`}</span>
-                    <span className="text-gray-400 mt-0.5">{`${hh}:${min}:${ss}`}</span>
+                    <span className="text-gray-400 mt-0.5">{timeStr}</span>
                 </div>
             );
         } catch {

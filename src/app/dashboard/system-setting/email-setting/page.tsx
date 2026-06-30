@@ -10,7 +10,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { Eye, EyeOff, Loader2, Mail, Send } from "lucide-react";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
@@ -22,6 +22,8 @@ export default function EmailSettingPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [testingEmail, setTestingEmail] = useState(false);
+    const [testEmail, setTestEmail] = useState("");
     const [formData, setFormData] = useState({
         mail_mailer: "smtp",
         mail_host: "",
@@ -77,6 +79,38 @@ export default function EmailSettingPage() {
             });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleTestEmail = async () => {
+        if (!testEmail) {
+            toast({
+                variant: "destructive",
+                title: t("error"),
+                description: "Please enter a test email address",
+            });
+            return;
+        }
+
+        setTestingEmail(true);
+        try {
+            const response = await api.post("/system-setting/email-setting/test", {
+                test_email: testEmail,
+            });
+            if (response.data.status === "Success") {
+                toast({
+                    title: t("success_title"),
+                    description: `Test email sent successfully to ${testEmail}`,
+                });
+            }
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: t("error"),
+                description: error.response?.data?.message || "Failed to send test email",
+            });
+        } finally {
+            setTestingEmail(false);
         }
     };
 
@@ -225,6 +259,45 @@ export default function EmailSettingPage() {
                             </div>
                         </>
                     )}
+
+                    {/* Test Email Section */}
+                    <div className="pt-6 mt-6 border-t border-gray-200">
+                        <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                            <Label className="text-[11px] font-bold text-gray-400 text-right uppercase md:col-span-1">Test Email</Label>
+                            <div className="md:col-span-3 flex gap-2">
+                                <Input
+                                    type="email"
+                                    placeholder="Enter email to test settings"
+                                    value={testEmail}
+                                    onChange={(e) => setTestEmail(e.target.value)}
+                                    className="h-8 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded flex-1"
+                                />
+                                <Button
+                                    onClick={handleTestEmail}
+                                    disabled={testingEmail || !testEmail}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-4 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-md min-w-[100px]"
+                                >
+                                    {testingEmail ? (
+                                        <>
+                                            <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                            Sending...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Send className="h-3 w-3 mr-2" />
+                                            Send Test
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2">
+                            <div className="md:col-span-1"></div>
+                            <p className="text-[10px] text-gray-400 md:col-span-3">
+                                Send a test email to verify your current email settings are working correctly.
+                            </p>
+                        </div>
+                    </div>
 
                 </div>
 

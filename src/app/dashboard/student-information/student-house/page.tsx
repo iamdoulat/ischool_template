@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
     Search,
     Printer,
@@ -64,26 +64,29 @@ interface StudentHouse {
 export default function StudentHousePage() {
     const [houses, setHouses] = useState<StudentHouse[]>([]);
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [formData, setFormData] = useState({ name: "", description: "" });
     const [editingHouse, setEditingHouse] = useState<StudentHouse | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const tt = useTranslateToast();
     const { t } = useTranslation();
+    const ttRef = useRef(tt);
+    useEffect(() => { ttRef.current = tt; }, [tt]);
 
     const fetchHouses = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get("/student-houses");
-            setHouses(response.data.data);
-            setSelectedIds(new Set());
+            setHouses(response.data.data || []);
         } catch (error) {
             console.error("Error fetching houses:", error);
-            tt.error("failed_to_fetch_student_houses");
+            ttRef.current.error("failed_to_fetch_student_houses");
+            setHouses([]);
         } finally {
             setLoading(false);
         }
-    }, [tt]);
+    }, []);
 
     useEffect(() => {
         fetchHouses();
@@ -95,7 +98,12 @@ export default function StudentHousePage() {
             return;
         }
 
-        setLoading(true);
+        setSaving(true);
+        const timeoutId = setTimeout(() => {
+            setSaving(false);
+            tt.error("Request timed out. Please try again.");
+        }, 25000);
+
         try {
             if (editingHouse) {
                 await api.put(`/student-houses/${editingHouse.id}`, formData);
@@ -106,40 +114,57 @@ export default function StudentHousePage() {
             }
             setFormData({ name: "", description: "" });
             setEditingHouse(null);
-            fetchHouses();
-        } catch (error) {
-            const message = (error as any).response?.data?.message || "Failed to save house.";
-            tt.error(message);
+            await fetchHouses();
+        } catch (error: any) {
+            console.error("Error saving house:", error);
+            if (error.code === 'ECONNABORTED') {
+                tt.error("Request timed out. Please check your connection and try again.");
+            } else if (error.response?.status === 422) {
+                // Validation error - show the specific message
+                const validationErrors = error.response?.data?.errors;
+                if (validationErrors) {
+                    const firstError = Object.values(validationErrors)[0];
+                    tt.error(Array.isArray(firstError) ? firstError[0] : firstError);
+                } else {
+                    tt.error(error.response?.data?.message || "Validation failed");
+                }
+            } else {
+                const message = error.response?.data?.message || error.message || "Failed to save house.";
+                tt.error(message);
+            }
         } finally {
-            setLoading(false);
+            clearTimeout(timeoutId);
+            setSaving(false);
         }
     };
 
     const handleDelete = async (id: number) => {
-        setLoading(true);
+        setSaving(true);
         try {
             await api.delete(`/student-houses/${id}`);
             tt.success("student_house_deleted_successfully");
+            setSelectedIds(new Set());
             fetchHouses();
         } catch (error) {
             tt.error("failed_to_delete_house");
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
 
     const handleBulkDelete = async () => {
         if (selectedIds.size === 0) return;
 
-        setLoading(true);
+        setSaving(true);
         try {
             await api.post("/student-houses/bulk-delete", { ids: Array.from(selectedIds) });
             tt.success("selected_houses_deleted_successfully");
+            setSelectedIds(new Set());
             fetchHouses();
         } catch (error) {
             tt.error("failed_to_delete_selected_houses");
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
 
@@ -251,8 +276,8 @@ export default function StudentHousePage() {
                                         {t("cancel")}
                                     </Button>
                                 )}
-                                <Button variant="gradient" className="h-10 px-8" onClick={handleSave} disabled={loading}>
-                                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                <Button variant="gradient" className="h-10 px-8" onClick={handleSave} disabled={saving}>
+                                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                     {editingHouse ? t("update") : t("save")}
                                 </Button>
                             </div>
@@ -344,7 +369,7 @@ export default function StudentHousePage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-muted/30">
-                                        {loading ? (
+                                        {false ? (
                                             <TableSkeleton rows={5} cols={5} />
                                         ) : filteredHouses.length === 0 ? (
                                             <tr>

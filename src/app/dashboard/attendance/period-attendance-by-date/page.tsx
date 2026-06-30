@@ -11,7 +11,8 @@ import { Search, Loader2, Calendar, BookOpen, User, Info, FileSpreadsheet, FileT
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
-import { cn } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
+import { useSettings } from "@/components/providers/settings-provider";
 
 interface Student {
     id: number;
@@ -42,6 +43,7 @@ interface SchoolClass {
 
 export default function PeriodAttendanceByDatePage() {
     const { t } = useTranslation();
+    const { settings } = useSettings();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
@@ -132,17 +134,8 @@ export default function PeriodAttendanceByDatePage() {
         }
     };
 
-    const formatTime = (time: string) => {
-        try {
-            const [hours, minutes] = time.split(':');
-            const h = parseInt(hours);
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const h12 = h % 12 || 12;
-            return `${h12}:${minutes} ${ampm}`;
-        } catch (e) {
-            return time;
-        }
-    };
+    const tf = settings?.time_format === "12" ? "12" : "24" as const;
+    const formatLocalTime = (time: string) => formatTime(time, tf);
 
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
@@ -246,7 +239,7 @@ export default function PeriodAttendanceByDatePage() {
                                             <div className="flex flex-col items-center">
                                                 <span className="text-gray-800">{item.subject.name} ({item.subject.code})</span>
                                                 <span className="text-[9px] text-indigo-500 font-normal">
-                                                    {formatTime(item.start_time)} - {formatTime(item.end_time)}
+                                                    {formatLocalTime(item.start_time)} - {formatLocalTime(item.end_time)}
                                                 </span>
                                             </div>
                                         </TableHead>

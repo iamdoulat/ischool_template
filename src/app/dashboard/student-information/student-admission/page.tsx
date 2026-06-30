@@ -35,6 +35,7 @@ import {
 import api from "@/lib/api";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
+import { downloadAdmissionFormPdf, type AdmissionFormConfig } from "@/lib/pdf-utils";
 
 export default function StudentAdmissionPage() {
     const getImageUrl = useImageUrl();
@@ -69,6 +70,9 @@ export default function StudentAdmissionPage() {
         full_name: "",
         gender: "",
         dob: "",
+        birth_place: "",
+        state: "",
+        nationality: "",
         category: "",
         religion: "",
         caste: "",
@@ -81,6 +85,9 @@ export default function StudentAdmissionPage() {
         weight: "",
         measurement_date: new Date().toISOString().split('T')[0],
         medical_history: "",
+        postal_code: "",
+        mother_tongue: "",
+        identification_marks: "",
         father_name: "",
         father_phone: "",
         father_occupation: "",
@@ -107,10 +114,17 @@ export default function StudentAdmissionPage() {
         bank_name: "",
         ifsc_code: "",
         previous_school_details: "",
+        previous_academic_record: [
+            { school_name: "", class: "", year: "", percentage: "" },
+            { school_name: "", class: "", year: "", percentage: "" }
+        ] as { school_name: string, class: string, year: string, percentage: string }[],
         note: "",
         current_address: "",
         permanent_address: "",
         rte: "No",
+        appraisal_achievements: "",
+        general_behaviour: "",
+        second_language: "",
     });
 
     const [autoAdmissionEnabled, setAutoAdmissionEnabled] = useState(false);
@@ -190,6 +204,7 @@ export default function StudentAdmissionPage() {
     const [rooms, setRooms] = useState<any[]>([]);
     const [feeGroups, setFeeGroups] = useState<any[]>([]);
     const [feeDiscounts, setFeeDiscounts] = useState<any[]>([]);
+    const [admissionFormConfig, setAdmissionFormConfig] = useState<AdmissionFormConfig | undefined>(undefined);
     const filteredFeeGroups = useMemo(() => {
         if (!formData.school_class_id) return feeGroups;
         return feeGroups.filter(g => !g.school_class_id || g.school_class_id.toString() === formData.school_class_id);
@@ -198,7 +213,7 @@ export default function StudentAdmissionPage() {
     const fetchPrerequisites = async () => {
         setFetchingPrereqs(true);
         try {
-            const [classesRes, categoriesRes, housesRes, routesRes, pickupsRes, hostelsRes, roomsRes, feeGroupsRes, feeDiscountsRes] = await Promise.all([
+            const [classesRes, categoriesRes, housesRes, routesRes, pickupsRes, hostelsRes, roomsRes, feeGroupsRes, feeDiscountsRes, admissionFormRes] = await Promise.all([
                 api.get("/academics/classes?no_paginate=true"),
                 api.get("/student-categories"),
                 api.get("/student-houses"),
@@ -207,7 +222,8 @@ export default function StudentAdmissionPage() {
                 api.get("/hostels"),
                 api.get("/rooms"),
                 api.get("/fees-groups"),
-                api.get("/fee-discounts")
+                api.get("/fee-discounts"),
+                api.get("/system-setting/admission-form")
             ]);
             setClasses(classesRes.data.data?.data || classesRes.data.data || []);
             setCategories(categoriesRes.data.data?.data || categoriesRes.data.data || []);
@@ -218,6 +234,18 @@ export default function StudentAdmissionPage() {
             setRooms(roomsRes.data.data?.data || roomsRes.data.data || []);
             setFeeGroups(feeGroupsRes.data.data?.data || feeGroupsRes.data.data || []);
             setFeeDiscounts(feeDiscountsRes.data.data?.data || feeDiscountsRes.data.data || []);
+
+            // Parse admission form settings
+            if (admissionFormRes.data.success && admissionFormRes.data.data) {
+                const { settings, documents } = admissionFormRes.data.data;
+                setAdmissionFormConfig({
+                    documents: documents || [],
+                    fee_policy: settings?.fee_policy || "",
+                    office_use_only: settings?.office_use_only || "",
+                    terms_conditions: settings?.terms_conditions || "",
+                    declaration: settings?.declaration || "",
+                });
+            }
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
             tt.error("failed_to_load_admission_prerequisites");
@@ -377,7 +405,15 @@ export default function StudentAdmissionPage() {
             const data = new FormData();
             Object.keys(formData).forEach(key => {
                 const value = formData[key];
-                if (Array.isArray(value)) {
+                if (key === 'previous_academic_record') {
+                    const records = value as Record<string, string>[];
+                    records.forEach((record, idx) => {
+                        Object.keys(record).forEach(field => {
+                            data.append(`previous_academic_record[${idx}][${field}]`, record[field] || '');
+                        });
+                    });
+                    return;
+                } else if (Array.isArray(value)) {
                     value.forEach(v => data.append(`${key}[]`, v));
                 } else if (value !== null && value !== undefined && value !== "") {
                     if (key === 'active') {
@@ -393,6 +429,34 @@ export default function StudentAdmissionPage() {
                     "Content-Type": "multipart/form-data",
                 },
             });
+
+            // Resolve class & section names for PDF
+            const clsName = classes.find(c => c.id.toString() === formData.school_class_id?.toString())?.name || "";
+            const secName = sections.find(s => s.id.toString() === formData.section_id?.toString())?.name || "";
+            const fullName = formData.full_name || `${formData.name || ""} ${formData.last_name || ""}`.trim();
+
+            // Read avatar as data URL for the PDF (if a file was selected)
+            let photoUrl: string | undefined;
+            if (formData.avatar instanceof File) {
+                photoUrl = await new Promise<string | undefined>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = () => resolve(undefined);
+                    reader.readAsDataURL(formData.avatar);
+                });
+            }
+
+            // Download admission form PDF with photo and dynamic settings
+            await downloadAdmissionFormPdf(
+                { ...formData, full_name: fullName },
+                clsName,
+                secName,
+                `admission-form-${formData.admission_no || "new"}.pdf`,
+                photoUrl,
+                undefined,
+                undefined,
+                admissionFormConfig,
+            );
 
             tt.success("student_admitted_successfully");
             window.location.reload(); // Quick reset
@@ -483,6 +547,10 @@ export default function StudentAdmissionPage() {
                             ]}
                         />
                         <DateField label={t("date_of_birth")} required value={formData.dob} onChange={(val) => handleChange("dob", val)} />
+                        <InputField label="ID/Birth Cert" value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
+                        <InputField label="Place of Birth" value={formData.birth_place} onChange={(val) => handleChange("birth_place", val)} />
+                        <InputField label="State" value={formData.state} onChange={(val) => handleChange("state", val)} />
+                        <InputField label={t("nationality")} value={formData.nationality} onChange={(val) => handleChange("nationality", val)} />
 
                         <SelectField
                             label={t("category")}
@@ -531,6 +599,151 @@ export default function StudentAdmissionPage() {
                         <InputField label={t("weight")} value={formData.weight} onChange={(val) => handleChange("weight", val)} />
 
                         <DateField label={t("measurement_date")} value={formData.measurement_date} onChange={(val) => handleChange("measurement_date", val)} />
+                        <InputField label="Postal / Zip Code" value={formData.postal_code} onChange={(val) => handleChange("postal_code", val)} />
+                        <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <InputField label={t("mother_tongue")} value={formData.mother_tongue} onChange={(val) => handleChange("mother_tongue", val)} />
+                            <div>
+                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">{t("general_behaviour") || "GENERAL BEHAVIOUR:"}</label>
+                                <div className="flex items-center gap-5">
+                                    {["Mild", "Normal", "Hyperactive"].map(b => (
+                                        <label key={b} className="flex items-center gap-2 cursor-pointer group">
+                                            <div className="relative flex items-center justify-center">
+                                                <input
+                                                    type="radio"
+                                                    name="general_behaviour"
+                                                    className="peer sr-only"
+                                                    checked={formData.general_behaviour === b}
+                                                    onChange={() => handleChange("general_behaviour", b)}
+                                                />
+                                                <div className="h-4 w-4 rounded border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
+                                                <div className="absolute h-2 w-2 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                            </div>
+                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{b}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">{t("second_language") || "SECOND LANGUAGE:"}</label>
+                                <div className="flex items-center gap-5">
+                                    {["English", "Arabic", "Others"].map(l => (
+                                        <label key={l} className="flex items-center gap-2 cursor-pointer group">
+                                            <div className="relative flex items-center justify-center">
+                                                <input
+                                                    type="radio"
+                                                    name="second_language"
+                                                    className="peer sr-only"
+                                                    checked={formData.second_language === l}
+                                                    onChange={() => handleChange("second_language", l)}
+                                                />
+                                                <div className="h-4 w-4 rounded border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
+                                                <div className="absolute h-2 w-2 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                            </div>
+                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{l}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="lg:col-span-2">
+                            <TextAreaField label={t("current_address")} rows={2} value={formData.current_address} onChange={(val) => handleChange("current_address", val)} />
+                        </div>
+                        <div className="lg:col-span-2">
+                            <TextAreaField label={t("permanent_address")} rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
+                        </div>
+                        <div className="lg:col-span-4 space-y-2">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("previous_academic_record", "Previous Academic Record")}</label>
+                            <div className="border rounded-xl overflow-hidden overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-muted text-muted-foreground border-b">
+                                        <tr>
+                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("name_of_previous_school", "Name of the previous school & location")}</th>
+                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("class")}</th>
+                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("year_of_study", "Year of Study")}</th>
+                                            <th className="px-3 py-2 font-bold text-[11px]">{t("percentage_grade", "Percentage/Grade")}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {formData.previous_academic_record.map((record, index) => (
+                                            <tr key={index}>
+                                                <td className="p-0 border-r">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        value={record.school_name}
+                                                        onChange={(e) => {
+                                                            const newRecords = [...formData.previous_academic_record];
+                                                            newRecords[index].school_name = e.target.value;
+                                                            handleChange("previous_academic_record", newRecords);
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td className="p-0 border-r">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        value={record.class}
+                                                        onChange={(e) => {
+                                                            const newRecords = [...formData.previous_academic_record];
+                                                            newRecords[index].class = e.target.value;
+                                                            handleChange("previous_academic_record", newRecords);
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td className="p-0 border-r">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        value={record.year}
+                                                        onChange={(e) => {
+                                                            const newRecords = [...formData.previous_academic_record];
+                                                            newRecords[index].year = e.target.value;
+                                                            handleChange("previous_academic_record", newRecords);
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td className="p-0">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        value={record.percentage}
+                                                        onChange={(e) => {
+                                                            const newRecords = [...formData.previous_academic_record];
+                                                            newRecords[index].percentage = e.target.value;
+                                                            handleChange("previous_academic_record", newRecords);
+                                                        }}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => handleChange("previous_academic_record", [...formData.previous_academic_record, { school_name: "", class: "", year: "", percentage: "" }])}
+                                className="text-[11px] font-semibold text-primary hover:underline mt-1"
+                            >
+                                + Add Row
+                            </button>
+                        </div>
+                        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <TextAreaField label="Identification Marks" rows={2} value={formData.identification_marks} onChange={(val) => handleChange("identification_marks", val)} />
+                            <TextAreaField label={t("medical_history")} rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
+                        </div>
+                        <div className="lg:col-span-2">
+                            <label className="text-[12px] font-semibold text-gray-700 block mb-1.5">{t("appraisal_and_behaviour") || "APPRAISAL & BEHAVIOUR"}</label>
+                            <textarea
+                                className="w-full min-h-[68px] text-[12px] border border-gray-200 rounded-md p-2.5 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y bg-white"
+                                value={formData.appraisal_achievements}
+                                onChange={(e) => handleChange("appraisal_achievements", e.target.value)}
+                                placeholder={t("enter_achievements") || "Appraisal of your child..."}
+                            />
+                        </div>
+                        <div className="lg:col-span-2">
+                            <TextAreaField label={t("note")} rows={2} value={formData.note} onChange={(val) => handleChange("note", val)} />
+                        </div>
 
                         {/* Sibling Section Matching Screenshot */}
                         <div className="lg:col-span-4 mt-6">
@@ -595,9 +808,6 @@ export default function StudentAdmissionPage() {
                             </div>
                         </div>
 
-                        <div className="lg:col-span-4">
-                            <TextAreaField label={t("medical_history")} rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
-                        </div>
                     </div>
                 </SectionCard>
 
@@ -774,19 +984,9 @@ export default function StudentAdmissionPage() {
                                 <h3 className="text-lg font-bold">{t("others_information")}</h3>
                             </div>
 
-                            <div className="lg:col-span-2">
-                                <TextAreaField label={t("current_address")} rows={2} value={formData.current_address} onChange={(val) => handleChange("current_address", val)} />
-                            </div>
-                            <div className="lg:col-span-2">
-                                <TextAreaField label={t("permanent_address")} rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
-                            </div>
-
                             <InputField label={t("bank_account_number")} value={formData.bank_account_no} onChange={(val) => handleChange("bank_account_no", val)} />
                             <InputField label={t("bank_name")} value={formData.bank_name} onChange={(val) => handleChange("bank_name", val)} />
                             <InputField label={t("ifsc_code")} value={formData.ifsc_code} onChange={(val) => handleChange("ifsc_code", val)} />
-                            <InputField label={t("national_identification_number")} value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
-
-                            <InputField label={t("local_identification_number")} value={formData.local_identification_no} onChange={(val) => handleChange("local_identification_no", val)} />
 
                             <div className="py-2">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-3">
@@ -812,13 +1012,10 @@ export default function StudentAdmissionPage() {
                                 </div>
                             </div>
 
-                            <div className="lg:col-span-2"></div>
-
-                            <div className="lg:col-span-2">
-                                <TextAreaField label={t("previous_school_details")} rows={2} value={formData.previous_school_details} onChange={(val) => handleChange("previous_school_details", val)} />
-                            </div>
-                            <div className="lg:col-span-2">
-                                <TextAreaField label={t("note")} rows={2} value={formData.note} onChange={(val) => handleChange("note", val)} />
+                            <div className="lg:col-span-4 mt-4 border-t pt-4">
+                                <h4 className="text-sm font-bold text-gray-800 mb-4">{t("general_behaviour_and_language") || "General Behaviour & Language"}</h4>
+                                <div className="space-y-6">
+                                </div>
                             </div>
                         </div>
                     )}

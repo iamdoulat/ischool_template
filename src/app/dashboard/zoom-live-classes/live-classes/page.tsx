@@ -15,7 +15,8 @@ import {
     Copy, FileSpreadsheet, FileBox, Printer, Columns,
     ChevronLeft, ChevronRight, Search, ArrowUpDown, List, X, Plus, Pencil, Trash2, Calendar, Video
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
+import { useSettings } from "@/components/providers/settings-provider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -39,6 +40,8 @@ interface LiveClass {
 
 export default function LiveClassesPage() {
     const { t } = useTranslation();
+    const { settings } = useSettings();
+    const tf = settings?.time_format === "12" ? "12" : "24" as const;
     const [searchTerm, setSearchTerm] = useState("");
     const [classes, setClasses] = useState<LiveClass[]>([]);
     const [loading, setLoading] = useState(false);
@@ -217,10 +220,7 @@ export default function LiveClassesPage() {
             const mm = pad(d.getMonth() + 1);
             const dd = pad(d.getDate());
             const yyyy = d.getFullYear();
-            const hh = pad(d.getHours());
-            const min = pad(d.getMinutes());
-            const ss = pad(d.getSeconds());
-            return `${mm}/${dd}/${yyyy} ${hh}:${min}:${ss}`;
+            return `${mm}/${dd}/${yyyy} ${formatTime(d, tf)}`;
         } catch {
             return dtStr;
         }

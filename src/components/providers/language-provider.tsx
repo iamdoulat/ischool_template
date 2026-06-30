@@ -50,7 +50,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
 
     const fetchTranslations = useCallback(async (code: string) => {
         try {
-            const response = await api.get(`/system-setting/languages/translations/${code}`);
+            const response = await api.get(`/system-setting/languages/translations/${code}`).catch(() => ({ data: { success: false, data: {} } }));
             if (response.data.success) {
                 setTranslations(response.data.data);
             }

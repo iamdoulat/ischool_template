@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useSettings } from "@/components/providers/settings-provider";
+import { formatTime } from "@/lib/utils";
 import { useMemo } from "react";
 
 interface TimetableEntry {
@@ -178,6 +179,7 @@ export default function TeachersTimetablePage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
     const { settings } = useSettings();
+    const tf = settings?.time_format === "12" ? "12" : "24" as const;
 
     // Derived ordered days based on settings
     const orderedDays = useMemo(() => {
@@ -237,7 +239,7 @@ export default function TeachersTimetablePage() {
 
         setSearching(true);
         try {
-            const res = await api.get("/class-timetables", {
+            const res = await api.get("/academics/class-timetables", {
                 params: { staff_id: selectedStaffId }
             });
             const entries = res.data.data || [];
@@ -358,7 +360,7 @@ export default function TeachersTimetablePage() {
                                                             </div>
                                                             <div className="flex items-center gap-2 pl-5">
                                                                 <Clock className="h-3.5 w-3.5 text-orange-400" />
-                                                                <span className="text-gray-700 font-semibold">{entry.start_time} - {entry.end_time}</span>
+                                                                <span className="text-gray-700 font-semibold">{formatTime(entry.start_time, tf)} - {formatTime(entry.end_time, tf)}</span>
                                                             </div>
                                                             <div className="flex items-center gap-2 pl-5">
                                                                 <MapPin className="h-3.5 w-3.5 text-green-500" />

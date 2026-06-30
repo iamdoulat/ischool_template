@@ -11,7 +11,7 @@ export const handlers = [
         name: 'Admin User',
         email: 'admin@ischool.com',
         role: 'admin',
-        avatar: null,
+        avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=6366f1&color=fff&size=200',
         permissions: ['all']
       }
     })
@@ -50,6 +50,7 @@ export const handlers = [
         date_format: "d/m/Y",
         timezone: "UTC",
         start_day_of_week: "monday",
+        time_format: "12",
         currency_format: "USD",
         base_url: "http://localhost:3000",
         file_upload_path: "uploads/",
@@ -347,8 +348,27 @@ export const handlers = [
     return HttpResponse.json({
       success: true,
       data: [
-        { id: 1, language: 'English', short_code: 'en', is_active: true, is_rtl: false },
-        { id: 2, language: 'Spanish', short_code: 'es', is_active: false, is_rtl: false }
+        { id: 1, language: 'English', short_code: 'en', is_active: true, is_rtl: false, is_enabled: true },
+        { id: 2, language: 'Spanish', short_code: 'es', is_active: false, is_rtl: false, is_enabled: false }
+      ]
+    })
+  }),
+
+  // Languages translations endpoint
+  http.get('/api/v1/system-setting/languages/translations/:code', () => {
+    return HttpResponse.json({
+      success: true,
+      data: {}
+    })
+  }),
+
+  // Currencies endpoint
+  http.get('/api/v1/system-setting/currencies', () => {
+    return HttpResponse.json({
+      status: 'Success',
+      data: [
+        { id: 1, currency: 'USD', short_code: 'USD', symbol: '$', rate: 1, is_base: true, is_active: true, is_enabled: true },
+        { id: 2, currency: 'EUR', short_code: 'EUR', symbol: '€', rate: 0.85, is_base: false, is_active: false, is_enabled: true }
       ]
     })
   }),

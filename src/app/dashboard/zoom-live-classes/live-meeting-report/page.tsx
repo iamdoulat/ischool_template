@@ -12,7 +12,8 @@ import {
     Copy, FileSpreadsheet, FileBox, Printer, Columns,
     ChevronLeft, ChevronRight, Search, ArrowUpDown, List, X, Video
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
+import { useSettings } from "@/components/providers/settings-provider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface MeetingReport {
@@ -33,6 +34,8 @@ interface MeetingReport {
 
 export default function LiveMeetingReportPage() {
     const { t } = useTranslation();
+    const { settings } = useSettings();
+    const tf = settings?.time_format === "12" ? "12" : "24" as const;
     const [searchTerm, setSearchTerm] = useState("");
     const [reports, setReports] = useState<MeetingReport[]>([]);
     const [loading, setLoading] = useState(false);
@@ -100,10 +103,7 @@ export default function LiveMeetingReportPage() {
             const mm = pad(d.getMonth() + 1);
             const dd = pad(d.getDate());
             const yyyy = d.getFullYear();
-            const hh = pad(d.getHours());
-            const min = pad(d.getMinutes());
-            const ss = pad(d.getSeconds());
-            return `${mm}/${dd}/${yyyy} ${hh}:${min}:${ss}`;
+            return `${mm}/${dd}/${yyyy} ${formatTime(d, tf)}`;
         } catch {
             return dtStr;
         }

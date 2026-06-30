@@ -39,7 +39,7 @@ import { useRouter } from "next/navigation";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useLanguage } from "@/components/providers/language-provider";
 import { cn } from "@/lib/utils";
-import { getImageUrl } from "@/lib/image-url";
+import { useImageUrl } from "@/lib/image-url";
 
 interface Language {
     id: number;
@@ -59,6 +59,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
     const { settings, loading } = useSettings();
     const { selectedLanguage, setSelectedLanguage, t } = useLanguage();
     const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
+    const getImageUrl = useImageUrl();
 
     const NotificationBell = () => {
         const [notifications, setNotifications] = useState<any[]>([]);
@@ -87,7 +88,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
         useEffect(() => {
             if (user) {
                 fetchUnreadCount();
-                const interval = setInterval(fetchUnreadCount, 60000); // Poll every minute
+                const interval = setInterval(fetchUnreadCount, 60000);
                 return () => clearInterval(interval);
             }
         }, [user]);
@@ -117,6 +118,14 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                 console.error("Failed to mark all as read", error);
             }
         };
+
+        if (!mounted) {
+            return (
+                <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
+                    <Bell className="h-5 w-5" />
+                </Button>
+            );
+        }
 
         return (
             <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -398,11 +407,11 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                                 <div className="absolute -inset-1 bg-gradient-to-r from-primary to-indigo-500 rounded-full blur opacity-25 group-hover:opacity-60 transition duration-300" />
                                 <Avatar className="h-9 w-9 border-2 border-background shadow-lg relative rounded-full ring-2 ring-primary/20 transition-all duration-300 group-hover:ring-primary/50">
                                     <AvatarImage
-                                        src={getImageUrl(user?.avatar) || undefined}
+                                        src={getImageUrl(user?.avatar)}
                                         alt={user?.name}
                                     />
                                     <AvatarFallback className="bg-gradient-to-br from-primary to-indigo-600 text-white font-bold text-xs ring-inset ring-1 ring-white/20">
-                                        {user?.name ? user.name.substring(0, 2).toUpperCase() : "AD"}
+                                        <UserIcon className="h-4 w-4" />
                                     </AvatarFallback>
                                 </Avatar>
                             </div>

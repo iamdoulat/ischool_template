@@ -14,6 +14,7 @@ import {
     Eye,
     Pencil,
     Trash2,
+    Download,
     User,
     Users,
     Mail,
@@ -43,6 +44,9 @@ import api from "@/lib/api";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useImageUrl } from "@/lib/image-url";
+import { downloadAdmissionFormPdf } from "@/lib/pdf-utils";
+import { useSettings } from "@/components/providers/settings-provider";
+import { useCurrency } from "@/components/providers/currency-provider";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -107,6 +111,8 @@ export default function StudentDetailsPage() {
     const { t } = useTranslation();
     const router = useRouter();
     const getImageUrl = useImageUrl();
+    const { settings } = useSettings();
+    const { selectedCurrency } = useCurrency();
     const [viewMode, setViewMode] = useState<"list" | "details">("list");
     const [loading, setLoading] = useState(false);
     const [fetchingPrereqs, setFetchingPrereqs] = useState(true);
@@ -138,6 +144,16 @@ export default function StudentDetailsPage() {
     useEffect(() => {
         fetchPrerequisites();
     }, []);
+
+    // Auto-load students once prerequisites finish loading
+    useEffect(() => {
+        if (!fetchingPrereqs) handleSearch(1);
+    }, [fetchingPrereqs]);
+
+    // Auto filter when dropdowns change
+    useEffect(() => {
+        if (!fetchingPrereqs) handleSearch(1);
+    }, [filters.school_class_id, filters.section_id, filters.status]);
 
     const fetchPrerequisites = async () => {
         try {
@@ -185,6 +201,58 @@ export default function StudentDetailsPage() {
         setStudents([]);
     };
 
+    const handleDownloadPdf = async (student: Student) => {
+        try {
+            // Fetch full student details + admission form config in parallel.
+            // The admission form config (documents, fee policy, office use only,
+            // terms & conditions, declaration) is sourced from
+            // /dashboard/system-setting/admission-form -> "Admission Form Setting" tab.
+            const [studentRes, admissionFormRes] = await Promise.all([
+                api.get(`/students/${student.id}`),
+                api.get("/system-setting/admission-form").catch(() => null),
+            ]);
+            const fullData = studentRes.data?.data || studentRes.data;
+            if (!fullData) {
+                tt.error("failed_to_load_student_details");
+                return;
+            }
+
+            const className = fullData.school_class?.name || student.school_class?.name || "";
+            const sectionName = fullData.section?.name || student.section?.name || "";
+            const fullName = `${fullData.name || ""} ${fullData.last_name || ""}`.trim();
+            const photoUrl = getImageUrl(fullData.avatar);
+
+            const parentPhotos = {
+                mother: getImageUrl(fullData.mother_photo),
+                father: getImageUrl(fullData.father_photo),
+                guardian: getImageUrl(fullData.guardian_photo)
+            };
+
+            const afData = admissionFormRes?.data?.data;
+            const admissionFormConfig = afData ? {
+                documents: Array.isArray(afData.documents) ? afData.documents : [],
+                fee_policy: afData.settings?.fee_policy || "",
+                office_use_only: afData.settings?.office_use_only || "",
+                terms_conditions: afData.settings?.terms_conditions || "",
+                declaration: afData.settings?.declaration || "",
+            } : undefined;
+
+            await downloadAdmissionFormPdf(
+                { ...fullData, full_name: fullName },
+                className,
+                sectionName,
+                `student-details-${fullData.admission_no || student.id}.pdf`,
+                photoUrl,
+                { name: settings?.school_name, slogan: settings?.school_slogan, currencySymbol: selectedCurrency?.symbol || '$' },
+                parentPhotos,
+                admissionFormConfig
+            );
+        } catch (error) {
+            console.error("Error downloading student PDF:", error);
+            tt.error("failed_to_download_student_details");
+        }
+    };
+
     const handleSearch = async (page = 1) => {
         setLoading(true);
         try {
@@ -194,9 +262,13 @@ export default function StudentDetailsPage() {
             if (filters.status) params.status = filters.status;
             if (filters.search) params.search = filters.search;
 
+            console.log("[StudentDetails] Fetching with params:", params);
             const response = await api.get("/students", { params });
+            console.log("[StudentDetails] Full API response.data:", JSON.stringify(response.data).substring(0, 500));
             const result = response.data?.data;
+            console.log("[StudentDetails] result (response.data.data):", typeof result, Array.isArray(result));
             const studentsData = result?.data || result || [];
+            console.log("[StudentDetails] studentsData length:", studentsData.length, "first item:", studentsData[0]);
 
             setStudents(studentsData);
             setPagination({
@@ -208,10 +280,10 @@ export default function StudentDetailsPage() {
             });
 
             if (!studentsData || studentsData.length === 0) {
-                console.log("No students found. Params sent:", JSON.stringify(params), "API response:", JSON.stringify(response.data));
+                console.log("[StudentDetails] No students found. Params sent:", JSON.stringify(params), "API response:", JSON.stringify(response.data));
             }
-        } catch (error) {
-            console.error("Error fetching students:", error);
+        } catch (error: any) {
+            console.error("[StudentDetails] Error fetching students:", error?.response?.status, error?.response?.data || error?.message);
             tt.error("failed_to_fetch_students");
         } finally {
             setLoading(false);
@@ -487,6 +559,15 @@ export default function StudentDetailsPage() {
                                                         <Button
                                                             variant="outline"
                                                             size="icon"
+                                                            className="h-8 w-8 rounded-lg bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-sm"
+                                                            onClick={() => handleDownloadPdf(student)}
+                                                            title="Download Admission Form PDF"
+                                                        >
+                                                            <Download className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
                                                             className="h-8 w-8 rounded-lg bg-amber-500 border-amber-500 text-white hover:bg-amber-600 transition-all shadow-sm"
                                                             onClick={() => router.push(`/dashboard/student-information/student-details/${student.id}/edit`)}
                                                         >
@@ -525,6 +606,15 @@ export default function StudentDetailsPage() {
                                                 }}
                                             >
                                                 <Eye className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-lg"
+                                                onClick={() => handleDownloadPdf(student)}
+                                                title="Download Admission Form PDF"
+                                            >
+                                                <Download className="h-4 w-4" />
                                             </Button>
                                             <Button
                                                 variant="outline"

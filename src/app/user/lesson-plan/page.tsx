@@ -3,11 +3,18 @@
 import { useState, useEffect, useCallback } from "react";
 import {
     BookOpen, Clock, ChevronLeft, ChevronRight, Building, FileText,
-    Loader2, Search, Printer, CalendarRange, CalendarDays, XCircle,
+    Loader2, Search, Printer, CalendarRange, CalendarDays, XCircle, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
@@ -48,8 +55,9 @@ const DAY_COLORS: Record<string, { card: string; accent: string; text: string; d
 const TODAY_NAME = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
 /* ── Single lesson card ── */
-function PlanCard({ plan, colors }: { plan: PlanItem; colors: typeof DAY_COLORS[string] }) {
+function PlanCard({ plan, colors, onView }: { plan: PlanItem; colors: typeof DAY_COLORS[string]; onView: (plan: PlanItem) => void }) {
     const { t } = useTranslation();
+    const hasPlanData = !!(plan.topic || plan.subTopic || plan.lesson);
     return (
         <div
             className={cn(
@@ -60,9 +68,21 @@ function PlanCard({ plan, colors }: { plan: PlanItem; colors: typeof DAY_COLORS[
             <div className="flex gap-2">
                 <div className={cn("w-0.5 rounded-full shrink-0 self-stretch", colors.dot)} />
                 <div className="space-y-1.5 min-w-0 flex-1">
-                    <div className="flex items-start gap-1.5">
-                        <BookOpen className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                        <span className={cn("font-bold leading-tight text-[12px]", colors.text)}>{plan.subject}</span>
+                    <div className="flex items-start justify-between gap-1">
+                        <div className="flex items-start gap-1.5 min-w-0">
+                            <BookOpen className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
+                            <span className={cn("font-bold leading-tight text-[12px]", colors.text)}>{plan.subject}</span>
+                        </div>
+                        {hasPlanData && (
+                            <Button
+                                onClick={() => onView(plan)}
+                                size="icon"
+                                className="h-6 w-6 shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md shadow-sm"
+                                title={t("view_details")}
+                            >
+                                <Eye className="h-3 w-3" />
+                            </Button>
+                        )}
                     </div>
                     <div className="flex items-start gap-1.5">
                         <Clock className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
@@ -115,6 +135,7 @@ export default function UserLessonPlanPage() {
     const [weekOffset, setWeekOffset] = useState(0);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeDay, setActiveDay] = useState(TODAY_NAME);
+    const [viewPlan, setViewPlan] = useState<PlanItem | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -262,9 +283,9 @@ export default function UserLessonPlanPage() {
                                             </div>
                                             {/* Day column body */}
                                             <div className="p-1.5 space-y-2">
-                                                {plans.length > 0 ? (
+                                                    {plans.length > 0 ? (
                                                     plans.map((plan, idx) => (
-                                                        <PlanCard key={idx} plan={plan} colors={colors} />
+                                                        <PlanCard key={idx} plan={plan} colors={colors} onView={setViewPlan} />
                                                     ))
                                                 ) : (
                                                     <EmptyDay />
@@ -317,7 +338,7 @@ export default function UserLessonPlanPage() {
                                     {activePlans.length > 0 ? (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             {activePlans.map((plan, idx) => (
-                                                <PlanCard key={idx} plan={plan} colors={DAY_COLORS[activeDay]} />
+                                                <PlanCard key={idx} plan={plan} colors={DAY_COLORS[activeDay]} onView={setViewPlan} />
                                             ))}
                                         </div>
                                     ) : (
@@ -374,6 +395,100 @@ export default function UserLessonPlanPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* ── View Details Modal ── */}
+            <Dialog open={!!viewPlan} onOpenChange={(open) => !open && setViewPlan(null)}>
+                <DialogContent className="max-w-lg rounded-xl border-0 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="relative p-5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white overflow-hidden">
+                        <div className="absolute inset-0 opacity-10">
+                            <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white" />
+                            <div className="absolute -bottom-6 -left-6 h-32 w-32 rounded-full bg-white" />
+                        </div>
+                        <div className="relative">
+                            <DialogTitle className="text-base font-bold flex items-center gap-2.5">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
+                                    <Eye className="h-4 w-4" />
+                                </span>
+                                {t("lesson_details")}
+                            </DialogTitle>
+                            {viewPlan && (
+                                <div className="flex flex-wrap gap-1.5 mt-2.5">
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-semibold backdrop-blur-sm">
+                                        <BookOpen className="h-3 w-3" />
+                                        {viewPlan.subject}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-semibold backdrop-blur-sm">
+                                        <Clock className="h-3 w-3" />
+                                        {viewPlan.time}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </DialogHeader>
+
+                    <div className="p-5 space-y-4 max-h-[55vh] overflow-y-auto bg-white">
+                        {viewPlan && (
+                            <>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("subject")}</span>
+                                        <p className="text-sm font-semibold text-gray-800">{viewPlan.subject}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("time")}</span>
+                                        <p className="text-sm font-semibold text-gray-800">{viewPlan.time}</p>
+                                    </div>
+                                    {viewPlan.room && (
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("room")}</span>
+                                            <p className="text-sm font-semibold text-gray-800">{viewPlan.room}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="border-t border-gray-100 pt-3">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t("lesson_plan")}</span>
+                                        <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                <FileText className="h-3 w-3 text-indigo-500" />
+                                                {t("lesson")}
+                                            </span>
+                                            <p className="text-sm text-gray-700">{viewPlan.lesson || "—"}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                <BookOpen className="h-3 w-3 text-indigo-500" />
+                                                {t("topic")}
+                                            </span>
+                                            <p className="text-sm text-gray-700">{viewPlan.topic || "—"}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">~ {t("sub")}</span>
+                                            <p className="text-sm text-gray-700">{viewPlan.subTopic || "—"}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    <DialogFooter className="p-4 bg-gray-50/80 border-t border-gray-100">
+                        <Button
+                            onClick={() => setViewPlan(null)}
+                            variant="outline"
+                            className="h-9 px-5 rounded-lg text-[10px] font-bold uppercase tracking-widest border-gray-200 hover:bg-gray-100 transition-all"
+                        >
+                            {t("close")}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

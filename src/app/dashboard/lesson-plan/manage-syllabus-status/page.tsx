@@ -90,25 +90,23 @@ export default function ManageSyllabusStatusPage() {
         fetchInitialData();
     }, []);
 
+    const extractData = (res: { data?: unknown }): OptionItem[] => {
+        const data = res.data as { data?: unknown } | unknown[] | undefined;
+        if (Array.isArray(data)) return data as OptionItem[];
+        if (data && Array.isArray((data as { data?: unknown }).data)) {
+            return (data as { data: OptionItem[] }).data;
+        }
+        return [];
+    };
+
     const fetchInitialData = async () => {
         try {
-            const [classesRes, groupsRes, subjectsRes] = await Promise.all([
+            const [classesRes, subjectsRes] = await Promise.all([
                 api.get('/academics/classes?no_paginate=true').catch(() => ({ data: [] })),
-                api.get('/academics/subject-groups?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] }))
             ]);
 
-            const extractData = (res: { data?: unknown }): OptionItem[] => {
-                const data = res.data as { data?: unknown } | unknown[] | undefined;
-                if (Array.isArray(data)) return data as OptionItem[];
-                if (data && Array.isArray((data as { data?: unknown }).data)) {
-                    return (data as { data: OptionItem[] }).data;
-                }
-                return [];
-            };
-
             setClasses(extractData(classesRes));
-            setSubjectGroups(extractData(groupsRes));
             setSubjects(extractData(subjectsRes));
         } catch (error) {
             console.error("Failed to load initial dropdowns", error);
@@ -125,6 +123,23 @@ export default function ManageSyllabusStatusPage() {
             setSections(filtered);
         } catch {
             setSections([]);
+        }
+    };
+
+    // Fetch subject groups filtered by class and section
+    const fetchFilteredSubjectGroups = async (classId: string, sectionName: string) => {
+        const params: Record<string, string> = { no_paginate: 'true' };
+        if (classId) params.school_class_id = classId;
+        const cls = classes.find((c) => String(c.id) === String(classId));
+        if (cls && sectionName) {
+            const sec = sections.find((s) => s.name === sectionName && String(s.school_class_id) === String(classId));
+            if (sec) params.section_id = String(sec.id);
+        }
+        try {
+            const res = await api.get('/academics/subject-groups', { params });
+            setSubjectGroups(extractData(res));
+        } catch {
+            setSubjectGroups([]);
         }
     };
 
@@ -222,8 +237,10 @@ export default function ManageSyllabusStatusPage() {
                                 value={criteria.class_name}
                                 onValueChange={(val) => {
                                     const cls = classes.find((c) => c.name === val);
-                                    setCriteria({ ...criteria, class_name: val, class_id: cls?.id?.toString() ?? '', section: '' });
-                                    fetchSectionsByClass(cls?.id?.toString() ?? '');
+                                    const classId = cls?.id?.toString() ?? '';
+                                    setCriteria({ ...criteria, class_name: val, class_id: classId, section: '', subject_group: '', subject: '' });
+                                    fetchSectionsByClass(classId);
+                                    fetchFilteredSubjectGroups(classId, '');
                                 }}
                             >
                                 <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
@@ -243,7 +260,10 @@ export default function ManageSyllabusStatusPage() {
                             </Label>
                             <Select
                                 value={criteria.section}
-                                onValueChange={(val) => setCriteria({ ...criteria, section: val })}
+                                onValueChange={(val) => {
+                                    setCriteria({ ...criteria, section: val, subject_group: '', subject: '' });
+                                    fetchFilteredSubjectGroups(criteria.class_id, val);
+                                }}
                                 disabled={!criteria.class_name}
                             >
                                 <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
@@ -261,7 +281,7 @@ export default function ManageSyllabusStatusPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">
                                 Subject Group <span className="text-red-500">*</span>
                             </Label>
-                            <Select value={criteria.subject_group} onValueChange={(val) => setCriteria({...criteria, subject_group: val})}>
+                            <Select value={criteria.subject_group} onValueChange={(val) => setCriteria({...criteria, subject_group: val})} disabled={!criteria.class_name}>
                                 <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>

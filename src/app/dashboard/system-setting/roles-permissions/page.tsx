@@ -326,7 +326,6 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
         { name: "roles_permissions", label: "Roles & Permissions" },
         { name: "languages", label: "Languages" },
         { name: "addons", label: "Addons" },
-        { name: "modules", label: "Modules" },
         { name: "custom_fields", label: "Custom Fields" },
         { name: "captcha_setting", label: "Captcha Setting" },
         { name: "system_fields", label: "System Fields" },
@@ -504,7 +503,6 @@ const submenuFeatureOverride: Record<string, Record<string, string[]>> = {
         users: ["User Status"],
         roles_permissions: [],
         addons: [],
-        modules: [],
         captcha_setting: [],
         student_profile_setting: ["Student Profile Update"],
         file_types: [],
@@ -542,7 +540,6 @@ export default function RolesPermissionsPage() {
     });
     const [limit, setLimit] = useState("50");
 
-    const [modules, setModules] = useState<any[]>([]);
     const [permissionsMatrix, setPermissionsMatrix] = useState<any>({});
     const [checkedPermNames, setCheckedPermNames] = useState<Set<string>>(new Set());
     const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -606,34 +603,16 @@ export default function RolesPermissionsPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [modulesRes, permsRes] = await Promise.all([
-                    api.get("/system-setting/modules"),
-                    api.get("/permissions"),
-                ]);
-                if (modulesRes.data.success) {
-                    setModules(modulesRes.data.data || []);
-                }
+                const permsRes = await api.get("/permissions");
                 setPermissionsMatrix(permsRes.data.data || {});
             } catch (error) {
-                console.error("Failed to fetch module/permission data:", error);
+                console.error("Failed to fetch permission data:", error);
             }
         };
         fetchData();
     }, []);
 
-    const activeModuleKeys = useMemo(() => {
-        const activeAliases = new Set(
-            modules.filter((m: any) => m.is_active_system).map((m: any) => m.alias)
-        );
-        const allModuleAliases = new Set(modules.map((m: any) => m.alias));
-        return Object.keys(moduleSubmenus).filter(key => {
-            if (key === "dashboard") return true;
-            if (!allModuleAliases.has(key)) return true;
-            return activeAliases.has(key);
-        });
-    }, [modules]);
-
-    const moduleKeys = activeModuleKeys;
+    const moduleKeys = Object.keys(moduleSubmenus);
 
     const buildAllPermNames = useCallback((moduleKey: string): string[] => {
         const permModuleNames = modulePermissionMap[moduleKey] || [];

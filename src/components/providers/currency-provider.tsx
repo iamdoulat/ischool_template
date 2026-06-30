@@ -40,7 +40,7 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
     const fetchCurrencies = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await api.get("/system-setting/currencies");
+            const response = await api.get("/system-setting/currencies").catch(() => ({ data: { status: 'Error', data: [] } }));
             if (response.data.status === "Success") {
                 const enabled = response.data.data.filter((c: Currency) => c.is_enabled);
                 setAvailableCurrencies(enabled);

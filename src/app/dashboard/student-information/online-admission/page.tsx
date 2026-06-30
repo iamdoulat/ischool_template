@@ -135,7 +135,7 @@ export default function OnlineAdmissionPage() {
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, tt]);
+    }, [searchTerm]);
 
     const fetchClasses = useCallback(async () => {
         try {

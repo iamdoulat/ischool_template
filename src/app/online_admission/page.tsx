@@ -562,8 +562,12 @@ export default function OnlineAdmissionPage() {
                             </div>
                         </div>
                         <div className="space-y-4">
-                            <Label className="text-sm font-bold uppercase tracking-widest text-indigo-600">Residential Address</Label>
-                            <Textarea name="current_address" onChange={handleInputChange} value={formData.current_address} className="min-h-[100px] rounded-2xl resize-none" placeholder="Enter full address" />
+                            <Label className="text-sm font-bold uppercase tracking-widest text-indigo-600">Current Address</Label>
+                            <Textarea name="current_address" onChange={handleInputChange} value={formData.current_address} className="min-h-[100px] rounded-2xl resize-none" placeholder="Enter full current address" />
+                        </div>
+                        <div className="space-y-4">
+                            <Label className="text-sm font-bold uppercase tracking-widest text-indigo-600">Permanent Address</Label>
+                            <Textarea name="permanent_address" onChange={handleInputChange} value={formData.permanent_address} className="min-h-[100px] rounded-2xl resize-none" placeholder="Enter full permanent address" />
                         </div>
                     </motion.div>
                 );

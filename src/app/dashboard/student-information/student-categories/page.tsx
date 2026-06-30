@@ -62,6 +62,7 @@ interface Category {
 export default function StudentCategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [newCategoryName, setNewCategoryName] = useState("");
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -73,15 +74,16 @@ export default function StudentCategoriesPage() {
         setLoading(true);
         try {
             const response = await api.get("/student-categories");
-            setCategories(response.data.data);
-            setSelectedIds(new Set());
+            setCategories(response.data.data || []);
         } catch (error) {
             console.error("Error fetching categories:", error);
             tt.error("failed_to_fetch_categories");
+            setCategories([]);
         } finally {
             setLoading(false);
         }
-    }, [tt]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         fetchCategories();
@@ -93,7 +95,12 @@ export default function StudentCategoriesPage() {
             return;
         }
 
-        setLoading(true);
+        setSaving(true);
+        const timeoutId = setTimeout(() => {
+            setSaving(false);
+            tt.error("Request timed out. Please try again.");
+        }, 25000);
+
         try {
             if (editingCategory) {
                 await api.put(`/student-categories/${editingCategory.id}`, { category_name: newCategoryName });
@@ -104,40 +111,57 @@ export default function StudentCategoriesPage() {
             }
             setNewCategoryName("");
             setEditingCategory(null);
-            fetchCategories();
-        } catch (error) {
-            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to save category.";
-            tt.error(message);
+            await fetchCategories();
+        } catch (error: any) {
+            console.error("Error saving category:", error);
+            if (error.code === 'ECONNABORTED') {
+                tt.error("Request timed out. Please check your connection and try again.");
+            } else if (error.response?.status === 422) {
+                // Validation error - show the specific message
+                const validationErrors = error.response?.data?.errors;
+                if (validationErrors) {
+                    const firstError = Object.values(validationErrors)[0];
+                    tt.error(Array.isArray(firstError) ? firstError[0] : firstError);
+                } else {
+                    tt.error(error.response?.data?.message || "Validation failed");
+                }
+            } else {
+                const message = error.response?.data?.message || error.message || "Failed to save category.";
+                tt.error(message);
+            }
         } finally {
-            setLoading(false);
+            clearTimeout(timeoutId);
+            setSaving(false);
         }
     };
 
     const handleDelete = async (id: number) => {
-        setLoading(true);
+        setSaving(true);
         try {
             await api.delete(`/student-categories/${id}`);
             tt.success("category_deleted_successfully");
+            setSelectedIds(new Set());
             fetchCategories();
         } catch (error) {
             tt.error("failed_to_delete_category");
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
 
     const handleBulkDelete = async () => {
         if (selectedIds.size === 0) return;
 
-        setLoading(true);
+        setSaving(true);
         try {
             await api.post("/student-categories/bulk-delete", { ids: Array.from(selectedIds) });
             tt.success("selected_categories_deleted_successfully");
+            setSelectedIds(new Set());
             fetchCategories();
         } catch (error) {
             tt.error("failed_to_delete_selected_categories");
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
 
@@ -235,8 +259,8 @@ export default function StudentCategoriesPage() {
                                         {t("cancel")}
                                     </Button>
                                 )}
-                                <Button variant="gradient" className="h-10 px-8" onClick={handleSave} disabled={loading}>
-                                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                <Button variant="gradient" className="h-10 px-8" onClick={handleSave} disabled={saving}>
+                                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                     {editingCategory ? t("update") : t("save")}
                                 </Button>
                             </div>
@@ -327,7 +351,7 @@ export default function StudentCategoriesPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-muted/30">
-                                        {loading ? (
+                                        {false ? (
                                             <TableSkeleton rows={5} cols={4} />
                                         ) : filteredCategories.length === 0 ? (
                                             <tr>

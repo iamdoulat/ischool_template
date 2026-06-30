@@ -53,6 +53,7 @@ export default function AddClassTimetablePage() {
     const [subjectGroups, setSubjectGroups] = useState<any[]>([]);
     const [allSubjects, setAllSubjects] = useState<any[]>([]);
     const [staffList, setStaffList] = useState<any[]>([]);
+    const [classTeacherAssignments, setClassTeacherAssignments] = useState<any[]>([]);
 
     // Selection states
     const [selectedClassId, setSelectedClassId] = useState<string>("");
@@ -95,17 +96,19 @@ export default function AddClassTimetablePage() {
         const fetchPrerequisites = async () => {
             setLoading(true);
             try {
-                const [classRes, subjectGroupRes, subjectRes, staffRes] = await Promise.all([
-                    api.get("/academics/classes?no_paginate=true"),
-                    api.get("/academics/subject-groups?no_paginate=true"),
-                    api.get("/academics/subjects?no_paginate=true"),
-                    api.get("/hr/staff-directory", { params: { role: 'Teacher', no_paginate: true, active: 'all' } })
+                const [classRes, subjectGroupRes, subjectRes, staffRes, teacherAssignRes] = await Promise.all([
+                    api.get("/academics/classes?no_paginate=true").catch(() => ({ data: [] })),
+                    api.get("/academics/subject-groups?no_paginate=true").catch(() => ({ data: [] })),
+                    api.get("/academics/subjects?no_paginate=true").catch(() => ({ data: [] })),
+                    api.get("/hr/staff-directory", { params: { role: 'Teacher', no_paginate: true, active: 'all' } }).catch(() => ({ data: [] })),
+                    api.get("/academics/class-teachers").catch(() => ({ data: [] }))
                 ]);
                 setClasses(classRes.data.data?.data || classRes.data.data || []);
                 setSubjectGroups(subjectGroupRes.data.data?.data || subjectGroupRes.data.data || []);
                 setAllSubjects(subjectRes.data.data?.data || subjectRes.data.data || []);
                 const teachers = (staffRes.data?.data || staffRes.data || []).filter((u: any) => u.role === 'Teacher');
                 setStaffList(teachers);
+                setClassTeacherAssignments(teacherAssignRes.data?.data || teacherAssignRes.data || []);
             } catch (error) {
                 console.error("Error fetching prerequisites:", error);
                 tt.error("failed_to_load");
@@ -133,6 +136,17 @@ export default function AddClassTimetablePage() {
     const filteredSubjects = selectedSubjectGroupId
         ? subjectGroups.find(sg => sg.id.toString() === selectedSubjectGroupId)?.subjects || []
         : allSubjects;
+
+    // Filter teachers based on class-teacher assignments for selected class + section
+    const filteredTeachers = useMemo(() => {
+        if (!selectedClassId || !selectedSectionId) return staffList;
+        const assignment = classTeacherAssignments.find(
+            (a: any) => String(a.class_id) === selectedClassId && String(a.section_id) === selectedSectionId
+        );
+        if (!assignment?.teachers?.length) return [];
+        const assignedIds = new Set(assignment.teachers.map((t: any) => String(t.id)));
+        return staffList.filter((s: any) => assignedIds.has(String(s.id)));
+    }, [selectedClassId, selectedSectionId, classTeacherAssignments, staffList]);
 
     const handleSearch = async () => {
         if (!selectedClassId || !selectedSectionId || !selectedSubjectGroupId) {
@@ -514,7 +528,7 @@ export default function AddClassTimetablePage() {
                                                                 <SelectValue placeholder={t("select")} />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {staffList.map((s: any) => (
+                                                                {filteredTeachers.map((s: any) => (
                                                                     <SelectItem key={s.id} value={s.id.toString()}>{s.name} ({s.staff_id})</SelectItem>
                                                                 ))}
                                                             </SelectContent>

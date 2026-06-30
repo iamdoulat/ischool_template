@@ -79,6 +79,9 @@ export default function StudentEditPage() {
         full_name: "",
         gender: "",
         dob: "",
+        birth_place: "",
+        state: "",
+        nationality: "",
         category: "",
         religion: "",
         caste: "",
@@ -91,6 +94,9 @@ export default function StudentEditPage() {
         weight: "",
         measurement_date: "",
         medical_history: "",
+        postal_code: "",
+        mother_tongue: "",
+        identification_marks: "",
         father_name: "",
         father_phone: "",
         father_occupation: "",
@@ -123,10 +129,17 @@ export default function StudentEditPage() {
         bank_name: "",
         ifsc_code: "",
         previous_school_details: "",
+        previous_academic_record: [
+            { school_name: "", class: "", year: "", percentage: "" },
+            { school_name: "", class: "", year: "", percentage: "" }
+        ] as { school_name: string, class: string, year: string, percentage: string }[],
         note: "",
         current_address: "",
         permanent_address: "",
         rte: "No",
+        appraisal_achievements: "",
+        general_behaviour: "",
+        second_language: "",
     });
 
     const filteredFeeGroups = useMemo(() => {
@@ -135,6 +148,9 @@ export default function StudentEditPage() {
     }, [feeGroups, formData.school_class_id]);
 
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [fatherPhotoPreview, setFatherPhotoPreview] = useState<string | null>(null);
+    const [motherPhotoPreview, setMotherPhotoPreview] = useState<string | null>(null);
+    const [guardianPhotoPreview, setGuardianPhotoPreview] = useState<string | null>(null);
     const [autoUsernameEnabled, setAutoUsernameEnabled] = useState(false);
     const [parentAutoUsernameEnabled, setParentAutoUsernameEnabled] = useState(false);
     const [generatingParentUsername, setGeneratingParentUsername] = useState(false);
@@ -232,6 +248,9 @@ export default function StudentEditPage() {
                 full_name: student.full_name || `${student.name || ''} ${student.last_name || ''}`.trim(),
                 gender: student.gender || "",
                 dob: student.dob ? student.dob.split('T')[0] : "",
+                birth_place: student.birth_place || "",
+                state: student.state || "",
+                nationality: student.nationality || "",
                 category: student.category || "",
                 religion: student.religion || "",
                 caste: student.caste || "",
@@ -244,6 +263,9 @@ export default function StudentEditPage() {
                 weight: student.weight || "",
                 measurement_date: student.measurement_date || "",
                 medical_history: student.medical_history || "",
+                postal_code: student.postal_code || "",
+                mother_tongue: student.mother_tongue || "",
+                identification_marks: student.identification_marks || "",
                 father_name: student.father_name || "",
                 father_phone: student.father_phone || "",
                 father_occupation: student.father_occupation || "",
@@ -274,10 +296,19 @@ export default function StudentEditPage() {
                 bank_name: student.bank_name || "",
                 ifsc_code: student.ifsc_code || "",
                 previous_school_details: student.previous_school_details || "",
+                previous_academic_record: Array.isArray(student.previous_academic_record) && student.previous_academic_record.length > 0
+                    ? student.previous_academic_record 
+                    : [
+                        { school_name: "", class: "", year: "", percentage: "" },
+                        { school_name: "", class: "", year: "", percentage: "" }
+                    ],
                 note: student.note || "",
                 current_address: student.current_address || "",
                 permanent_address: student.permanent_address || "",
                 rte: student.rte || "No",
+                appraisal_achievements: student.appraisal_achievements || "",
+                general_behaviour: student.general_behaviour || "",
+                second_language: student.second_language || "",
             });
 
             // Auto-generate username if student has none and auto mode is enabled
@@ -295,6 +326,15 @@ export default function StudentEditPage() {
 
             if (student.avatar) {
                 setAvatarPreview(getImageUrl(student.avatar));
+            }
+            if (student.father_photo) {
+                setFatherPhotoPreview(getImageUrl(student.father_photo));
+            }
+            if (student.mother_photo) {
+                setMotherPhotoPreview(getImageUrl(student.mother_photo));
+            }
+            if (student.guardian_photo) {
+                setGuardianPhotoPreview(getImageUrl(student.guardian_photo));
             }
 
             if (student.siblings) {
@@ -445,7 +485,15 @@ export default function StudentEditPage() {
 
             Object.keys(formData).forEach(key => {
                 const value = formData[key];
-                if (Array.isArray(value)) {
+                if (key === 'previous_academic_record') {
+                    const records = value as any[];
+                    records.forEach((record: any, idx: number) => {
+                        Object.keys(record).forEach(field => {
+                            data.append(`previous_academic_record[${idx}][${field}]`, record[field] || '');
+                        });
+                    });
+                    return;
+                } else if (Array.isArray(value)) {
                     value.forEach(v => data.append(`${key}[]`, v));
                 } else if (value !== null && value !== undefined && value !== "") {
                     if (key === 'active') {
@@ -570,6 +618,10 @@ export default function StudentEditPage() {
                             ]}
                         />
                         <DateField label="Date Of Birth" required value={formData.dob} onChange={(val) => handleChange("dob", val)} />
+                        <InputField label="ID/Birth Cert" value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
+                        <InputField label="Place of Birth" value={formData.birth_place} onChange={(val) => handleChange("birth_place", val)} />
+                        <InputField label="State" value={formData.state} onChange={(val) => handleChange("state", val)} />
+                        <InputField label="Nationality" value={formData.nationality} onChange={(val) => handleChange("nationality", val)} />
 
                         <SelectField
                             label="Category"
@@ -625,6 +677,150 @@ export default function StudentEditPage() {
                         <InputField label="Weight" value={formData.weight} onChange={(val) => handleChange("weight", val)} />
 
                         <DateField label="Measurement Date" value={formData.measurement_date} onChange={(val) => handleChange("measurement_date", val)} />
+                        <InputField label="Postal / Zip Code" value={formData.postal_code} onChange={(val) => handleChange("postal_code", val)} />
+                        <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <InputField label="Mother Tongue" value={formData.mother_tongue} onChange={(val) => handleChange("mother_tongue", val)} />
+                            <div>
+                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">GENERAL BEHAVIOUR:</label>
+                                <div className="flex items-center gap-5">
+                                    {["Mild", "Normal", "Hyperactive"].map(b => (
+                                        <label key={b} className="flex items-center gap-2 cursor-pointer group">
+                                            <div className="relative flex items-center justify-center">
+                                                <input
+                                                    type="radio"
+                                                    name="general_behaviour"
+                                                    className="peer sr-only"
+                                                    checked={formData.general_behaviour === b}
+                                                    onChange={() => handleChange("general_behaviour", b)}
+                                                />
+                                                <div className="h-4 w-4 rounded border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
+                                                <div className="absolute h-2 w-2 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                            </div>
+                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{b}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">SECOND LANGUAGE:</label>
+                                <div className="flex items-center gap-5">
+                                    {["English", "Arabic", "Others"].map(l => (
+                                        <label key={l} className="flex items-center gap-2 cursor-pointer group">
+                                            <div className="relative flex items-center justify-center">
+                                                <input
+                                                    type="radio"
+                                                    name="second_language"
+                                                    className="peer sr-only"
+                                                    checked={formData.second_language === l}
+                                                    onChange={() => handleChange("second_language", l)}
+                                                />
+                                                <div className="h-4 w-4 rounded border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
+                                                <div className="absolute h-2 w-2 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                            </div>
+                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{l}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="lg:col-span-2">
+                            <TextAreaField label="Current Address" rows={2} value={formData.current_address} onChange={(val) => handleChange("current_address", val)} />
+                        </div>
+                        <div className="lg:col-span-2">
+                            <TextAreaField label="Permanent Address" rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
+                        </div>
+                        <div className="lg:col-span-4 space-y-2">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Previous Academic Record</label>
+                            <div className="border rounded-xl overflow-hidden overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-muted text-muted-foreground border-b">
+                                        <tr>
+                                            <th className="px-3 py-2 font-bold border-r text-[11px]">Name of the previous school &amp; location</th>
+                                            <th className="px-3 py-2 font-bold border-r text-[11px]">Class</th>
+                                            <th className="px-3 py-2 font-bold border-r text-[11px]">Year of Study</th>
+                                            <th className="px-3 py-2 font-bold text-[11px]">Percentage/Grade</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {formData.previous_academic_record.map((record, index) => (
+                                            <tr key={index}>
+                                                <td className="p-0 border-r">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        value={record.school_name}
+                                                        onChange={(e) => {
+                                                            const newRecords = [...formData.previous_academic_record];
+                                                            newRecords[index].school_name = e.target.value;
+                                                            handleChange("previous_academic_record", newRecords);
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td className="p-0 border-r">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        value={record.class}
+                                                        onChange={(e) => {
+                                                            const newRecords = [...formData.previous_academic_record];
+                                                            newRecords[index].class = e.target.value;
+                                                            handleChange("previous_academic_record", newRecords);
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td className="p-0 border-r">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        value={record.year}
+                                                        onChange={(e) => {
+                                                            const newRecords = [...formData.previous_academic_record];
+                                                            newRecords[index].year = e.target.value;
+                                                            handleChange("previous_academic_record", newRecords);
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td className="p-0">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        value={record.percentage}
+                                                        onChange={(e) => {
+                                                            const newRecords = [...formData.previous_academic_record];
+                                                            newRecords[index].percentage = e.target.value;
+                                                            handleChange("previous_academic_record", newRecords);
+                                                        }}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => handleChange("previous_academic_record", [...formData.previous_academic_record, { school_name: "", class: "", year: "", percentage: "" }])}
+                                className="text-[11px] font-semibold text-primary hover:underline mt-1"
+                            >
+                                + Add Row
+                            </button>
+                        </div>
+                        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <TextAreaField label="Identification Marks" rows={2} value={formData.identification_marks} onChange={(val) => handleChange("identification_marks", val)} />
+                            <TextAreaField label="Medical History" rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
+                        </div>
+                        <div className="lg:col-span-2">
+                            <label className="text-[12px] font-semibold text-gray-700 block mb-1.5">APPRAISAL & BEHAVIOUR</label>
+                            <textarea
+                                className="w-full min-h-[68px] text-[12px] border border-gray-200 rounded-md p-2.5 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y bg-white"
+                                value={formData.appraisal_achievements}
+                                onChange={(e) => handleChange("appraisal_achievements", e.target.value)}
+                                placeholder="Appraisal of your child..."
+                            />
+                        </div>
+                        <div className="lg:col-span-2">
+                            <TextAreaField label="Note" rows={2} value={formData.note} onChange={(val) => handleChange("note", val)} />
+                        </div>
                         
                         {/* Sibling Section Matching Screenshot */}
                         <div className="lg:col-span-4 mt-6">
@@ -689,9 +885,6 @@ export default function StudentEditPage() {
                             </div>
                         </div>
 
-                        <div className="lg:col-span-4">
-                            <TextAreaField label="Medical History" rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
-                        </div>
                     </div>
                 </SectionCard>
 
@@ -786,6 +979,7 @@ export default function StudentEditPage() {
                             label="Father Photo (100px X 100px)"
                             value={formData.father_photo}
                             onChange={(file) => handleChange("father_photo", file)}
+                            existingPreview={fatherPhotoPreview}
                         />
 
                         <InputField label="Mother Name" value={formData.mother_name} onChange={(val) => handleChange("mother_name", val)} />
@@ -795,6 +989,7 @@ export default function StudentEditPage() {
                             label="Mother Photo (100px X 100px)"
                             value={formData.mother_photo}
                             onChange={(file) => handleChange("mother_photo", file)}
+                            existingPreview={motherPhotoPreview}
                         />
 
                         <div className="lg:col-span-4 py-2">
@@ -845,6 +1040,7 @@ export default function StudentEditPage() {
                             label="Guardian Photo (100px X 100px)"
                             value={formData.guardian_photo}
                             onChange={(file) => handleChange("guardian_photo", file)}
+                            existingPreview={guardianPhotoPreview}
                         />
                         <TextAreaField label="Guardian Address" rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
                     </div>
@@ -865,19 +1061,9 @@ export default function StudentEditPage() {
                                 <h3 className="text-lg font-bold">Others Information</h3>
                             </div>
                             
-                            <div className="lg:col-span-2">
-                                <TextAreaField label="Current Address" rows={2} value={formData.current_address} onChange={(val) => handleChange("current_address", val)} />
-                            </div>
-                            <div className="lg:col-span-2">
-                                <TextAreaField label="Permanent Address" rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
-                            </div>
-
                             <InputField label="Bank Account Number" value={formData.bank_account_no} onChange={(val) => handleChange("bank_account_no", val)} />
                             <InputField label="Bank Name" value={formData.bank_name} onChange={(val) => handleChange("bank_name", val)} />
                             <InputField label="IFSC Code" value={formData.ifsc_code} onChange={(val) => handleChange("ifsc_code", val)} />
-                            <InputField label="National Identification Number" value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
-                            
-                            <InputField label="Local Identification Number" value={formData.local_identification_no} onChange={(val) => handleChange("local_identification_no", val)} />
                             
                             <div className="py-2">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-3">
@@ -903,19 +1089,10 @@ export default function StudentEditPage() {
                                 </div>
                             </div>
 
-                            <div className="lg:col-span-2"></div>
-
-                            <div className="lg:col-span-2">
-                                <TextAreaField label="Previous School Details" rows={2} value={formData.previous_school_details} onChange={(val) => handleChange("previous_school_details", val)} />
-                            </div>
-                            <div className="lg:col-span-2">
-                                <TextAreaField label="Note" rows={2} value={formData.note} onChange={(val) => handleChange("note", val)} />
-                            </div>
                         </div>
                     )}
                 </SectionCard>
 
-                {/* Transport & Hostel Details */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
                     <SectionCard title="Transport Details" icon={MapPin}>
                         <div className="grid grid-cols-1 gap-6">
@@ -1123,7 +1300,21 @@ function TextAreaField({ label, required, value = "", onChange, rows = 3 }: { la
     );
 }
 
-function FileUploadField({ label, required, value, onChange }: { label: string, required?: boolean, value: any, onChange: (val: File | null) => void }) {
+function FileUploadField({ label, required, value, onChange, existingPreview }: { label: string, required?: boolean, value: any, onChange: (val: File | null) => void, existingPreview?: string | null }) {
+    const [localPreview, setLocalPreview] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (value instanceof File) {
+            const url = URL.createObjectURL(value);
+            setLocalPreview(url);
+            return () => URL.revokeObjectURL(url);
+        } else {
+            setLocalPreview(null);
+        }
+    }, [value]);
+
+    const preview = localPreview || existingPreview;
+
     return (
         <div className="space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
@@ -1135,12 +1326,19 @@ function FileUploadField({ label, required, value, onChange }: { label: string, 
                     className="absolute inset-0 opacity-0 cursor-pointer z-10"
                     onChange={(e) => onChange(e.target.files?.[0] || null)}
                 />
-                <div className="h-8 w-8 rounded-md bg-background shadow-sm border border-border flex items-center justify-center shrink-0 group-hover:bg-primary/5 transition-colors">
-                    <Upload className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
-                <span className="text-sm text-muted-foreground truncate">
-                    {value instanceof File ? value.name : (value ? "File Selected" : "Choose file...")}
-                </span>
+                {preview ? (
+                    <>
+                        <img src={preview} alt={label} className="h-8 w-8 rounded-md object-cover border border-border shrink-0" />
+                        <span className="text-sm text-muted-foreground truncate">{value instanceof File ? value.name : "Current photo"}</span>
+                    </>
+                ) : (
+                    <>
+                        <div className="h-8 w-8 rounded-md bg-background shadow-sm border border-border flex items-center justify-center shrink-0 group-hover:bg-primary/5 transition-colors">
+                            <Upload className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <span className="text-sm text-muted-foreground truncate">Choose file...</span>
+                    </>
+                )}
             </div>
         </div>
     );

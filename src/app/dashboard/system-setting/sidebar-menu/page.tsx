@@ -283,7 +283,6 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
         { name: "roles_permissions", label: "Roles & Permissions" },
         { name: "languages", label: "Languages" },
         { name: "addons", label: "Addons" },
-        { name: "modules", label: "Modules" },
         { name: "custom_fields", label: "Custom Fields" },
         { name: "captcha_setting", label: "Captcha Setting" },
         { name: "system_fields", label: "System Fields" },

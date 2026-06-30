@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { RefreshCw, CalendarDays, Clock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
+import { useSettings } from "@/components/providers/settings-provider";
 
 interface DashboardHeaderProps {
     onRefresh: () => void;
@@ -21,13 +22,14 @@ function getGreeting(t: (key: string) => string): string {
     return t("good_evening");
 }
 
-function formatLastUpdated(date: Date | null): string {
+function formatLastUpdated(date: Date | null, timeFormat: "12" | "24"): string {
     if (!date) return "";
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return formatTime(date, timeFormat);
 }
 
 export function DashboardHeader({ onRefresh, refreshing, lastUpdated }: DashboardHeaderProps) {
     const { t } = useTranslation();
+    const { settings } = useSettings();
     const [user, setUser] = useState<{ name?: string; role?: string } | null>(null);
     const [session, setSession] = useState<string>("");
     const [now, setNow] = useState(new Date());
@@ -57,7 +59,8 @@ export function DashboardHeader({ onRefresh, refreshing, lastUpdated }: Dashboar
         day: "numeric",
     });
 
-    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const tf = settings.time_format === "12" ? "12" : "24" as const;
+    const timeStr = formatTime(now, tf);
 
     return (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -102,7 +105,7 @@ export function DashboardHeader({ onRefresh, refreshing, lastUpdated }: Dashboar
                 <div className="flex items-center gap-1.5">
                     {lastUpdated && (
                         <span className="text-[10px] text-muted-foreground/70 font-medium hidden sm:inline">
-                            {t("updated_at", { time: formatLastUpdated(lastUpdated) })}
+                            {t("updated_at", { time: formatLastUpdated(lastUpdated, tf) })}
                         </span>
                     )}
                     <Button

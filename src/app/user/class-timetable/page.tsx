@@ -96,7 +96,7 @@ export default function UserClassTimetablePage() {
     useEffect(() => {
         const fetchTimetable = async () => {
             try {
-                const res = await api.get("/user/class-timetable");
+                const res = await api.get("/user/class-timetable").catch(() => ({ data: { success: false, data: { class_name: null, section_name: null, timetable: {} } } }));
                 if (res.data.success) {
                     const payload = res.data.data ?? {};
                     // New shape: { class_name, section_name, timetable }. Fall back to legacy flat map.

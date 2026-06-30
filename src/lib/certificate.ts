@@ -151,7 +151,7 @@ export async function downloadCertificatePdf(html: string, filename = "certifica
     // Dynamic import so the main bundle stays light
     const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
         import("jspdf"),
-        import("html2canvas"),
+        import("html2canvas-pro"),
     ]);
 
     const container = document.createElement("div");
