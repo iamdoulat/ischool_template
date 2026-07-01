@@ -242,7 +242,7 @@ export default function SetupFrontOfficePage() {
                                             : "text-muted-foreground hover:bg-muted/20 hover:text-slate-900 border-l-4 border-l-transparent"
                                     )}
                                 >
-                                    {currentTabLabel}
+                                    {tab.label}
                                 </button>
                             ))}
                         </div>
@@ -258,7 +258,7 @@ export default function SetupFrontOfficePage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {isEdit ? t("edit_x", { label: currentTabLabel }) : t("add_x", { label: currentTabLabel })}
+                                    {isEdit ? `${t("edit")} ${currentTabLabel}` : `${t("add")} ${currentTabLabel}`}
                                 </CardTitle>
                                 <p className="text-[11px] text-gray-500 mt-1">{isEdit ? t("update_entry") : t("create_a_new_entry")}</p>
                             </div>
@@ -309,7 +309,7 @@ export default function SetupFrontOfficePage() {
                                 <List className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("x_list", { label: currentTabLabel })}</CardTitle>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{`${currentTabLabel} ${t("list")}`}</CardTitle>
                                 <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { total })}</p>
                             </div>
                         </CardHeader>
