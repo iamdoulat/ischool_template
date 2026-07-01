@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
     Search,
     Printer,
@@ -71,6 +71,8 @@ interface Complaint {
 
 export default function ComplainPage() {
     const tt = useTranslateToast();
+    const ttRef = useRef(tt);
+    ttRef.current = tt;
     const { t } = useTranslation();
     const [complaints, setComplaints] = useState<Complaint[]>([]);
     const [dynamicComplaintTypes, setDynamicComplaintTypes] = useState<{ id: number; name: string }[]>([]);
@@ -132,11 +134,11 @@ export default function ComplainPage() {
             }
         } catch (error) {
             console.error("Error fetching complaints:", error);
-            tt.error("failed_to_load_complaints");
+            ttRef.current.error("failed_to_load_complaints");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, page, limit, tt]);
+    }, [searchQuery, page, limit]);
 
     const fetchComplaintTypes = useCallback(async () => {
         try {
@@ -659,15 +661,15 @@ export default function ComplainPage() {
             </AlertDialog>
 
             <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                <DialogContent className="max-w-2xl p-0 overflow-hidden border-none shadow-2xl">
-                    <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-6">
-                        <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-                            <Eye className="h-5 w-5" />
+                <DialogContent className="w-[95vw] max-w-2xl p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-5 sm:p-6 shrink-0">
+                        <DialogTitle className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                            <Eye className="h-5 w-5 shrink-0" />
                             {t("complaint_details")}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="p-6">
-                        <div className="grid grid-cols-2 gap-y-6 gap-x-8">
+                    <div className="overflow-y-auto max-h-[70vh] p-5 sm:p-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 sm:gap-y-6 sm:gap-x-8">
                             <DetailItem label={t("complaint_id")} value={selectedComplaint?.complaint_id} />
                             <DetailItem label={t("complaint_type")} value={selectedComplaint?.complaint_type} />
                             <DetailItem label={t("source")} value={selectedComplaint?.source} />
@@ -676,20 +678,20 @@ export default function ComplainPage() {
                             <DetailItem label={t("date")} value={selectedComplaint?.date ? new Date(selectedComplaint.date).toLocaleDateString() : "-"} />
                             <DetailItem label={t("assigned")} value={selectedComplaint?.assigned} />
                             <DetailItem label={t("action_taken")} value={selectedComplaint?.action_taken} />
-                            <div className="col-span-2 space-y-1">
+                            <div className="col-span-1 sm:col-span-2 space-y-1">
                                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("description")}</label>
-                                <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px]">
+                                <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px] whitespace-pre-wrap break-words">
                                     {selectedComplaint?.description || t("no_description_provided")}
                                 </p>
                             </div>
-                            <div className="col-span-2 space-y-1">
+                            <div className="col-span-1 sm:col-span-2 space-y-1">
                                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("note")}</label>
-                                <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px]">
+                                <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px] whitespace-pre-wrap break-words">
                                     {selectedComplaint?.note || t("no_note_provided")}
                                 </p>
                             </div>
                         </div>
-                        <div className="flex justify-end mt-8">
+                        <div className="flex justify-end mt-6">
                             <Button
                                 onClick={() => setIsViewDialogOpen(false)}
                                 variant="gradient"

@@ -69,8 +69,8 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
 
         const fetchNotifications = async () => {
             try {
-                const res = await api.get('/notifications');
-                setNotifications(res.data.data.data || []);
+                const res = await api.get('/notifications', { timeout: 10000 });
+                setNotifications(res.data?.data?.data || []);
             } catch (error) {
                 console.error("Failed to fetch notifications:", error);
             }
@@ -78,8 +78,8 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
 
         const fetchUnreadCount = async () => {
             try {
-                const res = await api.get('/notifications/unread-count');
-                setUnreadCount(res.data.data.count || 0);
+                const res = await api.get('/notifications/unread-count', { timeout: 10000 });
+                setUnreadCount(res.data?.data?.count || 0);
             } catch (error) {
                 console.error("Failed to fetch unread count:", error);
             }

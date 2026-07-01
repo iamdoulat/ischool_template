@@ -8,6 +8,19 @@
 // keys that should be documented for the Laravel backend translation files.
 
 export const i18nFallbacks: Record<string, string> = {
+    // ===== GENERIC DYNAMIC KEYS =====
+    add_x: "Add {label}",
+    edit_x: "Edit {label}",
+    x_list: "{label} List",
+    x_added_successfully: "{label} added successfully",
+    x_updated_successfully: "{label} updated successfully",
+    x_deleted_successfully: "{label} deleted successfully",
+    failed_to_load_x_list: "Failed to load {label} list",
+    failed_to_delete_x: "Failed to delete {label}",
+    failed_to_save_x: "Failed to save {label}",
+    failed_to_delete_selected_x_list: "Failed to delete selected {label} list",
+    permanently_delete_x_entry: "Are you sure you want to permanently delete this {label} entry?",
+
     // ===== ZOOM / LIVE CLASSES =====
     search_classes: "Search classes…",
     class_title: "Class Title",

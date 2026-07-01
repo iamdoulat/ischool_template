@@ -362,7 +362,7 @@ export default function PostalDispatchPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("postal_dispatch_list")}</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { total })}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: total })}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">

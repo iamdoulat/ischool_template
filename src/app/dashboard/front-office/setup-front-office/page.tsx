@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
     Search,
     Printer,
@@ -59,6 +59,8 @@ interface TabItem {
 
 export default function SetupFrontOfficePage() {
     const tt = useTranslateToast();
+    const ttRef = useRef(tt);
+    ttRef.current = tt;
     const { t } = useTranslation();
     const [activeTabId, setActiveTabId] = useState("purpose");
     const [items, setItems] = useState<TabItem[]>([]);
@@ -111,11 +113,11 @@ export default function SetupFrontOfficePage() {
             setSelectedIds([]);
         } catch (error) {
             console.error("Error fetching items:", error);
-            tt.error("failed_to_load_x_list", { label: currentTabLabel });
+            ttRef.current.error("failed_to_load_x_list", { label: currentTabLabel });
         } finally {
             setLoading(false);
         }
-    }, [activeTab.endpoint, searchQuery, page, limit, tt, currentTabLabel]);
+    }, [activeTab.endpoint, searchQuery, page, limit, currentTabLabel]);
 
     useEffect(() => {
         fetchItems();
@@ -310,7 +312,7 @@ export default function SetupFrontOfficePage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{`${currentTabLabel} ${t("list")}`}</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { total })}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: total })}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
