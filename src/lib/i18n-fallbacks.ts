@@ -291,8 +291,6 @@ export const i18nFallbacks: Record<string, string> = {
     deleted_successfully: "Deleted successfully",
     saved_successfully: "Saved successfully",
     x_created_successfully: "{entity} created successfully",
-    x_updated_successfully: "{entity} updated successfully",
-    x_deleted_successfully: "{entity} deleted successfully",
     operation_successful: "Operation successful",
     something_went_wrong: "Something went wrong",
     failed_to_save: "Failed to save",
