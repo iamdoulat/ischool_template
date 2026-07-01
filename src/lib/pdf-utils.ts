@@ -388,6 +388,8 @@ export interface AdmissionFormConfig {
   terms_conditions?: string;
   /** CKEditor HTML for the "DECLARATION" section. */
   declaration?: string;
+  /** CKEditor HTML for the "pre_documents_note" section. */
+  pre_documents_note?: string;
 }
 
 /* ── MAIN PDF GENERATOR ─────────────────────────────────────────────── */
