@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
     Search,
     Printer,
@@ -64,6 +64,8 @@ interface PostalDispatch {
 
 export default function PostalDispatchPage() {
     const tt = useTranslateToast();
+    const ttRef = useRef(tt);
+    ttRef.current = tt;
     const { t } = useTranslation();
     const [dispatches, setDispatches] = useState<PostalDispatch[]>([]);
     const [loading, setLoading] = useState(true);
@@ -119,11 +121,11 @@ export default function PostalDispatchPage() {
             setSelectedIds([]);
         } catch (error) {
             console.error("Error fetching postal dispatches:", error);
-            tt.error("failed_to_load_postal_dispatches");
+            ttRef.current.error("failed_to_load_postal_dispatches");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, page, limit, tt]);
+    }, [searchQuery, page, limit]);
 
     useEffect(() => {
         fetchDispatches();

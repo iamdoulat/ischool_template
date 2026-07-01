@@ -69,19 +69,19 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
 
         const fetchNotifications = async () => {
             try {
-                const res = await api.get('/notifications', { timeout: 10000 });
+                const res = await api.get('/notifications', { timeout: 3000, skipGlobalErrorHandler: true });
                 setNotifications(res.data?.data?.data || []);
-            } catch (error) {
-                console.error("Failed to fetch notifications:", error);
+            } catch {
+                // Silently ignore – endpoint may not be available yet
             }
         };
 
         const fetchUnreadCount = async () => {
             try {
-                const res = await api.get('/notifications/unread-count', { timeout: 10000 });
+                const res = await api.get('/notifications/unread-count', { timeout: 3000, skipGlobalErrorHandler: true });
                 setUnreadCount(res.data?.data?.count || 0);
-            } catch (error) {
-                console.error("Failed to fetch unread count:", error);
+            } catch {
+                // Silently ignore – endpoint may not be available yet
             }
         };
 

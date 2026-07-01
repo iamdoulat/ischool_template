@@ -738,15 +738,15 @@ export default function VisitorBookPage() {
             </AlertDialog>
 
             <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                <DialogContent className="max-w-2xl p-0 overflow-hidden border-none shadow-2xl gap-0">
-                    <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-6 space-y-0">
-                        <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-                            <Eye className="h-5 w-5" />
+                <DialogContent className="w-[95vw] max-w-2xl p-0 overflow-hidden border-none shadow-2xl gap-0">
+                    <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-5 sm:p-6 space-y-0 shrink-0">
+                        <DialogTitle className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                            <Eye className="h-5 w-5 shrink-0" />
                             {t("visitor_details")}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="p-6">
-                        <div className="grid grid-cols-2 gap-y-6 gap-x-8">
+                    <div className="overflow-y-auto max-h-[70vh] p-5 sm:p-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 sm:gap-y-6 sm:gap-x-8">
                             <DetailItem label={t("purpose")} value={selectedVisitor?.purpose} />
                             <DetailItem label={t("source")} value={selectedVisitor?.source} />
                             <DetailItem label={t("meeting_with")} value={selectedVisitor?.meeting_with} />
@@ -757,14 +757,14 @@ export default function VisitorBookPage() {
                             <DetailItem label={t("date")} value={selectedVisitor?.date ? new Date(selectedVisitor.date).toLocaleDateString() : "-"} />
                             <DetailItem label={t("in_time")} value={selectedVisitor?.in_time} />
                             <DetailItem label={t("out_time")} value={selectedVisitor?.out_time} />
-                            <div className="col-span-2 space-y-1">
+                            <div className="col-span-1 sm:col-span-2 space-y-1">
                                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("note")}</label>
-                                <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px]">
+                                <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px] whitespace-pre-wrap break-words">
                                     {selectedVisitor?.note || t("no_note_provided")}
                                 </p>
                             </div>
                         </div>
-                        <div className="flex justify-end mt-8">
+                        <div className="flex justify-end mt-6">
                             <Button
                                 onClick={() => setIsViewDialogOpen(false)}
                                 variant="gradient"

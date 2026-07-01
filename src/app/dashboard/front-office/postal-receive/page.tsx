@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
     Search,
     Printer,
@@ -64,9 +64,12 @@ interface PostalReceive {
 
 export default function PostalReceivePage() {
     const tt = useTranslateToast();
+    const ttRef = useRef(tt);
+    ttRef.current = tt;
     const { t } = useTranslation();
     const [receives, setReceives] = useState<PostalReceive[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -119,11 +122,11 @@ export default function PostalReceivePage() {
             }
         } catch (error) {
             console.error("Error fetching postal receives:", error);
-            tt.error("failed_to_load_postal_receives");
+            ttRef.current.error("failed_to_load_postal_receives");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, page, limit, tt]);
+    }, [searchQuery, page, limit]);
 
     useEffect(() => {
         fetchReceives();
@@ -151,15 +154,18 @@ export default function PostalReceivePage() {
 
     const handleDelete = async () => {
         if (!deleteId) return;
+        setSaving(true);
         try {
             await api.delete(`/postal-receives/${deleteId}`);
             tt.success("postal_receive_deleted_successfully");
-            setIsDeleteDialogOpen(false);
-            setDeleteId(null);
             fetchReceives();
         } catch (error) {
             console.error("Error deleting postal receive:", error);
             tt.error("failed_to_delete_postal_receive");
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setDeleteId(null);
+            setSaving(false);
         }
     };
 
@@ -537,7 +543,7 @@ export default function PostalReceivePage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
+                        <AlertDialogAction onClick={handleDelete} disabled={saving} className="bg-red-500 hover:bg-red-600">{saving ? t("deleting") : t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

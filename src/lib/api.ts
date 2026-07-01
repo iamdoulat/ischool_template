@@ -1,5 +1,12 @@
-import axios from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
+
+// Extend axios config to allow suppressing the global error toast per-request
+declare module 'axios' {
+    interface AxiosRequestConfig {
+        skipGlobalErrorHandler?: boolean;
+    }
+}
 
 const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1',
@@ -33,6 +40,11 @@ api.interceptors.response.use(
         // instead of a raw "Network Error" and skip the 401 redirect logic.
         if (!error.response) {
             if (axios.isCancel?.(error) || error.code === 'ERR_CANCELED') {
+                return Promise.reject(error);
+            }
+            // Skip the global toast for requests that opted out (e.g. background polling)
+            const config = error.config as InternalAxiosRequestConfig & { skipGlobalErrorHandler?: boolean };
+            if (config?.skipGlobalErrorHandler) {
                 return Promise.reject(error);
             }
             if (typeof window !== 'undefined') {

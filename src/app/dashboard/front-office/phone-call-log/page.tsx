@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
     Search,
     Printer,
@@ -65,6 +65,8 @@ interface PhoneCallLog {
 
 export default function PhoneCallLogPage() {
     const tt = useTranslateToast();
+    const ttRef = useRef(tt);
+    ttRef.current = tt;
     const { t } = useTranslation();
     const [logs, setLogs] = useState<PhoneCallLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -121,11 +123,11 @@ export default function PhoneCallLogPage() {
             }
         } catch (error) {
             console.error("Error fetching phone call logs:", error);
-            tt.error("failed_to_load_phone_call_logs");
+            ttRef.current.error("failed_to_load_phone_call_logs");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, page, limit, tt]);
+    }, [searchQuery, page, limit]);
 
     useEffect(() => {
         fetchLogs();
