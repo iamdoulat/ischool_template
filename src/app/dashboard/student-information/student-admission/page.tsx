@@ -665,7 +665,7 @@ export default function StudentAdmissionPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
-                                        {formData.previous_academic_record.map((record, index) => (
+                                        {formData.previous_academic_record.map((record: any, index: number) => (
                                             <tr key={index}>
                                                 <td className="p-0 border-r">
                                                     <input
