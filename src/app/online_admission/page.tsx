@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import api from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,14 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     GraduationCap, User, Users, Home, Phone, Calendar, Info,
     CheckCircle2, ChevronRight, ChevronLeft, Camera, Upload,
-    CreditCard, ShieldCheck, Sparkles, Loader2, Search
+    CreditCard, ShieldCheck, Sparkles, Loader2, Search, Download
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { downloadAdmissionFormPdf } from "@/lib/pdf-utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 
 // Types
 interface OnlineAdmissionField {
@@ -106,11 +108,44 @@ export default function OnlineAdmissionPage() {
         caste: "",
         blood_group: "",
         academic_session_id: "",
+        national_identification_no: "",
+        local_identification_no: "",
+        birth_place: "",
+        state: "",
+        nationality: "",
+        mother_tongue: "",
+        postal_code: "",
+        bank_account_no: "",
+        bank_name: "",
+        ifsc_code: "",
+        previous_school_details: "",
+        previous_academic_record: [
+            { school_name: "", class: "", year: "", percentage: "" }
+        ],
+        note: "",
+        rte: "No",
+        appraisal_achievements: "",
+        general_behaviour: "",
+        second_language: "",
+        identification_marks: "",
+        medical_history: "",
     });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Fetch initial data
+    // ── fetch field settings only (called on visibility change + polling) ──
+    const fetchFieldSettings = useCallback(async () => {
+        try {
+            const res = await api.get("/system-setting/online-admission");
+            if (res.data?.data?.fields) {
+                setFields(res.data.data.fields);
+            }
+        } catch {
+            // silent – keep previous state on error
+        }
+    }, []);
+
+    // Fetch all initial data (runs once on mount)
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -141,8 +176,30 @@ export default function OnlineAdmissionPage() {
         fetchData();
     }, []);
 
+    // Re-fetch field settings whenever the tab becomes visible again
+    // (admin saves in another tab → user returns here → form updates instantly)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                fetchFieldSettings();
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        // Also poll every 30 s as a fallback (same-window / same-tab use case)
+        const interval = setInterval(fetchFieldSettings, 30_000);
+
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            clearInterval(interval);
+        };
+    }, [fetchFieldSettings]);
+
     const isFieldActive = (fieldName: string) => {
-        return fields.find((f) => f.field_name === fieldName)?.is_active ?? false;
+        const field = fields.find((f: any) => f.field_name === fieldName);
+        if (!field) return false; // field not in DB → hide by default
+        return Boolean(field.is_active);  // coerce 0/1/"0"/"1" correctly
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -225,8 +282,16 @@ export default function OnlineAdmissionPage() {
         try {
             const data = new FormData();
             Object.keys(formData).forEach(key => {
-                if (formData[key] !== "" && formData[key] !== null && formData[key] !== undefined) {
-                    data.append(key, formData[key]);
+                const value = formData[key];
+                if (key === 'previous_academic_record') {
+                    const records = value as Record<string, string>[];
+                    records.forEach((record, idx) => {
+                        Object.keys(record).forEach(field => {
+                            data.append(`previous_academic_record[${idx}][${field}]`, record[field] || '');
+                        });
+                    });
+                } else if (value !== "" && value !== null && value !== undefined) {
+                    data.append(key, value);
                 }
             });
             if (photoFile) {
@@ -461,22 +526,31 @@ export default function OnlineAdmissionPage() {
                         animate={{ opacity: 1, x: 0 }} 
                         className="grid grid-cols-1 md:grid-cols-3 gap-8"
                     >
+                        {/* Always visible required fields */}
                         <div className="space-y-2">
                             <Label className="text-xs font-bold text-slate-400 uppercase">First Name *</Label>
                             <Input name="first_name" onChange={handleInputChange} value={formData.first_name} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" placeholder="John" />
                             {errors.first_name && <p className="text-xs text-red-500">{errors.first_name[0]}</p>}
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-400 uppercase">Middle Name</Label>
-                            <Input name="middle_name" onChange={handleInputChange} value={formData.middle_name} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" placeholder="Optional" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-400 uppercase">Last Name</Label>
-                            <Input name="last_name" onChange={handleInputChange} value={formData.last_name} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" placeholder="Doe" />
-                        </div>
+                        {isFieldActive("middle_name") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Middle Name</Label>
+                                <Input name="middle_name" onChange={handleInputChange} value={formData.middle_name} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" placeholder="Optional" />
+                            </div>
+                        )}
+                        {isFieldActive("last_name") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Last Name</Label>
+                                <Input name="last_name" onChange={handleInputChange} value={formData.last_name} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" placeholder="Doe" />
+                            </div>
+                        )}
                         <div className="space-y-2">
                             <Label className="text-xs font-bold text-slate-400 uppercase">Date of Birth *</Label>
-                            <Input type="date" name="dob" onChange={handleInputChange} value={formData.dob} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            <DatePicker 
+                                value={formData.dob} 
+                                onChange={(val) => handleSelectChange("dob", val)} 
+                                className="h-12 w-full rounded-xl border-slate-200 dark:border-slate-800" 
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-xs font-bold text-slate-400 uppercase">Gender *</Label>
@@ -491,84 +565,314 @@ export default function OnlineAdmissionPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-400 uppercase">Mobile Number *</Label>
-                            <Input name="phone" onChange={handleInputChange} value={formData.phone} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" placeholder="10-digit number" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-400 uppercase">Email Address</Label>
-                            <Input name="email" type="email" onChange={handleInputChange} value={formData.email} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" placeholder="john@example.com" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-400 uppercase">Category</Label>
-                            <Select onValueChange={(val) => handleSelectChange("category", val)} value={formData.category}>
-                                <SelectTrigger className="h-12 rounded-xl border-slate-200 dark:border-slate-800">
-                                    <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {categories.map((category) => (
-                                        <SelectItem key={category.id} value={category.id.toString()}>
-                                            {category.category_name || category.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-400 uppercase">Blood Group</Label>
-                            <Select onValueChange={(val) => handleSelectChange("blood_group", val)} value={formData.blood_group}>
-                                <SelectTrigger className="h-12 rounded-xl border-slate-200 dark:border-slate-800">
-                                    <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(bg => (
-                                        <SelectItem key={bg} value={bg}>{bg}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {isFieldActive("mobile_number") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Mobile Number *</Label>
+                                <Input name="phone" onChange={handleInputChange} value={formData.phone} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" placeholder="10-digit number" />
+                            </div>
+                        )}
+                        {isFieldActive("email") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Email Address</Label>
+                                <Input name="email" type="email" onChange={handleInputChange} value={formData.email} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" placeholder="john@example.com" />
+                            </div>
+                        )}
+                        {isFieldActive("category") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Category</Label>
+                                <Select onValueChange={(val) => handleSelectChange("category", val)} value={formData.category}>
+                                    <SelectTrigger className="h-12 rounded-xl border-slate-200 dark:border-slate-800">
+                                        <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {categories.map((category) => (
+                                            <SelectItem key={category.id} value={category.id.toString()}>
+                                                {category.category_name || category.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        {isFieldActive("blood_group") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Blood Group</Label>
+                                <Select onValueChange={(val) => handleSelectChange("blood_group", val)} value={formData.blood_group}>
+                                    <SelectTrigger className="h-12 rounded-xl border-slate-200 dark:border-slate-800">
+                                        <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(bg => (
+                                            <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        {isFieldActive("religion") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Religion</Label>
+                                <Input name="religion" onChange={handleInputChange} value={formData.religion} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("caste") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Caste</Label>
+                                <Input name="caste" onChange={handleInputChange} value={formData.caste} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("national_identification_no") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">ID/Birth Cert</Label>
+                                <Input name="national_identification_no" onChange={handleInputChange} value={formData.national_identification_no} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("birth_place") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Place of Birth</Label>
+                                <Input name="birth_place" onChange={handleInputChange} value={formData.birth_place} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("state") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">State</Label>
+                                <Input name="state" onChange={handleInputChange} value={formData.state} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("nationality") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Nationality</Label>
+                                <Input name="nationality" onChange={handleInputChange} value={formData.nationality} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("mother_tongue") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Mother Tongue</Label>
+                                <Input name="mother_tongue" onChange={handleInputChange} value={formData.mother_tongue} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("second_language") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Second Language</Label>
+                                <Select onValueChange={(val) => handleSelectChange("second_language", val)} value={formData.second_language}>
+                                    <SelectTrigger className="h-12 rounded-xl border-slate-200 dark:border-slate-800">
+                                        <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="English">English</SelectItem>
+                                        <SelectItem value="Arabic">Arabic</SelectItem>
+                                        <SelectItem value="Others">Others</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        {isFieldActive("appraisal_achievements") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Appraisal Achievements</Label>
+                                <Input name="appraisal_achievements" onChange={handleInputChange} value={formData.appraisal_achievements} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("general_behaviour") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">General Behaviour</Label>
+                                <Select onValueChange={(val) => handleSelectChange("general_behaviour", val)} value={formData.general_behaviour}>
+                                    <SelectTrigger className="h-12 rounded-xl border-slate-200 dark:border-slate-800">
+                                        <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Mild">Mild</SelectItem>
+                                        <SelectItem value="Normal">Normal</SelectItem>
+                                        <SelectItem value="Hyperactive">Hyperactive</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        {isFieldActive("rte") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">RTE</Label>
+                                <Select onValueChange={(val) => handleSelectChange("rte", val)} value={formData.rte}>
+                                    <SelectTrigger className="h-12 rounded-xl border-slate-200 dark:border-slate-800">
+                                        <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Yes">Yes</SelectItem>
+                                        <SelectItem value="No">No</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        {isFieldActive("identification_marks") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Identification Marks</Label>
+                                <Input name="identification_marks" onChange={handleInputChange} value={formData.identification_marks} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("medical_history") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Medical History</Label>
+                                <Input name="medical_history" onChange={handleInputChange} value={formData.medical_history} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("previous_academic_record") && (
+                            <div className="md:col-span-3 space-y-2 mt-4">
+                                <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Previous Academic Record</Label>
+                                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden overflow-x-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                                            <tr>
+                                                <th className="px-3 py-3 font-bold border-r border-slate-200 dark:border-slate-800 text-xs text-slate-500">Name of the previous school</th>
+                                                <th className="px-3 py-3 font-bold border-r border-slate-200 dark:border-slate-800 text-xs text-slate-500">Class</th>
+                                                <th className="px-3 py-3 font-bold border-r border-slate-200 dark:border-slate-800 text-xs text-slate-500">Year of Study</th>
+                                                <th className="px-3 py-3 font-bold text-xs text-slate-500">Percentage/Grade</th>
+                                                <th className="px-3 py-3 font-bold text-xs text-slate-500 w-12 text-center"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                                            {formData.previous_academic_record.map((record: any, index: number) => (
+                                                <tr key={index}>
+                                                    <td className="p-0 border-r border-slate-200 dark:border-slate-800">
+                                                        <input type="text" className="w-full px-3 py-3 bg-transparent outline-none text-sm" value={record.school_name} onChange={(e) => { const r=[...formData.previous_academic_record]; r[index].school_name=e.target.value; setFormData({...formData,previous_academic_record:r}); }} />
+                                                    </td>
+                                                    <td className="p-0 border-r border-slate-200 dark:border-slate-800">
+                                                        <input type="text" className="w-full px-3 py-3 bg-transparent outline-none text-sm" value={record.class} onChange={(e) => { const r=[...formData.previous_academic_record]; r[index].class=e.target.value; setFormData({...formData,previous_academic_record:r}); }} />
+                                                    </td>
+                                                    <td className="p-0 border-r border-slate-200 dark:border-slate-800">
+                                                        <input type="text" className="w-full px-3 py-3 bg-transparent outline-none text-sm" value={record.year} onChange={(e) => { const r=[...formData.previous_academic_record]; r[index].year=e.target.value; setFormData({...formData,previous_academic_record:r}); }} />
+                                                    </td>
+                                                    <td className="p-0 border-r border-slate-200 dark:border-slate-800">
+                                                        <input type="text" className="w-full px-3 py-3 bg-transparent outline-none text-sm" value={record.percentage} onChange={(e) => { const r=[...formData.previous_academic_record]; r[index].percentage=e.target.value; setFormData({...formData,previous_academic_record:r}); }} />
+                                                    </td>
+                                                    <td className="p-0 text-center">
+                                                        <button type="button" onClick={() => { setFormData({...formData, previous_academic_record: formData.previous_academic_record.filter((_: any, i: number) => i !== index)}); }} className="text-red-500 hover:text-red-700 text-lg px-3 py-1 font-bold">×</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" onClick={() => { setFormData({...formData, previous_academic_record: [...formData.previous_academic_record, { school_name: "", class: "", year: "", percentage: "" }]}); }} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 hover:underline mt-2 inline-block">+ Add Row</button>
+                            </div>
+                        )}
                     </motion.div>
                 );
 
             case 3: // Parents
                 return (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {isFieldActive("father_name") && (
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-slate-400 uppercase">Father Name *</Label>
                                 <Input name="father_name" onChange={handleInputChange} value={formData.father_name} className="h-12 rounded-xl" />
                             </div>
+                        )}
+                        {isFieldActive("father_phone") && (
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-slate-400 uppercase">Father Phone</Label>
                                 <Input name="father_phone" onChange={handleInputChange} value={formData.father_phone} className="h-12 rounded-xl" />
                             </div>
+                        )}
+                        {isFieldActive("father_occupation") && (
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-slate-400 uppercase">Father Occupation</Label>
                                 <Input name="father_occupation" onChange={handleInputChange} value={formData.father_occupation} className="h-12 rounded-xl" />
                             </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        )}
+                        {isFieldActive("mother_name") && (
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-slate-400 uppercase">Mother Name</Label>
                                 <Input name="mother_name" onChange={handleInputChange} value={formData.mother_name} className="h-12 rounded-xl" />
                             </div>
+                        )}
+                        {isFieldActive("mother_phone") && (
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-slate-400 uppercase">Mother Phone</Label>
                                 <Input name="mother_phone" onChange={handleInputChange} value={formData.mother_phone} className="h-12 rounded-xl" />
                             </div>
+                        )}
+                        {isFieldActive("mother_occupation") && (
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-slate-400 uppercase">Mother Occupation</Label>
                                 <Input name="mother_occupation" onChange={handleInputChange} value={formData.mother_occupation} className="h-12 rounded-xl" />
                             </div>
-                        </div>
-                        <div className="space-y-4">
-                            <Label className="text-sm font-bold uppercase tracking-widest text-indigo-600">Current Address</Label>
-                            <Textarea name="current_address" onChange={handleInputChange} value={formData.current_address} className="min-h-[100px] rounded-2xl resize-none" placeholder="Enter full current address" />
-                        </div>
-                        <div className="space-y-4">
-                            <Label className="text-sm font-bold uppercase tracking-widest text-indigo-600">Permanent Address</Label>
-                            <Textarea name="permanent_address" onChange={handleInputChange} value={formData.permanent_address} className="min-h-[100px] rounded-2xl resize-none" placeholder="Enter full permanent address" />
-                        </div>
+                        )}
+                        {isFieldActive("guardian_name") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Guardian Name</Label>
+                                <Input name="guardian_name" onChange={handleInputChange} value={formData.guardian_name} className="h-12 rounded-xl" />
+                            </div>
+                        )}
+                        {isFieldActive("guardian_relation") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Guardian Relation</Label>
+                                <Input name="guardian_relation" onChange={handleInputChange} value={formData.guardian_relation} className="h-12 rounded-xl" />
+                            </div>
+                        )}
+                        {isFieldActive("guardian_phone") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Guardian Phone</Label>
+                                <Input name="guardian_phone" onChange={handleInputChange} value={formData.guardian_phone} className="h-12 rounded-xl" />
+                            </div>
+                        )}
+                        {isFieldActive("guardian_email") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Guardian Email</Label>
+                                <Input name="guardian_email" type="email" onChange={handleInputChange} value={formData.guardian_email} className="h-12 rounded-xl" />
+                            </div>
+                        )}
+                        {isFieldActive("guardian_address") && (
+                            <div className="md:col-span-3 space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Guardian Address</Label>
+                                <Input name="guardian_address" onChange={handleInputChange} value={formData.guardian_address} className="h-12 rounded-xl" />
+                            </div>
+                        )}
+                        {isFieldActive("postal_code") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Postal Code</Label>
+                                <Input name="postal_code" onChange={handleInputChange} value={formData.postal_code} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("bank_account_no") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Bank Account No</Label>
+                                <Input name="bank_account_no" onChange={handleInputChange} value={formData.bank_account_no} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("bank_name") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">Bank Name</Label>
+                                <Input name="bank_name" onChange={handleInputChange} value={formData.bank_name} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("ifsc_code") && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase">IFSC Code</Label>
+                                <Input name="ifsc_code" onChange={handleInputChange} value={formData.ifsc_code} className="h-12 rounded-xl border-slate-200 dark:border-slate-800" />
+                            </div>
+                        )}
+                        {isFieldActive("previous_school_details") && (
+                            <div className="md:col-span-3 space-y-2">
+                                <Label className="text-sm font-bold uppercase tracking-widest text-indigo-600">Previous School Details</Label>
+                                <Textarea name="previous_school_details" onChange={handleInputChange} value={formData.previous_school_details} className="min-h-[80px] rounded-2xl resize-none" />
+                            </div>
+                        )}
+                        {isFieldActive("note") && (
+                            <div className="md:col-span-3 space-y-2">
+                                <Label className="text-sm font-bold uppercase tracking-widest text-indigo-600">Note</Label>
+                                <Textarea name="note" onChange={handleInputChange} value={formData.note} className="min-h-[80px] rounded-2xl resize-none" />
+                            </div>
+                        )}
+                        {isFieldActive("current_address") && (
+                            <div className="md:col-span-3 space-y-2">
+                                <Label className="text-sm font-bold uppercase tracking-widest text-indigo-600">Current Address</Label>
+                                <Textarea name="current_address" onChange={handleInputChange} value={formData.current_address} className="min-h-[100px] rounded-2xl resize-none" placeholder="Enter full current address" />
+                            </div>
+                        )}
+                        {isFieldActive("permanent_address") && (
+                            <div className="md:col-span-3 space-y-2">
+                                <Label className="text-sm font-bold uppercase tracking-widest text-indigo-600">Permanent Address</Label>
+                                <Textarea name="permanent_address" onChange={handleInputChange} value={formData.permanent_address} className="min-h-[100px] rounded-2xl resize-none" placeholder="Enter full permanent address" />
+                            </div>
+                        )}
                     </motion.div>
                 );
 
@@ -667,18 +971,56 @@ export default function OnlineAdmissionPage() {
                                                 <p className="text-sm text-amber-800/70 dark:text-amber-400/60 font-medium">To complete the enrollment process, a processing fee of $500.00 needs to be paid.</p>
                                             </div>
                                         </div>
-                                        <Button 
-                                            size="lg" 
-                                            className="h-16 px-12 rounded-2xl bg-slate-900 hover:bg-black text-white text-xl font-bold shadow-2xl transition-transform hover:scale-105"
-                                            onClick={() => setShowPaymentConfirm(true)}
-                                        >
-                                            Proceed to Payment
-                                        </Button>
+                                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                            <Button 
+                                                size="lg" 
+                                                className="h-16 px-8 rounded-2xl bg-slate-900 hover:bg-black text-white text-xl font-bold shadow-xl transition-transform hover:scale-105"
+                                                onClick={() => setShowPaymentConfirm(true)}
+                                            >
+                                                Proceed to Payment
+                                            </Button>
+                                            <Button 
+                                                variant="outline" 
+                                                size="lg" 
+                                                className="h-16 px-8 rounded-2xl font-bold border-2"
+                                                onClick={() => {
+                                                    const selectedClass = classes.find((c: any) => c.id === parseInt(formData.school_class_id));
+                                                    const selectedSection = selectedClass?.sections?.find((s: any) => s.id === parseInt(formData.section_id));
+                                                    downloadAdmissionFormPdf(
+                                                        successData,
+                                                        selectedClass?.name || "",
+                                                        selectedSection?.name || "",
+                                                        `admission-form-${successData.reference_no}.pdf`,
+                                                        successData.student_photo ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}/storage/${successData.student_photo}` : undefined
+                                                    );
+                                                }}
+                                            >
+                                                <Download className="mr-2 w-5 h-5" /> Download Form
+                                            </Button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="pt-6 flex flex-col sm:flex-row gap-4 justify-center">
-                                        <Button size="lg" className="rounded-xl h-14 px-10 bg-indigo-600" onClick={() => window.location.reload()}>Submit New Application</Button>
-                                        <Button variant="outline" size="lg" className="rounded-xl h-14 px-10" onClick={() => window.location.href = "/"}>Back to Homepage</Button>
+                                        <Button size="lg" className="rounded-xl h-14 px-8 bg-indigo-600" onClick={() => window.location.reload()}>Submit New Application</Button>
+                                        <Button 
+                                            variant="outline" 
+                                            size="lg" 
+                                            className="rounded-xl h-14 px-8 border-2 font-bold"
+                                            onClick={() => {
+                                                const selectedClass = classes.find((c: any) => c.id === parseInt(formData.school_class_id));
+                                                const selectedSection = selectedClass?.sections?.find((s: any) => s.id === parseInt(formData.section_id));
+                                                downloadAdmissionFormPdf(
+                                                    successData,
+                                                    selectedClass?.name || "",
+                                                    selectedSection?.name || "",
+                                                    `admission-form-${successData.reference_no}.pdf`,
+                                                    successData.student_photo ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}/storage/${successData.student_photo}` : undefined
+                                                );
+                                            }}
+                                        >
+                                            <Download className="mr-2 w-5 h-5" /> Download Form
+                                        </Button>
+                                        <Button variant="outline" size="lg" className="rounded-xl h-14 px-8" onClick={() => window.location.href = "/"}>Back to Homepage</Button>
                                     </div>
                                 )}
                             </CardContent>

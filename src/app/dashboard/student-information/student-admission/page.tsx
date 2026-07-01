@@ -733,7 +733,7 @@ export default function StudentAdmissionPage() {
                             <TextAreaField label={t("medical_history")} rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
                         </div>
                         <div className="lg:col-span-2">
-                            <label className="text-[12px] font-semibold text-gray-700 block mb-1.5">APPRAISAL & BEHAVIOUR</label>
+                            <label className="text-[12px] font-semibold text-gray-700 block mb-1.5">APPRAISAL ACHIEVEMENT</label>
                             <textarea
                                 className="w-full min-h-[68px] text-[12px] border border-gray-200 rounded-md p-2.5 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y bg-white"
                                 value={formData.appraisal_achievements}

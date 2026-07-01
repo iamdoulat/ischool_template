@@ -54,29 +54,61 @@ import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
 
 const initialFields = [
-    { id: 1, name: "Last Name", active: true },
-    { id: 2, name: "Category", active: true },
-    { id: 3, name: "Religion", active: true },
-    { id: 4, name: "Caste", active: true },
-    { id: 5, name: "Mobile Number", active: true },
-    { id: 6, name: "Email", active: true },
-    { id: 7, name: "Student Photo", active: true },
-    { id: 8, name: "House", active: true },
-    { id: 9, name: "Blood Group", active: true },
-    { id: 10, name: "Height", active: true },
-    { id: 11, name: "Weight", active: true },
-    { id: 12, name: "Measurement Date", active: true },
-    { id: 13, name: "Father Name", active: true },
-    { id: 14, name: "Father Phone", active: true },
-    { id: 15, name: "Father Occupation", active: true },
-    { id: 16, name: "Father Photo", active: true },
-    { id: 17, name: "Mother Name", active: true },
-    { id: 18, name: "Mother Phone", active: true },
-    { id: 19, name: "Mother Occupation", active: true },
-    { id: 20, name: "Mother Photo", active: true },
-    { id: 21, name: "If Guardian Is", active: true },
-    { id: 22, name: "Guardian Name", active: true },
-    { id: 23, name: "Guardian Relation", active: true },
+    // Student Info
+    { id: 1,  name: "Last Name",                field_name: "last_name",                  active: true },
+    { id: 2,  name: "Middle Name",              field_name: "middle_name",                active: true },
+    { id: 3,  name: "Category",                 field_name: "category",                   active: true },
+    { id: 4,  name: "Religion",                 field_name: "religion",                   active: true },
+    { id: 5,  name: "Caste",                    field_name: "caste",                      active: true },
+    { id: 6,  name: "Mobile Number",            field_name: "mobile_number",              active: true },
+    { id: 7,  name: "Email",                    field_name: "email",                      active: true },
+    { id: 8,  name: "Student Photo",            field_name: "student_photo",              active: true },
+    { id: 9,  name: "House",                    field_name: "house",                      active: true },
+    { id: 10, name: "Blood Group",              field_name: "blood_group",                active: true },
+    { id: 11, name: "Height",                   field_name: "height",                     active: true },
+    { id: 12, name: "Weight",                   field_name: "weight",                     active: true },
+    { id: 13, name: "Measurement Date",         field_name: "measurement_date",           active: true },
+    // Extended Student Info
+    { id: 14, name: "National ID / Birth Cert", field_name: "national_identification_no", active: true },
+    { id: 15, name: "Place of Birth",           field_name: "birth_place",                active: true },
+    { id: 16, name: "State",                    field_name: "state",                      active: true },
+    { id: 17, name: "Nationality",              field_name: "nationality",                active: true },
+    { id: 18, name: "Mother Tongue",            field_name: "mother_tongue",              active: true },
+    { id: 19, name: "Second Language",          field_name: "second_language",            active: true },
+    { id: 20, name: "Identification Marks",     field_name: "identification_marks",       active: true },
+    { id: 21, name: "Medical History",          field_name: "medical_history",            active: true },
+    { id: 22, name: "Appraisal Achievements",   field_name: "appraisal_achievements",     active: true },
+    { id: 23, name: "General Behaviour",        field_name: "general_behaviour",          active: true },
+    { id: 24, name: "RTE",                      field_name: "rte",                        active: true },
+    // Address
+    { id: 25, name: "Current Address",          field_name: "current_address",            active: true },
+    { id: 26, name: "Permanent Address",        field_name: "permanent_address",          active: true },
+    { id: 27, name: "Postal Code",              field_name: "postal_code",                active: true },
+    // Bank Info
+    { id: 28, name: "Bank Account No",          field_name: "bank_account_no",            active: true },
+    { id: 29, name: "Bank Name",                field_name: "bank_name",                  active: true },
+    { id: 30, name: "IFSC Code",                field_name: "ifsc_code",                  active: true },
+    // Previous School
+    { id: 31, name: "Previous School Details",  field_name: "previous_school_details",    active: true },
+    { id: 32, name: "Previous Academic Record", field_name: "previous_academic_record",   active: true },
+    { id: 33, name: "Note",                     field_name: "note",                       active: true },
+    // Parents
+    { id: 34, name: "Father Name",              field_name: "father_name",                active: true },
+    { id: 35, name: "Father Phone",             field_name: "father_phone",               active: true },
+    { id: 36, name: "Father Occupation",        field_name: "father_occupation",          active: true },
+    { id: 37, name: "Father Photo",             field_name: "father_photo",               active: true },
+    { id: 38, name: "Mother Name",              field_name: "mother_name",                active: true },
+    { id: 39, name: "Mother Phone",             field_name: "mother_phone",               active: true },
+    { id: 40, name: "Mother Occupation",        field_name: "mother_occupation",          active: true },
+    { id: 41, name: "Mother Photo",             field_name: "mother_photo",               active: true },
+    // Guardian
+    { id: 42, name: "If Guardian Is",           field_name: "if_guardian_is",             active: true },
+    { id: 43, name: "Guardian Name",            field_name: "guardian_name",              active: true },
+    { id: 44, name: "Guardian Relation",        field_name: "guardian_relation",          active: true },
+    { id: 45, name: "Guardian Phone",           field_name: "guardian_phone",             active: true },
+    { id: 46, name: "Guardian Email",           field_name: "guardian_email",             active: true },
+    { id: 47, name: "Guardian Address",         field_name: "guardian_address",           active: true },
+    { id: 48, name: "Guardian Photo",           field_name: "guardian_photo",             active: true },
 ];
 
 function TableSkeletonRows({ cols }: { cols: number }) {
@@ -154,9 +186,10 @@ export default function OnlineAdmissionPage() {
                     });
                 }
                 if (fetchedFields && fetchedFields.length > 0) {
-                    setFields(fetchedFields.map((f: { id: number; name: string; is_active: boolean }) => ({
+                    setFields(fetchedFields.map((f: { id: number; name: string; field_name: string; is_active: boolean }) => ({
                         id: f.id,
                         name: f.name,
+                        field_name: f.field_name,
                         active: Boolean(f.is_active)
                     })));
                 }
@@ -229,7 +262,7 @@ export default function OnlineAdmissionPage() {
         try {
             setSavingFields(true);
             const response = await api.post("/system-setting/online-admission/fields", {
-                fields: fields.map(f => ({ id: f.id, is_active: f.active }))
+                fields: fields.map(f => ({ field_name: f.field_name, is_active: f.active }))
             });
             if (response.data.success) {
                 toast({ title: t("saved"), description: t("fields_visibility_updated_successfully") });
