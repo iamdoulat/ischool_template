@@ -439,7 +439,7 @@ export default function FeesDiscountPage() {
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("fees_discount_list")}</CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {t("x_total_entries", { count: filteredDiscounts.length })}
+                                {discounts.length} {t("total_entries")}
                             </p>
                         </div>
                     </CardHeader>
@@ -493,7 +493,7 @@ export default function FeesDiscountPage() {
                                                 const centerAlignKeys = ["percentage", "amount", "use_count", "expiry_date"];
                                                 return headerKeys.map((key, i) => (
                                                 <th key={key} className={cn(
-                                                    "px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-foreground border-b border-muted/20 whitespace-nowrap",
+                                                    "px-4 py-3 text-[10px] font-bold uppercase text-gray-600 border-b border-muted/20 whitespace-nowrap",
                                                     key === "action" ? "text-center w-36" : "",
                                                     centerAlignKeys.includes(key) ? "text-center" : ""
                                                 )}>

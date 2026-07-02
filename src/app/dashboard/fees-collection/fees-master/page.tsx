@@ -613,8 +613,8 @@ export default function FeesMasterPage() {
                                     <thead>
                                         <tr className="bg-muted/30">
                                             {[
-                                                "Fees Group", "Fees Code", "Amount", "Fine Type",
-                                                "Due Date", "Per Day", "Days-Fine Amount", "Action"
+                                                "Fees Group", "Fees Code", `Amount (${symbol})`, "Fine Type",
+                                                "Due Date", "Per Day", `Fine Amount (${symbol})`, "Action"
                                             ].map((header) => (
                                                 <th key={header} className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap text-center">
                                                     {header}

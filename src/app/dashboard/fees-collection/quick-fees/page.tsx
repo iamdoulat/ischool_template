@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useCallback } from "react";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -50,6 +51,7 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function QuickFeesPage() {
+    const { symbol } = useCurrencyFormatter();
     const [classes, setClasses] = useState<ClassItem[]>([]);
     const [sections, setSections] = useState<SectionItem[]>([]);
     const [students, setStudents] = useState<StudentItem[]>([]);
@@ -270,8 +272,8 @@ export default function QuickFeesPage() {
                                         <TableHead className="font-bold text-slate-800 py-5">Fees Type</TableHead>
                                         <TableHead className="font-bold text-slate-800 py-5">Fees Code</TableHead>
                                         <TableHead className="font-bold text-slate-800 py-5">Due Date</TableHead>
-                                        <TableHead className="font-bold text-slate-800 py-5 text-right">Fine ($)</TableHead>
-                                        <TableHead className="font-bold text-slate-800 py-5 text-right">Amount ($)</TableHead>
+                                        <TableHead className="font-bold text-slate-800 py-5 text-right">Fine ({symbol})</TableHead>
+                                        <TableHead className="font-bold text-slate-800 py-5 text-right">Amount ({symbol})</TableHead>
                                         <TableHead className="font-bold text-slate-800 py-5 text-center pr-8">Action</TableHead>
                                     </TableRow>
                                 </TableHeader>

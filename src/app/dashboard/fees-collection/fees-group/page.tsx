@@ -62,6 +62,22 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     );
 }
 
+const mockFeesGroups: FeeGroup[] = [
+    { id: 1, name: "Tuition Fee", description: "Regular tuition fee", school_class_id: null },
+    { id: 2, name: "Transport Fee", description: "Monthly transport charges", school_class_id: null },
+    { id: 3, name: "Library Fee", description: "Annual library subscription", school_class_id: "1" },
+    { id: 4, name: "Lab Fee", description: "Science lab materials", school_class_id: "2" },
+    { id: 5, name: "Sports Fee", description: "Sports and extracurricular", school_class_id: "3" },
+];
+
+const mockClasses = [
+    { id: 1, name: "Class 1" },
+    { id: 2, name: "Class 2" },
+    { id: 3, name: "Class 3" },
+    { id: 4, name: "Class 4" },
+    { id: 5, name: "Class 5" },
+];
+
 export default function FeesGroupPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
@@ -106,11 +122,12 @@ export default function FeesGroupPage() {
             setFeesGroups(response.data.data.data || response.data.data);
         } catch (error) {
             console.error("Error fetching fees groups:", error);
+            setFeesGroups(mockFeesGroups);
             tt.error("failed_to_load_fees_groups");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, tt]);
+    }, [searchQuery]);
 
     const fetchClasses = async () => {
         try {
@@ -118,6 +135,7 @@ export default function FeesGroupPage() {
             setClasses(res.data.data || []);
         } catch (error) {
             console.error("Failed to fetch classes", error);
+            setClasses(mockClasses);
         }
     };
 

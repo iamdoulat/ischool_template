@@ -63,6 +63,14 @@ interface FeeType {
     description: string | null;
 }
 
+const mockFeesTypes: FeeType[] = [
+    { id: 1, name: "Tuition Fee", code: "TUITION", description: "Regular monthly tuition" },
+    { id: 2, name: "Admission Fee", code: "ADM", description: "One-time admission charge" },
+    { id: 3, name: "Examination Fee", code: "EXAM", description: "Per-term exam fee" },
+    { id: 4, name: "Library Fee", code: "LIB", description: "Annual library subscription" },
+    { id: 5, name: "Sports Fee", code: "SPORTS", description: "Sports and extracurricular" },
+];
+
 export default function FeesTypePage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
@@ -106,11 +114,12 @@ export default function FeesTypePage() {
             setFeesTypes(response.data.data.data || response.data.data);
         } catch (error) {
             console.error("Error fetching fees types:", error);
+            setFeesTypes(mockFeesTypes);
             tt.error("failed_to_load_fees_types");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, tt]);
+    }, [searchQuery]);
 
     useEffect(() => {
         fetchFeesTypes();

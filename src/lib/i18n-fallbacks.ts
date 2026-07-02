@@ -203,6 +203,7 @@ export const i18nFallbacks: Record<string, string> = {
     please_wait: "Please wait…",
     total: "Total",
     total_entries_count: "{count} total entries",
+    x_total_entries: "{count} Total Entries",
 
     // ===== PAGINATION =====
     showing: "Showing",
