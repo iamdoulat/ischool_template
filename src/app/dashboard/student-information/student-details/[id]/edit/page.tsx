@@ -1343,3 +1343,5 @@ function FileUploadField({ label, required, value, onChange, existingPreview }: 
         </div>
     );
 }
+
+// Trigger rebuild
