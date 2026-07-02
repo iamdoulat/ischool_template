@@ -22,11 +22,19 @@ export const mockUserProfileData = {
             religion: "Indian",
             email: "edward@gmail.com",
             medicalHistory: "",
-            note: ""
+            note: "",
+            username: "edward2026",
+            parentUsername: "PAR0011",
+            birthPlace: "Brooklyn",
+            state: "New York",
+            nationality: "American",
+            motherTongue: "English",
+            secondLanguage: "Spanish",
         },
         addressDetails: {
             currentAddress: "56 Main Street, Suite 3, Brooklyn, NY 11210-0000",
-            permanentAddress: "56 Main Street, Suite 3, Brooklyn, NY 11210-0000"
+            permanentAddress: "56 Main Street, Suite 3, Brooklyn, NY 11210-0000",
+            postalCode: "11210",
         },
         parentGuardianDetails: {
             father: {
@@ -74,7 +82,14 @@ export const mockUserProfileData = {
             localIdentificationNumber: "783676878",
             bankAccountNumber: "7876737766735778",
             bankName: "CDFGG",
-            ifscCode: "SDA0009998"
-        }
+            ifscCode: "SDA0009998",
+            identificationMarks: "Mole on left cheek",
+            appraisalAchievements: "Science fair winner 2025",
+            generalBehaviour: "Excellent",
+        },
+        previousAcademicRecord: [
+            { schoolName: "Brooklyn Primary School", class: "Nursery", year: "2024", percentage: "92%" },
+            { schoolName: "Brooklyn Primary School", class: "KG", year: "2025", percentage: "88%" },
+        ],
     }
 };

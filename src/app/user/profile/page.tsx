@@ -28,6 +28,17 @@ import {
   Mail,
   HeartPulse,
   StickyNote,
+  MapPin,
+  Globe,
+  Languages,
+  Fingerprint,
+  Star,
+  GraduationCap,
+  AtSign,
+  KeyRound,
+  School,
+  Percent,
+  MapPinned,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { mockUserProfileData } from "@/lib/mock-user-profile";
@@ -1999,6 +2010,13 @@ export default function UserProfilePage() {
                 <InfoTile icon={Mail} label={t("email")} value={profileTab.basicDetails.email} />
                 <InfoTile icon={HeartPulse} label={t("medical_history")} value={profileTab.basicDetails.medicalHistory} />
                 <InfoTile icon={StickyNote} label={t("note")} value={profileTab.basicDetails.note} />
+                <InfoTile icon={AtSign} label={t("username")} value={profileTab.basicDetails.username} />
+                <InfoTile icon={KeyRound} label={t("parent_username")} value={profileTab.basicDetails.parentUsername} />
+                <InfoTile icon={MapPin} label={t("birth_place")} value={profileTab.basicDetails.birthPlace} />
+                <InfoTile icon={MapPinned} label={t("state")} value={profileTab.basicDetails.state} />
+                <InfoTile icon={Globe} label={t("nationality")} value={profileTab.basicDetails.nationality} />
+                <InfoTile icon={Languages} label={t("mother_tongue")} value={profileTab.basicDetails.motherTongue} />
+                <InfoTile icon={Languages} label={t("second_language")} value={profileTab.basicDetails.secondLanguage} />
               </div>
 
               {/* Address Details */}
@@ -2006,6 +2024,7 @@ export default function UserProfilePage() {
               <div className="px-4">
                 <DetailRow label={t("current_address")} value={profileTab.addressDetails.currentAddress} />
                 <DetailRow label={t("permanent_address")} value={profileTab.addressDetails.permanentAddress} />
+                <DetailRow label={t("postal_code")} value={profileTab.addressDetails.postalCode} />
               </div>
 
               {/* Parent Guardian Detail */}
@@ -2048,7 +2067,81 @@ export default function UserProfilePage() {
                 <DetailRow label={t("bank_account_number")} value={profileTab.miscellaneousDetails.bankAccountNumber} />
                 <DetailRow label={t("bank_name")} value={profileTab.miscellaneousDetails.bankName} />
                 <DetailRow label={t("ifsc_code")} value={profileTab.miscellaneousDetails.ifscCode} />
+                <DetailRow label={t("identification_marks")} value={profileTab.miscellaneousDetails.identificationMarks} />
+                <DetailRow label={t("appraisal_achievements")} value={profileTab.miscellaneousDetails.appraisalAchievements} />
+                <DetailRow label={t("general_behaviour")} value={profileTab.miscellaneousDetails.generalBehaviour} />
               </div>
+
+              {/* Previous Academic Record */}
+              {profileTab.previousAcademicRecord && profileTab.previousAcademicRecord.length > 0 && (
+                <>
+                  <SectionHeader title={t("previous_academic_record")} />
+                  <div className="px-4 mb-4">
+                    {/* Desktop table */}
+                    <div className="hidden sm:block overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+                      <table className="w-full text-[13px]">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10 border-b border-gray-200">
+                            <th className="px-4 py-2.5 text-left font-bold text-gray-700 whitespace-nowrap">
+                              <span className="flex items-center gap-1.5"><School className="h-3.5 w-3.5 text-indigo-400" />{t("school_name")}</span>
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-bold text-gray-700">
+                              <span className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5 text-indigo-400" />{t("class")}</span>
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-bold text-gray-700">
+                              <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-indigo-400" />{t("year")}</span>
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-bold text-gray-700">
+                              <span className="flex items-center gap-1.5"><Percent className="h-3.5 w-3.5 text-indigo-400" />{t("percentage")}</span>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {profileTab.previousAcademicRecord.map((rec: any, idx: number) => (
+                            <tr key={idx} className="border-b border-gray-100 last:border-0 hover:bg-indigo-50/30 transition-colors">
+                              <td className="px-4 py-2.5 font-medium text-gray-800">{rec.schoolName || "-"}</td>
+                              <td className="px-4 py-2.5 text-gray-600">{rec.class || "-"}</td>
+                              <td className="px-4 py-2.5 text-gray-600">{rec.year || "-"}</td>
+                              <td className="px-4 py-2.5">
+                                <span className="inline-flex items-center gap-1 font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full text-[12px]">
+                                  <Star className="h-3 w-3" />{rec.percentage || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {/* Mobile cards */}
+                    <div className="sm:hidden space-y-3">
+                      {profileTab.previousAcademicRecord.map((rec: any, idx: number) => (
+                        <div key={idx} className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#6366F1] to-[#4f52d4] text-white">
+                              <School className="h-4 w-4" />
+                            </div>
+                            <span className="font-semibold text-gray-800 text-[13px]">{rec.schoolName || "-"}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className="rounded-lg bg-gray-50 border border-gray-100 px-2 py-1.5">
+                              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-0.5">{t("class")}</p>
+                              <p className="text-[12px] font-semibold text-gray-800">{rec.class || "-"}</p>
+                            </div>
+                            <div className="rounded-lg bg-gray-50 border border-gray-100 px-2 py-1.5">
+                              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-0.5">{t("year")}</p>
+                              <p className="text-[12px] font-semibold text-gray-800">{rec.year || "-"}</p>
+                            </div>
+                            <div className="rounded-lg bg-indigo-50 border border-indigo-100 px-2 py-1.5">
+                              <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-400 mb-0.5">{t("percentage")}</p>
+                              <p className="text-[12px] font-semibold text-indigo-600">{rec.percentage || "-"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Custom Fields (configured in System Setting → Custom Fields) */}
               {customFields.length > 0 && (
