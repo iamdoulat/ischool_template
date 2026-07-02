@@ -231,12 +231,12 @@ function TemplateEditorModal({
             const payload = { settings: [{ id: item.id, ...form }] };
             const res = await api.post('/system-setting/notification-settings/bulk-update', payload);
             if (res.data.status === "success") {
-                toast({ title: t("success_title"), description: t("template_updated_successfully", "Template updated successfully") });
+                toast({ title: t("success_title"), description: t("template_updated_successfully") });
                 onSaved({ ...item, ...form });
                 onClose();
             }
         } catch {
-            toast({ variant: "destructive", title: t("error"), description: t("failed_to_update_template", "Failed to update template") });
+            toast({ variant: "destructive", title: t("error"), description: t("failed_to_update_template") });
         } finally {
             setSaving(false);
         }
@@ -528,7 +528,7 @@ export default function NotificationSettingPage() {
                                         <TableHead className="py-3 px-4 w-[150px]">{t("recipient")}</TableHead>
                                         <TableHead className="py-3 px-4 w-[180px]">{t("sms_template_id")}</TableHead>
                                         <TableHead className="py-3 px-4 w-[220px]">{t("whatsapp_template_id")}</TableHead>
-                                        <TableHead className="py-3 px-4">{t("templates", "Templates")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("templates")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
