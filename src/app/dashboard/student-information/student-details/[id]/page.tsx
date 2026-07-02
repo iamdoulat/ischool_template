@@ -333,7 +333,7 @@ export default function StudentProfilePage() {
                         {/* Fees Groups */}
                         {student.fees_groups && student.fees_groups.length > 0 && (
                             <SectionCard title={`Fee Groups (${student.fees_groups.length})`} icon={Banknote}>
-                                {student.fees_groups.map((fg: Record<string, unknown>) => (
+                                {student.fees_groups.map((fg: any) => (
                                     <div key={fg.id} className="flex items-center justify-between py-2.5 border-b border-muted/20 last:border-0">
                                         <span className="text-sm font-semibold">{fg.name}</span>
                                         <Badge variant="secondary" className="text-[10px] font-bold">{fg.description || "Active"}</Badge>
@@ -345,7 +345,7 @@ export default function StudentProfilePage() {
                         {/* Fee Discounts */}
                         {student.fees_discounts && student.fees_discounts.length > 0 && (
                             <SectionCard title={`Discounts (${student.fees_discounts.length})`} icon={Award}>
-                                {student.fees_discounts.map((fd: Record<string, unknown>) => (
+                                {student.fees_discounts.map((fd: any) => (
                                     <div key={fd.id} className="flex items-center justify-between py-2.5 border-b border-muted/20 last:border-0">
                                         <span className="text-sm font-semibold">{fd.name}</span>
                                         <Badge className="text-[10px] font-bold bg-green-100 text-green-700">
