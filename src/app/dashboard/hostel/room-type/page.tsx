@@ -38,9 +38,7 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+
 
 interface RoomType {
     id: number;
@@ -154,7 +152,8 @@ export default function RoomTypePage() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedTypes = filteredTypes.slice(startIndex, startIndex + itemsPerPage);
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
+        const XLSX = await import('xlsx');
         const data = filteredTypes.map(rt => ({
             [t("room_type")]: rt.name,
             [t("description")]: rt.description
@@ -165,7 +164,9 @@ export default function RoomTypePage() {
         XLSX.writeFile(wb, "room_types.xlsx");
     };
 
-    const exportToPDF = () => {
+    const exportToPDF = async () => {
+        const { default: jsPDF } = await import('jspdf');
+        const { default: autoTable } = await import('jspdf-autotable');
         const doc = new jsPDF();
         doc.text(t("room_type_list"), 14, 15);
         autoTable(doc, {
@@ -243,7 +244,7 @@ export default function RoomTypePage() {
                             </span>
                             <div className="min-w-0">
                                 <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{t("room_type_list")}</h2>
-                                <p className="text-[11px] text-gray-500">{t("x_room_types", { count: filteredTypes.length })}</p>
+                                <p className="text-[11px] text-gray-500">{filteredTypes.length} {t("room_types")}</p>
                             </div>
                         </div>
                         <div className="p-4 space-y-4">
@@ -301,20 +302,24 @@ export default function RoomTypePage() {
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
                                             <div className="flex items-center gap-1 cursor-pointer">{t("room_type")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
+                                            <div className="flex items-center gap-1 cursor-pointer">{t("description")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                        </TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {fetching ? (
-                                        <SkeletonRows cols={2} />
+                                        <SkeletonRows cols={3} />
                                     ) : paginatedTypes.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={2} className="text-center py-10 text-gray-400 italic">{t("no_room_types_found")}</TableCell>
+                                            <TableCell colSpan={3} className="text-center py-10 text-gray-400 italic">{t("no_room_types_found")}</TableCell>
                                         </TableRow>
                                     ) : (
                                         paginatedTypes.map((type) => (
                                             <TableRow key={type.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
                                                 <TableCell className="py-3 text-gray-700 font-medium">{type.name}</TableCell>
+                                                <TableCell className="py-3 text-gray-500 max-w-[200px] truncate">{type.description || '-'}</TableCell>
                                                 <TableCell className="py-3 text-right">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <Button onClick={() => handleEdit(type)} size="icon" variant="gradient" className="h-6 w-6 text-white rounded shadow-sm">

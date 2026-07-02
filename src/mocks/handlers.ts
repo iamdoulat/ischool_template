@@ -273,32 +273,6 @@ export const handlers = [
     })
   }),
 
-  // Hostels
-  http.get('/api/v1/hostels', () => {
-    return HttpResponse.json({
-      success: true,
-      data: {
-        data: [
-          { id: 1, name: 'Hostel A' },
-          { id: 2, name: 'Hostel B' }
-        ]
-      }
-    })
-  }),
-
-  // Rooms
-  http.get('/api/v1/rooms', () => {
-    return HttpResponse.json({
-      success: true,
-      data: {
-        data: [
-          { id: 1, name: 'Room 101' },
-          { id: 2, name: 'Room 102' }
-        ]
-      }
-    })
-  }),
-
   // Generate admission number
   http.get('/api/v1/students/generate-admission-no', () => {
     return HttpResponse.json({

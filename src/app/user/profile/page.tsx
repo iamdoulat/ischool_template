@@ -1785,7 +1785,22 @@ export default function UserProfilePage() {
     );
   }
 
-  const { basic, profileTab } = data || mockUserProfileData;
+  const mock = mockUserProfileData;
+  const merged = data
+    ? {
+        basic: { ...mock.basic, ...data.basic },
+        profileTab: {
+          basicDetails: { ...mock.profileTab.basicDetails, ...data.profileTab?.basicDetails },
+          addressDetails: { ...mock.profileTab.addressDetails, ...data.profileTab?.addressDetails },
+          parentGuardianDetails: data.profileTab?.parentGuardianDetails ?? mock.profileTab.parentGuardianDetails,
+          transportDetails: { ...mock.profileTab.transportDetails, ...data.profileTab?.transportDetails },
+          hostelDetails: { ...mock.profileTab.hostelDetails, ...data.profileTab?.hostelDetails },
+          miscellaneousDetails: { ...mock.profileTab.miscellaneousDetails, ...data.profileTab?.miscellaneousDetails },
+          previousAcademicRecord: data.profileTab?.previousAcademicRecord ?? mock.profileTab.previousAcademicRecord,
+        },
+      }
+    : mock;
+  const { basic, profileTab } = merged;
   const customFields: { id: number; name: string; type: string; value: string }[] = data?.customFields || [];
 
   const TABS: TabId[] = ["Profile", "Fees", "Exam", "CBSE Examination", "Attendance", "Documents", "Timeline", "Student Behaviour"];
@@ -2008,7 +2023,6 @@ export default function UserProfilePage() {
                 <InfoTile icon={Users} label={t("caste")} value={profileTab.basicDetails.caste} />
                 <InfoTile icon={BookOpen} label={t("religion")} value={profileTab.basicDetails.religion} />
                 <InfoTile icon={Mail} label={t("email")} value={profileTab.basicDetails.email} />
-                <InfoTile icon={HeartPulse} label={t("medical_history")} value={profileTab.basicDetails.medicalHistory} />
                 <InfoTile icon={StickyNote} label={t("note")} value={profileTab.basicDetails.note} />
                 <InfoTile icon={AtSign} label={t("username")} value={profileTab.basicDetails.username} />
                 <InfoTile icon={KeyRound} label={t("parent_username")} value={profileTab.basicDetails.parentUsername} />
@@ -2056,14 +2070,15 @@ export default function UserProfilePage() {
               {/* Miscellaneous Details */}
               <SectionHeader title={t("miscellaneous_details")} />
               <div className="px-4 mb-4">
+                <DetailRow label={t("medical_history")} value={profileTab.miscellaneousDetails.medicalHistory} />
                 <DetailRow label={t("blood_group")} value={profileTab.miscellaneousDetails.bloodGroup} />
                 <DetailRow label={t("house")} value={profileTab.miscellaneousDetails.house} />
                 <DetailRow label={t("height")} value={profileTab.miscellaneousDetails.height} />
                 <DetailRow label={t("weight")} value={profileTab.miscellaneousDetails.weight} />
                 <DetailRow label={t("measurement_date")} value={profileTab.miscellaneousDetails.measurementDate} />
-                <DetailRow label={t("previous_school_details")} value={profileTab.miscellaneousDetails.previousSchoolDetails} />
+
                 <DetailRow label={t("national_identification_number")} value={profileTab.miscellaneousDetails.nationalIdentificationNumber} />
-                <DetailRow label={t("local_identification_number")} value={profileTab.miscellaneousDetails.localIdentificationNumber} />
+
                 <DetailRow label={t("bank_account_number")} value={profileTab.miscellaneousDetails.bankAccountNumber} />
                 <DetailRow label={t("bank_name")} value={profileTab.miscellaneousDetails.bankName} />
                 <DetailRow label={t("ifsc_code")} value={profileTab.miscellaneousDetails.ifscCode} />

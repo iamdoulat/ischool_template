@@ -38,9 +38,7 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 
 interface Hostel {
     id: number;
@@ -86,6 +84,7 @@ function SkeletonRows({ rows = 6, cols }: { rows?: number; cols: number }) {
 export default function HostelRoomPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const { formatCurrency, symbol } = useCurrencyFormatter();
     const [rooms, setRooms] = useState<HostelRoom[]>([]);
     const [hostels, setHostels] = useState<Hostel[]>([]);
     const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
@@ -195,26 +194,29 @@ export default function HostelRoomPage() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedRooms = filteredRooms.slice(startIndex, startIndex + itemsPerPage);
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
+        const XLSX = await import('xlsx');
         const data = filteredRooms.map(r => ({
             [t("room_number_name")]: r.room_number,
             [t("hostel")]: r.hostel?.name,
             [t("room_type")]: r.room_type?.name,
             [t("number_of_bed")]: r.number_of_bed,
-            [t("cost_per_bed")]: r.cost_per_bed
+            [t("cost_per_bed")]: `${symbol}${r.cost_per_bed}`,
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Rooms");
+        XLSX.utils.book_append_sheet(wb, ws, "HostelRooms");
         XLSX.writeFile(wb, "hostel_rooms.xlsx");
     };
 
-    const exportToPDF = () => {
+    const exportToPDF = async () => {
+        const { default: jsPDF } = await import('jspdf');
+        const { default: autoTable } = await import('jspdf-autotable');
         const doc = new jsPDF();
         doc.text(t("hostel_room_list"), 14, 15);
         autoTable(doc, {
             head: [[t("room_number_name"), t("hostel"), t("room_type"), t("number_of_bed"), t("cost_per_bed")]],
-            body: filteredRooms.map(r => [r.room_number, r.hostel?.name || '', r.room_type?.name || '', r.number_of_bed, r.cost_per_bed]),
+            body: filteredRooms.map(r => [r.room_number, r.hostel?.name || '', r.room_type?.name || '', r.number_of_bed, `${symbol}${r.cost_per_bed}`]),
             startY: 20,
         });
         doc.save("hostel_rooms.pdf");
@@ -343,7 +345,7 @@ export default function HostelRoomPage() {
                             </span>
                             <div className="min-w-0">
                                 <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{t("hostel_room_list")}</h2>
-                                <p className="text-[11px] text-gray-500">{t("x_rooms", { count: filteredRooms.length })}</p>
+                                <p className="text-[11px] text-gray-500">{filteredRooms.length} {t("rooms")}</p>
                             </div>
                         </div>
                         <div className="p-4 space-y-4">
@@ -430,7 +432,7 @@ export default function HostelRoomPage() {
                                                 <TableCell className="py-3 text-gray-500">{room.hostel?.name}</TableCell>
                                                 <TableCell className="py-3 text-gray-500">{room.room_type?.name}</TableCell>
                                                 <TableCell className="py-3 text-gray-500 text-right">{room.number_of_bed}</TableCell>
-                                                <TableCell className="py-3 text-gray-500 text-right">₹{room.cost_per_bed}</TableCell>
+                                                <TableCell className="py-3 text-gray-500 text-right">{symbol}{room.cost_per_bed}</TableCell>
                                                 <TableCell className="py-3 text-right">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <Button onClick={() => handleEdit(room)} size="icon" variant="gradient" className="h-6 w-6 text-white rounded shadow-sm">

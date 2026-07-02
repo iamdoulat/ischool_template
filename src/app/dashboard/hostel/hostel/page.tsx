@@ -38,16 +38,12 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 interface HostelMaster {
     id: number;
     name: string;
     type: string;
     address: string;
-    intake: number;
     description: string;
 }
 
@@ -83,7 +79,6 @@ export default function HostelMasterPage() {
         name: "",
         type: "",
         address: "",
-        intake: "",
         description: "",
     });
 
@@ -114,8 +109,7 @@ export default function HostelMasterPage() {
 
         setLoading(true);
         const submitData = {
-            ...form,
-            intake: form.intake ? parseInt(form.intake) : null
+            ...form
         };
 
         try {
@@ -126,7 +120,7 @@ export default function HostelMasterPage() {
                 await api.post("/hostels", submitData);
                 tt.success("hostel_created_successfully");
             }
-            setForm({ id: null, name: "", type: "", address: "", intake: "", description: "" });
+            setForm({ id: null, name: "", type: "", address: "", description: "" });
             fetchHostels();
         } catch (error) {
             tt.error("failed_to_save_hostel");
@@ -141,7 +135,6 @@ export default function HostelMasterPage() {
             name: hostel.name,
             type: hostel.type,
             address: hostel.address || "",
-            intake: hostel.intake?.toString() || "",
             description: hostel.description || "",
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -167,12 +160,12 @@ export default function HostelMasterPage() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedHostels = filteredHostels.slice(startIndex, startIndex + itemsPerPage);
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
+        const XLSX = await import('xlsx');
         const data = filteredHostels.map(h => ({
             [t("hostel_name")]: h.name,
             [t("type")]: h.type,
-            [t("address")]: h.address,
-            [t("intake")]: h.intake
+            [t("address")]: h.address
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -180,19 +173,21 @@ export default function HostelMasterPage() {
         XLSX.writeFile(wb, "hostels.xlsx");
     };
 
-    const exportToPDF = () => {
+    const exportToPDF = async () => {
+        const { default: jsPDF } = await import('jspdf');
+        const { default: autoTable } = await import('jspdf-autotable');
         const doc = new jsPDF();
         doc.text(t("hostel_list"), 14, 15);
         autoTable(doc, {
-            head: [[t("hostel_name"), t("type"), t("address"), t("intake")]],
-            body: filteredHostels.map(h => [h.name, h.type, h.address, h.intake]),
+            head: [[t("hostel_name"), t("type"), t("address")]],
+            body: filteredHostels.map(h => [h.name, h.type, h.address]),
             startY: 20,
         });
         doc.save("hostels.pdf");
     };
 
     const copyToClipboard = () => {
-        const text = filteredHostels.map(h => h.name + '\t' + h.type + '\t' + h.address + '\t' + h.intake).join('\n');
+        const text = filteredHostels.map(h => h.name + '\t' + h.type + '\t' + h.address).join('\n');
         navigator.clipboard.writeText(text);
         tt.success("copied_to_clipboard");
     };
@@ -252,16 +247,6 @@ export default function HostelMasterPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("intake")}</Label>
-                                <Input
-                                    value={form.intake}
-                                    onChange={(e) => setForm({ ...form, intake: e.target.value })}
-                                    className="h-8 border-gray-200 text-[11px] focus-visible:ring-indigo-500 rounded shadow-none"
-                                    placeholder=""
-                                />
-                            </div>
-
-                            <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("description")}</Label>
                                 <Textarea
                                     value={form.description}
@@ -294,7 +279,7 @@ export default function HostelMasterPage() {
                             </span>
                             <div className="min-w-0">
                                 <h2 className="text-sm font-semibold text-gray-800 tracking-tight">{t("hostel_list")}</h2>
-                                <p className="text-[11px] text-gray-500">{t("x_hostels", { count: filteredHostels.length })}</p>
+                                <p className="text-[11px] text-gray-500">{filteredHostels.length} {t("hostels")}</p>
                             </div>
                         </div>
                         <div className="p-4 space-y-4">
@@ -358,8 +343,8 @@ export default function HostelMasterPage() {
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
                                             <div className="flex items-center gap-1 cursor-pointer">{t("address")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1 cursor-pointer">{t("intake")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
+                                            <div className="flex items-center gap-1 cursor-pointer">{t("description")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
                                     </TableRow>
@@ -377,7 +362,7 @@ export default function HostelMasterPage() {
                                                 <TableCell className="py-3 text-gray-700 font-medium">{hostel.name}</TableCell>
                                                 <TableCell className="py-3 text-gray-500 capitalize">{hostel.type}</TableCell>
                                                 <TableCell className="py-3 text-gray-500">{hostel.address || '-'}</TableCell>
-                                                <TableCell className="py-3 text-gray-500 text-right">{hostel.intake || '-'}</TableCell>
+                                                <TableCell className="py-3 text-gray-500 max-w-[200px] truncate">{hostel.description || '-'}</TableCell>
                                                 <TableCell className="py-3 text-right">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <Button onClick={() => handleEdit(hostel)} size="icon" variant="gradient" className="h-6 w-6 text-white rounded shadow-sm">
