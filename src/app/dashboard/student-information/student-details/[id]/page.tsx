@@ -292,7 +292,7 @@ export default function StudentProfilePage() {
                         {/* Siblings */}
                         {student.siblings && student.siblings.length > 0 && (
                             <SectionCard title={`Siblings (${student.siblings.length})`} icon={Users}>
-                                {student.siblings.map((sib: Record<string, unknown>) => (
+                                {student.siblings.map((sib: any) => (
                                     <div key={sib.id} className="flex items-center gap-3 py-2.5 border-b border-muted/20 last:border-0">
                                         <Avatar className="h-8 w-8">
                                             <AvatarFallback className="text-xs font-bold bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white">
