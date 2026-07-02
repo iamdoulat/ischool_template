@@ -35,6 +35,14 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -69,14 +77,14 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
         <>
             {Array.from({ length: rows }).map((_, i) => (
-                <tr key={i} className="border-b border-muted/30">
+                <TableRow key={i} className="border-b border-muted/30">
                     {Array.from({ length: cols }).map((_, j) => (
-                        <td key={j} className="px-4 py-3">
+                        <TableCell key={j} className="py-5">
                             <div className="h-4 rounded-md bg-muted/60 animate-pulse"
                                 style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
-                        </td>
+                        </TableCell>
                     ))}
-                </tr>
+                </TableRow>
             ))}
         </>
     );
@@ -161,9 +169,9 @@ export default function OfflineBankPaymentsPage() {
     };
 
     const filteredPayments = payments.filter(p =>
-        p.student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.student.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.student.admission_no.includes(searchQuery) ||
+        p.student?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.student?.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.student?.admission_no?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.reference_no?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -261,7 +269,7 @@ export default function OfflineBankPaymentsPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("payment_requests")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_payments", { count: filteredPayments.length })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{filteredPayments.length} Payment{filteredPayments.length === 1 ? '' : 's'} Found</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 bg-muted/20 p-1 rounded-lg border border-muted/50">
@@ -356,55 +364,57 @@ export default function OfflineBankPaymentsPage() {
                     {/* Table */}
                     <div className="rounded-lg border border-muted/20 overflow-hidden bg-muted/5 shadow-inner">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-muted/10">
+                            <Table className="w-full">
+                                <TableHeader>
+                                    <TableRow className="bg-muted/10 border-b border-muted/20">
                                         {[
-                                            t("request_id"), t("student_detail"), t("payment_info"), t("amount_x", { symbol }), t("status"), t("action")
-                                        ].map((header) => (
-                                            <th key={header} className={cn(
-                                                "px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 border-b border-muted/20 whitespace-nowrap",
-                                                header === t("action") ? "text-center w-32" : ""
+                                            t("request_id"), t("student_detail"), t("payment_info"), `Amount (${symbol})`, t("status"), t("action")
+                                        ].map((header, index) => (
+                                            <TableHead key={header} className={cn(
+                                                "py-5 font-bold text-slate-800 whitespace-nowrap",
+                                                header === t("action") ? "text-center w-32 pr-8" : "",
+                                                index === 0 ? "pl-8" : "",
+                                                header === `Amount (${symbol})` ? "text-right" : ""
                                             )}>
                                                 {header}
-                                            </th>
+                                            </TableHead>
                                         ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-muted/10">
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody className="divide-y divide-muted/10">
                                     {loading ? (
                                         <TableSkeleton rows={5} cols={6} />
                                     ) : filteredPayments.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={6} className="px-6 py-20 text-center">
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="py-20 text-center">
                                                 <div className="flex flex-col items-center gap-3 opacity-30">
                                                     <Wallet className="h-12 w-12" />
                                                     <p className="font-bold tracking-tight text-lg">{t("no_payment_requests_found")}</p>
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     ) : (
                                         paginatedPayments.map((payment) => (
-                                            <tr key={payment.id} className="hover:bg-muted/10 transition-colors group/row">
-                                                <td className="px-6 py-6 text-sm font-bold text-muted-foreground">#{payment.id}</td>
-                                                <td className="px-6 py-6">
+                                            <TableRow key={payment.id} className="hover:bg-muted/10 transition-colors group border-b border-muted/50 last:border-none">
+                                                <TableCell className="py-4 pl-8 text-sm font-bold text-slate-600">#{payment.id}</TableCell>
+                                                <TableCell className="py-4">
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-foreground">{payment.student.name} {payment.student.last_name}</span>
-                                                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                                                        <span className="text-sm font-bold text-slate-800">{payment.student.name} {payment.student.last_name}</span>
+                                                        <span className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">
                                                             {payment.student.admission_no} • {payment.student.school_class.class}({payment.student.section.section})
                                                         </span>
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-6">
+                                                </TableCell>
+                                                <TableCell className="py-4">
                                                     <div className="flex flex-col">
-                                                        <span className="text-xs font-bold text-primary">{payment.student_fee_master?.fee_master.fee_type.name || t("general_payment")}</span>
+                                                        <span className="text-sm font-semibold text-slate-600">{payment.student_fee_master?.fee_master.fee_type.name || t("general_payment")}</span>
                                                         <span className="text-[10px] text-muted-foreground font-medium">{t("ref_label")} {payment.reference_no || 'N/A'}</span>
-                                                        <span className="text-[10px] text-muted-foreground font-medium">{t("date_label")} {new Date(payment.payment_date).toLocaleDateString()}</span>
+                                                        <span className="text-[10px] text-muted-foreground font-medium">{t("date_label")} {new Date(payment.payment_date).toLocaleDateString('en-GB')}</span>
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-6 text-sm font-black text-foreground">{formatCurrency(payment.amount)}</td>
-                                                <td className="px-6 py-6">{getStatusBadge(payment.status)}</td>
-                                                <td className="px-6 py-6">
+                                                </TableCell>
+                                                <TableCell className="py-4 text-sm font-black text-slate-800 text-right">{formatCurrency(payment.amount)}</TableCell>
+                                                <TableCell className="py-4">{getStatusBadge(payment.status)}</TableCell>
+                                                <TableCell className="py-4 pr-8">
                                                     <div className="flex justify-center">
                                                         <Button
                                                             size="icon"
@@ -418,12 +428,12 @@ export default function OfflineBankPaymentsPage() {
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
                                                     </div>
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                         ))
                                     )}
-                                </tbody>
-                            </table>
+                                </TableBody>
+                            </Table>
                         </div>
                     </div>
 

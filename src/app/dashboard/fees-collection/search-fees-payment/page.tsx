@@ -4,10 +4,14 @@ import { Search, Info, User, Calendar, CreditCard, Receipt, ReceiptText, Eye, Pr
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import html2canvas from "html2canvas-pro";
+import jsPDF from "jspdf";
+import Link from "next/link";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 
 interface PaymentRecord {
     id: number;
@@ -21,9 +25,10 @@ interface PaymentRecord {
         student: {
             name: string;
             last_name: string;
+            id: number;
             admission_no: string;
-            school_class: { class: string };
-            section: { section: string };
+            school_class: { name: string };
+            section: { name: string };
         };
         fee_master: {
             fee_type: { name: string };
@@ -60,6 +65,30 @@ export default function SearchFeesPaymentPage() {
     const [loading, setLoading] = useState(false);
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const { symbol } = useCurrencyFormatter();
+    const receiptRef = useRef<HTMLDivElement>(null);
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const handlePDF = async (paymentId: string | number) => {
+        if (!receiptRef.current) return;
+        
+        try {
+            const canvas = await html2canvas(receiptRef.current, { scale: 2 });
+            const imgData = canvas.toDataURL("image/png");
+            const pdf = new jsPDF("p", "mm", "a4");
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            
+            pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`Payment_Receipt_${paymentId}.pdf`);
+        } catch (error) {
+            console.error("PDF generation failed", error);
+            tt.error("failed_to_generate_pdf");
+        }
+    };
 
     const handleSearch = async () => {
         if (!paymentId) {
@@ -76,7 +105,7 @@ export default function SearchFeesPaymentPage() {
             if (res.data.data.length === 0) {
                 tt.info("no_payment_found_with_this_id");
             }
-        } catch (error) {
+        } catch (_error) {
             tt.error("failed_to_search_payment");
         } finally {
             setLoading(false);
@@ -150,7 +179,7 @@ export default function SearchFeesPaymentPage() {
                     <div className="lg:col-span-2 space-y-6">
                         <CardSkeleton count={1} />
                     </div>
-                    <div className="space-y-6">
+                    <div className="space-y-6 no-print">
                         <CardSkeleton count={2} />
                     </div>
                 </div>
@@ -161,7 +190,8 @@ export default function SearchFeesPaymentPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
                     {/* Main Receipt Card */}
                     {results.map((payment) => (
-                        <Card key={payment.id} className="lg:col-span-2 border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 rounded-lg relative">
+                        <div key={payment.id} className="lg:col-span-2" ref={receiptRef}>
+                        <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 rounded-lg relative">
                             <div className="absolute top-0 right-0 p-8 opacity-5">
                                 <Receipt className="h-32 w-32 rotate-12 text-primary" />
                             </div>
@@ -176,11 +206,11 @@ export default function SearchFeesPaymentPage() {
                                         <p className="text-[11px] text-gray-500 mt-1">{t("transaction_id")}: #{payment.id}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Button variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
+                                <div className="flex items-center gap-2 no-print">
+                                    <Button onClick={handlePrint} variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
                                         <Printer className="h-3.5 w-3.5 mr-2" /> {t("print")}
                                     </Button>
-                                    <Button variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
+                                    <Button onClick={() => handlePDF(payment.id)} variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
                                         <Download className="h-3.5 w-3.5 mr-2" /> {t("pdf")}
                                     </Button>
                                 </div>
@@ -196,7 +226,7 @@ export default function SearchFeesPaymentPage() {
                                     </div>
                                     <div className="space-y-1">
                                         <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("class_and_section")}</span>
-                                        <p className="text-lg font-bold">{payment.student_fee_master.student.school_class.class} ({payment.student_fee_master.student.section.section})</p>
+                                        <p className="text-lg font-bold">{payment.student_fee_master.student.school_class?.name || "N/A"} ({payment.student_fee_master.student.section?.name || "N/A"})</p>
                                     </div>
                                     <div className="space-y-1">
                                         <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {t("payment_date")}</span>
@@ -216,25 +246,25 @@ export default function SearchFeesPaymentPage() {
                                         <tbody className="divide-y divide-muted/10">
                                             <tr>
                                                 <td className="px-6 py-4 font-bold text-sm">{payment.student_fee_master.fee_master.fee_type.name}</td>
-                                                <td className="px-6 py-4 font-black text-sm text-right">${payment.amount.toFixed(2)}</td>
+                                                <td className="px-6 py-4 font-black text-sm text-right">{symbol}{Number(payment.amount).toFixed(2)}</td>
                                             </tr>
                                             {payment.discount > 0 && (
                                                 <tr className="text-green-600 bg-green-50/30">
                                                     <td className="px-6 py-4 font-bold text-xs italic">{t("discount_applied")}</td>
-                                                    <td className="px-6 py-4 font-black text-xs text-right">-${payment.discount.toFixed(2)}</td>
+                                                    <td className="px-6 py-4 font-black text-xs text-right">-{symbol}{Number(payment.discount).toFixed(2)}</td>
                                                 </tr>
                                             )}
                                             {payment.fine > 0 && (
                                                 <tr className="text-red-600 bg-red-50/30">
                                                     <td className="px-6 py-4 font-bold text-xs italic">{t("fine_or_late_fee")}</td>
-                                                    <td className="px-6 py-4 font-black text-xs text-right">+${payment.fine.toFixed(2)}</td>
+                                                    <td className="px-6 py-4 font-black text-xs text-right">+{symbol}{Number(payment.fine).toFixed(2)}</td>
                                                 </tr>
                                             )}
                                         </tbody>
                                         <tfoot>
                                             <tr className="bg-primary/5">
                                                 <td className="px-6 py-5 font-black text-primary text-sm uppercase tracking-widest">{t("total_received")}</td>
-                                                <td className="px-6 py-5 font-black text-primary text-xl text-right">${(payment.amount - payment.discount + payment.fine).toFixed(2)}</td>
+                                                <td className="px-6 py-5 font-black text-primary text-xl text-right">{symbol}{(Number(payment.amount) - Number(payment.discount) + Number(payment.fine)).toFixed(2)}</td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -261,10 +291,11 @@ export default function SearchFeesPaymentPage() {
                                 )}
                             </CardContent>
                         </Card>
+                        </div>
                     ))}
 
                     {/* Summary / Stats Card */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 no-print">
                         <Card className="border-none shadow-xl bg-gradient-to-br from-primary to-indigo-600 text-white overflow-hidden rounded-lg">
                             <CardContent className="p-8 space-y-4">
                                 <div className="p-3 bg-white/20 rounded-lg w-fit">
@@ -288,12 +319,20 @@ export default function SearchFeesPaymentPage() {
                                 </div>
                             </CardHeader>
                             <CardContent className="p-6 space-y-3">
-                                <Button variant="outline" className="w-full h-11 rounded-lg border-muted/50 font-bold text-xs justify-start hover:bg-muted/10 group">
-                                    <Eye className="h-4 w-4 mr-3 text-muted-foreground group-hover:text-primary transition-colors" /> {t("view_student_profile")}
-                                </Button>
-                                <Button variant="outline" className="w-full h-11 rounded-lg border-muted/50 font-bold text-xs justify-start hover:bg-muted/10 group">
-                                    <Calendar className="h-4 w-4 mr-3 text-muted-foreground group-hover:text-primary transition-colors" /> {t("view_all_student_fees")}
-                                </Button>
+                                {results.length > 0 && (
+                                    <>
+                                        <Link href={`/dashboard/student-information/student-details/${results[0].student_fee_master.student.id}`} passHref>
+                                            <Button variant="outline" className="w-full h-11 rounded-lg border-muted/50 font-bold text-xs justify-start hover:bg-muted/10 group mb-2">
+                                                <Eye className="h-4 w-4 mr-3 text-muted-foreground group-hover:text-primary transition-colors" /> {t("view_student_profile")}
+                                            </Button>
+                                        </Link>
+                                        <Link href={`/dashboard/fees-collection/collect-fees?student_id=${results[0].student_fee_master.student.id}`} passHref>
+                                            <Button variant="outline" className="w-full h-11 rounded-lg border-muted/50 font-bold text-xs justify-start hover:bg-muted/10 group">
+                                                <Calendar className="h-4 w-4 mr-3 text-muted-foreground group-hover:text-primary transition-colors" /> {t("view_all_student_fees")}
+                                            </Button>
+                                        </Link>
+                                    </>
+                                )}
                             </CardContent>
                         </Card>
                     </div>

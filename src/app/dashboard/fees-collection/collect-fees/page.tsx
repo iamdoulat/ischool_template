@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
     Search,
     ChevronDown,
@@ -13,8 +14,17 @@ import {
     Filter
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -22,18 +32,24 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+const formatDate = (dateString?: string | null) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? dateString : date.toLocaleDateString('en-GB');
+};
+
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
         <>
             {Array.from({ length: rows }).map((_, i) => (
-                <tr key={i} className="border-b border-muted/30">
+                <TableRow key={i} className="border-b border-muted/30">
                     {Array.from({ length: cols }).map((_, j) => (
-                        <td key={j} className="px-4 py-3">
+                        <TableCell key={j} className="py-5">
                             <div className="h-4 rounded-md bg-muted/60 animate-pulse"
                                 style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
-                        </td>
+                        </TableCell>
                     ))}
-                </tr>
+                </TableRow>
             ))}
         </>
     );
@@ -60,12 +76,14 @@ interface Student {
     phone: string;
     father_name: string;
     schoolClass?: { name: string };
+    school_class?: { name: string };
     section?: { name: string };
 }
 
-export default function CollectFeesPage() {
+function CollectFeesContent() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const searchParams = useSearchParams();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<Section[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
@@ -78,18 +96,38 @@ export default function CollectFeesPage() {
 
     const fetchInitialData = useCallback(async () => {
         try {
-            const [classesRes] = await Promise.all([
-                api.get("/academics/classes?no_paginate=true")
+            const [classesRes, studentsRes] = await Promise.all([
+                api.get("/academics/classes?no_paginate=true"),
+                api.get("/fee-collection/search-students")
             ]);
-            setClasses(classesRes.data.data.data || classesRes.data.data);
+            setClasses(classesRes.data?.data?.data || classesRes.data?.data || []);
+            
+            const data = studentsRes.data?.data;
+            if (!searchParams.get("student_id")) {
+                setStudents(Array.isArray(data) ? data : (data?.data || []));
+            }
         } catch (error) {
             tt.error("failed_to_fetch_initial_data");
         }
-    }, []);
+    }, [searchParams, tt]);
 
     useEffect(() => {
         fetchInitialData();
     }, [fetchInitialData]);
+
+    // Auto-load student from ?student_id= query param
+    useEffect(() => {
+        const studentId = searchParams.get("student_id");
+        if (!studentId) return;
+        setLoading(true);
+        api.get(`/students/${studentId}`)
+            .then(res => {
+                const s = res.data?.data || res.data;
+                if (s) setStudents([s]);
+            })
+            .catch(() => tt.error("failed_to_load_student"))
+            .finally(() => setLoading(false));
+    }, [searchParams]);
 
     const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const id = e.target.value;
@@ -135,7 +173,7 @@ export default function CollectFeesPage() {
             "Admission No": s.admission_no,
             "Student Name": `${s.name} ${s.last_name}`,
             "Father Name": s.father_name,
-            "Date of Birth": s.dob,
+            "Date of Birth": formatDate(s.dob),
             "Mobile No": s.phone
         }));
 
@@ -173,7 +211,7 @@ export default function CollectFeesPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("collect_fees")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_students_listed", { count: students.length })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{students.length} {t("students_listed")}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -327,39 +365,43 @@ export default function CollectFeesPage() {
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("x_students_found", { count: students.length })}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{students.length} {t("students_found")}</p>
                     </div>
                 </CardHeader>
 
                 <div className="p-0 overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-muted/30">
+                    <Table className="w-full">
+                        <TableHeader>
+                            <TableRow className="bg-muted/10 border-b border-muted/20">
                                 {[
                                     t("class"), t("section"), t("admission_no"), t("student_name"),
                                     t("father_name"), t("date_of_birth"), t("mobile_no"), t("action")
-                                ].map((header) => (
-                                    <th key={header} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
+                                ].map((header, index) => (
+                                    <TableHead key={header} className={cn(
+                                        "py-5 font-bold text-slate-800 whitespace-nowrap",
+                                        header === t("action") ? "text-right pr-8" : "",
+                                        index === 0 ? "pl-8" : ""
+                                    )}>
                                         {header}
-                                    </th>
+                                    </TableHead>
                                 ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-muted/50">
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody className="divide-y divide-muted/10">
                             {loading ? (
                                 <TableSkeleton rows={5} cols={8} />
                             ) : (
                                 students.map((student) => (
-                                    <tr key={student.id} className="group hover:bg-muted/20 transition-colors border-b border-muted/50">
-                                        <td className="px-6 py-4 text-xs font-bold text-muted-foreground">{student.schoolClass?.name}</td>
-                                        <td className="px-6 py-4 text-xs font-bold text-muted-foreground">{student.section?.name}</td>
-                                        <td className="px-6 py-4 text-xs font-black text-primary hover:text-primary/80 transition-colors cursor-pointer">{student.admission_no}</td>
-                                        <td className="px-6 py-4 text-xs font-bold text-foreground capitalize">{`${student.name} ${student.last_name}`}</td>
-                                        <td className="px-6 py-4 text-xs font-bold text-muted-foreground capitalize">{student.father_name}</td>
-                                        <td className="px-6 py-4 text-xs font-bold text-muted-foreground italic">{student.dob}</td>
-                                        <td className="px-6 py-4 text-xs font-bold text-muted-foreground">{student.phone}</td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
+                                    <TableRow key={student.id} className="hover:bg-muted/10 transition-colors group border-b border-muted/50 last:border-none">
+                                        <TableCell className="py-4 pl-8 text-sm font-semibold text-slate-600">{student.schoolClass?.name || student.school_class?.name}</TableCell>
+                                        <TableCell className="py-4 text-sm font-semibold text-slate-600">{student.section?.name}</TableCell>
+                                        <TableCell className="py-4 text-sm font-bold text-slate-600">{student.admission_no}</TableCell>
+                                        <TableCell className="py-4 text-sm font-bold text-slate-800 capitalize">{`${student.name} ${student.last_name || ''}`}</TableCell>
+                                        <TableCell className="py-4 text-sm font-semibold text-slate-600 capitalize">{student.father_name}</TableCell>
+                                        <TableCell className="py-4 text-sm font-semibold text-slate-600">{formatDate(student.dob)}</TableCell>
+                                        <TableCell className="py-4 text-sm font-semibold text-slate-600">{student.phone}</TableCell>
+                                        <TableCell className="py-4 pr-8 text-right">
+                                            <div className="flex items-center justify-end gap-2">
                                                 <Button
                                                     variant="gradient"
                                                     size="sm"
@@ -370,12 +412,12 @@ export default function CollectFeesPage() {
                                                     {t("collect_fee")}
                                                 </Button>
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 ))
                             )}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
 
                     {/* Empty State */}
                     {!loading && students.length === 0 && (
@@ -418,5 +460,13 @@ export default function CollectFeesPage() {
                 </div>
             </Card>
         </div>
+    );
+}
+
+export default function CollectFeesPage() {
+    return (
+        <Suspense fallback={<div className="p-8 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>}>
+            <CollectFeesContent />
+        </Suspense>
     );
 }

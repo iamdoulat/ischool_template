@@ -16,18 +16,16 @@ import {
     CardContent,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-    Pencil,
-    MessageSquare,
-    Loader2,
-    X,
-    Info,
-    Bell,
-    Variable,
-} from "lucide-react";
+import { Pencil, MessageSquare, Loader2, X, Info, Bell, Variable, Mail, Smartphone, MessageCircle } from "lucide-react";
+import dynamic from "next/dynamic";
+import "react-quill-new/dist/quill.snow.css";
+
+const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
+import { useSettings } from "@/components/providers/settings-provider";
+import { useImageUrl } from "@/lib/image-url";
 
 interface NotificationEvent {
     id: number;
@@ -37,8 +35,15 @@ interface NotificationEvent {
     sms_template_id?: string;
     whatsapp_template_id?: string;
     sample_message: string;
+    email_subject?: string;
+    email_template?: string;
+    sms_template?: string;
+    whatsapp_template?: string;
+    mobile_app_template?: string;
     is_active: boolean;
 }
+
+type TemplateType = "email" | "sms" | "whatsapp" | "mobile_app";
 
 const destinationOptions = ["Email", "SMS", "Mobile App", "WhatsApp"];
 const recipientOptions = ["Student", "Guardian", "Staff"];
@@ -179,32 +184,45 @@ function VariableChip({ name, onClick }: { name: string; onClick: (v: string) =>
     );
 }
 
-// ─── Edit Modal ────────────────────────────────────────────────────────────────
-function EditModal({
+
+// ─── Template Editor Modal ─────────────────────────────────────────────────────────────
+function TemplateEditorModal({
     item,
+    type,
     onClose,
     onSaved,
 }: {
     item: NotificationEvent;
+    type: TemplateType;
     onClose: () => void;
     onSaved: (updated: NotificationEvent) => void;
 }) {
     const { t } = useTranslation();
     const { toast } = useToast();
+    const { settings } = useSettings();
+    const getImageUrl = useImageUrl();
     const [form, setForm] = useState({
-        sms_template_id: item.sms_template_id ?? "",
-        whatsapp_template_id: item.whatsapp_template_id ?? "",
-        sample_message: item.sample_message ?? "",
+        email_subject: item.email_subject || "",
+        email_template: item.email_template || "",
+        sms_template: item.sms_template || "",
+        whatsapp_template: item.whatsapp_template || "",
+        mobile_app_template: item.mobile_app_template || "",
+        sms_template_id: item.sms_template_id || "",
+        whatsapp_template_id: item.whatsapp_template_id || "",
     });
     const [saving, setSaving] = useState(false);
 
     const availableVars = eventVariables[item.event_name] || [];
 
     const insertVariable = (varName: string) => {
-        setForm((prev) => ({
-            ...prev,
-            sample_message: prev.sample_message + ` {{${varName}}}`,
-        }));
+        const insertText = ` {{${varName}}} `;
+        setForm(prev => {
+            if (type === "email") return { ...prev, email_template: prev.email_template + insertText };
+            if (type === "sms") return { ...prev, sms_template: prev.sms_template + insertText };
+            if (type === "whatsapp") return { ...prev, whatsapp_template: prev.whatsapp_template + insertText };
+            if (type === "mobile_app") return { ...prev, mobile_app_template: prev.mobile_app_template + insertText };
+            return prev;
+        });
     };
 
     const handleSave = async () => {
@@ -213,67 +231,145 @@ function EditModal({
             const payload = { settings: [{ id: item.id, ...form }] };
             const res = await api.post('/system-setting/notification-settings/bulk-update', payload);
             if (res.data.status === "success") {
-                toast({ title: t("success_title"), description: t("template_updated_successfully") });
+                toast({ title: t("success_title"), description: t("template_updated_successfully", "Template updated successfully") });
                 onSaved({ ...item, ...form });
                 onClose();
             }
         } catch {
-            toast({ variant: "destructive", title: t("error"), description: t("failed_to_update_template") });
+            toast({ variant: "destructive", title: t("error"), description: t("failed_to_update_template", "Failed to update template") });
         } finally {
             setSaving(false);
         }
     };
 
+    const getTitle = () => {
+        if (type === "email") return "Email Template";
+        if (type === "sms") return "SMS Template";
+        if (type === "whatsapp") return "WhatsApp Template";
+        if (type === "mobile_app") return "Mobile App Template";
+        return "Template";
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
-            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4 overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <h2 className="text-gray-800 font-semibold text-sm tracking-tight">{t("template")}</h2>
+            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-3xl mx-4 flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] shrink-0">
+                    <h2 className="text-gray-800 font-semibold text-sm tracking-tight">{getTitle()} - {item.event_name}</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-800 transition-colors">
                         <X className="h-4 w-4" />
                     </button>
                 </div>
 
-                <div className="px-5 py-5 space-y-4 text-xs max-h-[70vh] overflow-y-auto">
-                    <p className="font-semibold text-gray-700 text-[11px]">{item.event_name}</p>
+                <div className="px-5 py-5 space-y-4 text-xs overflow-y-auto flex-1 custom-scrollbar">
+                    {type === "sms" && (
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
+                                SMS Template ID <span className="ml-1 text-gray-400 font-normal normal-case">({t("required_only_for_indian_sms_gateway")})</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={form.sms_template_id}
+                                onChange={(e) => setForm({ ...form, sms_template_id: e.target.value })}
+                                placeholder="Enter SMS Template ID"
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
+                            />
+                        </div>
+                    )}
 
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                            {t("sms_template_id")} <span className="ml-1 text-gray-400 font-normal normal-case">({t("required_only_for_indian_sms_gateway")})</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={form.sms_template_id}
-                            onChange={(e) => setForm({ ...form, sms_template_id: e.target.value })}
-                            placeholder={t("enter_sms_template_id")}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
-                        />
-                    </div>
+                    {type === "whatsapp" && (
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">WhatsApp Template ID</label>
+                            <input
+                                type="text"
+                                value={form.whatsapp_template_id}
+                                onChange={(e) => setForm({ ...form, whatsapp_template_id: e.target.value })}
+                                placeholder="Enter WhatsApp Template ID"
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
+                            />
+                        </div>
+                    )}
 
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">{t("whatsapp_template_id")}</label>
-                        <input
-                            type="text"
-                            value={form.whatsapp_template_id}
-                            onChange={(e) => setForm({ ...form, whatsapp_template_id: e.target.value })}
-                            placeholder={t("enter_whatsapp_template_id")}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
-                        />
-                    </div>
+                    {type === "email" && (
+                        <div className="border border-gray-200 rounded-lg overflow-hidden flex flex-col bg-white mb-4">
+                            {/* Email Header Wrapper */}
+                            <div className="bg-[#1f2937] p-4 flex justify-between items-center text-white relative overflow-hidden">
+                                {/* Envelope background pattern simulation */}
+                                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 100% 50%, transparent 20%, #ffffff 21%, #ffffff 34%, transparent 35%, transparent), radial-gradient(circle at 0% 50%, transparent 20%, #ffffff 21%, #ffffff 34%, transparent 35%, transparent)', backgroundSize: '40px 40px' }}></div>
+                                
+                                <div className="relative z-10 space-y-2">
+                                    {settings?.admin_logo || settings?.app_logo || settings?.print_logo ? (
+                                        <div className="bg-white/10 p-2 rounded-lg w-max backdrop-blur-sm border border-white/20">
+                                            <img 
+                                                src={getImageUrl(settings.admin_logo || settings.app_logo || settings.print_logo)} 
+                                                alt={settings.school_name || "School Logo"} 
+                                                className="h-8 object-contain"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 bg-[#8bc34a] px-3 py-1.5 rounded w-max border-2 border-white shadow-sm">
+                                            <div className="bg-[#ff9800] p-1 rounded-sm">
+                                                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 11.55C9.64 9.35 6.48 8 3 8v11c3.48 0 6.64 1.35 9 3.55 2.36-2.19 5.52-3.54 9-3.54V8c-3.48 0-6.64 1.35-9 3.55zM12 8c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/></svg>
+                                            </div>
+                                            <span className="font-black text-white text-sm tracking-wide drop-shadow-md">{settings?.school_name || "SMART SCHOOL"}</span>
+                                        </div>
+                                    )}
+                                    <h3 className="text-xl font-bold border-b border-gray-400 pb-1">{settings?.school_name || "Your School Name Here"}</h3>
+                                </div>
+                                <div className="relative z-10 text-right text-[11px] space-y-0.5 font-medium">
+                                    <p>Address: {settings?.address || "N/A"}</p>
+                                    <p>Phone No.: {settings?.phone || "N/A"}</p>
+                                    <p>Email: {settings?.email || "N/A"}</p>
+                                    <p>Website: {(settings as any)?.website || settings?.base_url || "N/A"}</p>
+                                </div>
+                            </div>
 
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                            {t("template")} <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                            rows={5}
-                            value={form.sample_message}
-                            onChange={(e) => setForm({ ...form, sample_message: e.target.value })}
-                            placeholder={t("enter_template_message")}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent resize-none transition"
-                        />
-                    </div>
+                            {/* Email Subject & Body */}
+                            <div className="p-4 space-y-4">
+                                <div className="flex items-center gap-2 border border-dashed border-gray-300 p-2 rounded">
+                                    <span className="font-bold text-gray-700 text-sm">Subject:</span>
+                                    <input
+                                        type="text"
+                                        value={form.email_subject}
+                                        onChange={(e) => setForm({ ...form, email_subject: e.target.value })}
+                                        placeholder="Subject..."
+                                        className="w-full text-sm font-semibold text-gray-800 bg-transparent focus:outline-none placeholder:font-normal"
+                                    />
+                                </div>
+
+                                <div className="bg-white [&_.ql-container]:min-h-[150px] [&_.ql-editor]:min-h-[150px] border border-gray-200 rounded">
+                                    <ReactQuill 
+                                        theme="snow" 
+                                        value={form.email_template} 
+                                        onChange={(val: string) => setForm({ ...form, email_template: val })} 
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Email Footer */}
+                            <div className="bg-[#f8f9fa] border-t-4 border-t-[#2196f3] border-b-4 border-b-[#ff9800] p-4 text-center mt-2">
+                                <p className="text-[11px] text-gray-600 font-medium">Note: This email was sent from an email address that can't receive emails. Please don't reply to this email</p>
+                            </div>
+                        </div>
+                    )}
+                        {type !== "email" && (
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
+                                    Message Body <span className="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    rows={8}
+                                    value={type === "sms" ? form.sms_template : type === "whatsapp" ? form.whatsapp_template : form.mobile_app_template}
+                                    onChange={(e) => {
+                                        if (type === "sms") setForm({ ...form, sms_template: e.target.value });
+                                        else if (type === "whatsapp") setForm({ ...form, whatsapp_template: e.target.value });
+                                        else setForm({ ...form, mobile_app_template: e.target.value });
+                                    }}
+                                    placeholder="Type your message here..."
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent resize-none transition"
+                                />
+                            </div>
+                        )}
 
                     {availableVars.length > 0 && (
                         <div className="bg-indigo-50 rounded-lg px-3 py-2.5 space-y-2">
@@ -289,69 +385,15 @@ function EditModal({
                             <p className="text-[9px] text-indigo-400 mt-1">{t("click_variable_to_insert")}</p>
                         </div>
                     )}
-
-                    {availableVars.length === 0 && item.sample_message && (
-                        <div className="bg-amber-50 rounded-lg px-3 py-2 space-y-1">
-                            <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide">{t("variables_in_use")}</p>
-                            <p className="text-[10px] text-amber-500 leading-relaxed font-mono">
-                                {Array.from(item.sample_message.matchAll(/\{\{(\w+)\}\}/g))
-                                    .map((m) => `{{${m[1]}}}`)
-                                    .join("  ") || t("none")}
-                            </p>
-                        </div>
-                    )}
                 </div>
 
-                <div className="px-5 py-3 border-t border-gray-100 flex justify-end bg-gray-50/50">
+                <div className="px-5 py-3 border-t border-gray-100 flex justify-end bg-gray-50/50 shrink-0">
                     <Button
                         onClick={handleSave}
                         disabled={saving}
                         className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white h-9 px-7 text-[11px] font-bold rounded-full shadow-md disabled:opacity-50 transition-opacity"
                     >
                         {saving ? <><Loader2 className="mr-1 h-3 w-3 animate-spin" />{t("loading")}</> : t("save")}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// ─── View Modal ─────────────────────────────────────────────────────────────────
-function ViewModal({ item, onClose }: { item: NotificationEvent; onClose: () => void }) {
-    const { t } = useTranslation();
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
-            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <h2 className="text-gray-800 font-semibold text-sm tracking-tight">{t("sample_message")}</h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 transition-colors">
-                        <X className="h-4 w-4" />
-                    </button>
-                </div>
-
-                <div className="px-5 py-5 space-y-3 text-xs">
-                    <p className="font-semibold text-gray-700 text-[11px]">{item.event_name}</p>
-                    <div className="bg-gray-50 rounded-lg px-4 py-3 border border-gray-100">
-                        <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-wrap">{item.sample_message}</p>
-                    </div>
-                    {item.sms_template_id && (
-                        <div className="space-y-1">
-                            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">{t("sms_template_id")}</p>
-                            <p className="font-mono text-[10px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{item.sms_template_id}</p>
-                        </div>
-                    )}
-                    {item.whatsapp_template_id && (
-                        <div className="space-y-1">
-                            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">{t("whatsapp_template_id")}</p>
-                            <p className="font-mono text-[10px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded break-all">{item.whatsapp_template_id}</p>
-                        </div>
-                    )}
-                </div>
-
-                <div className="px-5 py-3 border-t border-gray-100 flex justify-end bg-gray-50/50">
-                    <Button onClick={onClose} variant="outline" className="h-8 px-6 text-[11px] font-semibold rounded-lg border-gray-200">
-                        {t("close")}
                     </Button>
                 </div>
             </div>
@@ -382,8 +424,7 @@ export default function NotificationSettingPage() {
     const [events, setEvents] = useState<NotificationEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [editItem, setEditItem] = useState<NotificationEvent | null>(null);
-    const [viewItem, setViewItem] = useState<NotificationEvent | null>(null);
+    const [editModal, setEditModal] = useState<{ item: NotificationEvent; type: TemplateType } | null>(null);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -441,8 +482,7 @@ export default function NotificationSettingPage() {
 
     return (
         <>
-            {editItem && <EditModal item={editItem} onClose={() => setEditItem(null)} onSaved={handleEditSaved} />}
-            {viewItem && <ViewModal item={viewItem} onClose={() => setViewItem(null)} />}
+            {editModal && <TemplateEditorModal item={editModal.item} type={editModal.type} onClose={() => setEditModal(null)} onSaved={handleEditSaved} />}
 
             <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans text-xs">
                 <Card className="pt-0 overflow-hidden">
@@ -480,7 +520,7 @@ export default function NotificationSettingPage() {
                                                 <div className="group/tooltip relative">
                                                     <Info className="h-3 w-3 text-muted-foreground hover:text-indigo-500 cursor-pointer" />
                                                     <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 hidden group-hover/tooltip:block w-48 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg normal-case font-medium z-50 text-center">
-                                                        "Mobile App" triggers in-app notifications (Bell icon).
+                                                        &quot;Mobile App&quot; triggers in-app notifications (Bell icon).
                                                     </div>
                                                 </div>
                                             </div>
@@ -488,7 +528,7 @@ export default function NotificationSettingPage() {
                                         <TableHead className="py-3 px-4 w-[150px]">{t("recipient")}</TableHead>
                                         <TableHead className="py-3 px-4 w-[180px]">{t("sms_template_id")}</TableHead>
                                         <TableHead className="py-3 px-4 w-[220px]">{t("whatsapp_template_id")}</TableHead>
-                                        <TableHead className="py-3 px-4">{t("sample_message")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("templates", "Templates")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -577,24 +617,42 @@ export default function NotificationSettingPage() {
                                                                 <Button
                                                                     variant="outline"
                                                                     size="icon"
-                                                                    title={t("edit_template")}
-                                                                    onClick={() => setEditItem(item)}
+                                                                    title="Email Template"
+                                                                    onClick={() => setEditModal({ item, type: "email" })}
                                                                     className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
                                                                 >
-                                                                    <Pencil className="h-3 w-3" />
+                                                                    <Mail className="h-3 w-3" />
                                                                 </Button>
                                                                 <Button
                                                                     variant="outline"
                                                                     size="icon"
-                                                                    title={t("view_sample_message")}
-                                                                    onClick={() => setViewItem(item)}
+                                                                    title="SMS Template"
+                                                                    onClick={() => setEditModal({ item, type: "sms" })}
                                                                     className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
                                                                 >
                                                                     <MessageSquare className="h-3 w-3" />
                                                                 </Button>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    title="Mobile App Template"
+                                                                    onClick={() => setEditModal({ item, type: "mobile_app" })}
+                                                                    className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
+                                                                >
+                                                                    <Smartphone className="h-3 w-3" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    title="WhatsApp Template"
+                                                                    onClick={() => setEditModal({ item, type: "whatsapp" })}
+                                                                    className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
+                                                                >
+                                                                    <MessageCircle className="h-3 w-3" />
+                                                                </Button>
                                                             </div>
-                                                        </div>
-                                                    </TableCell>
+</div>
+</TableCell>
                                                 </TableRow>
                                             );
                                         })

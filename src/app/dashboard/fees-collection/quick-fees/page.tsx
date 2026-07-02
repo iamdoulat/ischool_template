@@ -7,7 +7,7 @@ interface ClassItem { id: number; name: string; sections?: SectionItem[]; [key: 
 interface SectionItem { id: number; name: string; [key: string]: unknown; }
 interface StudentItem { id: number; name: string; last_name?: string; admission_no?: string; [key: string]: unknown; }
 
-import { Search, Zap, ChevronDown, UserCircle, CreditCard, Calendar, FileText, CheckCircle2, Loader2, DollarSign } from "lucide-react";
+import { Search, Zap, ChevronDown, UserCircle, CreditCard, Calendar, FileText, CheckCircle2, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -321,13 +321,13 @@ export default function QuickFeesPage() {
                                                     </TableCell>
                                                     <TableCell className="py-4 text-right">
                                                         <p className="text-sm font-bold text-destructive">
-                                                            ${(fee.fee_master.fine_amount || 0).toLocaleString()}
+                                                            {symbol}{(fee.fee_master.fine_amount || 0).toLocaleString()}
                                                         </p>
                                                     </TableCell>
                                                     <TableCell className="py-4 text-right">
                                                         <div className="space-y-1">
-                                                            <p className="text-sm font-black text-slate-800">${total.toLocaleString()}</p>
-                                                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Paid: ${paid.toLocaleString()}</p>
+                                                            <p className="text-sm font-black text-slate-800">{symbol}{total.toLocaleString()}</p>
+                                                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Paid: {symbol}{paid.toLocaleString()}</p>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="py-4 text-center pr-8">
@@ -341,7 +341,7 @@ export default function QuickFeesPage() {
                                                                 onClick={() => openPaymentDialog(fee)}
                                                                 className="h-8 rounded-lg bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-200 flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 px-3"
                                                             >
-                                                                <DollarSign className="h-3 w-3" /> Collect
+                                                                <span className="font-bold text-sm leading-none">{symbol}</span> Collect
                                                             </Button>
                                                         )}
                                                     </TableCell>
