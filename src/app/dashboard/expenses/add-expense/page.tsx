@@ -55,7 +55,7 @@ interface ExpenseHead {
 
 export default function AddExpensePage() {
     const { t } = useTranslation();
-    const { formatCurrency } = useCurrencyFormatter();
+    const { formatCurrency, symbol: currencySymbol } = useCurrencyFormatter();
     const getImageUrl = useImageUrl();
     const baseApiUrl = useBaseUrl();
     const [searchTerm, setSearchTerm] = useState("");
@@ -456,7 +456,7 @@ export default function AddExpensePage() {
                                         <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("date")}</TableHead>
                                         <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("expense_head")}</TableHead>
                                         <TableHead className="font-semibold text-gray-600 whitespace-nowrap">{t("attachment")}</TableHead>
-                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">{t("amount")} ($)</TableHead>
+                                        <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">{t("amount")} ({currencySymbol})</TableHead>
                                         <TableHead className="font-semibold text-gray-600 whitespace-nowrap text-right">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -484,7 +484,7 @@ export default function AddExpensePage() {
                                                         </Button>
                                                     ) : (<span className="text-gray-300 text-xs">—</span>)}
                                                 </TableCell>
-                                                <TableCell className="text-gray-600 text-right font-semibold">${item.amount}</TableCell>
+                                                <TableCell className="text-gray-600 text-right font-semibold">{formatCurrency(item.amount)}</TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <Button size="sm" onClick={() => downloadInvoicePDF(item)} className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Download className="h-4 w-4" /></Button>

@@ -128,6 +128,10 @@ export const i18nFallbacks: Record<string, string> = {
     driver: "Driver",
 
     // ===== GENERAL ACTIONS =====
+    before: "Days Before",
+    send_reminder_notifications: "Send Reminder Notifications",
+    fee_reminders_sent_successfully: "Fee reminders sent successfully",
+    failed_to_send_fee_reminders: "Failed to send fee reminders",
     save: "Save",
     saving: "Saving…",
     cancel: "Cancel",
