@@ -81,7 +81,7 @@ export default function LeaveTypePage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await api.get("/hr/leave-type");
+            const response = await api.get("hr/leave-type");
             setLeaveTypes(response.data.data);
         } catch (error) {
             console.error("Error fetching leave types:", error);
@@ -103,10 +103,10 @@ export default function LeaveTypePage() {
 
         try {
             if (isEditing && currentId) {
-                await api.put(`/hr/leave-type/${currentId}`, { name });
+                await api.put(`hr/leave-type/${currentId}`, { name });
                 tt.success("leave_type_updated_successfully");
             } else {
-                await api.post("/hr/leave-type", { name });
+                await api.post("hr/leave-type", { name });
                 tt.success("leave_type_created_successfully");
             }
             resetForm();
@@ -126,7 +126,7 @@ export default function LeaveTypePage() {
     const handleDelete = async (id: number) => {
         if (!confirm(t("confirm_delete_leave_type"))) return;
         try {
-            await api.delete(`/hr/leave-type/${id}`);
+            await api.delete(`hr/leave-type/${id}`);
             tt.success("leave_type_deleted_successfully");
             fetchData();
         } catch (error) {
@@ -239,7 +239,7 @@ export default function LeaveTypePage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("leave_type_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{total} {total === 1 ? t("total_entry") : t("total_entries")}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{total === 1 ? t("total_entry") : `${total} ${t("total_entries")}`}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="px-4 space-y-4">
