@@ -39,6 +39,8 @@ import { Info, CheckCircle2, Search, Save, Loader2, UserCheck, ClipboardCheck, F
 import CsvImportDialog from "@/components/attendance/CsvImportDialog";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useTranslation } from "@/hooks/use-translation";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useImageUrl } from "@/lib/image-url";
 
 interface StudentAttendanceRecord {
     id: number;
@@ -46,6 +48,7 @@ interface StudentAttendanceRecord {
     admission_no: string;
     roll_no: string;
     name: string;
+    avatar: string;
     attendance: "present" | "late" | "absent" | "holiday" | "half_day" | "on_leave";
     reason: string;
     entry_time: string;
@@ -70,6 +73,7 @@ interface RawStudent {
     roll_no?: string;
     name?: string;
     last_name?: string;
+    avatar?: string;
     attendances?: { attendance?: StudentAttendanceRecord["attendance"]; reason?: string; entry_time?: string; exit_time?: string; note?: string }[];
     student_attendances?: { attendance?: StudentAttendanceRecord["attendance"]; reason?: string; entry_time?: string; exit_time?: string; note?: string }[];
     leave_requests?: Record<string, unknown>[];
@@ -122,6 +126,7 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 export default function StudentAttendancePage() {
     const { settings } = useSettings();
     const { t } = useTranslation();
+    const getImageUrl = useImageUrl();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<Section[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
@@ -149,6 +154,13 @@ export default function StudentAttendancePage() {
         }
     }, [selectedClass, classes]);
 
+    // Clear students when filters change
+    useEffect(() => {
+        setStudents([]);
+        setHasSearched(false);
+        setBulkAttendance("");
+    }, [selectedClass, selectedSection, attendanceDate]);
+
     const fetchClasses = async () => {
         try {
             const response = await api.get("/academics/classes?no_paginate=true");
@@ -172,9 +184,9 @@ export default function StudentAttendancePage() {
         setStudents([]);
 
         try {
-            // Step 1: Try to get students with existing attendance data
             let studentsData: RawStudent[] = [];
 
+            // Step 1: Try to get students via attendance endpoint (includes existing attendance + leave data)
             try {
                 const attendanceRes = await api.get("/attendance/student", {
                     params: {
@@ -183,14 +195,23 @@ export default function StudentAttendancePage() {
                         attendance_date: attendanceDate,
                     },
                 });
-                if (attendanceRes.data.success && attendanceRes.data.data?.length > 0) {
-                    studentsData = attendanceRes.data.data;
+                
+                let payload = attendanceRes.data;
+                if (payload?.status === "Success" || payload?.success) {
+                    payload = payload.data;
+                }
+                if (payload?.data && Array.isArray(payload.data)) {
+                    payload = payload.data;
+                }
+                
+                if (Array.isArray(payload) && payload.length > 0) {
+                    studentsData = payload;
                 }
             } catch (err) {
                 console.warn("Attendance endpoint failed, falling back to students endpoint:", err);
             }
 
-            // Step 2: If no students found via attendance endpoint, fetch from students list
+            // Step 2: Fallback — fetch students by class/section from students list endpoint
             if (studentsData.length === 0) {
                 try {
                     const studentsRes = await api.get("/students", {
@@ -200,12 +221,17 @@ export default function StudentAttendancePage() {
                             limit: 200,
                         },
                     });
-                    if (studentsRes.data.success) {
-                        // Handle paginated response
-                        const rawData = studentsRes.data.data?.data || studentsRes.data.data;
-                        if (Array.isArray(rawData)) {
-                            studentsData = rawData;
-                        }
+                    
+                    let payload = studentsRes.data;
+                    if (payload?.status === "Success" || payload?.success) {
+                        payload = payload.data;
+                    }
+                    if (payload?.data && Array.isArray(payload.data)) {
+                        payload = payload.data;
+                    }
+                    
+                    if (Array.isArray(payload) && payload.length > 0) {
+                        studentsData = payload;
                     }
                 } catch (err) {
                     console.error("Students endpoint also failed:", err);
@@ -215,23 +241,23 @@ export default function StudentAttendancePage() {
             if (studentsData.length > 0) {
                 const mappedStudents = studentsData.map((student) => {
                     const attendance = student.attendances?.[0] || student.student_attendances?.[0];
+                    const hasLeaveRecord = student.leave_requests && student.leave_requests.length > 0;
                     const hasApprovedLeave =
-                        attendance?.attendance === "on_leave" ||
-                        (student.leave_requests && student.leave_requests.length > 0) ||
-                        (student.leave_requests && student.leave_requests.length > 0);
+                        attendance?.attendance === "on_leave" || hasLeaveRecord;
                     return {
                         id: student.id,
                         student_id: student.id,
                         admission_no: student.admission_no || "-",
                         roll_no: student.roll_no || "-",
                         name: `${student.name || ""}${student.last_name ? " " + student.last_name : ""}`.trim(),
+                        avatar: student.avatar || "",
                         attendance: attendance?.attendance || (hasApprovedLeave ? "on_leave" : "present"),
                         reason: attendance?.reason || (hasApprovedLeave ? "Leave System" : "Manual"),
                         entry_time: attendance?.entry_time || "",
                         exit_time: attendance?.exit_time || "",
                         note: attendance?.note || "",
                         isOnLeave: hasApprovedLeave,
-                        leaveDetails: hasApprovedLeave ? (student.leave_requests?.[0] || student.leave_requests?.[0]) : null,
+                        leaveDetails: hasApprovedLeave ? student.leave_requests?.[0] : null,
                     };
                 });
                 setStudents(mappedStudents);
@@ -429,9 +455,8 @@ export default function StudentAttendancePage() {
                 </CardContent>
             </Card>
 
-            {/* Student List - shown after search (or while loading) */}
-            {hasSearched && (loading || students.length > 0) && (
-                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* Student List - always shown */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                         <div className="flex items-center gap-2.5">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
@@ -531,9 +556,9 @@ export default function StudentAttendancePage() {
                                 <TableHeader>
                                     <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500 bg-gray-50/50">
                                         <TableHead className="py-3 px-4 w-10 text-center">#</TableHead>
+                                        <TableHead className="py-3 px-4">{t("name")}</TableHead>
                                         <TableHead className="py-3 px-4">{t("admission_no")}</TableHead>
                                         <TableHead className="py-3 px-4">{t("roll_number")}</TableHead>
-                                        <TableHead className="py-3 px-4">{t("name")}</TableHead>
                                         <TableHead className="py-3 px-4">{t("attendance")}</TableHead>
                                         <TableHead className="py-3 px-4 text-center">{t("date")}</TableHead>
                                         <TableHead className="py-3 px-4 text-center">{t("source")}</TableHead>
@@ -546,7 +571,7 @@ export default function StudentAttendancePage() {
                                     {loading ? (
                                         <TableSkeleton rows={5} cols={10} />
                                     ) : students.length === 0 ? (
-                                        <tr><td colSpan={10} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td></tr>
+                                        <tr><td colSpan={10} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{hasSearched ? t("no_students_found") : t("select_class_section_date_to_fetch")}</td></tr>
                                     ) : (
                                         students.map((student, idx) => (
                                             <TableRow
@@ -558,14 +583,22 @@ export default function StudentAttendancePage() {
                                                 <TableCell className="py-3 px-4 text-center text-gray-400 font-medium">
                                                     {idx + 1}
                                                 </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-8 w-8 rounded-lg shadow-sm border border-gray-100">
+                                                            <AvatarImage src={getImageUrl(student.avatar)} />
+                                                            <AvatarFallback className="bg-primary/5 text-primary text-[10px] font-bold">
+                                                                {student.name.substring(0, 2).toUpperCase()}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        {student.name}
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-bold">
                                                     {student.admission_no}
                                                 </TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-600 font-medium">
                                                     {student.roll_no}
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
-                                                    {student.name}
                                                 </TableCell>
                                                 {student.isOnLeave ? (
                                                     <TableCell colSpan={6} className="py-3 px-4 bg-gradient-to-r from-orange-50/30 to-indigo-50/30 border-y border-gray-100">
@@ -659,22 +692,6 @@ export default function StudentAttendancePage() {
                         </div>
                     </CardContent>
                 </Card>
-            )}
-
-            {/* Empty State */}
-            {(!hasSearched || (hasSearched && students.length === 0 && !loading)) && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-12 text-center flex flex-col items-center justify-center space-y-4">
-                    <div className="h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-200 border border-gray-100">
-                        <UserCheck className="h-8 w-8" />
-                    </div>
-                    <div className="space-y-1">
-                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t("no_records_found")}</p>
-                        <p className="text-[11px] text-gray-400 max-w-[220px] mx-auto leading-relaxed">
-                            {t("select_class_section_date_to_fetch")}
-                        </p>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

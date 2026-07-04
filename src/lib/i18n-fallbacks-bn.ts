@@ -517,6 +517,8 @@ export const i18nFallbacksBn: Record<string, string> = {
   searching: "অনুসন্ধান করা হচ্ছে...",
   no_data_found: "কোনো ডেটা পাওয়া যায়নি",
   no_records_found: "কোনো রেকর্ড পাওয়া যায়নি",
+  no_students_found: "কোনো শিক্ষার্থী পাওয়া যায়নি",
+  no_students_in_this_class_section: "এই শ্রেণি ও শাখায় নির্বাচিত তারিখে কোনো শিক্ষার্থী পাওয়া যায়নি।",
   showing_x_to_y_of_z: "{from} থেকে {to} (মোট {total})",
   total: "মোট",
   from: "থেকে",

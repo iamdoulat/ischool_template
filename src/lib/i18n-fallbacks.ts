@@ -20,6 +20,7 @@ export const i18nFallbacks: Record<string, string> = {
     failed_to_save_x: "Failed to save {label}",
     failed_to_delete_selected_x_list: "Failed to delete selected {label} list",
     permanently_delete_x_entry: "Are you sure you want to permanently delete this {label} entry?",
+    x_scheduled_entries: "{count} Scheduled Entries",
 
     // ===== ZOOM / LIVE CLASSES =====
     search_classes: "Search classes…",
@@ -199,6 +200,8 @@ export const i18nFallbacks: Record<string, string> = {
     // ===== TABLE / LIST =====
     no_data_found: "No data found",
     no_records_found: "No records found",
+    no_students_found: "No students found",
+    no_students_in_this_class_section: "No students found in this class and section for the selected date.",
     no_records: "No records found",
     sr_no: "Sr. No.",
     action: "Action",
