@@ -17,8 +17,9 @@ import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { useImageUrl, useBaseUrl } from "@/lib/image-url";
 import { useTranslation } from "@/hooks/use-translation";
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { renderPdfHeader, renderPdfFooter } from '@/lib/pdf-utils';
+import { useSettings } from "@/components/providers/settings-provider";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -54,6 +55,7 @@ interface ExpenseHead {
 }
 
 export default function AddExpensePage() {
+    const { settings } = useSettings();
     const { t } = useTranslation();
     const { formatCurrency, symbol: currencySymbol } = useCurrencyFormatter();
     const getImageUrl = useImageUrl();
@@ -275,21 +277,9 @@ export default function AddExpensePage() {
             return str;
         };
         const { header_image_url, footer_content } = invoicePrintSettings;
-        if (header_image_url) {
-            try {
-                let imgUrl = header_image_url;
-                if (imgUrl.startsWith('/')) imgUrl = baseApiUrl + imgUrl;
-                imgUrl = imgUrl.replace('localhost', '127.0.0.1');
-                const img = await loadImage(imgUrl);
-                const imgWidth = 190;
-                const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
-                doc.addImage(img, 'PNG', 10, startY, imgWidth, imgHeight);
-                startY += imgHeight + 10;
-            } catch { /* silently continue */ }
-        }
-        doc.setFontSize(16);
-        doc.text(t("expense_invoice"), 14, startY);
-        startY += 10;
+
+        startY = await renderPdfHeader(doc, settings, invoicePrintSettings, baseApiUrl, t("expense_invoice"));
+
         doc.setFontSize(10);
         doc.text(t("expense_no_x", { number: item.invoice_number || 'N/A' }), 14, startY);
         startY += 6;
@@ -307,12 +297,9 @@ export default function AddExpensePage() {
         let finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
         doc.setFontSize(12);
         doc.text(t("total_x", { amount: formatPdfCurrency(item.amount) }), 14, finalY);
-        if (footer_content) {
-            finalY += 10;
-            doc.setFontSize(9);
-            const lines = doc.splitTextToSize(footer_content, 180);
-            doc.text(lines, 14, finalY);
-        }
+        
+        finalY += 10;
+        renderPdfFooter(doc, footer_content, finalY);
         doc.save('expense-' + (item.invoice_number || item.id) + '.pdf');
         toast.success(t("invoice_downloaded"));
     };

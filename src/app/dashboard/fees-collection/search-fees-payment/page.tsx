@@ -5,13 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState, useRef } from "react";
-import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import Link from "next/link";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+import { useSettings } from "@/components/providers/settings-provider";
+import { renderPdfHeader, renderPdfFooter } from "@/lib/pdf-utils";
 
 interface PaymentRecord {
     id: number;
@@ -66,24 +68,149 @@ export default function SearchFeesPaymentPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
     const { symbol } = useCurrencyFormatter();
+    const { settings } = useSettings();
     const receiptRef = useRef<HTMLDivElement>(null);
 
     const handlePrint = () => {
         window.print();
     };
 
-    const handlePDF = async (paymentId: string | number) => {
-        if (!receiptRef.current) return;
-        
+    const handlePDF = async (payment: PaymentRecord) => {
         try {
-            const canvas = await html2canvas(receiptRef.current, { scale: 2 });
-            const imgData = canvas.toDataURL("image/png");
-            const pdf = new jsPDF("p", "mm", "a4");
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            const doc = new jsPDF("p", "mm", "a4");
             
-            pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`Payment_Receipt_${paymentId}.pdf`);
+            let invoicePrintSettings = {};
+            try {
+                const res = await api.get("system-setting/print-settings");
+                if (res.data?.status === "success") {
+                    invoicePrintSettings = (res.data.data || []).find((s: any) => s.type === "Fees Receipt") || {};
+                }
+            } catch (err) {
+                console.error("Could not fetch print settings", err);
+            }
+
+            const baseApiUrl = api.defaults.baseURL?.replace('/api/v1', '') || "";
+
+            let startY = await renderPdfHeader(
+                doc,
+                settings,
+                invoicePrintSettings,
+                baseApiUrl,
+                t("payment_receipt").toUpperCase()
+            );
+
+            const formatPdfCurrency = (val: number | string) => {
+                let str = `${symbol}${Number(val).toFixed(2)}`;
+                str = str.replace(/৳/g, "Tk ");
+                str = str.replace(/₹/g, "Rs ");
+                str = str.replace(/€/g, "EUR ");
+                str = str.replace(/£/g, "GBP ");
+                return str.replace(/[^\x00-\x7F]/g, "").trim();
+            };
+
+            // Student Info
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.setFont("helvetica", "bold");
+            
+            const studentName = `${payment.student_fee_master.student.name} ${payment.student_fee_master.student.last_name}`;
+            const admissionNo = payment.student_fee_master.student.admission_no;
+            const classSection = `${payment.student_fee_master.student.school_class?.name || "N/A"} (${payment.student_fee_master.student.section?.name || "N/A"})`;
+            const paymentDate = new Date(payment.date).toLocaleDateString();
+            
+            doc.text(`${t("student_name")}:`, 14, startY);
+            doc.setTextColor(40, 40, 40);
+            doc.text(studentName, 14, startY + 5);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Adm No: ${admissionNo}`, 14, startY + 9);
+            
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(100, 100, 100);
+            doc.text(`${t("class_and_section")}:`, 80, startY);
+            doc.setTextColor(40, 40, 40);
+            doc.text(classSection, 80, startY + 5);
+            
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(100, 100, 100);
+            doc.text(`${t("payment_date")}:`, 150, startY);
+            doc.setTextColor(40, 40, 40);
+            doc.text(paymentDate, 150, startY + 5);
+
+            startY += 15;
+
+            const tableBody = [];
+            tableBody.push([
+                payment.student_fee_master.fee_master.fee_type.name,
+                formatPdfCurrency(payment.amount)
+            ]);
+            
+            if (payment.discount > 0) {
+                tableBody.push([
+                    t("discount_applied"),
+                    "-" + formatPdfCurrency(payment.discount)
+                ]);
+            }
+            if (payment.fine > 0) {
+                tableBody.push([
+                    t("fine_or_late_fee"),
+                    "+" + formatPdfCurrency(payment.fine)
+                ]);
+            }
+            
+            const total = Number(payment.amount) - Number(payment.discount) + Number(payment.fine);
+            
+            autoTable(doc, {
+                startY: startY + 5,
+                head: [[t("description").toUpperCase(), t("amount").toUpperCase()]],
+                body: tableBody,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [248, 249, 250],
+                    textColor: [100, 100, 100],
+                    fontStyle: 'bold',
+                    fontSize: 9,
+                },
+                columnStyles: {
+                    0: { cellWidth: 'auto' },
+                    1: { halign: 'right', fontStyle: 'bold' }
+                },
+                foot: [[t("total_received").toUpperCase(), formatPdfCurrency(total)]],
+                footStyles: {
+                    fillColor: [240, 242, 255],
+                    textColor: [79, 70, 229],
+                    fontStyle: 'bold',
+                    fontSize: 11,
+                    halign: 'right'
+                }
+            });
+
+            // Extra Info (Payment Method, Collected By)
+            const finalY = (doc as any).lastAutoTable.finalY + 15;
+            
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(100, 100, 100);
+            doc.text(`${t("payment_method")}:`, 14, finalY);
+            doc.setTextColor(40, 40, 40);
+            doc.text(payment.payment_mode, 14, finalY + 5);
+
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(100, 100, 100);
+            doc.text(`${t("collected_by")}:`, 80, finalY);
+            doc.setTextColor(40, 40, 40);
+            doc.text(payment.collected_by.name, 80, finalY + 5);
+            
+            if (payment.note) {
+                doc.setFont("helvetica", "italic");
+                doc.setTextColor(100, 100, 100);
+                doc.text(`${t("note_label")} ${payment.note}`, 14, finalY + 15);
+            }
+
+            const footerY = payment.note ? finalY + 25 : finalY + 15;
+            renderPdfFooter(doc, (invoicePrintSettings as any).footer_content || "", footerY);
+            
+            doc.save(`Payment_Receipt_${payment.id}.pdf`);
+            tt.success("pdf_file_downloaded");
         } catch (error) {
             console.error("PDF generation failed", error);
             tt.error("failed_to_generate_pdf");
@@ -210,7 +337,7 @@ export default function SearchFeesPaymentPage() {
                                     <Button onClick={handlePrint} variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
                                         <Printer className="h-3.5 w-3.5 mr-2" /> {t("print")}
                                     </Button>
-                                    <Button onClick={() => handlePDF(payment.id)} variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
+                                    <Button onClick={() => handlePDF(payment)} variant="outline" size="sm" className="rounded-lg border-muted/50 font-bold text-[10px] uppercase tracking-widest h-9 px-4 hover:bg-muted/10">
                                         <Download className="h-3.5 w-3.5 mr-2" /> {t("pdf")}
                                     </Button>
                                 </div>

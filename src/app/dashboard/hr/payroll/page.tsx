@@ -44,6 +44,9 @@ import {
     Filter,
     Banknote,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { PrintHeader } from "@/components/layout/PrintHeader";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
@@ -141,28 +144,9 @@ function Payslip({ row, month, year, school, t }: {
     return (
         <div id="payslip-content" className="bg-white text-black p-8 text-[11px] font-sans w-full max-w-2xl mx-auto shadow-sm">
             {/* Header */}
-            <div className="flex justify-between items-start mb-6 border-b pb-4 border-gray-100">
-                <div>
-                    {school.logo && (
-                        <img src={school.logo} alt="Logo" className="h-12 mb-2 object-contain" />
-                    )}
-                    <p className="text-[20px] font-bold text-indigo-900 tracking-tight">{school.school_name || "iSchool Management"}</p>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">{t("payroll_management_system")}</p>
-                </div>
-                <div className="text-right text-[10px] text-gray-500 space-y-1">
-                    {school.address && <p>{school.address}</p>}
-                    {school.phone && <p>Tel: {school.phone}</p>}
-                    {school.email && <p>Email: {school.email}</p>}
-                    {school.website && <p>{school.website}</p>}
-                </div>
-            </div>
-
-            {/* Title bar */}
-            <div className="bg-indigo-600 text-white text-center py-1.5 text-[12px] font-bold mb-4 rounded uppercase tracking-wider">
-                {t("salary_payslip")}
-            </div>
-
-            <div className="flex justify-between items-center mb-6">
+            <PrintHeader title={t("salary_payslip")} tabName="Payslip" />
+            
+            <div className="flex justify-between items-center mb-6 mt-6">
                 <p className="text-[14px] font-semibold text-gray-800">
                     {t("period_colon")} <span className="text-indigo-600">{monthName} {year}</span>
                 </p>

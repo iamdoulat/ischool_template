@@ -19,6 +19,7 @@ import { formatDate } from "@/lib/utils";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { renderPdfHeader, renderPdfFooter } from '@/lib/pdf-utils';
 
 import { useSettings } from "@/components/providers/settings-provider";
 
@@ -330,36 +331,7 @@ export default function AddIncomePage() {
 
         const { header_image_url, footer_content } = invoicePrintSettings;
 
-        let imageLoaded = false;
-        if (header_image_url) {
-            try {
-                let imgUrl = header_image_url;
-                // Fix relative URLs or localhost mismatches
-                if (imgUrl.startsWith('/')) {
-                    imgUrl = baseApiUrl + imgUrl;
-                }
-                imgUrl = imgUrl.replace('localhost', '127.0.0.1');
-
-                const img = await loadImage(imgUrl);
-                // Based on standard A4 (210x297mm), make it full width minus margins
-                const imgWidth = 190;
-                const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
-                doc.addImage(img, 'PNG', 10, startY, imgWidth, imgHeight);
-                startY += imgHeight + 10;
-                imageLoaded = true;
-            } catch (error) {
-                console.error("Failed to load header image for PDF:", error);
-                // silently continue without header image
-            }
-        }
-
-        if (!imageLoaded) {
-            const schoolName = settings?.school_name || "SMART SCHOOL";
-            doc.setFontSize(22);
-            doc.setFont("helvetica", "bold");
-            doc.text(schoolName, pageWidth / 2, startY + 10, { align: "center" });
-            startY += 25;
-        }
+        startY = await renderPdfHeader(doc, settings, invoicePrintSettings, baseApiUrl, t("invoice_uppercase"));
 
         // Top Section Left
         doc.setFontSize(10);
@@ -375,10 +347,6 @@ export default function AddIncomePage() {
         leftY += 6;
         doc.text(`${t("section")}:`, 14, leftY);
         doc.text(`${t("session")}:`, 60, leftY);
-
-        // Top Section Center
-        doc.setFontSize(16);
-        doc.text(t("invoice_uppercase"), pageWidth / 2, startY + 5, { align: "center" });
 
         // Top Section Right
         doc.setFontSize(10);
@@ -447,11 +415,7 @@ export default function AddIncomePage() {
         finalY += 30; // spacing
 
         // additional footer content from settings
-        if (footer_content) {
-            doc.setFontSize(10);
-            const lines = doc.splitTextToSize(footer_content, 180);
-            doc.text(lines, pageWidth / 2, finalY, { align: "center" });
-        }
+        renderPdfFooter(doc, footer_content, finalY);
 
         doc.save(`invoice-${item.invoice_number || item.id}.pdf`);
         toast.success(t("invoice_downloaded"));

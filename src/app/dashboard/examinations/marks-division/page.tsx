@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -29,6 +29,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Division {
     id: string;
@@ -59,13 +62,14 @@ export default function MarksDivisionPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [divisions, setDivisions] = useState<Division[]>([]);
     const [loading, setLoading] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState("50");
     const itemsPerPage = parseInt(rowsPerPage);
     const [totalEntries, setTotalEntries] = useState(0);
+    const [lastPage, setLastPage] = useState(1);
 
     // Form State
     const [editMode, setEditMode] = useState(false);
@@ -79,11 +83,7 @@ export default function MarksDivisionPage() {
     // Delete State
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchDivisions();
-    }, [currentPage, itemsPerPage, searchTerm]);
-
-    const fetchDivisions = async () => {
+    const fetchDivisions = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get('/examination/marks-divisions', {
@@ -93,36 +93,62 @@ export default function MarksDivisionPage() {
                     search: searchTerm
                 }
             });
-            setDivisions(response.data.data || []);
-            setTotalEntries(response.data.total || 0);
+            // Defensive unwrapping per AGENTS.md convention
+            const result = response.data;
+            const list = result?.data?.data || result?.data || [];
+            setDivisions(Array.isArray(list) ? list : []);
+            setTotalEntries(result?.total || result?.data?.total || 0);
+            setLastPage(result?.last_page || result?.data?.last_page || 1);
         } catch (error) {
             tt.error("failed_to_fetch_divisions");
+            setDivisions([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPage, itemsPerPage, searchTerm]);
+
+    useEffect(() => {
+        fetchDivisions();
+    }, [fetchDivisions]);
 
     const handleSave = async () => {
-        if (!formData.name || !formData.percent_from || !formData.percent_upto) {
+        if (!formData.name.trim() || !formData.percent_from || !formData.percent_upto) {
             tt.error("please_fill_in_all_required_fields");
             return;
         }
 
-        setSubmitting(true);
+        const payload = {
+            name: formData.name.trim(),
+            percent_from: parseFloat(formData.percent_from),
+            percent_upto: parseFloat(formData.percent_upto)
+        };
+
+        if (payload.percent_from < 0 || payload.percent_from > 100 || payload.percent_upto < 0 || payload.percent_upto > 100) {
+            tt.error("percentage_must_be_between_0_and_100");
+            return;
+        }
+
+        if (payload.percent_from > payload.percent_upto) {
+            tt.error("percent_from_must_be_less_than_percent_upto");
+            return;
+        }
+
+        setSaving(true);
         try {
             if (editMode && selectedId) {
-                await api.put(`/examination/marks-divisions/${selectedId}`, formData);
+                await api.put(`/examination/marks-divisions/${selectedId}`, payload);
                 tt.success("division_updated_successfully");
             } else {
-                await api.post('/examination/marks-divisions', formData);
+                await api.post('/examination/marks-divisions', payload);
                 tt.success("division_created_successfully");
             }
             resetForm();
             fetchDivisions();
         } catch (error) {
-            tt.error("failed_to_save_division");
+            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            tt.error(err.response?.data?.message || "failed_to_save_division");
         } finally {
-            setSubmitting(false);
+            setSaving(false);
         }
     };
 
@@ -141,7 +167,12 @@ export default function MarksDivisionPage() {
         try {
             await api.delete(`/examination/marks-divisions/${deleteId}`);
             tt.success("division_deleted_successfully");
-            fetchDivisions();
+            // If deleting the last item on a page beyond page 1, go back
+            if (divisions.length === 1 && currentPage > 1) {
+                setCurrentPage(prev => prev - 1);
+            } else {
+                fetchDivisions();
+            }
         } catch (error) {
             tt.error("failed_to_delete_division");
         } finally {
@@ -153,6 +184,35 @@ export default function MarksDivisionPage() {
         setFormData({ name: "", percent_from: "", percent_upto: "" });
         setEditMode(false);
         setSelectedId(null);
+    };
+
+    // Export functions
+    const exportToExcel = () => {
+        const ws = XLSX.utils.json_to_sheet(divisions.map(d => ({
+            [t("division_name")]: d.name,
+            [t("percentage_from")]: d.percent_from,
+            [t("percentage_upto")]: d.percent_upto
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, t("divisions"));
+        XLSX.writeFile(wb, "marks-divisions.xlsx");
+    };
+
+    const exportToPDF = () => {
+        const doc = new jsPDF();
+        doc.text(t("division_list"), 14, 15);
+        autoTable(doc, {
+            head: [[t("division_name"), t("percentage_from"), t("percentage_upto")]],
+            body: divisions.map(d => [d.name, `${d.percent_from}%`, `${d.percent_upto}%`]),
+            startY: 20,
+        });
+        doc.save("marks-divisions.pdf");
+    };
+
+    const copyToClipboard = () => {
+        const text = divisions.map(d => `${d.name}\t${d.percent_from}%\t${d.percent_upto}%`).join('\n');
+        navigator.clipboard.writeText(text);
+        tt.success("data_copied_to_clipboard");
     };
 
     return (
@@ -196,6 +256,9 @@ export default function MarksDivisionPage() {
                                         value={formData.percent_from}
                                         onChange={(e) => setFormData({...formData, percent_from: e.target.value})}
                                         placeholder="0.00"
+                                        min="0"
+                                        max="100"
+                                        step="0.01"
                                         className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 pl-4 pr-10"
                                     />
                                     <Percent className="absolute right-3.5 top-3.5 h-4 w-4 text-gray-300" />
@@ -212,6 +275,9 @@ export default function MarksDivisionPage() {
                                         value={formData.percent_upto}
                                         onChange={(e) => setFormData({...formData, percent_upto: e.target.value})}
                                         placeholder="0.00"
+                                        min="0"
+                                        max="100"
+                                        step="0.01"
                                         className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 pl-4 pr-10"
                                     />
                                     <Percent className="absolute right-3.5 top-3.5 h-4 w-4 text-gray-300" />
@@ -226,10 +292,10 @@ export default function MarksDivisionPage() {
                                 )}
                                 <Button
                                     onClick={handleSave}
-                                    disabled={submitting}
+                                    disabled={saving}
                                     className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
                                 >
-                                    {submitting ? t("saving") : editMode ? t("update") : t("save")}
+                                    {saving ? t("saving") : editMode ? t("update") : t("save")}
                                 </Button>
                             </div>
                         </div>
@@ -262,19 +328,19 @@ export default function MarksDivisionPage() {
                                     </SelectContent>
                                 </Select>
                                 <div className="flex items-center gap-1 text-gray-400">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer" onClick={copyToClipboard} title={t("copy")}>
                                         <Copy className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer" onClick={exportToExcel} title={t("export_excel")}>
                                         <FileSpreadsheet className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer" onClick={exportToPDF} title={t("export_pdf")}>
                                         <FileText className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer" onClick={() => window.print()} title={t("print")}>
                                         <Printer className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer" title={t("columns")}>
                                         <Columns className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -288,7 +354,10 @@ export default function MarksDivisionPage() {
                                     <Input
                                         placeholder={t("search_divisions")}
                                         value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        onChange={(e) => {
+                                            setSearchTerm(e.target.value);
+                                            setCurrentPage(1);
+                                        }}
                                         className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                     />
                                 </div>
@@ -344,30 +413,32 @@ export default function MarksDivisionPage() {
                                 </Table>
                             </div>
 
-                            <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
-                                <div>
-                                    {t("showing_x_to_y_of_z", { from: ((currentPage - 1) * itemsPerPage) + 1, to: Math.min(currentPage * itemsPerPage, totalEntries), total: totalEntries })}
+                            {totalEntries > 0 && (
+                                <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
+                                    <div>
+                                        {t("showing_x_to_y_of_z", { from: ((currentPage - 1) * itemsPerPage) + 1, to: Math.min(currentPage * itemsPerPage, totalEntries), total: totalEntries })}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md disabled:opacity-50"
+                                            disabled={currentPage === 1}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                        <Button size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md">
+                                            {currentPage}
+                                        </Button>
+                                        <Button
+                                            onClick={() => setCurrentPage(p => p + 1)}
+                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md disabled:opacity-50"
+                                            disabled={currentPage >= lastPage}
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <Button
-                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                        size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md disabled:opacity-50"
-                                        disabled={currentPage === 1}
-                                    >
-                                        <ChevronLeft className="h-4 w-4" />
-                                    </Button>
-                                    <Button size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md">
-                                        {currentPage}
-                                    </Button>
-                                    <Button
-                                        onClick={() => setCurrentPage(p => p + 1)}
-                                        size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md disabled:opacity-50"
-                                        disabled={divisions.length < itemsPerPage}
-                                    >
-                                        <ChevronRight className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
