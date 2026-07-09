@@ -24,6 +24,7 @@ export const i18nFallbacksBn: Record<string, string> = {
   finished: "সম্পন্ন",
   cancelled: "বাতিল",
   classes_scheduled: "{count}টি ক্লাস নির্ধারিত",
+  x_staff_members_on_date: "{date}-এ {count} জন স্টাফ সদস্য",
   minutes_short: "মিনিট",
 
   // ─── STUDENT FEES ──────────────────────────────────────────────
@@ -438,6 +439,7 @@ export const i18nFallbacksBn: Record<string, string> = {
   custom_fields: "কাস্টম ফিল্ড",
   captcha_setting: "ক্যাপচা সেটিং",
   system_fields: "সিস্টেম ফিল্ড",
+  x_staff_records: "{count} স্টাফ রেকর্ড",
   student_profile_setting: "শিক্ষার্থী প্রোফাইল সেটিং",
   file_types: "ফাইলের ধরন",
   sidebar_menu: "সাইডবার মেনু",

@@ -52,6 +52,7 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
+import { useReactToPrint } from "react-to-print";
 
 // ─── Skeleton ──────────────────────────────────────────────────────────────────
 
@@ -378,32 +379,7 @@ export default function PayrollPage() {
     };
 
     // ── Print ─────────────────────────────────────────────────────────────────
-    const handlePrint = () => {
-        const content = printRef.current?.innerHTML ?? "";
-        const win = window.open("", "_blank", "width=850,height=900");
-        if (!win) return;
-        win.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Payslip - ${slipRow?.name}</title>
-                <script src="https://cdn.tailwindcss.com"><\/script>
-                <style>
-                    @media print {
-                        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        .no-print { display: none !important; }
-                    }
-                </style>
-            </head>
-            <body class="bg-white">
-                ${content}
-            </body>
-            </html>
-        `);
-        win.document.close();
-        win.focus();
-        setTimeout(() => { win.print(); win.close(); }, 700);
-    };
+    const handlePrint = useReactToPrint({ contentRef: printRef });
 
     // ── Export Functions ───────────────────────────────────────────────────────
     const handleCopy = () => {

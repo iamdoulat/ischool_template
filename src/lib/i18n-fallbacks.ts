@@ -19,8 +19,8 @@ export const i18nFallbacks: Record<string, string> = {
     failed_to_delete_x: "Failed to delete {label}",
     failed_to_save_x: "Failed to save {label}",
     failed_to_delete_selected_x_list: "Failed to delete selected {label} list",
-    permanently_delete_x_entry: "Are you sure you want to permanently delete this {label} entry?",
     x_scheduled_entries: "{count} Scheduled Entries",
+    x_staff_members_on_date: "{count} Staff Members on {date}",
 
     // ===== ZOOM / LIVE CLASSES =====
     search_classes: "Search classes…",
@@ -728,6 +728,7 @@ export const i18nFallbacks: Record<string, string> = {
     custom_fields: "Custom Fields",
     captcha_setting: "Captcha Setting",
     system_fields: "System Fields",
+    x_staff_records: "{count} Staff Records",
     student_profile_setting: "Student Profile Setting",
     file_types: "File Types",
     sidebar_menu: "Sidebar Menu",

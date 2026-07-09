@@ -22,12 +22,13 @@ import {
     TableRow
 } from "@/components/ui/table";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Search, Save, Loader2, AlertCircle, History, CalendarDays, UserCheck, ClipboardCheck, Filter } from "lucide-react";
+import { Search, Save, Loader2, AlertCircle, History, CalendarDays, UserCheck, ClipboardCheck, Filter, Copy, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { StaffCsvImportDialog } from "@/components/attendance/StaffCsvImportDialog";
+import * as XLSX from "xlsx";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -76,6 +77,8 @@ export default function StaffAttendancePage() {
     const [saving, setSaving] = useState(false);
     const [searched, setSearched] = useState(false);
     const [roles, setRoles] = useState<StaffRole[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(20);
 
     const attendanceOptions = [
         { label: "present", value: "present", color: "text-green-600", bg: "bg-green-600" },
@@ -111,6 +114,7 @@ export default function StaffAttendancePage() {
                 setAttendanceData(res.data.data ?? []);
                 setBulkAttendance("");
                 setSearched(true);
+                setCurrentPage(1);
             }
         } catch {
             tt.error("failed_to_load_staff_list");
@@ -159,6 +163,40 @@ export default function StaffAttendancePage() {
         });
     };
 
+    const handleCopy = () => {
+        if (attendanceData.length === 0) {
+            tt.error("no_data_to_copy");
+            return;
+        }
+        const header = ["#", "Staff ID", "Name", "Role", "Attendance", "Note"].join("\t");
+        const rows = attendanceData.map((s, idx) => 
+            [idx + 1, s.staff_id, s.name, s.role, s.attendance, s.note || ""].join("\t")
+        );
+        const text = [header, ...rows].join("\n");
+        navigator.clipboard.writeText(text);
+        tt.success("copied_to_clipboard");
+    };
+
+    const handleExportExcel = () => {
+        if (attendanceData.length === 0) {
+            tt.error("no_data_to_export");
+            return;
+        }
+        const dataToExport = attendanceData.map((s, idx) => ({
+            "#": idx + 1,
+            "Staff ID": s.staff_id,
+            "Name": s.name,
+            "Role": s.role,
+            "Attendance": s.attendance,
+            "Note": s.note || ""
+        }));
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Staff Attendance");
+        XLSX.writeFile(wb, `staff_attendance_${date}.xlsx`);
+        tt.success("exported_to_excel");
+    };
+
     const handleSave = async () => {
         if (attendanceData.length === 0) { tt.error("no_staff_to_save"); return; }
         try {
@@ -181,6 +219,10 @@ export default function StaffAttendancePage() {
             setSaving(false);
         }
     };
+
+    const totalPages = Math.ceil(attendanceData.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedData = attendanceData.slice(startIndex, startIndex + itemsPerPage);
 
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
@@ -261,6 +303,44 @@ export default function StaffAttendancePage() {
                                 <p className="text-[11px] text-gray-500 mt-1">{t("x_staff_members_on_date", { count: attendanceData.length, date: new Date(date).toDateString() })}</p>
                             </div>
                         </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                onClick={handleCopy}
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors"
+                                title={t("copy")}
+                            >
+                                <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                onClick={handleExportExcel}
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors"
+                                title={t("export_excel")}
+                            >
+                                <FileSpreadsheet className="h-4 w-4" />
+                            </Button>
+                            <Select 
+                                value={itemsPerPage.toString()} 
+                                onValueChange={(val) => { 
+                                    setItemsPerPage(parseInt(val, 10)); 
+                                    setCurrentPage(1); 
+                                }}
+                            >
+                                <SelectTrigger className="h-8 w-[80px] text-[11px] border-gray-200 bg-white rounded-lg focus:ring-indigo-500">
+                                    <SelectValue placeholder="20" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-lg border-gray-100">
+                                    <SelectItem value="20">20</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="200">200</SelectItem>
+                                    <SelectItem value="500">500</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </CardHeader>
                     <CardContent className="p-0 space-y-4">
                         {/* Bulk Action Toolbar */}
@@ -313,9 +393,9 @@ export default function StaffAttendancePage() {
 
                         {/* Table */}
                         <div className="px-4 pb-4">
-                            <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
+                            <div className="rounded-lg border border-gray-200/50 overflow-hidden shadow-sm">
                                 <Table>
-                                    <TableHeader className="bg-gray-50/50">
+                                    <TableHeader className="bg-gray-100">
                                         <TableRow className="hover:bg-transparent border-gray-100">
                                             <TableHead className="text-[10px] font-bold uppercase text-gray-600 w-12 pl-4 text-center">#</TableHead>
                                             <TableHead className="text-[10px] font-bold uppercase text-gray-600">{t("staff_info")}</TableHead>
@@ -337,9 +417,9 @@ export default function StaffAttendancePage() {
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
-                                        ) : attendanceData.map((staff, idx) => (
+                                        ) : paginatedData.map((staff, idx) => (
                                             <TableRow key={staff.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
-                                                <TableCell className="py-4 pl-4 text-center text-gray-400 font-mono text-[10px]">{idx + 1}</TableCell>
+                                                <TableCell className="py-4 pl-4 text-center text-gray-400 font-mono text-[10px]">{startIndex + idx + 1}</TableCell>
                                                 <TableCell className="py-4">
                                                     <div className="flex flex-col">
                                                         <span className="text-[11px] font-bold text-gray-800 uppercase tracking-tight">{staff.name}</span>
@@ -415,6 +495,22 @@ export default function StaffAttendancePage() {
                                     </TableBody>
                                 </Table>
                             </div>
+
+                            {/* Pagination */}
+                            {attendanceData.length > 0 && (
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-4 px-2">
+                                    <div>{t("showing_x_to_y_of_z", { from: attendanceData.length === 0 ? 0 : startIndex + 1, to: Math.min(startIndex + itemsPerPage, attendanceData.length), total: attendanceData.length })}</div>
+                                    {totalPages > 1 && (
+                                        <div className="flex gap-1 items-center">
+                                            <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
+                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                                <Button key={page} size="sm" onClick={() => setCurrentPage(page)} className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all", currentPage === page ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}>{page}</Button>
+                                            ))}
+                                            <Button variant="outline" size="sm" disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronRight className="h-4 w-4" /></Button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Bottom Save Bar */}
