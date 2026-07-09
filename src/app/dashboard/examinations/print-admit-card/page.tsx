@@ -494,7 +494,7 @@ export default function PrintAdmitCardPage() {
                 <CardContent className="p-6 space-y-6">
                     <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                         <Table>
-                            <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-500">
+                            <TableHeader className="!bg-[#f3f4f6] text-[10px] uppercase font-bold text-gray-500">
                                 <TableRow className="hover:bg-transparent border-gray-50">
                                     <TableHead className="w-[60px] px-6 text-center">
                                         <Checkbox

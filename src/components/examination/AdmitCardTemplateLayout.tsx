@@ -66,7 +66,7 @@ export const AdmitCardTemplateLayout = React.forwardRef<HTMLDivElement, { data: 
                 ref={ref}
                 className="admit-card-container relative"
                 style={{
-                    width: '794px',
+                    width: '1588px',
                     minHeight: '1123px',
                     fontFamily: 'Arial, sans-serif',
                     color: '#000',

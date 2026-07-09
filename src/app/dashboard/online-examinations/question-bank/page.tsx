@@ -10,10 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-    Plus, Upload, Trash2, Search, Pencil, Eye,
-    Copy, FileSpreadsheet, FileText, Printer, Columns, ChevronLeft, ChevronRight, BookOpen, BrainCircuit
+import { Plus, Upload, Trash2, Search, Pencil, Eye,
+    Copy, FileSpreadsheet, FileText, Printer, Columns, ChevronLeft, ChevronRight, BookOpen, BrainCircuit, Lightbulb, GraduationCap
 } from "lucide-react";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useMemo } from "react";
+import "react-quill-new/dist/quill.snow.css";
 import {
     Dialog,
     DialogContent,
@@ -41,12 +44,13 @@ interface Question {
     question_type: string;
     level: string;
     question: string;
-    creator?: { first_name: string; last_name: string; staff_id: string };
+    creator?: { name?: string; surname?: string; first_name?: string; last_name?: string; staff_id?: string };
 }
 
 export default function QuestionBankPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const ReactQuill = useMemo(() => dynamic(() => import("react-quill-new"), { ssr: false }), []);
     const [searchTerm, setSearchTerm] = useState("");
     const [classes, setClasses] = useState<any[]>([]);
     const [sections, setSections] = useState<any[]>([]);
@@ -141,8 +145,14 @@ export default function QuestionBankPage() {
                 per_page: itemsPerPage,
                 search: searchTerm
             };
-            if (criteria.class_id) params.class_id = criteria.class_id;
-            if (criteria.section_id) params.section_id = criteria.section_id;
+            if (criteria.class_id) {
+                const c = classes.find(c => c.id.toString() === criteria.class_id);
+                if (c) params.class_name = c.name;
+            }
+            if (criteria.section_id) {
+                const s = sections.find(s => s.id.toString() === criteria.section_id);
+                if (s) params.section = s.name;
+            }
             if (criteria.subject) params.subject = criteria.subject;
             if (criteria.question_type !== "all") params.question_type = criteria.question_type;
             if (criteria.level !== "all") params.level = criteria.level;
@@ -163,12 +173,21 @@ export default function QuestionBankPage() {
             return;
         }
 
+        const className = classes.find(c => c.id.toString() === formData.class_id)?.name || "";
+        const sectionName = sections.find(s => s.id.toString() === formData.section_id)?.name || "";
+
+        const payload = {
+            ...formData,
+            class_name: className,
+            section: sectionName
+        };
+
         try {
             if (dialogMode === "edit" && selectedId) {
-                await api.put(`/online-examination/questions/${selectedId}`, formData);
+                await api.put(`/online-examination/questions/${selectedId}`, payload);
                 tt.success("question_updated_successfully");
             } else {
-                await api.post('/online-examination/questions', formData);
+                await api.post('/online-examination/questions', payload);
                 tt.success("question_created_successfully");
             }
             setIsDialogOpen(false);
@@ -182,14 +201,60 @@ export default function QuestionBankPage() {
         setDialogMode("edit");
         setSelectedId(q.id);
 
-        // Fetch sections for the specific class before setting form data
-        if (q.class_id) {
-            await fetchSectionsByClass(q.class_id);
+        const foundClass = classes.find(c => c.name === q.class_name);
+        const classId = foundClass ? foundClass.id.toString() : "";
+
+        let sectionId = "";
+        if (classId) {
+            try {
+                const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
+                const all: any[] = res.data?.data || res.data || [];
+                const filtered = all.filter((s: any) => String(s.school_class_id) === String(classId));
+                setSections(filtered);
+                const foundSection = filtered.find((s: any) => s.name === q.section);
+                if (foundSection) sectionId = foundSection.id.toString();
+            } catch (error) {
+                console.error("Failed to fetch sections", error);
+            }
         }
 
         setFormData({
-            class_id: q.class_id?.toString() || "",
-            section_id: q.section_id?.toString() || "",
+            class_id: classId,
+            section_id: sectionId,
+            subject: q.subject,
+            question_type: q.question_type,
+            level: q.level,
+            question: q.question,
+            options: q.options || ["", "", "", ""],
+            correct_answer: q.correct_answer || ""
+        });
+        setIsDialogOpen(true);
+    };
+
+    const handleView = async (q: any) => {
+        setDialogMode("view");
+        setSelectedId(q.id);
+
+        const foundClass = classes.find(c => c.name === q.class_name);
+        const classId = foundClass ? foundClass.id.toString() : "";
+
+        let sectionId = "";
+        if (classId) {
+            try {
+                const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
+                const all: any[] = res.data?.data || res.data || [];
+                const filtered = all.filter((s: any) => String(s.school_class_id) === String(classId));
+                setSections(filtered);
+                const foundSection = filtered.find((s: any) => s.name === q.section);
+                if (foundSection) sectionId = foundSection.id.toString();
+            } catch (error) {
+                console.error("Failed to fetch sections", error);
+            }
+        }
+
+        setFormData({
+            class_id: classId,
+            section_id: sectionId,
             subject: q.subject,
             question_type: q.question_type,
             level: q.level,
@@ -272,9 +337,11 @@ export default function QuestionBankPage() {
                     <Button onClick={openAddDialog} className="btn-gradient text-white gap-2 h-11 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full">
                         <Plus className="h-4 w-4" /> {t("add_question")}
                     </Button>
-                    <Button variant="outline" className="h-11 px-8 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-100 flex gap-2">
-                        <Upload className="h-4 w-4" /> {t("import")}
-                    </Button>
+                    <Link href="/dashboard/online-examinations/question-bank/import">
+                        <Button variant="outline" className="h-11 px-8 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-100 flex gap-2">
+                            <Upload className="h-4 w-4" /> {t("import")}
+                        </Button>
+                    </Link>
                     {selectedIds.length > 0 && (
                         <Button onClick={handleBulkDelete} disabled={isBulkDeleting} variant="destructive" className="h-11 px-8 rounded-full text-[11px] font-bold uppercase tracking-widest flex gap-2 shadow-xl shadow-rose-200/50">
                             <Trash2 className="h-4 w-4" /> {isBulkDeleting ? t("deleting") : t("delete_selected", { count: selectedIds.length })}
@@ -372,7 +439,7 @@ export default function QuestionBankPage() {
 
             {/* Question Bank Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-6">
-                <h2 className="text-sm font-bold text-gray-800 border-b border-gray-50 pb-3 uppercase tracking-widest">{t("question_bank")}</h2>
+                <h2 className="text-sm font-bold text-gray-800 border-b border-gray-50 pb-3 uppercase tracking-widest">{t("question_bank")} ({totalEntries})</h2>
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="relative w-full md:w-72">
@@ -386,13 +453,13 @@ export default function QuestionBankPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(Number(v))}>
-                            <SelectTrigger className="h-9 w-24 bg-gray-50 border-gray-100 text-[11px] font-bold uppercase focus:ring-0">
+                        <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                            <SelectTrigger className="h-9 w-[110px] bg-gray-50 border-gray-100 text-[11px] font-bold uppercase focus:ring-0">
                                 <SelectValue placeholder={t("rows")} />
                             </SelectTrigger>
                             <SelectContent>
-                                {[10, 25, 50, 100, 200].map(n => (
-                                    <SelectItem key={n} value={n.toString()} className="text-xs font-bold uppercase">{t("rows_count", { n })}</SelectItem>
+                                {[10, 20, 50, 100, 200, 500].map(n => (
+                                    <SelectItem key={n} value={n.toString()} className="text-xs font-bold uppercase">{n} {t("rows")}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -482,19 +549,16 @@ export default function QuestionBankPage() {
                                             </span>
                                         </TableCell>
                                         <TableCell className="py-4 px-6 font-medium text-gray-800 leading-relaxed max-w-md truncate">
-                                            {q.question}
+                                            {q.question?.replace(/<[^>]+>/g, '')?.replace(/&nbsp;/g, ' ')}
                                         </TableCell>
                                         <TableCell className="py-4 px-6">
                                             {q.creator ? (
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs font-bold text-gray-700">{q.creator.first_name} {q.creator.last_name}</span>
-                                                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{t("id_label")}: {q.creator.staff_id}</span>
-                                                </div>
+                                                <span className="text-xs font-bold text-gray-700">{q.creator.name || q.creator.first_name || 'System'} {q.creator.surname || q.creator.last_name || ''}</span>
                                             ) : <span className="text-gray-300">---</span>}
                                         </TableCell>
                                         <TableCell className="py-4 px-6 text-right">
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md transition-all">
+                                            <div className="flex items-center justify-end gap-2 transition-all duration-300">
+                                                <Button size="icon" variant="ghost" onClick={() => handleView(q)} className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md transition-all">
                                                     <Eye className="h-4 w-4" />
                                                 </Button>
                                                 <Button size="icon" variant="ghost" onClick={() => handleEdit(q)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-all">
@@ -540,14 +604,22 @@ export default function QuestionBankPage() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-3xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-4 bg-[#6366f1] text-white flex-row items-center justify-between space-y-0">
-                        <DialogTitle className="text-base font-semibold tracking-wide">
-                            {t("question")}
-                        </DialogTitle>
+                <DialogContent className="w-[95vw] sm:max-w-[1200px] rounded-xl border-0 shadow-2xl p-0 overflow-hidden bg-white">
+                    <DialogHeader className="p-5 bg-gradient-to-r from-[#F7A148] to-[#7778EC] text-white flex-row items-center gap-3 space-y-0">
+                        <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                            <BrainCircuit className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-lg font-bold tracking-tight">
+                                {dialogMode === "edit" ? t("edit_question") : dialogMode === "view" ? t("view_question") : t("add_question")}
+                            </DialogTitle>
+                            <p className="text-indigo-100 text-[11px] mt-0.5">{t("manage_question_details")}</p>
+                        </div>
                     </DialogHeader>
 
-                    <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto bg-white">
+                    <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto bg-white">
+                        <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100/50 space-y-5">
+                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("general_details")}</h3>
                         {/* First Row: Subject, Type, Level */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div className="md:col-span-2 space-y-1.5">
@@ -590,61 +662,65 @@ export default function QuestionBankPage() {
                             </div>
                         </div>
 
-                        {/* Second Row: Class, Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-gray-700">{t("class")} <span className="text-red-500">*</span></Label>
-                                <Select value={formData.class_id} onValueChange={(val) => {
-                                    setFormData({...formData, class_id: val, section_id: ""});
-                                    fetchSectionsByClass(val);
-                                }}>
-                                    <SelectTrigger className="h-10 border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500">
-                                        <SelectValue placeholder={t("select")} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-gray-700">{t("section")} <span className="text-red-500">*</span></Label>
-                                <Select
-                                    value={formData.section_id}
-                                    onValueChange={(val) => setFormData({...formData, section_id: val})}
-                                    disabled={!formData.class_id}
-                                >
-                                    <SelectTrigger className="h-10 border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500">
-                                        <SelectValue placeholder={!formData.class_id ? t("select_class_first") : t("select")} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                        </div>
+
+                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-5">
+                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("question_details")}</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-700">{t("class")} <span className="text-red-500">*</span></Label>
+                                    <Select value={formData.class_id} onValueChange={(val) => {
+                                        setFormData({...formData, class_id: val, section_id: ""});
+                                        fetchSectionsByClass(val);
+                                    }}>
+                                        <SelectTrigger className="h-10 border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500">
+                                            <SelectValue placeholder={t("select")} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-700">{t("section")} <span className="text-red-500">*</span></Label>
+                                    <Select
+                                        value={formData.section_id}
+                                        onValueChange={(val) => setFormData({...formData, section_id: val})}
+                                        disabled={!formData.class_id}
+                                    >
+                                        <SelectTrigger className="h-10 border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500">
+                                            <SelectValue placeholder={!formData.class_id ? t("select_class_first") : t("select")} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                                <Label className="text-xs font-medium text-gray-700">{t("question")} <span className="text-red-500">*</span></Label>
-                                <Button size="sm" variant="outline" className="h-7 bg-[#6366f1] text-white border-0 hover:bg-[#5558e3] text-[10px] font-bold px-3">
-                                    + {t("add_image")}
-                                </Button>
+                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+                            <Label className="text-xs font-bold text-gray-700">{t("question")} <span className="text-red-500">*</span></Label>
+                            <div className="bg-white rounded-md">
+                                <ReactQuill
+                                    theme="snow"
+                                    value={formData.question}
+                                    onChange={(content) => setFormData({...formData, question: content})}
+                                    placeholder={t("enter_question_text")}
+                                    className="h-[200px] pb-10"
+                                />
                             </div>
-                            <Textarea
-                                value={formData.question}
-                                onChange={(e) => setFormData({...formData, question: e.target.value})}
-                                placeholder={t("enter_question_text")}
-                                className="min-h-[200px] border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500 p-4"
-                            />
                         </div>
 
                         {(formData.question_type === "Single Choice" || formData.question_type === "Multiple Choice") && (
                             <div className="space-y-4 pt-4 border-t border-dashed border-gray-100">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("options_and_answer")}</Label>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {formData.options.map((opt, idx) => (
+                                    {formData.options.map((opt, idx) => {
+                                        const optionLetter = String.fromCharCode(65 + idx);
+                                        return (
                                         <div key={idx} className="flex gap-3 items-center">
-                                            <span className="text-xs font-bold text-gray-400">{String.fromCharCode(65 + idx)}.</span>
+                                            <span className="text-xs font-bold text-gray-400">{optionLetter}.</span>
                                             <Input
                                                 value={opt}
                                                 onChange={(e) => {
@@ -652,20 +728,50 @@ export default function QuestionBankPage() {
                                                     newOpts[idx] = e.target.value;
                                                     setFormData({...formData, options: newOpts});
                                                 }}
-                                                placeholder={t("option_letter", { letter: String.fromCharCode(65 + idx) })}
+                                                placeholder={t("option_letter", { letter: optionLetter })}
                                                 className="h-10 border-gray-100 bg-gray-50/30 rounded-lg"
                                             />
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
+                                <div className="space-y-1.5 mt-4">
+                                    <Label className="text-xs font-medium text-gray-700">{t("correct_answer")} <span className="text-red-500">*</span></Label>
+                                    <Select value={formData.correct_answer} onValueChange={(val) => setFormData({...formData, correct_answer: val})}>
+                                        <SelectTrigger className="h-10 border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500">
+                                            <SelectValue placeholder={t("select_correct_answer")} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {formData.options.map((opt, idx) => {
+                                                const optionLetter = String.fromCharCode(65 + idx);
+                                                return <SelectItem key={idx} value={opt || optionLetter}>{optionLetter} - {opt || t("empty")}</SelectItem>;
+                                            })}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        )}
+                        {(formData.question_type === "True/False") && (
+                            <div className="space-y-1.5 pt-4 border-t border-dashed border-gray-100">
+                                <Label className="text-xs font-medium text-gray-700">{t("correct_answer")} <span className="text-red-500">*</span></Label>
+                                <Select value={formData.correct_answer} onValueChange={(val) => setFormData({...formData, correct_answer: val})}>
+                                    <SelectTrigger className="h-10 border-gray-200 rounded-md focus:ring-0 focus:border-indigo-500">
+                                        <SelectValue placeholder={t("select_correct_answer")} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="True">{t("true")}</SelectItem>
+                                        <SelectItem value="False">{t("false")}</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         )}
                     </div>
 
-                    <DialogFooter className="p-4 border-t flex justify-end gap-3 bg-white">
-                        <Button onClick={handleSave} className="bg-[#6366f1] hover:bg-[#5558e3] text-white h-9 px-8 rounded-md text-xs font-medium">
-                            {t("save")}
-                        </Button>
+                    <DialogFooter className="p-4 flex justify-end gap-3 bg-white">
+                        {dialogMode !== "view" && (
+                            <Button onClick={handleSave} className="bg-gradient-to-r from-[#F7A148] to-[#7778EC] hover:opacity-90 text-white border-0 h-9 px-8 rounded-md text-xs font-medium transition-opacity">
+                                {t("save")}
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

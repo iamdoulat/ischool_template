@@ -846,7 +846,7 @@ export default function ExamGroupPage() {
                     </CardHeader>
                     <CardContent className="p-0">
                         <Table>
-                            <TableHeader className="bg-gray-50/50">
+                            <TableHeader className="!bg-[#f3f4f6]">
                                 <TableRow>
                                     <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("name")}</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("session")}</TableHead>
@@ -1116,7 +1116,7 @@ export default function ExamGroupPage() {
                             {/* Students Table */}
                             <div className="max-h-[50vh] overflow-y-auto">
                                 <table className="w-full text-xs text-left text-gray-600">
-                                    <thead className="bg-white sticky top-0 border-b border-gray-100">
+                                    <thead className="!bg-[#f3f4f6] sticky top-0 border-b border-gray-100">
                                         <tr>
                                             <th className="py-2.5 px-3 font-semibold text-gray-700 w-16">
                                                 <div className="flex items-center gap-2">
@@ -1208,7 +1208,7 @@ export default function ExamGroupPage() {
                             {/* Subjects Table */}
                             <div className="overflow-x-auto">
                                 <table className="w-full text-[11px] text-left">
-                                    <thead className="bg-white border-b border-gray-200">
+                                    <thead className="!bg-[#f3f4f6] border-b border-gray-200">
                                         <tr>
                                             <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '130px'}}>{t("subject")} <span className="text-red-500">*</span></th>
                                             <th className="py-2.5 px-2 font-bold text-gray-700" style={{minWidth: '130px'}}>{t("date")} <span className="text-red-500">*</span></th>
@@ -1601,7 +1601,7 @@ export default function ExamGroupPage() {
 
                             <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                                 <Table>
-                                    <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
+                                    <TableHeader className="!bg-[#f3f4f6] text-[11px] uppercase font-bold text-gray-600">
                                         <TableRow className="hover:bg-transparent border-gray-50">
                                             <TableHead className="py-4 px-6">{t("group_name")}</TableHead>
                                             <TableHead className="py-4 px-6 text-center">{t("exams")}</TableHead>

@@ -592,7 +592,7 @@ export default function MarksGradePage() {
 
                             <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                                 <Table>
-                                    <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
+                                    <TableHeader className="!bg-[#f3f4f6] text-[11px] uppercase font-bold text-gray-600">
                                         <TableRow className="hover:bg-transparent border-gray-50">
                                             <TableHead className="py-4 px-6">{t("exam_type")}</TableHead>
                                             <TableHead className="py-4 px-6">{t("grade_name")}</TableHead>

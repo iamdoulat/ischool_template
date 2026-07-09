@@ -121,14 +121,17 @@ const menuItems: { group: string; items: MenuItem[] }[] = [
                 name: "cbse_examination", label: "CBSE Examination", icon: FileText, href: "#", color: "violet",
                 submenus: [
                     { name: "exam_schedule", href: "/user/cbse-examination/exam-schedule" },
-                    { name: "exam_result", href: "/user/cbse-examination/exam-result" }
+                    { name: "exam_result", href: "/user/cbse-examination/exam-result" },
+                    { name: "marksheet", href: "/user/cbse-examination/marksheet" }
                 ]
             },
             {
                 name: "examinations", label: "Examinations", icon: PenSquare, href: "#", color: "purple",
                 submenus: [
                     { name: "exam_schedule", href: "/user/examinations/exam-schedule" },
-                    { name: "exam_result", href: "/user/examinations/exam-result" }
+                    { name: "exam_result", href: "/user/examinations/exam-result" },
+                    { name: "admit_card", href: "/user/examinations/admit-card" },
+                    { name: "marksheet", href: "/user/examinations/marksheet" }
                 ]
             },
             { name: "notice_board", label: "Notice Board", icon: MessageSquare, href: "/user/notice-board", submenus: [], color: "sky" },

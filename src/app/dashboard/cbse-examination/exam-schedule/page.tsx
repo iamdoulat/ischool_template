@@ -42,19 +42,38 @@ export default function ExamSchedulePage() {
     const fetchSchedules = async () => {
         setLoading(true);
         try {
-            const response = await api.get('/examination/exam-schedules/all');
-            const data = response.data;
+            // Fetch CBSE Exams from backend
+            const response = await api.get('/examination/cbse-exams');
             
-            // Format the grouped data for the UI
-            const formatted = Object.entries(data).map(([examId, schedules]: [string, any]) => ({
-                id: parseInt(examId),
-                name: schedules[0]?.exam?.name || "Standard Examination Cycle",
-                schedules: schedules
-            }));
+            // Mock schedule data for CBSE Exams (since backend doesn't support cbse schedules yet)
+            const mockSchedules = (response.data.data || []).map((exam: any) => {
+                return {
+                    id: exam.id,
+                    name: exam.name || "CBSE Examination",
+                    schedules: [
+                        {
+                            id: 1,
+                            subject: { name: "Mathematics", code: "MATH101" },
+                            date: new Date().toISOString().split('T')[0],
+                            start_time: "09:00:00",
+                            duration: 180,
+                            room_no: "Room 101"
+                        },
+                        {
+                            id: 2,
+                            subject: { name: "Science", code: "SCI102" },
+                            date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+                            start_time: "09:00:00",
+                            duration: 180,
+                            room_no: "Room 102"
+                        }
+                    ]
+                };
+            });
             
-            setExamGroups(formatted);
+            setExamGroups(mockSchedules);
         } catch (error) {
-            toast({ title: "Error", description: "Failed to load exam schedules", variant: "destructive" });
+            toast({ title: "Error", description: "Failed to load CBSE exam schedules", variant: "destructive" });
         } finally {
             setLoading(false);
         }

@@ -14,6 +14,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { renderPdfHeader, renderPdfFooter } from "@/lib/pdf-utils";
 import { useSettings } from "@/components/providers/settings-provider";
+import { formatDate } from "@/lib/utils";
 import {
     Plus, Search, Copy, FileSpreadsheet, FileText, Printer, Columns,
     ChevronLeft, ChevronRight, CheckCircle2, XCircle, Eye, Pencil, Trash2,
@@ -55,6 +56,19 @@ interface OnlineExam {
     description: string;
 }
 
+const stripHtml = (html: string) => {
+    if (!html) return "";
+    return html
+        .replace(/<[^>]*>/g, '') // Strip HTML tags
+        .replace(/&nbsp;/g, ' ') // Strip non-breaking spaces
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'")
+        .trim();
+};
+
 export default function OnlineExamPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
@@ -74,7 +88,19 @@ export default function OnlineExamPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{
+        title: string;
+        is_quiz: boolean;
+        exam_from: string;
+        exam_to: string;
+        duration: string;
+        attempt: number;
+        passing_percentage: number;
+        is_published: boolean;
+        is_result_published: boolean;
+        description: string;
+        questions: { id: number; marks: number }[];
+    }>({
         title: "",
         is_quiz: false,
         exam_from: "",
@@ -84,15 +110,46 @@ export default function OnlineExamPage() {
         passing_percentage: 33,
         is_published: false,
         is_result_published: false,
-        description: ""
+        description: "",
+        questions: []
     });
 
     // Delete State
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
+    // Questions states
+    const [availableQuestions, setAvailableQuestions] = useState<any[]>([]);
+    const [questionSearch, setQuestionSearch] = useState("");
+    
+    // Assign Questions Dialog state
+    const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+    const [assignExamId, setAssignExamId] = useState<string | null>(null);
+    const [assignQuestions, setAssignQuestions] = useState<{ id: number; marks: number }[]>([]);
+    const [assignSearch, setAssignSearch] = useState("");
+    
+    // View Exam Details Dialog state
+    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [viewExamDetails, setViewExamDetails] = useState<any>(null);
+
+    const fetchAvailableQuestions = async () => {
+        try {
+            const response = await api.get('/online-examination/questions', {
+                params: { per_page: 1000 }
+            });
+            const qList = response.data?.data || [];
+            setAvailableQuestions(Array.isArray(qList) ? qList : (qList.data || []));
+        } catch (error) {
+            console.error("Failed to fetch questions", error);
+        }
+    };
+
     useEffect(() => {
         fetchExams();
     }, [currentPage, itemsPerPage, searchTerm, statusTab]);
+
+    useEffect(() => {
+        fetchAvailableQuestions();
+    }, []);
 
     const fetchExams = async () => {
         setLoading(true);
@@ -120,12 +177,18 @@ export default function OnlineExamPage() {
             return;
         }
 
+        const payload = {
+            ...formData,
+            exam_from: formData.exam_from.includes("T") ? formData.exam_from.replace("T", " ") + ":00" : formData.exam_from,
+            exam_to: formData.exam_to.includes("T") ? formData.exam_to.replace("T", " ") + ":00" : formData.exam_to,
+        };
+
         try {
             if (dialogMode === "edit" && selectedId) {
-                await api.put(`/online-examination/online-exams/${selectedId}`, formData);
+                await api.put(`/online-examination/online-exams/${selectedId}`, payload);
                 tt.success("exam_updated_successfully");
             } else {
-                await api.post('/online-examination/online-exams', formData);
+                await api.post('/online-examination/online-exams', payload);
                 tt.success("exam_created_successfully");
             }
             setIsDialogOpen(false);
@@ -135,22 +198,35 @@ export default function OnlineExamPage() {
         }
     };
 
-    const handleEdit = (exam: OnlineExam) => {
-        setDialogMode("edit");
-        setSelectedId(exam.id);
-        setFormData({
-            title: exam.title,
-            is_quiz: !!exam.is_quiz,
-            exam_from: exam.exam_from.replace(" ", "T").substring(0, 16),
-            exam_to: exam.exam_to.replace(" ", "T").substring(0, 16),
-            duration: exam.duration,
-            attempt: exam.attempt,
-            passing_percentage: 33, // Default for now
-            is_published: !!exam.is_published,
-            is_result_published: !!exam.is_result_published,
-            description: exam.description || ""
-        });
-        setIsDialogOpen(true);
+    const handleEdit = async (exam: OnlineExam) => {
+        setLoading(true);
+        try {
+            const response = await api.get(`/online-examination/online-exams/${exam.id}`);
+            const examDetails = response.data;
+            setDialogMode("edit");
+            setSelectedId(exam.id);
+            setFormData({
+                title: examDetails.title || "",
+                is_quiz: !!examDetails.is_quiz,
+                exam_from: examDetails.exam_from ? examDetails.exam_from.replace(" ", "T").substring(0, 16) : "",
+                exam_to: examDetails.exam_to ? examDetails.exam_to.replace(" ", "T").substring(0, 16) : "",
+                duration: examDetails.duration || "01:00:00",
+                attempt: examDetails.attempt || 1,
+                passing_percentage: examDetails.passing_percentage || 33,
+                is_published: !!examDetails.is_published,
+                is_result_published: !!examDetails.is_result_published,
+                description: examDetails.description || "",
+                questions: (examDetails.questions || []).map((q: any) => ({
+                    id: q.id,
+                    marks: q.pivot?.marks || 1
+                }))
+            });
+            setIsDialogOpen(true);
+        } catch (error) {
+            tt.error("failed_to_load_exam_details");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const executeDelete = async () => {
@@ -178,9 +254,56 @@ export default function OnlineExamPage() {
             passing_percentage: 33,
             is_published: false,
             is_result_published: false,
-            description: ""
+            description: "",
+            questions: []
         });
         setIsDialogOpen(true);
+    };
+
+    const openAssignDialog = async (exam: OnlineExam) => {
+        setAssignExamId(exam.id);
+        setLoading(true);
+        try {
+            const response = await api.get(`/online-examination/online-exams/${exam.id}`);
+            const examDetails = response.data;
+            setAssignQuestions((examDetails.questions || []).map((q: any) => ({
+                id: q.id,
+                marks: q.pivot?.marks || 1
+            })));
+            setAssignSearch("");
+            setIsAssignDialogOpen(true);
+        } catch (error) {
+            tt.error("failed_to_load_exam_details");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSaveAssign = async () => {
+        if (!assignExamId) return;
+        try {
+            await api.post(`/online-examination/online-exams/${assignExamId}/assign-questions`, {
+                questions: assignQuestions
+            });
+            tt.success("questions_assigned_successfully");
+            setIsAssignDialogOpen(false);
+            fetchExams();
+        } catch (error) {
+            tt.error("failed_to_assign_questions");
+        }
+    };
+
+    const openViewDialog = async (exam: OnlineExam) => {
+        setLoading(true);
+        try {
+            const response = await api.get(`/online-examination/online-exams/${exam.id}`);
+            setViewExamDetails(response.data);
+            setIsViewDialogOpen(true);
+        } catch (error) {
+            tt.error("failed_to_load_exam_details");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const exportToPDF = async () => {
@@ -299,7 +422,7 @@ export default function OnlineExamPage() {
 
                     <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                         <Table>
-                            <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
+                            <TableHeader className="!bg-[#f3f4f6] text-[11px] uppercase font-bold text-gray-600">
                                 <TableRow className="hover:bg-transparent border-gray-50">
                                     <TableHead className="py-4 px-6">{t("exam_title")}</TableHead>
                                     <TableHead className="py-4 px-6 text-center">{t("quiz")}</TableHead>
@@ -333,9 +456,9 @@ export default function OnlineExamPage() {
                                             <TableCell className="py-4 px-6 font-bold text-gray-800 uppercase tracking-tight">{exam.title}</TableCell>
                                             <TableCell className="text-center">
                                                 {exam.is_quiz ? (
-                                                    <Badge className="bg-amber-500 hover:bg-amber-600 text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 border-0">{t("yes")}</Badge>
+                                                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200 text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 border">{t("yes")}</Badge>
                                                 ) : (
-                                                    <Badge variant="outline" className="text-gray-300 text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 border-gray-100">{t("no")}</Badge>
+                                                    <Badge variant="outline" className="text-gray-500 border-gray-300 bg-gray-50 text-[9px] uppercase font-bold tracking-widest px-2 py-0.5">{t("no")}</Badge>
                                                 )}
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
@@ -349,8 +472,8 @@ export default function OnlineExamPage() {
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex flex-col gap-1 text-[10px] font-bold">
-                                                    <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {exam.exam_from}</span>
-                                                    <span className="text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {exam.exam_to}</span>
+                                                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {formatDate(exam.exam_from?.replace(" ", "T"), "MMM dd, yyyy h:mm a")}</span>
+                                                    <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {formatDate(exam.exam_to?.replace(" ", "T"), "MMM dd, yyyy h:mm a")}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
@@ -369,14 +492,14 @@ export default function OnlineExamPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6 text-right">
-                                                <div className="flex items-center justify-end gap-1.5 flex-wrap max-w-[200px] ml-auto opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                                                    <Button size="icon" variant="ghost" title={t("assign_questions")} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                <div className="flex items-center justify-end gap-1.5 flex-wrap max-w-[200px] ml-auto">
+                                                    <Button size="icon" variant="ghost" title={t("assign_questions")} onClick={() => openAssignDialog(exam)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
                                                         <Plus className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button size="icon" variant="ghost" title={t("edit")} onClick={() => handleEdit(exam)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
                                                         <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title={t("view")} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                    <Button size="icon" variant="ghost" title={t("view")} onClick={() => openViewDialog(exam)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
                                                         <Eye className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button size="icon" variant="ghost" title={t("delete")} onClick={() => setDeleteId(exam.id)} className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg shadow-md">
@@ -424,133 +547,418 @@ export default function OnlineExamPage() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-3xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-6 btn-gradient text-white">
-                        <DialogTitle className="text-xl font-bold uppercase tracking-widest flex items-center gap-3">
-                            <Laptop className="h-6 w-6" />
-                            {dialogMode === "edit" ? t("edit_online_exam") : t("add_online_exam")}
-                        </DialogTitle>
-                        <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-widest mt-1 opacity-80">{t("configure_exam_settings_and_publication_parameters")}</p>
+                <DialogContent className="w-full sm:max-w-[95vw] md:max-w-[90vw] lg:max-w-[1150px] rounded-2xl border-0 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white relative overflow-hidden">
+                        <div className="absolute inset-0 bg-black/10 mix-blend-overlay"></div>
+                        <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-white/10 blur-3xl"></div>
+                        
+                        <div className="relative z-10 flex justify-between items-center pr-8">
+                            <div>
+                                <DialogTitle className="text-xl font-black tracking-tight flex items-center gap-3 drop-shadow-md">
+                                    <div className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-inner">
+                                        <Laptop className="h-5 w-5 text-white" />
+                                    </div>
+                                    {dialogMode === "edit" ? t("edit_online_exam") : t("add_online_exam")}
+                                </DialogTitle>
+                                <p className="text-white/80 text-[11px] font-medium mt-1 leading-relaxed">
+                                    {t("configure_exam_settings_and_publication_parameters")}
+                                </p>
+                            </div>
+                        </div>
                     </DialogHeader>
 
-                    <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto bg-white">
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_title")} <span className="text-red-500">*</span></Label>
-                                <Input
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                    placeholder={t("eg_final_revision_test")}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
-                                />
-                            </div>
-                            <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-lg border border-gray-50">
-                                <div className="space-y-1">
-                                    <Label className="text-[12px] font-bold text-gray-700 uppercase tracking-tight">{t("quiz_mode")}</Label>
-                                    <p className="text-[10px] text-gray-400 font-medium italic">{t("enable_for_rapid_evaluation")}</p>
+                    <div className="p-6 max-h-[70vh] overflow-y-auto bg-gray-50/50">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            {/* Column 1: Basic & Timing Info (4/12) */}
+                            <div className="lg:col-span-4 space-y-6">
+                                <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="h-5 w-1 rounded-full bg-indigo-500"></div>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Basic Info</h3>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_title")} <span className="text-red-500">*</span></Label>
+                                            <Input
+                                                value={formData.title}
+                                                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                                placeholder={t("eg_final_revision_test")}
+                                                className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none text-xs"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-gray-50/85 transition-colors rounded-xl border border-gray-100 h-10">
+                                            <Label className="text-xs font-bold text-gray-700">{t("quiz_mode")}</Label>
+                                            <Switch 
+                                                checked={formData.is_quiz} 
+                                                onCheckedChange={(val) => setFormData({...formData, is_quiz: val})}
+                                                className="data-[state=checked]:bg-indigo-500 scale-90"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                                <Switch 
-                                    checked={formData.is_quiz} 
-                                    onCheckedChange={(val) => setFormData({...formData, is_quiz: val})}
-                                    className="data-[state=checked]:bg-indigo-500"
-                                />
-                            </div>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_from")} <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    type="datetime-local"
-                                    value={formData.exam_from} 
-                                    onChange={(e) => setFormData({...formData, exam_from: e.target.value})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_to")} <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    type="datetime-local"
-                                    value={formData.exam_to} 
-                                    onChange={(e) => setFormData({...formData, exam_to: e.target.value})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("duration_hh_mm_ss")}</Label>
-                                <Input 
-                                    value={formData.duration} 
-                                    onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("max_attempts")}</Label>
-                                <Input 
-                                    type="number"
-                                    value={formData.attempt} 
-                                    onChange={(e) => setFormData({...formData, attempt: parseInt(e.target.value)})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("passing_percentage")}</Label>
-                                <Input 
-                                    type="number"
-                                    value={formData.passing_percentage} 
-                                    onChange={(e) => setFormData({...formData, passing_percentage: parseInt(e.target.value)})}
-                                    className="h-11 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="flex items-center justify-between p-4 bg-emerald-50/30 rounded-lg border border-emerald-50">
-                                <div className="space-y-1">
-                                    <Label className="text-[12px] font-bold text-emerald-700 uppercase tracking-tight flex items-center gap-2"><CheckCircle2 className="h-3 w-3" /> {t("publish_exam")}</Label>
-                                    <p className="text-[10px] text-emerald-600/70 font-medium italic">{t("make_exam_visible_to_students")}</p>
+                                <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="h-5 w-1 rounded-full bg-orange-400"></div>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Timing</h3>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_from")} <span className="text-red-500">*</span></Label>
+                                            <Input 
+                                                type="datetime-local"
+                                                value={formData.exam_from} 
+                                                onChange={(e) => setFormData({...formData, exam_from: e.target.value})}
+                                                className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none text-xs"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_to")} <span className="text-red-500">*</span></Label>
+                                            <Input 
+                                                type="datetime-local"
+                                                value={formData.exam_to} 
+                                                onChange={(e) => setFormData({...formData, exam_to: e.target.value})}
+                                                className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none text-xs"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-50">
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-bold text-gray-400 uppercase">{t("duration")}</Label>
+                                            <Input 
+                                                value={formData.duration} 
+                                                onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                                                className="h-9 border-gray-100 bg-gray-50/30 text-center text-xs p-1"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-bold text-gray-400 uppercase">{t("attempts")}</Label>
+                                            <Input 
+                                                type="number"
+                                                value={formData.attempt} 
+                                                onChange={(e) => setFormData({...formData, attempt: parseInt(e.target.value) || 1})}
+                                                className="h-9 border-gray-100 bg-gray-50/30 text-center text-xs p-1"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-bold text-gray-400 uppercase">Pass %</Label>
+                                            <Input 
+                                                type="number"
+                                                value={formData.passing_percentage} 
+                                                onChange={(e) => setFormData({...formData, passing_percentage: parseInt(e.target.value) || 33})}
+                                                className="h-9 border-gray-100 bg-gray-50/30 text-center text-xs p-1"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                                <Switch 
-                                    checked={formData.is_published} 
-                                    onCheckedChange={(val) => setFormData({...formData, is_published: val})}
-                                    className="data-[state=checked]:bg-emerald-500"
-                                />
                             </div>
-                            <div className="flex items-center justify-between p-4 bg-indigo-50/30 rounded-lg border border-indigo-50">
-                                <div className="space-y-1">
-                                    <Label className="text-[12px] font-bold text-indigo-700 uppercase tracking-tight flex items-center gap-2"><Trophy className="h-3 w-3" /> {t("publish_result")}</Label>
-                                    <p className="text-[10px] text-indigo-600/70 font-medium italic">{t("show_marks_after_completion")}</p>
-                                </div>
-                                <Switch 
-                                    checked={formData.is_result_published} 
-                                    onCheckedChange={(val) => setFormData({...formData, is_result_published: val})}
-                                    className="data-[state=checked]:bg-indigo-500"
-                                />
-                            </div>
-                        </div>
 
-                        <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("description")}</Label>
-                            <Textarea
-                                value={formData.description}
-                                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                placeholder={t("enter_exam_instructions_or_details")}
-                                className="min-h-[100px] border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 p-4"
-                            />
+                            {/* Column 2: Visibility & Description (4/12) */}
+                            <div className="lg:col-span-4 space-y-6">
+                                <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="h-5 w-1 rounded-full bg-emerald-500"></div>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Settings</h3>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between p-3 bg-emerald-50/30 hover:bg-emerald-50 transition-colors rounded-xl border border-emerald-100/50 shadow-sm h-10">
+                                            <Label className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> {t("publish_exam")}</Label>
+                                            <Switch 
+                                                checked={formData.is_published} 
+                                                onCheckedChange={(val) => setFormData({...formData, is_published: val})}
+                                                className="data-[state=checked]:bg-emerald-500 scale-90"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-indigo-50/30 hover:bg-indigo-50 transition-colors rounded-xl border border-indigo-100/50 shadow-sm h-10">
+                                            <Label className="text-[11px] font-bold text-indigo-800 flex items-center gap-1.5"><Trophy className="h-3.5 w-3.5" /> {t("publish_result")}</Label>
+                                            <Switch 
+                                                checked={formData.is_result_published} 
+                                                onCheckedChange={(val) => setFormData({...formData, is_result_published: val})}
+                                                className="data-[state=checked]:bg-indigo-500 scale-90"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-3 flex flex-col h-[230px]">
+                                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t("description")}</Label>
+                                    <Textarea
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                        placeholder={t("enter_exam_instructions_or_details")}
+                                        className="flex-1 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 p-3 text-xs resize-none"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Column 3: Question Assignment (4/12) */}
+                            <div className="lg:col-span-4 flex flex-col space-y-6">
+                                <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-3 flex flex-col h-[395px]">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-5 w-1 rounded-full bg-indigo-500"></div>
+                                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Assign Questions</h3>
+                                        </div>
+                                        <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full">
+                                            {(formData.questions || []).length} {t("selected")}
+                                        </span>
+                                    </div>
+
+                                    <Input
+                                        placeholder="Search questions..."
+                                        value={questionSearch}
+                                        onChange={(e) => setQuestionSearch(e.target.value)}
+                                        className="h-9 text-xs border-gray-100 bg-gray-50/50 shadow-none focus:ring-indigo-500"
+                                    />
+
+                                    <div className="flex-1 overflow-y-auto border border-gray-100 rounded-lg p-2 bg-gray-50/20 space-y-2 max-h-[260px]">
+                                        {availableQuestions.filter(q => 
+                                            q.question?.toLowerCase().includes(questionSearch.toLowerCase()) ||
+                                            q.subject?.toLowerCase().includes(questionSearch.toLowerCase())
+                                        ).length === 0 ? (
+                                            <p className="text-[10px] text-gray-400 text-center py-12">No questions available</p>
+                                        ) : (
+                                            availableQuestions.filter(q => 
+                                                q.question?.toLowerCase().includes(questionSearch.toLowerCase()) ||
+                                                q.subject?.toLowerCase().includes(questionSearch.toLowerCase())
+                                            ).map((q) => {
+                                                const isChecked = (formData.questions || []).some((sq: any) => sq.id === q.id);
+                                                const selectedQ = (formData.questions || []).find((sq: any) => sq.id === q.id);
+                                                const marksValue = selectedQ?.marks || 1;
+
+                                                return (
+                                                    <div key={q.id} className="flex items-start justify-between p-2 rounded-lg bg-white border border-gray-100 hover:border-indigo-100 transition-colors">
+                                                        <div className="flex items-start gap-2 max-w-[70%]">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={(e) => {
+                                                                    let updated = [...(formData.questions || [])];
+                                                                    if (e.target.checked) {
+                                                                        updated.push({ id: q.id, marks: 1 });
+                                                                    } else {
+                                                                        updated = updated.filter((sq: any) => sq.id !== q.id);
+                                                                    }
+                                                                    setFormData({ ...formData, questions: updated });
+                                                                }}
+                                                                className="mt-1 accent-indigo-600 h-3.5 w-3.5 rounded"
+                                                            />
+                                                            <div className="space-y-0.5">
+                                                                <p className="text-[11px] font-bold text-gray-700 line-clamp-2">{stripHtml(q.question)}</p>
+                                                                <span className="text-[8px] bg-gray-100 text-gray-500 px-1 py-0.5 rounded uppercase font-black">
+                                                                    {q.subject}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {isChecked && (
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-[9px] text-gray-400 font-bold">Marks:</span>
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    value={marksValue}
+                                                                    onChange={(e) => {
+                                                                        const val = parseInt(e.target.value) || 1;
+                                                                        const updated = (formData.questions || []).map((sq: any) => 
+                                                                            sq.id === q.id ? { ...sq, marks: val } : sq
+                                                                        );
+                                                                        setFormData({ ...formData, questions: updated });
+                                                                    }}
+                                                                    className="w-10 h-7 border border-gray-200 rounded text-center text-xs font-bold focus:outline-indigo-500"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <DialogFooter className="p-6 bg-gray-50/50 flex justify-end gap-3">
-                        <Button onClick={() => setIsDialogOpen(false)} variant="outline" className="h-11 px-8 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-200">
+                    <DialogFooter className="p-6 bg-gray-50/50 flex justify-end gap-3 border-t border-gray-100">
+                        <Button onClick={() => setIsDialogOpen(false)} variant="outline" className="h-10 px-6 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-200">
                             {t("cancel")}
                         </Button>
-                        <Button onClick={handleSave} className="btn-gradient text-white h-11 px-12 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-orange-200/50">
+                        <Button onClick={handleSave} className="btn-gradient text-white h-10 px-10 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-orange-200/50">
                             {dialogMode === "edit" ? t("update_exam") : t("save_exam")}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+                <DialogContent className="w-full sm:max-w-lg rounded-2xl border-0 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 bg-gradient-to-r from-[#F7A148] to-[#7778EC] text-white">
+                        <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                            <Plus className="h-5 w-5" /> Assign Questions to Exam
+                        </DialogTitle>
+                        <p className="text-indigo-100 text-[11px]">Select questions from the question bank and configure their scores</p>
+                    </DialogHeader>
+
+                    <div className="p-6 space-y-4 bg-gray-50/30">
+                        <Input
+                            placeholder="Search questions..."
+                            value={assignSearch}
+                            onChange={(e) => setAssignSearch(e.target.value)}
+                            className="h-10 text-xs border-gray-200 bg-white shadow-none"
+                        />
+
+                        <div className="overflow-y-auto max-h-[350px] border border-gray-100 rounded-xl p-3 bg-white space-y-3 shadow-sm">
+                            {availableQuestions.filter(q => 
+                                q.question?.toLowerCase().includes(assignSearch.toLowerCase()) ||
+                                q.subject?.toLowerCase().includes(assignSearch.toLowerCase())
+                            ).length === 0 ? (
+                                <p className="text-xs text-gray-400 text-center py-16">No questions found in bank</p>
+                            ) : (
+                                availableQuestions.filter(q => 
+                                    q.question?.toLowerCase().includes(assignSearch.toLowerCase()) ||
+                                    q.subject?.toLowerCase().includes(assignSearch.toLowerCase())
+                                ).map((q) => {
+                                    const isChecked = assignQuestions.some((sq: any) => sq.id === q.id);
+                                    const selectedQ = assignQuestions.find((sq: any) => sq.id === q.id);
+                                    const marksValue = selectedQ?.marks || 1;
+
+                                    return (
+                                        <div key={q.id} className="flex items-start justify-between p-3 rounded-lg bg-gray-50/30 border border-gray-100 hover:border-indigo-100 transition-colors">
+                                            <div className="flex items-start gap-2.5 max-w-[70%]">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={(e) => {
+                                                        let updated = [...assignQuestions];
+                                                        if (e.target.checked) {
+                                                            updated.push({ id: q.id, marks: 1 });
+                                                        } else {
+                                                            updated = updated.filter((sq: any) => sq.id !== q.id);
+                                                        }
+                                                        setAssignQuestions(updated);
+                                                    }}
+                                                    className="mt-1 h-4 w-4 accent-indigo-600 rounded"
+                                                />
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-bold text-gray-700 line-clamp-2">{stripHtml(q.question)}</p>
+                                                    <div className="flex gap-2">
+                                                        <span className="text-[8px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-black uppercase">
+                                                            {q.subject}
+                                                        </span>
+                                                        <span className="text-[8px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-black uppercase">
+                                                            {q.question_type}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {isChecked && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] text-gray-400 font-bold">Marks:</span>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={marksValue}
+                                                        onChange={(e) => {
+                                                            const val = parseInt(e.target.value) || 1;
+                                                            const updated = assignQuestions.map((sq: any) => 
+                                                                sq.id === q.id ? { ...sq, marks: val } : sq
+                                                            );
+                                                            setAssignQuestions(updated);
+                                                        }}
+                                                        className="w-12 h-8 border border-gray-200 rounded text-center text-xs font-bold focus:outline-indigo-500"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter className="p-6 bg-gray-50/50 flex justify-end gap-3 border-t border-gray-100">
+                        <Button onClick={() => setIsAssignDialogOpen(false)} variant="outline" className="h-10 px-6 rounded-full text-[11px] font-bold uppercase border-gray-200">
+                            {t("cancel")}
+                        </Button>
+                        <Button onClick={handleSaveAssign} className="btn-gradient text-white h-10 px-8 rounded-full text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50">
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* View Exam Details Dialog */}
+            <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+                <DialogContent className="w-full sm:max-w-2xl rounded-2xl border-0 shadow-2xl p-0 overflow-hidden">
+                    {viewExamDetails && (
+                        <>
+                            <DialogHeader className="p-6 bg-gradient-to-r from-[#F7A148] to-[#7778EC] text-white">
+                                <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+                                    <Eye className="h-5 w-5" /> {viewExamDetails.title}
+                                </DialogTitle>
+                                <div className="flex gap-4 mt-2 text-xs text-indigo-100">
+                                    <span>Attempt Limit: <strong className="text-white">{viewExamDetails.attempt}</strong></span>
+                                    <span>•</span>
+                                    <span>Passing: <strong className="text-white">{viewExamDetails.passing_percentage}%</strong></span>
+                                    <span>•</span>
+                                    <span>Duration: <strong className="text-white">{viewExamDetails.duration}</strong></span>
+                                </div>
+                            </DialogHeader>
+
+                            <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto bg-gray-50/50">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-1">
+                                        <Label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Exam Period Start</Label>
+                                        <p className="text-xs font-bold text-gray-700">{formatDate(viewExamDetails.exam_from?.replace(" ", "T"), "MMM dd, yyyy h:mm a")}</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-1">
+                                        <Label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Exam Period End</Label>
+                                        <p className="text-xs font-bold text-gray-700">{formatDate(viewExamDetails.exam_to?.replace(" ", "T"), "MMM dd, yyyy h:mm a")}</p>
+                                    </div>
+                                </div>
+
+                                {viewExamDetails.description && (
+                                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-1">
+                                        <Label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Instructions</Label>
+                                        <p className="text-xs text-gray-600 whitespace-pre-wrap">{viewExamDetails.description}</p>
+                                    </div>
+                                )}
+
+                                <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
+                                    <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Assigned Questions</h3>
+                                        <Badge className="bg-indigo-50 text-indigo-700 border-indigo-100 font-bold uppercase text-[9px] px-2 py-0.5">{viewExamDetails.questions?.length || 0} Questions</Badge>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {(!viewExamDetails.questions || viewExamDetails.questions.length === 0) ? (
+                                            <p className="text-xs text-gray-400 italic text-center py-6">No questions assigned to this exam yet.</p>
+                                        ) : (
+                                            viewExamDetails.questions.map((q: any, idx: number) => (
+                                                <div key={q.id} className="flex justify-between items-start p-3 rounded-lg bg-gray-50/50 border border-gray-50">
+                                                    <div className="space-y-1 max-w-[80%]">
+                                                        <p className="text-xs font-bold text-gray-700"><span className="text-indigo-500 font-black mr-1">{idx+1}.</span> {stripHtml(q.question)}</p>
+                                                        <div className="flex gap-2">
+                                                            <span className="text-[8px] bg-indigo-50 text-indigo-700 px-1 py-0.5 rounded font-black uppercase">{q.subject}</span>
+                                                            <span className="text-[8px] bg-gray-100 text-gray-500 px-1 py-0.5 rounded font-black uppercase">{q.question_type}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-xs font-black text-indigo-600 bg-indigo-50/60 border border-indigo-100/50 px-2.5 py-1 rounded-lg">{q.pivot?.marks || 1} M</span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <DialogFooter className="p-6 bg-gray-50/50 flex justify-end border-t border-gray-100">
+                                <Button onClick={() => setIsViewDialogOpen(false)} className="btn-gradient text-white h-10 px-8 rounded-full text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50">
+                                    {t("close")}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
                 </DialogContent>
             </Dialog>
 

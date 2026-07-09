@@ -541,7 +541,7 @@ export default function DesignAdmitCardPage() {
 
                             <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                                 <Table>
-                                    <TableHeader className="bg-gray-50/50 text-[11px] uppercase font-bold text-gray-600">
+                                    <TableHeader className="!bg-[#f3f4f6] text-[11px] uppercase font-bold text-gray-600">
                                         <TableRow className="hover:bg-transparent border-gray-50">
                                             <TableHead className="py-4 px-6">{t("certificate_name")}</TableHead>
                                             <TableHead className="py-4 px-6">{t("status")}</TableHead>
@@ -663,7 +663,7 @@ export default function DesignAdmitCardPage() {
 
             {/* Preview Modal */}
             <Dialog open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
-                <DialogContent className="max-w-[900px] max-h-[90vh] overflow-auto border-0 p-0 bg-transparent shadow-none" showCloseButton={false}>
+                <DialogContent className="w-[95vw] sm:w-[95vw] max-w-[95vw] sm:max-w-[1800px] max-h-[95vh] overflow-auto border-0 p-0 bg-transparent shadow-none" showCloseButton={false}>
                     <div className="bg-white rounded-xl overflow-hidden shadow-2xl relative">
                         <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-50">
                             <DialogTitle className="text-lg font-bold text-gray-800 tracking-tight">{t("preview_design")} - <span className="text-indigo-600">{previewTemplate?.name}</span></DialogTitle>
@@ -674,7 +674,7 @@ export default function DesignAdmitCardPage() {
                         <div className="p-4 md:p-8 bg-gray-100 min-h-[500px] overflow-x-auto">
                             {previewTemplate && (
                                 <div className="mx-auto w-max">
-                                    <div className="bg-white shadow-xl" style={{ width: '794px' }}>
+                                    <div className="bg-white shadow-xl" style={{ width: previewTemplate?.name?.toLowerCase().includes('design 2') ? '1588px' : '794px' }}>
                                         <AdmitCardTemplateLayout data={getMockAdmitCardData(previewTemplate)} />
                                     </div>
                                 </div>

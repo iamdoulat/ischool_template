@@ -71,7 +71,7 @@ export const MarksheetTemplateLayout = React.forwardRef<HTMLDivElement, { data: 
             ref={ref} 
             className="marksheet-container" 
             style={{ 
-                width: '794px', // A4 width in pixels at 96 DPI
+                width: isDesign2 ? '1588px' : '794px', // Double A4 width for Design 2, else A4 width
                 minHeight: '1123px', // A4 height
                 padding: '20px 40px 40px 40px',
                 fontFamily: 'Arial, sans-serif',

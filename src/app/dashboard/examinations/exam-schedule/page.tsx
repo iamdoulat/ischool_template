@@ -229,7 +229,7 @@ export default function ExamSchedulePage() {
 
                     <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                         <Table>
-                            <TableHeader className="bg-gray-50/50 text-[10px] uppercase font-bold text-gray-500">
+                            <TableHeader className="!bg-[#f3f4f6] text-[10px] uppercase font-bold text-gray-500">
                                 <TableRow className="hover:bg-transparent border-gray-50">
                                     <TableHead className="py-4 px-6 min-w-[200px]">{t("subject")}</TableHead>
                                     <TableHead className="py-4 px-6 min-w-[150px]">{t("date_and_time")}</TableHead>
