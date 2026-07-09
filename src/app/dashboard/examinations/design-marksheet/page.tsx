@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
     Pencil, Trash2, Eye, Upload, Image as ImageIcon, Search,
     Copy, FileSpreadsheet, FileText, Printer, Columns,
-    ChevronLeft, ChevronRight, Palette, FileBadge, Settings2, FileCheck
+    ChevronLeft, ChevronRight, Palette, FileBadge, Settings2, FileCheck,
+    Loader2
 } from "lucide-react";
 import {
     AlertDialog,

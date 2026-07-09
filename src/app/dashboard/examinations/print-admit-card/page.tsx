@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import html2canvas from 'html2canvas-pro';
+import jsPDF from 'jspdf';
+import { AdmitCardTemplateLayout, AdmitCardData } from "@/components/examination/AdmitCardTemplateLayout";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -11,8 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-    Search, Printer, UserCircle, Calendar, Filter, UserCheck
+    Search, Printer, UserCircle, Calendar, Filter, UserCheck, Download, Loader2
 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -34,6 +38,7 @@ interface OptionItem {
     id: string | number;
     name?: string;
     year?: string;
+    session?: string;
     exams?: OptionItem[];
 }
 
@@ -54,6 +59,12 @@ export default function PrintAdmitCardPage() {
     const tt = useTranslateToast();
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
+    const [searchedOnce, setSearchedOnce] = useState(false);
+    const [admitCardData, setAdmitCardData] = useState<AdmitCardData | null>(null);
+    const [printing, setPrinting] = useState(false);
+    const [printingStudentId, setPrintingStudentId] = useState<string | null>(null);
+    const [printProgress, setPrintProgress] = useState({ current: 0, total: 0 });
+    const printRef = useRef<HTMLDivElement>(null);
 
     // Criteria Data
     const [classes, setClasses] = useState<OptionItem[]>([]);
@@ -84,17 +95,15 @@ export default function PrintAdmitCardPage() {
     const fetchInitialData = async () => {
         setLoading(true);
         try {
-            const [criteriaRes, classesRes, sectionsRes] = await Promise.all([
+            const [criteriaRes, classesRes] = await Promise.all([
                 api.get('/examination/print-admit-card/criteria'),
-                api.get('/academics/classes?no_paginate=true'),
-                api.get('/academics/sections?no_paginate=true')
+                api.get('/academics/classes?no_paginate=true')
             ]);
 
             setExamGroups(criteriaRes.data.exam_groups || []);
             setTemplates(criteriaRes.data.admit_card_templates || []);
             setSessions(criteriaRes.data.sessions || []);
             setClasses(classesRes.data.data || classesRes.data || []);
-            setSections(sectionsRes.data.data || sectionsRes.data || []);
         } catch (error) {
             tt.error("failed_to_load_criteria_data");
         } finally {
@@ -109,7 +118,19 @@ export default function PrintAdmitCardPage() {
         } else {
             setExams([]);
         }
+        setSelectedCriteria(prev => ({ ...prev, exam_id: "" }));
     }, [selectedCriteria.exam_group_id, examGroups]);
+
+    useEffect(() => {
+        if (selectedCriteria.school_class_id) {
+            api.get(`/academics/sections?school_class_id=${selectedCriteria.school_class_id}&no_paginate=true`)
+                .then(res => setSections(res.data?.data || res.data || []))
+                .catch(() => setSections([]));
+        } else {
+            setSections([]);
+        }
+        setSelectedCriteria(prev => ({ ...prev, section_id: "" }));
+    }, [selectedCriteria.school_class_id]);
 
     const handleSearch = async () => {
         if (!selectedCriteria.school_class_id || !selectedCriteria.section_id || !selectedCriteria.exam_id) {
@@ -118,12 +139,16 @@ export default function PrintAdmitCardPage() {
         }
 
         setSearching(true);
+        setSearchedOnce(true);
         try {
             const response = await api.post('/examination/print-admit-card/search', {
                 school_class_id: selectedCriteria.school_class_id,
-                section_id: selectedCriteria.section_id
+                section_id: selectedCriteria.section_id,
+                exam_id: selectedCriteria.exam_id,
+                session_id: selectedCriteria.session_id
             });
-            setStudents(response.data || []);
+            const responseData = response.data?.data || response.data || [];
+            setStudents(Array.isArray(responseData) ? responseData : []);
             setSelectedIds([]);
         } catch (error) {
             tt.error("failed_to_fetch_students");
@@ -142,6 +167,178 @@ export default function PrintAdmitCardPage() {
 
     const toggleSelect = (id: string) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
+
+    const fetchAdmitCardData = async (studentId: string) => {
+        try {
+            const res = await api.post('/examination/print-admit-card/generate', {
+                student_id: studentId,
+                exam_id: selectedCriteria.exam_id,
+                template_id: selectedCriteria.template_id
+            });
+            const data = res.data;
+            setAdmitCardData(data);
+            return data;
+        } catch (error: any) {
+            tt.error(error?.response?.data?.message || "Failed to fetch admit card data");
+            return null;
+        }
+    };
+
+    const generateSinglePdf = async () => {
+        if (!printRef.current) return null;
+        await inlineAllImages(printRef.current);
+        await new Promise(res => setTimeout(res, 200));
+        const canvas = await html2canvas(printRef.current, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'pt', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        return pdf;
+    };
+
+    const handleSingleDownload = async (studentId: string) => {
+        setPrintingStudentId(studentId);
+        const data = await fetchAdmitCardData(studentId);
+        if (data) {
+            setTimeout(async () => {
+                const pdf = await generateSinglePdf();
+                if (pdf) {
+                    pdf.save(`AdmitCard_${data.student.admission_no}.pdf`);
+                }
+                setPrintingStudentId(null);
+                setAdmitCardData(null);
+            }, 500);
+        } else {
+            setPrintingStudentId(null);
+        }
+    };
+
+    const handleSinglePrint = async (studentId: string) => {
+        setPrintingStudentId(studentId);
+        const data = await fetchAdmitCardData(studentId);
+        if (data) {
+            setTimeout(async () => {
+                const pdf = await generateSinglePdf();
+                if (pdf) {
+                    pdf.autoPrint();
+                    const blob = pdf.output('blob');
+                    const url = URL.createObjectURL(blob);
+                    
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = url;
+                    document.body.appendChild(iframe);
+                    
+                    iframe.onload = () => {
+                        setTimeout(() => {
+                            iframe.focus();
+                            iframe.contentWindow?.print();
+                            setPrintingStudentId(null);
+                            setAdmitCardData(null);
+                        }, 100);
+                    };
+                } else {
+                    setPrintingStudentId(null);
+                    setAdmitCardData(null);
+                }
+            }, 500);
+        } else {
+            setPrintingStudentId(null);
+        }
+    };
+
+    const inlineAllImages = async (container: HTMLElement) => {
+        const images = container.querySelectorAll('img');
+        const promises = Array.from(images).map(async (img) => {
+            const src = img.getAttribute('src');
+            if (!src || src.startsWith('data:')) return;
+            try {
+                const tmpImg = new Image();
+                tmpImg.crossOrigin = 'anonymous';
+                await new Promise<void>((resolve, reject) => {
+                    tmpImg.onload = () => resolve();
+                    tmpImg.onerror = () => reject(new Error('img load failed'));
+                    tmpImg.src = src;
+                });
+                const cvs = document.createElement('canvas');
+                cvs.width = tmpImg.naturalWidth;
+                cvs.height = tmpImg.naturalHeight;
+                const ctx = cvs.getContext('2d')!;
+                ctx.drawImage(tmpImg, 0, 0);
+                img.src = cvs.toDataURL('image/png');
+            } catch {
+                try {
+                    const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(src)}`;
+                    const res = await fetch(proxyUrl);
+                    const blob = await res.blob();
+                    const dataUrl = await new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.readAsDataURL(blob);
+                    });
+                    img.src = dataUrl;
+                } catch {
+                    console.warn('Could not inline image:', src);
+                }
+            }
+        });
+        await Promise.all(promises);
+    };
+
+    const generatePdf = async () => {
+        if (selectedIds.length === 0) return;
+        setPrinting(true);
+        setPrintProgress({ current: 0, total: selectedIds.length });
+
+        try {
+            const pdf = new jsPDF('p', 'pt', 'a4'); // A4 size
+            let addedPages = 0;
+
+            for (let i = 0; i < selectedIds.length; i++) {
+                const studentId = selectedIds[i];
+                const data = await fetchAdmitCardData(studentId);
+                
+                if (data && printRef.current) {
+                    await new Promise(res => setTimeout(res, 100)); // React render time
+                    await inlineAllImages(printRef.current);
+                    await new Promise(res => setTimeout(res, 200));
+
+                    const canvas = await html2canvas(printRef.current, {
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    });
+
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                    if (addedPages > 0) pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                    addedPages++;
+                }
+                setPrintProgress({ current: i + 1, total: selectedIds.length });
+            }
+
+            if (addedPages > 0) {
+                pdf.save(`AdmitCards_${new Date().getTime()}.pdf`);
+                tt.success("admit_cards_generated_successfully");
+            }
+        } catch (error) {
+            console.error("PDF generation error:", error);
+            tt.error("failed_to_generate_admit_cards");
+        } finally {
+            setPrinting(false);
+            setAdmitCardData(null);
+        }
     };
 
     return (
@@ -169,7 +366,7 @@ export default function PrintAdmitCardPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                                 {t("exam_group")} <span className="text-red-500">*</span>
@@ -207,7 +404,7 @@ export default function PrintAdmitCardPage() {
                                     <SelectValue placeholder={t("select_session")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.year}</SelectItem>)}
+                                    {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.session || s.year || s.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -277,12 +474,20 @@ export default function PrintAdmitCardPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_students_y_selected", { total: students.length, selected: selectedIds.length })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{selectedIds.length} {t("selected")} | {t("total_students")}: {students.length}</p>
                         </div>
                     </div>
                     {selectedIds.length > 0 && (
-                        <Button className="btn-gradient text-white h-10 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-indigo-100 flex gap-2">
-                            <Printer className="h-3.5 w-3.5" /> {t("generate_admit_cards")} ({selectedIds.length})
+                        <Button 
+                            onClick={generatePdf}
+                            disabled={printing}
+                            className="btn-gradient text-white h-10 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-indigo-100 flex gap-2"
+                        >
+                            {printing ? (
+                                <><div className="animate-spin h-3 w-3 border-2 border-white/30 border-t-white rounded-full" /> {t("generating")} ({printProgress.current}/{printProgress.total})</>
+                            ) : (
+                                <><Printer className="h-3.5 w-3.5" /> {t("generate_admit_cards")} ({selectedIds.length})</>
+                            )}
                         </Button>
                     )}
                 </CardHeader>
@@ -312,7 +517,7 @@ export default function PrintAdmitCardPage() {
                                 ) : students.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={7} className="h-32 text-center text-gray-400 text-sm italic">
-                                            {t("please_select_criteria_and_search")}
+                                            {searchedOnce ? t("no_students_found") : t("please_select_criteria_and_search")}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -334,7 +539,7 @@ export default function PrintAdmitCardPage() {
                                             </TableCell>
                                             <TableCell className="py-4 px-6 font-medium">{student.father_name || "---"}</TableCell>
                                             <TableCell className="py-4 px-6 text-[11px] font-bold">
-                                                <span className="flex items-center gap-2 text-gray-500"><Calendar className="h-3 w-3" /> {student.dob || "---"}</span>
+                                                <span className="flex items-center gap-2 text-gray-500"><Calendar className="h-3 w-3" /> {student.dob ? formatDate(student.dob) : "---"}</span>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${student.gender === 'Male' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
@@ -342,14 +547,26 @@ export default function PrintAdmitCardPage() {
                                                 </span>
                                             </TableCell>
                                             <TableCell className="py-4 px-6 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                                                <div className="flex items-center justify-end gap-2">
                                                     <Button
                                                         size="icon"
                                                         variant="ghost"
-                                                        className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-all"
-                                                        title={t("generate_admit_card")}
+                                                        onClick={() => handleSingleDownload(student.id)}
+                                                        disabled={printing || (printingStudentId !== null)}
+                                                        className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md transition-all disabled:opacity-50"
+                                                        title={t("download_admit_card")}
                                                     >
-                                                        <Printer className="h-4 w-4" />
+                                                        {printingStudentId === student.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        onClick={() => handleSinglePrint(student.id)}
+                                                        disabled={printing || (printingStudentId !== null)}
+                                                        className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-all disabled:opacity-50"
+                                                        title={t("print_admit_card")}
+                                                    >
+                                                        {printingStudentId === student.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
                                                     </Button>
                                                 </div>
                                             </TableCell>
@@ -361,6 +578,13 @@ export default function PrintAdmitCardPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Hidden container for PDF Generation */}
+            {admitCardData && (
+                <div className="fixed top-[-9999px] left-[-9999px] opacity-0 overflow-hidden" aria-hidden="true">
+                    <AdmitCardTemplateLayout ref={printRef} data={admitCardData} />
+                </div>
+            )}
         </div>
     );
 }
