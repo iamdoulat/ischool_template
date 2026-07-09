@@ -308,58 +308,58 @@ export const MarksheetTemplateLayout = React.forwardRef<HTMLDivElement, { data: 
                     // ----------------------------------------------------
                     <>
                         {/* Student Info Section */}
-                        <div className="flex gap-6 mb-8 text-sm items-start">
+                        <div className="flex gap-4 mb-6 items-start" style={{ fontSize: '11px' }}>
                             {/* Text Fields (Columns 1 & 2) */}
-                            <div className="flex-1 grid grid-cols-2 gap-x-12 gap-y-3">
+                            <div className="flex-1 grid grid-cols-2 gap-x-8 gap-y-1.5">
                                 {template.show_name && (
-                                    <div className="flex pb-1" style={{ borderBottom: '1px solid #d1d5db' }}>
-                                        <span className="font-bold w-1/3">Student Name</span>
-                                        <span className="w-2/3">: {student.name}</span>
+                                    <div className="flex pb-0.5" style={{ borderBottom: '1px solid #d1d5db' }}>
+                                        <span className="font-bold" style={{ width: '36%' }}>Student Name</span>
+                                        <span style={{ width: '64%' }}>: {student.name}</span>
                                     </div>
                                 )}
                                 {template.show_admission_no && (
-                                    <div className="flex pb-1" style={{ borderBottom: '1px solid #d1d5db' }}>
-                                        <span className="font-bold w-1/3">Admission No</span>
-                                        <span className="w-2/3">: {student.admission_no}</span>
+                                    <div className="flex pb-0.5" style={{ borderBottom: '1px solid #d1d5db' }}>
+                                        <span className="font-bold" style={{ width: '36%' }}>Admission No</span>
+                                        <span style={{ width: '64%' }}>: {student.admission_no}</span>
                                     </div>
                                 )}
                                 {template.show_father_name && (
-                                    <div className="flex pb-1" style={{ borderBottom: '1px solid #d1d5db' }}>
-                                        <span className="font-bold w-1/3">Father Name</span>
-                                        <span className="w-2/3">: {student.father_name}</span>
+                                    <div className="flex pb-0.5" style={{ borderBottom: '1px solid #d1d5db' }}>
+                                        <span className="font-bold" style={{ width: '36%' }}>Father Name</span>
+                                        <span style={{ width: '64%' }}>: {student.father_name}</span>
                                     </div>
                                 )}
                                 {template.show_roll_no && (
-                                    <div className="flex pb-1" style={{ borderBottom: '1px solid #d1d5db' }}>
-                                        <span className="font-bold w-1/3">Roll Number</span>
-                                        <span className="w-2/3">: {student.roll_no}</span>
+                                    <div className="flex pb-0.5" style={{ borderBottom: '1px solid #d1d5db' }}>
+                                        <span className="font-bold" style={{ width: '36%' }}>Roll Number</span>
+                                        <span style={{ width: '64%' }}>: {student.roll_no}</span>
                                     </div>
                                 )}
                                 {template.show_mother_name && (
-                                    <div className="flex pb-1" style={{ borderBottom: '1px solid #d1d5db' }}>
-                                        <span className="font-bold w-1/3">Mother Name</span>
-                                        <span className="w-2/3">: {student.mother_name}</span>
+                                    <div className="flex pb-0.5" style={{ borderBottom: '1px solid #d1d5db' }}>
+                                        <span className="font-bold" style={{ width: '36%' }}>Mother Name</span>
+                                        <span style={{ width: '64%' }}>: {student.mother_name}</span>
                                     </div>
                                 )}
                                 {template.show_class && (
-                                    <div className="flex pb-1" style={{ borderBottom: '1px solid #d1d5db' }}>
-                                        <span className="font-bold w-1/3">Class</span>
-                                        <span className="w-2/3">: {student.class} {template.show_section && student.section ? ` - ${student.section}` : ''}</span>
+                                    <div className="flex pb-0.5" style={{ borderBottom: '1px solid #d1d5db' }}>
+                                        <span className="font-bold" style={{ width: '36%' }}>Class</span>
+                                        <span style={{ width: '64%' }}>: {student.class} {template.show_section && student.section ? ` - ${student.section}` : ''}</span>
                                     </div>
                                 )}
-                                <div className="flex pb-1" style={{ borderBottom: '1px solid #d1d5db' }}>
-                                    <span className="font-bold w-1/3">Date of Birth</span>
-                                    <span className="w-2/3">: {student.dob ? new Date(student.dob).toLocaleDateString('en-GB') : ''}</span>
+                                <div className="flex pb-0.5" style={{ borderBottom: '1px solid #d1d5db' }}>
+                                    <span className="font-bold" style={{ width: '36%' }}>Date of Birth</span>
+                                    <span style={{ width: '64%' }}>: {student.dob ? new Date(student.dob).toLocaleDateString('en-GB') : ''}</span>
                                 </div>
                             </div>
 
                             {/* Photo Box (Column 3) */}
                             {template.show_photo && (
-                                <div className="w-[110px] shrink-0" style={{ border: '1px solid #1f2937', padding: '4px' }}>
+                                <div className="w-[90px] shrink-0" style={{ border: '1px solid #1f2937', padding: '3px' }}>
                                     {student.photo ? (
                                         <img src={resolveImageUrl(student.photo)} alt="Student Photo" className="w-full h-auto aspect-[3/4] object-cover" />
                                     ) : (
-                                        <div className="w-full aspect-[3/4] flex items-center justify-center text-gray-400 text-[10px] text-center font-bold">
+                                        <div className="w-full aspect-[3/4] flex items-center justify-center text-gray-400 text-[9px] text-center font-bold">
                                             PHOTO
                                         </div>
                                     )}

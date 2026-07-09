@@ -204,7 +204,7 @@ export default function ExamSchedulePage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("timetable_registry")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_subjects_scheduled", { count: schedule.length })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{schedule.length} {t("subjects_scheduled")}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-1 text-gray-400">
@@ -234,7 +234,7 @@ export default function ExamSchedulePage() {
                                     <TableHead className="py-4 px-6 min-w-[200px]">{t("subject")}</TableHead>
                                     <TableHead className="py-4 px-6 min-w-[150px]">{t("date_and_time")}</TableHead>
                                     <TableHead className="py-4 px-6 min-w-[100px]">{t("duration")}</TableHead>
-                                    <TableHead className="py-4 px-6 min-w-[100px]">{t("venue")}</TableHead>
+                                    <TableHead className="py-4 px-6 min-w-[100px]">{t("room")}</TableHead>
                                     <TableHead className="py-4 px-6 text-right min-w-[120px]">{t("thresholds")}</TableHead>
                                 </TableRow>
                             </TableHeader>

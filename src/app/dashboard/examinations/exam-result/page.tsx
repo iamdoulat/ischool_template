@@ -173,11 +173,13 @@ export default function ExamResultPage() {
     };
 
     const getStudentMark = (student: StudentResult, subjectId: number) => {
-        return student.exam_results.find(r => r.subject_id === subjectId);
+        const results = student.exam_results || (student as any).examResults || [];
+        return results.find((r: any) => r.subject_id === subjectId);
     };
 
     const calculateTotal = (student: StudentResult) => {
-        return student.exam_results.reduce((acc, curr) => acc + (curr.is_absent ? 0 : parseFloat(curr.marks || "0")), 0);
+        const results = student.exam_results || (student as any).examResults || [];
+        return results.reduce((acc: number, curr: any) => acc + (curr.is_absent ? 0 : parseFloat(curr.marks || "0")), 0);
     };
 
     const calculatePercent = (student: StudentResult) => {
@@ -300,7 +302,7 @@ export default function ExamResultPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("tabulation_record")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_students", { count: filteredStudents.length })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{filteredStudents.length} {t("students_found")}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-1 text-gray-400">

@@ -15,8 +15,9 @@ import {
     Pencil, Trash2, Eye, Upload, Image as ImageIcon, Search,
     Copy, FileSpreadsheet, FileText, Printer, Columns,
     ChevronLeft, ChevronRight, Settings2, Contact,
-    FileSignature, IdCard
+    FileSignature, IdCard, Loader2
 } from "lucide-react";
+import { getImageUrl } from "@/lib/image-url";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,6 +28,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { AdmitCardTemplateLayout } from "@/components/examination/AdmitCardTemplateLayout";
+import { X } from "lucide-react";
 
 interface TemplateFormData {
     name: string;
@@ -86,6 +90,8 @@ export default function DesignAdmitCardPage() {
     const [templates, setTemplates] = useState<AdmitCard[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [uploadingField, setUploadingField] = useState<string | null>(null);
+    const [previewTemplate, setPreviewTemplate] = useState<AdmitCard | null>(null);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -199,6 +205,100 @@ export default function DesignAdmitCardPage() {
         }
     };
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingField(fieldName);
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+        uploadData.append('type', 'general');
+
+        try {
+            const response = await api.post('/file-upload/upload', uploadData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            if (response.data.status === "Success" || response.data.data) {
+                const uploadedPath = response.data.data.path;
+                setFormData(prev => ({ ...prev, [fieldName]: uploadedPath }));
+                tt.success("file_uploaded_successfully");
+            }
+        } catch (error) {
+            tt.error("failed_to_upload_file");
+        } finally {
+            setUploadingField(null);
+            if (e.target) e.target.value = ''; // Reset input
+        }
+    };
+
+    const handleImageRemove = (fieldName: string) => {
+        setFormData(prev => ({ ...prev, [fieldName]: "" }));
+    };
+
+    const resolveImageUrl = (path: string) => {
+        return getImageUrl(path);
+    };
+
+    const getMockAdmitCardData = (template: AdmitCard) => {
+        return {
+            student: {
+                name: "John Doe",
+                father_name: "Richard Doe",
+                mother_name: "Jane Doe",
+                admission_no: "ADM-2026-001",
+                roll_no: "101",
+                dob: "2010-05-15",
+                gender: "Male",
+                class: "Class 10",
+                section: "A",
+                photo: undefined,
+                address: "123 Main St, New York, USA",
+            },
+            exam: {
+                name: template.exam_name || "Final Examination",
+                session: "2025-2026",
+                group: "Science",
+            },
+            template: template,
+            schedules: [
+                {
+                    subject_name: "Mathematics",
+                    subject_code: "MTH101",
+                    date: "2026-05-15",
+                    start_time: "09:00 AM",
+                    duration: 180,
+                    room_no: "Room 101",
+                    max_marks: 100,
+                    min_marks: 33,
+                },
+                {
+                    subject_name: "Science",
+                    subject_code: "SCI101",
+                    date: "2026-05-17",
+                    start_time: "09:00 AM",
+                    duration: 180,
+                    room_no: "Room 102",
+                    max_marks: 100,
+                    min_marks: 33,
+                },
+                {
+                    subject_name: "English",
+                    subject_code: "ENG101",
+                    date: "2026-05-19",
+                    start_time: "09:00 AM",
+                    duration: 180,
+                    room_no: "Room 103",
+                    max_marks: 100,
+                    min_marks: 33,
+                }
+            ],
+            print_setting: {
+                header_image: null,
+                footer_content: null,
+            }
+        };
+    };
+
     const resetForm = () => {
         setEditMode(false);
         setSelectedId(null);
@@ -304,18 +404,63 @@ export default function DesignAdmitCardPage() {
                                 ))}
                             </div>
 
-                            {/* File Upload Placeholders */}
+                            {/* File Uploads */}
                             <div className="pt-4 border-t border-dashed border-gray-100 space-y-4">
-                                <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em]">{t("institutional_assets")}</h3>
-                                {[t("left_logo"), t("right_logo"), t("middle_sign")].map((label) => (
-                                    <div key={label} className="space-y-2">
-                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">{label}</Label>
-                                        <div className="border-2 border-dashed border-gray-100 rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-all bg-gray-50/20 group">
-                                            <Upload className="h-6 w-6 text-gray-300 mb-2 group-hover:text-indigo-400 transition-colors" />
-                                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{t("upload_asset")}</span>
+                                <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em]">{t("assets_and_media")}</h3>
+                                <div className="grid grid-cols-1 gap-4">
+                                    {[
+                                        { key: 'header_image', label: t('header_image') },
+                                        { key: 'background_image', label: t('background_image') },
+                                        { key: 'left_logo', label: t('left_logo') },
+                                        { key: 'right_logo', label: t('right_logo') },
+                                        { key: 'left_sign', label: t('left_sign') },
+                                        { key: 'middle_sign', label: t('middle_sign') },
+                                        { key: 'right_sign', label: t('right_sign') }
+                                    ].map((field) => (
+                                        <div key={field.key} className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[11px] font-bold text-gray-500 uppercase">{field.label}</Label>
+                                                {Boolean(formData[field.key]) && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        onClick={() => handleImageRemove(field.key)}
+                                                        className="h-6 text-[9px] text-red-500 hover:text-red-600 hover:bg-red-50 px-2 uppercase"
+                                                    >
+                                                        {t("remove")}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            {Boolean(formData[field.key]) ? (
+                                                <div className="border border-gray-200 rounded-lg p-2 bg-white relative overflow-hidden flex items-center justify-center min-h-[100px]">
+                                                    <img 
+                                                        src={resolveImageUrl(formData[field.key] as string)} 
+                                                        alt={field.label} 
+                                                        className="max-h-[120px] max-w-full object-contain" 
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <label className="border-2 border-dashed border-gray-200 rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-indigo-400 transition-all bg-gray-50/20 group relative">
+                                                    <input 
+                                                        type="file" 
+                                                        className="hidden" 
+                                                        accept="image/*"
+                                                        onChange={(e) => handleImageUpload(e, field.key)}
+                                                        disabled={uploadingField === field.key}
+                                                    />
+                                                    {uploadingField === field.key ? (
+                                                        <Loader2 className="h-6 w-6 text-indigo-500 mb-2 animate-spin" />
+                                                    ) : (
+                                                        <Upload className="h-6 w-6 text-gray-300 mb-2 group-hover:text-indigo-400 transition-colors" />
+                                                    )}
+                                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                                                        {uploadingField === field.key ? t("uploading") : t("upload_asset")}
+                                                    </span>
+                                                </label>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
@@ -346,7 +491,7 @@ export default function DesignAdmitCardPage() {
                                 </span>
                                 <div>
                                     <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("admit_card_templates")}</CardTitle>
-                                    <p className="text-[11px] text-gray-500 mt-1">{t("x_templates", { count: totalEntries })}</p>
+                                    <p className="text-[11px] text-gray-500 mt-1">{totalEntries} {t("templates_configured")}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -445,13 +590,19 @@ export default function DesignAdmitCardPage() {
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6 text-right">
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <Button size="icon" variant="ghost" className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                            <Button size="icon" variant="ghost" onClick={() => setPreviewTemplate(item)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
                                                                 <Eye className="h-4 w-4" />
                                                             </Button>
                                                             <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
                                                                 <Pencil className="h-4 w-4" />
                                                             </Button>
-                                                            <Button size="icon" variant="ghost" onClick={() => setDeleteId(item.id)} className="h-8 w-8 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md">
+                                                            <Button 
+                                                                size="icon" 
+                                                                variant="ghost" 
+                                                                onClick={() => setDeleteId(item.id)} 
+                                                                disabled={Boolean(item.name && (item.name.toLowerCase().includes('design 1') || item.name.toLowerCase().includes('design 2')))}
+                                                                className={`h-8 w-8 rounded-lg shadow-md ${item.name && (item.name.toLowerCase().includes('design 1') || item.name.toLowerCase().includes('design 2')) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+                                                            >
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </div>
@@ -509,6 +660,29 @@ export default function DesignAdmitCardPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Preview Modal */}
+            <Dialog open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
+                <DialogContent className="max-w-[900px] max-h-[90vh] overflow-auto border-0 p-0 bg-transparent shadow-none" showCloseButton={false}>
+                    <div className="bg-white rounded-xl overflow-hidden shadow-2xl relative">
+                        <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-50">
+                            <DialogTitle className="text-lg font-bold text-gray-800 tracking-tight">{t("preview_design")} - <span className="text-indigo-600">{previewTemplate?.name}</span></DialogTitle>
+                            <Button variant="ghost" size="icon" onClick={() => setPreviewTemplate(null)} className="h-8 w-8 rounded-full hover:bg-gray-200">
+                                <X className="h-4 w-4 text-gray-500" />
+                            </Button>
+                        </div>
+                        <div className="p-4 md:p-8 bg-gray-100 min-h-[500px] overflow-x-auto">
+                            {previewTemplate && (
+                                <div className="mx-auto w-max">
+                                    <div className="bg-white shadow-xl" style={{ width: '794px' }}>
+                                        <AdmitCardTemplateLayout data={getMockAdmitCardData(previewTemplate)} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

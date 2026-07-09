@@ -242,9 +242,9 @@ export default function DesignMarksheetPage() {
                 {
                     subject_name: "Mathematics",
                     subject_code: "MTH101",
-                    max_marks: "100",
-                    min_marks: "33",
-                    theory_marks: "85",
+                    max_marks: 100,
+                    min_marks: 33,
+                    theory_marks: 85,
                     practical_marks: null,
                     total_marks: 85,
                     is_absent: false,
@@ -253,10 +253,10 @@ export default function DesignMarksheetPage() {
                 {
                     subject_name: "Science",
                     subject_code: "SCI101",
-                    max_marks: "100",
-                    min_marks: "33",
-                    theory_marks: "70",
-                    practical_marks: "25",
+                    max_marks: 100,
+                    min_marks: 33,
+                    theory_marks: 70,
+                    practical_marks: 25,
                     total_marks: 95,
                     is_absent: false,
                     note: "",
@@ -264,9 +264,9 @@ export default function DesignMarksheetPage() {
                 {
                     subject_name: "English",
                     subject_code: "ENG101",
-                    max_marks: "100",
-                    min_marks: "33",
-                    theory_marks: "78",
+                    max_marks: 100,
+                    min_marks: 33,
+                    theory_marks: 78,
                     practical_marks: null,
                     total_marks: 78,
                     is_absent: false,
@@ -508,7 +508,7 @@ export default function DesignMarksheetPage() {
                                 </span>
                                 <div>
                                     <h2 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("marksheet_templates")}</h2>
-                                    <p className="text-[11px] text-gray-500 mt-1">{totalEntries} {t("templates_configured", "Templates Configured")}</p>
+                                    <p className="text-[11px] text-gray-500 mt-1">{totalEntries} {t("templates_configured")}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -625,7 +625,7 @@ export default function DesignMarksheetPage() {
                                                                         onClick={() => !isSystemDesign && setDeleteId(item.id)} 
                                                                         disabled={isSystemDesign}
                                                                         className={`h-8 w-8 rounded-lg shadow-md ${isSystemDesign ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600 text-white'}`}
-                                                                        title={isSystemDesign ? t("system_design_cannot_be_deleted", "System design cannot be deleted") : ""}
+                                                                        title={isSystemDesign ? t("system_design_cannot_be_deleted") : ""}
                                                                     >
                                                                         <Trash2 className="h-4 w-4" />
                                                                     </Button>
