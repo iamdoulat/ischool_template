@@ -102,7 +102,7 @@ export const MarksheetTemplateLayout = React.forwardRef<HTMLDivElement, { data: 
                     <div className="w-full mb-4 text-center">
                         <img src={printHeaderImage} alt="Header" className="w-full h-auto max-h-[150px] object-contain" />
                         <div className="text-center py-2 font-bold text-lg uppercase mt-2" style={{ backgroundColor: '#000000', color: '#ffffff' }}>
-                            {template.exam_name || exam.name}
+                            Mark Sheet ({template.exam_name || exam.name})
                         </div>
                     </div>
                 ) : headerImage ? (
@@ -132,7 +132,7 @@ export const MarksheetTemplateLayout = React.forwardRef<HTMLDivElement, { data: 
                             </div>
                         </div>
                         <div className="text-center py-2 font-bold text-lg uppercase" style={{ backgroundColor: '#000000', color: '#ffffff' }}>
-                            {template.exam_name || exam.name}
+                            Mark Sheet ({template.exam_name || exam.name})
                         </div>
                     </div>
                 )}
