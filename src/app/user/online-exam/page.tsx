@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
     Search, ChevronLeft, ChevronRight,
     ArrowUpDown, Copy, FileSpreadsheet,
@@ -28,6 +29,19 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
+
+const stripHtml = (html: string) => {
+    if (!html) return "";
+    return html
+        .replace(/<[^>]*>/g, '') // Strip HTML tags
+        .replace(/&nbsp;/g, ' ') // Strip non-breaking spaces
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'")
+        .trim();
+};
 
 interface OnlineExam {
     id: number;
@@ -54,6 +68,114 @@ export default function UserOnlineExamPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalEntries, setTotalEntries] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
+
+    // Exam Attempt / Taking states
+    const [selectedExam, setSelectedExam] = useState<OnlineExam | null>(null);
+    const [examDetails, setExamDetails] = useState<any>(null);
+    const [isTakeExamDialogOpen, setIsTakeExamDialogOpen] = useState(false);
+    const [loadingDetails, setLoadingDetails] = useState(false);
+    const [startedExam, setStartedExam] = useState(false);
+    const [startedAt, setStartedAt] = useState<string | null>(null);
+    const [answers, setAnswers] = useState<{ [questionId: number]: any }>({});
+    const [timeLeft, setTimeLeft] = useState<number>(0);
+    const [submittingAttempt, setSubmittingAttempt] = useState(false);
+
+    const handleViewExam = async (exam: OnlineExam) => {
+        setSelectedExam(exam);
+        setIsTakeExamDialogOpen(true);
+        setLoadingDetails(true);
+        setStartedExam(false);
+        setAnswers({});
+        
+        try {
+            const res = await api.get(`/user/online-exams/${exam.id}`);
+            if (res.data && res.data.success) {
+                setExamDetails(res.data.data);
+            } else {
+                toast.error(res.data?.message || t("failed_to_load_exam_details"));
+            }
+        } catch (error) {
+            console.error("Error loading exam details:", error);
+            toast.error(t("failed_to_load_exam_details"));
+        } finally {
+            setLoadingDetails(false);
+        }
+    };
+
+    const handleStartExam = () => {
+        if (!examDetails) return;
+        setStartedExam(true);
+        setStartedAt(new Date().toISOString().slice(0, 19).replace('T', ' '));
+        
+        let durationSec = 3600;
+        if (examDetails.duration) {
+            const parts = examDetails.duration.split(":");
+            if (parts.length === 3) {
+                durationSec = (parseInt(parts[0], 10) * 3600) + (parseInt(parts[1], 10) * 60) + parseInt(parts[2], 10);
+            } else if (parts.length === 2) {
+                durationSec = (parseInt(parts[0], 10) * 3600) + (parseInt(parts[1], 10) * 60);
+            } else {
+                const num = parseInt(examDetails.duration, 10);
+                if (!isNaN(num)) {
+                    durationSec = num * 60;
+                }
+            }
+        }
+        setTimeLeft(durationSec);
+    };
+
+    const handleSubmitExam = useCallback(async () => {
+        if (!selectedExam || !examDetails) return;
+        setSubmittingAttempt(true);
+        
+        const formattedAnswers = Object.keys(answers).map((qId) => ({
+            question_id: parseInt(qId, 10),
+            answer: answers[parseInt(qId, 10)],
+        }));
+
+        try {
+            const res = await api.post(`/user/online-exams/${selectedExam.id}/submit`, {
+                started_at: startedAt,
+                answers: formattedAnswers,
+            });
+
+            if (res.data && res.data.success) {
+                toast.success(t("exam_submitted_successfully"));
+                setIsTakeExamDialogOpen(false);
+                setStartedExam(false);
+                fetchData(currentPage);
+            } else {
+                toast.error(res.data?.message || t("failed_to_submit_exam"));
+            }
+        } catch (error) {
+            console.error("Error submitting exam:", error);
+            toast.error(t("failed_to_submit_exam"));
+        } finally {
+            setSubmittingAttempt(false);
+        }
+    }, [selectedExam, examDetails, answers, startedAt, currentPage, t]);
+
+    useEffect(() => {
+        if (!startedExam || timeLeft <= 0) {
+            if (startedExam && timeLeft === 0) {
+                handleSubmitExam();
+            }
+            return;
+        }
+
+        const timer = setInterval(() => {
+            setTimeLeft((prev) => prev - 1);
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [startedExam, timeLeft, handleSubmitExam]);
+
+    const formatTime = (seconds: number) => {
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
 
     const fetchData = useCallback(async (page = 1) => {
         setLoading(true);
@@ -97,16 +219,18 @@ export default function UserOnlineExamPage() {
     // ── Status pill ──────────────────────────────────────────────────────────────
     const getStatusStyle = (status: string) => {
         switch (status) {
-            case "Available":  return "bg-[#4caf50] text-white";
-            case "Exhausted":  return "bg-[#f89b29] text-white";
-            case "Closed":     return "bg-[#9ca3af] text-white";
-            default:           return "bg-[#6366f1] text-white";
+            case "Available":  return "bg-emerald-500 text-white";
+            case "Submitted":  return "bg-blue-500 text-white";
+            case "Passed":     return "bg-emerald-600 text-white";
+            case "Failed":     return "bg-rose-600 text-white";
+            case "Closed":     return "bg-gray-400 text-white";
+            default:           return "bg-indigo-500 text-white";
         }
     };
 
     const StatusBadge = ({ status }: { status: string }) => (
-        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold shadow-sm", getStatusStyle(status))}>
-            {t(status.toLowerCase())}
+        <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm", getStatusStyle(status))}>
+            {status}
         </span>
     );
 
@@ -259,6 +383,7 @@ export default function UserOnlineExamPage() {
                                                 <Button
                                                     className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-7 px-2.5 rounded-lg text-[11px] font-bold shadow-sm transition-all active:scale-95 border-0"
                                                     title={t("view_exam")}
+                                                    onClick={() => handleViewExam(item)}
                                                 >
                                                     <Eye className="h-3.5 w-3.5 mr-1" /> {t("view")}
                                                 </Button>
@@ -305,6 +430,7 @@ export default function UserOnlineExamPage() {
                                         <Button
                                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-8 text-[11px] font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 border-0 w-full mt-1"
                                             title={t("view_exam")}
+                                            onClick={() => handleViewExam(item)}
                                         >
                                             <Eye className="h-3.5 w-3.5" /> {t("view_exam")}
                                         </Button>
@@ -358,6 +484,304 @@ export default function UserOnlineExamPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Take / View Exam Dialog */}
+            <Dialog open={isTakeExamDialogOpen} onOpenChange={(open) => {
+                if (!open) {
+                    if (startedExam && !confirm("Are you sure you want to leave the exam? Your progress will be lost.")) return;
+                    setIsTakeExamDialogOpen(false);
+                    setStartedExam(false);
+                }
+            }}>
+                <DialogContent className="w-full sm:max-w-2xl md:max-w-3xl rounded-2xl border-0 shadow-2xl p-0 overflow-hidden bg-white">
+                    <DialogTitle className="sr-only">{examDetails?.title || "Online Exam Details"}</DialogTitle>
+                    <DialogDescription className="sr-only">Student taking or viewing details of the online exam.</DialogDescription>
+                    {loadingDetails ? (
+                        <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-2.5">
+                            <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                            <p className="text-xs font-bold uppercase tracking-wider">{t("loading_exam_details")}</p>
+                        </div>
+                    ) : examDetails ? (
+                        <>
+                            {/* Dialog Header */}
+                            <DialogHeader className="p-6 bg-gradient-to-r from-[#F7A148] to-[#7778EC] text-white relative">
+                                <div className="flex justify-between items-start">
+                                    <div className="space-y-1">
+                                        <DialogTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                                            <ClipboardList className="h-5 w-5" /> {examDetails.title}
+                                        </DialogTitle>
+                                        <DialogDescription className="text-indigo-50/85 text-[11px] font-medium leading-none">
+                                            {examDetails.is_quiz ? t("quiz_mode") : t("exam_mode")}
+                                        </DialogDescription>
+                                    </div>
+                                    {startedExam && (
+                                        <div className={cn(
+                                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black bg-white shadow-inner transition-colors",
+                                            timeLeft < 300 ? "text-red-600 animate-pulse bg-red-55 animate-bounce" : "text-indigo-600"
+                                        )}>
+                                            <Clock className="h-4 w-4" />
+                                            <span>{formatTime(timeLeft)}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </DialogHeader>
+
+                            {/* Main Content Area */}
+                            <div className="p-6 max-h-[60vh] overflow-y-auto bg-gray-50/50 space-y-6">
+                                {!startedExam ? (
+                                    // Instructions View
+                                    <div className="space-y-5">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center space-y-1">
+                                                <span className="text-[10px] text-gray-400 font-bold uppercase block">{t("duration")}</span>
+                                                <span className="text-xs font-black text-gray-800">{examDetails.duration || "N/A"}</span>
+                                            </div>
+                                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center space-y-1">
+                                                <span className="text-[10px] text-gray-400 font-bold uppercase block">{t("total_questions")}</span>
+                                                <span className="text-xs font-black text-gray-800">{examDetails.questions?.length || 0}</span>
+                                            </div>
+                                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center space-y-1">
+                                                <span className="text-[10px] text-gray-400 font-bold uppercase block">{t("passing_score")}</span>
+                                                <span className="text-xs font-black text-gray-800">{examDetails.passing_percentage}%</span>
+                                            </div>
+                                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center space-y-1">
+                                                <span className="text-[10px] text-gray-400 font-bold uppercase block">{t("attempts_left")}</span>
+                                                <span className="text-xs font-black text-gray-800">
+                                                    {examDetails.attempt > 0 ? (examDetails.attempt - examDetails.attempted) : "Unlimited"}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                         {examDetails.description && (
+                                            <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-2">
+                                                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">{t("exam_instructions")}</h3>
+                                                <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">{examDetails.description}</p>
+                                            </div>
+                                        )}
+
+                                        {examDetails.attempts && examDetails.attempts.length > 0 && (
+                                            <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
+                                                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Your Attempts History</h3>
+                                                <div className="space-y-3">
+                                                    {examDetails.attempts.map((att: any, attIdx: number) => {
+                                                        const scorePercent = att.total_marks > 0 ? (att.earned_marks / att.total_marks) * 100 : 0;
+                                                        const isPassed = scorePercent >= (examDetails.passing_percentage || 33);
+                                                        return (
+                                                            <div key={att.id} className="flex justify-between items-center p-3 rounded-lg bg-gray-50/50 border border-gray-50 text-xs">
+                                                                <div className="space-y-1">
+                                                                    <p className="font-bold text-gray-700">Attempt #{attIdx + 1}</p>
+                                                                    <p className="text-[10px] text-gray-400">Date: {new Date(att.completed_at).toLocaleString()}</p>
+                                                                </div>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="text-right">
+                                                                        <span className="font-black text-gray-800">{att.earned_marks}</span>
+                                                                        <span className="text-gray-400"> / {att.total_marks} Marks</span>
+                                                                    </div>
+                                                                    {examDetails.is_result_published ? (
+                                                                        <span className={cn(
+                                                                            "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider text-white",
+                                                                            isPassed ? "bg-emerald-500" : "bg-rose-500"
+                                                                        )}>
+                                                                            {isPassed ? "Passed" : "Failed"}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-500 text-white">
+                                                                            Submitted
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {examDetails.is_closed || examDetails.is_exhausted ? (
+                                            <div className="bg-amber-50 border border-amber-200/60 p-4 rounded-xl flex gap-3 text-amber-800">
+                                                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                                                <div className="space-y-1 text-xs">
+                                                    <p className="font-bold">{t("exam_unavailable")}</p>
+                                                    <p className="opacity-90">
+                                                        {examDetails.is_exhausted 
+                                                            ? t("you_have_exhausted_all_attempts_for_this_exam")
+                                                            : t("this_exam_is_currently_closed")
+                                                        }
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="bg-indigo-50 border border-indigo-200/50 p-4 rounded-xl flex gap-3 text-indigo-900">
+                                                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                                                <div className="space-y-1 text-xs">
+                                                    <p className="font-bold">{t("ready_to_start")}</p>
+                                                    <p className="opacity-90 leading-normal">
+                                                        Once you click "Start Exam", the timer will begin. Closing this window or disconnecting will result in automatic submission.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    // Exam Taking View (Questions List)
+                                    <div className="space-y-6">
+                                        {examDetails.questions?.map((q: any, index: number) => {
+                                            const isSingleChoice = q.question_type === "Single Choice" || q.question_type === "True/False";
+                                            const isMultipleChoice = q.question_type === "Multiple Choice";
+                                            const isDescriptive = q.question_type === "Descriptive";
+                                            
+                                            // Options parsing
+                                            let opts = [];
+                                            try {
+                                                opts = typeof q.options === 'string' ? JSON.parse(q.options) : (q.options || []);
+                                            } catch (e) {
+                                                opts = [];
+                                            }
+
+                                            return (
+                                                <div key={q.id} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
+                                                    <div className="flex justify-between items-start border-b border-gray-50 pb-2">
+                                                        <span className="text-xs font-bold text-gray-800">
+                                                            Question {index + 1}
+                                                        </span>
+                                                        <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
+                                                            {q.marks} Marks
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="text-xs font-bold text-gray-700 leading-relaxed">
+                                                        {stripHtml(q.question)}
+                                                    </p>
+
+                                                    {/* Options or Answer Input */}
+                                                    {isSingleChoice && opts.length > 0 && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
+                                                            {opts.map((opt: string, optIdx: number) => (
+                                                                <label key={optIdx} className={cn(
+                                                                    "flex items-center gap-3 p-3 rounded-lg border text-xs cursor-pointer transition-all hover:bg-gray-50",
+                                                                    answers[q.id] === opt 
+                                                                        ? "border-indigo-500 bg-indigo-50/20 font-bold text-indigo-700" 
+                                                                        : "border-gray-100"
+                                                                )}>
+                                                                    <input 
+                                                                        type="radio" 
+                                                                        name={`q-${q.id}`} 
+                                                                        value={opt} 
+                                                                        checked={answers[q.id] === opt}
+                                                                        onChange={() => setAnswers({...answers, [q.id]: opt})}
+                                                                        className="accent-indigo-600 animate-none cursor-pointer"
+                                                                    />
+                                                                    <span>{opt}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {isMultipleChoice && opts.length > 0 && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
+                                                            {opts.map((opt: string, optIdx: number) => {
+                                                                const currentAnswers = answers[q.id] || [];
+                                                                const isChecked = currentAnswers.includes(opt);
+                                                                
+                                                                return (
+                                                                    <label key={optIdx} className={cn(
+                                                                        "flex items-center gap-3 p-3 rounded-lg border text-xs cursor-pointer transition-all hover:bg-gray-50",
+                                                                        isChecked 
+                                                                            ? "border-indigo-500 bg-indigo-50/20 font-bold text-indigo-700" 
+                                                                            : "border-gray-100"
+                                                                    )}>
+                                                                        <input 
+                                                                            type="checkbox" 
+                                                                            value={opt} 
+                                                                            checked={isChecked}
+                                                                            onChange={(e) => {
+                                                                                let updated = [...currentAnswers];
+                                                                                if (e.target.checked) {
+                                                                                    updated.push(opt);
+                                                                                } else {
+                                                                                    updated = updated.filter(val => val !== opt);
+                                                                                }
+                                                                                setAnswers({...answers, [q.id]: updated});
+                                                                            }}
+                                                                            className="accent-indigo-600 rounded cursor-pointer"
+                                                                        />
+                                                                        <span>{opt}</span>
+                                                                    </label>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+
+                                                    {isDescriptive && (
+                                                        <div className="pt-2">
+                                                            <textarea
+                                                                value={answers[q.id] || ""}
+                                                                onChange={(e) => setAnswers({...answers, [q.id]: e.target.value})}
+                                                                placeholder="Type your answer here..."
+                                                                rows={4}
+                                                                className="w-full text-xs p-3 rounded-lg border border-gray-200 focus:outline-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-gray-50/30"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer Actions */}
+                            <DialogFooter className="p-6 bg-gray-50/50 flex justify-end gap-3 border-t border-gray-100">
+                                {!startedExam ? (
+                                    <>
+                                        <Button 
+                                            onClick={() => setIsTakeExamDialogOpen(false)} 
+                                            variant="outline" 
+                                            className="h-10 px-6 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-200"
+                                        >
+                                            {t("close")}
+                                        </Button>
+                                        {!examDetails.is_closed && !examDetails.is_exhausted && (
+                                            <Button 
+                                                onClick={handleStartExam} 
+                                                className="btn-gradient text-white h-10 px-8 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-orange-200/50"
+                                            >
+                                                {t("start_exam")}
+                                            </Button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Button 
+                                            onClick={() => {
+                                                if (confirm("Are you sure you want to cancel the exam? Your progress will be lost.")) {
+                                                    setIsTakeExamDialogOpen(false);
+                                                    setStartedExam(false);
+                                                }
+                                            }} 
+                                            variant="outline" 
+                                            className="h-10 px-6 rounded-full text-[11px] font-bold uppercase tracking-widest border-gray-200"
+                                        >
+                                            {t("cancel")}
+                                        </Button>
+                                        <Button 
+                                            onClick={handleSubmitExam} 
+                                            disabled={submittingAttempt}
+                                            className="btn-gradient text-white h-10 px-10 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-orange-200/50"
+                                        >
+                                            {submittingAttempt ? (
+                                                <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> {t("submitting")}</span>
+                                            ) : (
+                                                t("submit_exam")
+                                            )}
+                                        </Button>
+                                    </>
+                                )}
+                            </DialogFooter>
+                        </>
+                    ) : null}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
