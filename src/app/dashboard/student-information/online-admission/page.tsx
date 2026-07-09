@@ -34,6 +34,8 @@ import { useImageUrl } from "@/lib/image-url";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { renderPdfHeader, renderPdfFooter } from "@/lib/pdf-utils";
+import { useSettings } from "@/components/providers/settings-provider";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -94,6 +96,7 @@ export default function OnlineAdmissionPage() {
     const tt = useTranslateToast();
     const { t } = useTranslation();
     const router = useRouter();
+    const { settings } = useSettings();
 
     // Dialog states
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -227,13 +230,28 @@ export default function OnlineAdmissionPage() {
         tt.success("excel_file_downloaded");
     };
 
-    const exportToPDF = () => {
+    const exportToPDF = async () => {
         if (admissions.length === 0) {
             tt.error("no_data_to_export");
             return;
         }
+
+        let invoicePrintSettings = {};
+        try {
+            const res = await api.get("system-setting/print-settings");
+            if (res.data?.status === "success") {
+                invoicePrintSettings = (res.data.data || []).find((s: any) => s.type === "Online Admission Receipt") || {};
+            }
+        } catch (err) {
+            console.error("Could not fetch print settings", err);
+        }
+        const baseApiUrl = api.defaults.baseURL?.replace('/api/v1', '') || "";
+
         const doc = new jsPDF("landscape");
+        const startY = await renderPdfHeader(doc, settings, invoicePrintSettings, baseApiUrl, "ONLINE ADMISSION RECEIPT");
+
         autoTable(doc, {
+            startY,
             head: [["Ref No", "Student Name", "Class", "Section", "Father", "DOB", "Gender", "Mobile", "Form Status", "Payment", "Enrolled"]],
             body: admissions.map(a => [
                 a.reference_no,
@@ -246,10 +264,15 @@ export default function OnlineAdmissionPage() {
                 a.phone,
                 a.form_status,
                 a.payment_status,
-                a.is_enrolled ? "✔" : "✖"
+                a.is_enrolled ? "Yes" : "No"
             ]),
             styles: { fontSize: 8 },
+            headStyles: { fillColor: [99, 102, 241] },
         });
+
+        const finalY = (doc as any).lastAutoTable.finalY + 10;
+        renderPdfFooter(doc, (invoicePrintSettings as any).footer_content || "", finalY);
+
         doc.save("online_admissions.pdf");
         tt.success("pdf_file_downloaded");
     };

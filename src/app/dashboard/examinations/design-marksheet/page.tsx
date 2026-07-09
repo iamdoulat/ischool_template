@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { getImageUrl } from "@/lib/image-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { MarksheetTemplateLayout } from "@/components/examination/MarksheetTemplateLayout";
+import { X } from "lucide-react";
 
 interface Marksheet extends MarksheetFormData {
     id: string;
@@ -84,6 +88,8 @@ export default function DesignMarksheetPage() {
     const [templates, setTemplates] = useState<Marksheet[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [uploadingField, setUploadingField] = useState<string | null>(null);
+    const [previewTemplate, setPreviewTemplate] = useState<Marksheet | null>(null);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -154,6 +160,40 @@ export default function DesignMarksheetPage() {
         }
     };
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingField(fieldName);
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+        uploadData.append('type', 'general');
+
+        try {
+            const response = await api.post('/file-upload/upload', uploadData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            if (response.data.status === "Success" || response.data.data) {
+                const uploadedPath = response.data.data.path;
+                setFormData(prev => ({ ...prev, [fieldName]: uploadedPath }));
+                tt.success("file_uploaded_successfully");
+            }
+        } catch (error) {
+            tt.error("failed_to_upload_file");
+        } finally {
+            setUploadingField(null);
+            if (e.target) e.target.value = ''; // Reset input
+        }
+    };
+
+    const handleImageRemove = (fieldName: string) => {
+        setFormData(prev => ({ ...prev, [fieldName]: "" }));
+    };
+
+    const resolveImageUrl = (path: string) => {
+        return getImageUrl(path);
+    };
+
     const handleSave = async () => {
         if (!formData.name) {
             tt.error("template_name_is_required");
@@ -178,12 +218,85 @@ export default function DesignMarksheetPage() {
         }
     };
 
+    const getMockMarksheetData = (template: Marksheet) => {
+        return {
+            student: {
+                name: "John Doe",
+                father_name: "Richard Doe",
+                mother_name: "Jane Doe",
+                admission_no: "ADM-2026-001",
+                roll_no: "101",
+                dob: "2010-05-15",
+                gender: "Male",
+                class: "Class 10",
+                section: "A",
+            },
+            exam: {
+                name: template.exam_name || "Final Examination",
+                session: "2025-2026",
+                group: "Science",
+            },
+            template: template,
+            subjects: [
+                {
+                    subject_name: "Mathematics",
+                    subject_code: "MTH101",
+                    max_marks: "100",
+                    min_marks: "33",
+                    theory_marks: "85",
+                    practical_marks: null,
+                    total_marks: 85,
+                    is_absent: false,
+                    note: "",
+                },
+                {
+                    subject_name: "Science",
+                    subject_code: "SCI101",
+                    max_marks: "100",
+                    min_marks: "33",
+                    theory_marks: "70",
+                    practical_marks: "25",
+                    total_marks: 95,
+                    is_absent: false,
+                    note: "",
+                },
+                {
+                    subject_name: "English",
+                    subject_code: "ENG101",
+                    max_marks: "100",
+                    min_marks: "33",
+                    theory_marks: "78",
+                    practical_marks: null,
+                    total_marks: 78,
+                    is_absent: false,
+                    note: "",
+                }
+            ],
+            summary: {
+                total_marks: 258,
+                rank: "1st",
+                remark: "Excellent Performance",
+                printing_date: template.printing_date,
+            },
+        };
+    };
+
     const handleEdit = (template: MarksheetFormData & { id: string }) => {
         setEditMode(true);
         setSelectedId(template.id);
+        const safeData: any = { ...template };
+        for (const key in safeData) {
+            if (safeData[key] === null) {
+                if (key.startsWith('show_') || key === 'is_active') {
+                    safeData[key] = false;
+                } else {
+                    safeData[key] = "";
+                }
+            }
+        }
         setFormData({
-            ...template,
-            printing_date: template.printing_date ? template.printing_date.substring(0, 10) : ""
+            ...safeData,
+            printing_date: safeData.printing_date ? String(safeData.printing_date).substring(0, 10) : ""
         });
     };
 
@@ -307,18 +420,63 @@ export default function DesignMarksheetPage() {
                                 ))}
                             </div>
 
-                            {/* File Upload Placeholders */}
+                            {/* File Uploads */}
                             <div className="pt-4 border-t border-dashed border-gray-100 space-y-4">
                                 <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em]">{t("assets_and_media")}</h3>
-                                {[t("header_image"), t("background_image")].map((label) => (
-                                    <div key={label} className="space-y-2">
-                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">{label}</Label>
-                                        <div className="border-2 border-dashed border-gray-100 rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-all bg-gray-50/20 group">
-                                            <Upload className="h-6 w-6 text-gray-300 mb-2 group-hover:text-indigo-400 transition-colors" />
-                                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{t("upload_asset")}</span>
+                                <div className="grid grid-cols-1 gap-4">
+                                    {[
+                                        { key: 'header_image', label: t('header_image') },
+                                        { key: 'background_image', label: t('background_image') },
+                                        { key: 'left_logo', label: t('left_logo') },
+                                        { key: 'right_logo', label: t('right_logo') },
+                                        { key: 'left_sign', label: t('left_sign') },
+                                        { key: 'middle_sign', label: t('middle_sign') },
+                                        { key: 'right_sign', label: t('right_sign') }
+                                    ].map((field) => (
+                                        <div key={field.key} className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[11px] font-bold text-gray-500 uppercase">{field.label}</Label>
+                                                {(formData as any)[field.key] && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        onClick={() => handleImageRemove(field.key)}
+                                                        className="h-6 text-[9px] text-red-500 hover:text-red-600 hover:bg-red-50 px-2 uppercase"
+                                                    >
+                                                        {t("remove")}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            {(formData as any)[field.key] ? (
+                                                <div className="border border-gray-200 rounded-lg p-2 bg-white relative overflow-hidden flex items-center justify-center min-h-[100px]">
+                                                    <img 
+                                                        src={resolveImageUrl((formData as any)[field.key] as string)} 
+                                                        alt={field.label} 
+                                                        className="max-h-[120px] max-w-full object-contain" 
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <label className="border-2 border-dashed border-gray-200 rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-indigo-400 transition-all bg-gray-50/20 group relative">
+                                                    <input 
+                                                        type="file" 
+                                                        className="hidden" 
+                                                        accept="image/*"
+                                                        onChange={(e) => handleImageUpload(e, field.key)}
+                                                        disabled={uploadingField === field.key}
+                                                    />
+                                                    {uploadingField === field.key ? (
+                                                        <Loader2 className="h-6 w-6 text-indigo-500 mb-2 animate-spin" />
+                                                    ) : (
+                                                        <Upload className="h-6 w-6 text-gray-300 mb-2 group-hover:text-indigo-400 transition-colors" />
+                                                    )}
+                                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                                                        {uploadingField === field.key ? t("uploading") : t("upload_asset")}
+                                                    </span>
+                                                </label>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
@@ -349,7 +507,7 @@ export default function DesignMarksheetPage() {
                                 </span>
                                 <div>
                                     <h2 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("marksheet_templates")}</h2>
-                                    <p className="text-[11px] text-gray-500 mt-1">{t("x_templates_configured", { count: totalEntries })}</p>
+                                    <p className="text-[11px] text-gray-500 mt-1">{totalEntries} {t("templates_configured", "Templates Configured")}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -450,17 +608,29 @@ export default function DesignMarksheetPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6 text-right">
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <Button size="icon" variant="ghost" className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
-                                                                <Eye className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button size="icon" variant="ghost" onClick={() => setDeleteId(item.id)} className="h-8 w-8 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
+                                                        {(() => {
+                                                            const isSystemDesign = item.name.toLowerCase().includes('design 1') || item.name.toLowerCase().includes('design 2');
+                                                            return (
+                                                                <div className="flex items-center justify-end gap-2">
+                                                                    <Button size="icon" variant="ghost" onClick={() => setPreviewTemplate(item)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                                        <Eye className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button 
+                                                                        size="icon" 
+                                                                        variant="ghost" 
+                                                                        onClick={() => !isSystemDesign && setDeleteId(item.id)} 
+                                                                        disabled={isSystemDesign}
+                                                                        className={`h-8 w-8 rounded-lg shadow-md ${isSystemDesign ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+                                                                        title={isSystemDesign ? t("system_design_cannot_be_deleted", "System design cannot be deleted") : ""}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </TableCell>
                                                 </TableRow>
                                             ))
@@ -515,6 +685,29 @@ export default function DesignMarksheetPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Preview Modal */}
+            <Dialog open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
+                <DialogContent className="max-w-[900px] max-h-[90vh] overflow-auto border-0 p-0 bg-transparent shadow-none" showCloseButton={false}>
+                    <div className="bg-white rounded-xl overflow-hidden shadow-2xl relative">
+                        <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-50">
+                            <DialogTitle className="text-lg font-bold text-gray-800 tracking-tight">{t("preview_design")} - <span className="text-indigo-600">{previewTemplate?.name}</span></DialogTitle>
+                            <Button variant="ghost" size="icon" onClick={() => setPreviewTemplate(null)} className="h-8 w-8 rounded-full hover:bg-gray-200">
+                                <X className="h-4 w-4 text-gray-500" />
+                            </Button>
+                        </div>
+                        <div className="p-4 md:p-8 bg-gray-100 min-h-[500px] overflow-x-auto">
+                            {previewTemplate && (
+                                <div className="mx-auto w-max">
+                                    <div className="bg-white shadow-xl" style={{ width: '794px' }}>
+                                        <MarksheetTemplateLayout data={getMockMarksheetData(previewTemplate)} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

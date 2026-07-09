@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -49,6 +49,8 @@ interface Exam {
     id: number;
     name: string;
     exam_group_id: number;
+    marksheet_template_id?: number | null;
+    marksheet_template?: { id: number; name: string } | null;
     session?: string;
     description?: string;
     is_published?: boolean;
@@ -116,6 +118,20 @@ export default function ExamGroupPage() {
         description: ""
     });
 
+    // Exam Types (dynamic from API)
+    const [examTypes, setExamTypes] = useState<{ id: number; name: string }[]>([]);
+
+    const fetchExamTypes = useCallback(async () => {
+        try {
+            const response = await api.get('/examination/exam-types');
+            const result = response.data;
+            const list = result?.data?.data || result?.data || result || [];
+            setExamTypes(Array.isArray(list) ? list : []);
+        } catch {
+            setExamTypes([]);
+        }
+    }, []);
+
     // Delete State
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -131,6 +147,7 @@ export default function ExamGroupPage() {
     const [classes, setClasses] = useState<ClassItem[]>([]);
     const [sections, setSections] = useState<SectionItem[]>([]);
     const [academicSubjects, setAcademicSubjects] = useState<SubjectItem[]>([]);
+    const [studentCategories, setStudentCategories] = useState<Record<number, string>>({}); // id → name
 
     // Exam Subject Modal State
     const [examSubjectOpen, setExamSubjectOpen] = useState(false);
@@ -152,8 +169,24 @@ export default function ExamGroupPage() {
     // Managing Exam Group State (View 2)
     const [managingGroup, setManagingGroup] = useState<ExamGroup | null>(null);
 
+    // Exam Marks Modal State
+    const [examMarksOpen, setExamMarksOpen] = useState(false);
+    const [examMarksData, setExamMarksData] = useState<{ exam: Exam | null }>({ exam: null });
+    const [examMarksSubjects, setExamMarksSubjects] = useState<any[]>([]);
+    const [selectedMarksSubject, setSelectedMarksSubject] = useState<string>("");
+    const [examMarksStudents, setExamMarksStudents] = useState<any[]>([]);
+    const [marksLoading, setMarksLoading] = useState(false);
+
+    // Teacher Remarks Modal State
+    const [teacherRemarksOpen, setTeacherRemarksOpen] = useState(false);
+    const [remarksData, setRemarksData] = useState<{ exam: Exam | null }>({ exam: null });
+    const [remarksStudents, setRemarksStudents] = useState<any[]>([]);
+    const [remarksLoading, setRemarksLoading] = useState(false);
+
     // Add Exam modal state
     const [addExamOpen, setAddExamOpen] = useState(false);
+    const [editingExamId, setEditingExamId] = useState<number | null>(null);
+    const [deleteExamId, setDeleteExamId] = useState<number | null>(null);
     const [addExamForm, setAddExamForm] = useState({
       name: "",
       session: "2026-27",
@@ -169,24 +202,85 @@ export default function ExamGroupPage() {
     const [availableExams, setAvailableExams] = useState<Exam[]>([]);
     const [examWeightages, setExamWeightages] = useState<Record<number, string>>({});
 
+    // Marksheet Templates state
+    const [marksheetTemplates, setMarksheetTemplates] = useState<{ id: number; name: string }[]>([]);
+    const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+    const [templateEditId, setTemplateEditId] = useState<number | null>(null);
+    const [templateName, setTemplateName] = useState("");
+    const [templateSaving, setTemplateSaving] = useState(false);
+
+    const fetchMarksheetTemplates = useCallback(async () => {
+        try {
+            const res = await api.get('/examination/marksheet-templates', { params: { per_page: 200 } });
+            const list = res.data?.data || res.data || [];
+            setMarksheetTemplates(Array.isArray(list) ? list : []);
+        } catch {
+            setMarksheetTemplates([]);
+        }
+    }, []);
+
+    const handleOpenAddTemplate = () => {
+        setTemplateEditId(null);
+        setTemplateName("");
+        setTemplateDialogOpen(true);
+    };
+
+    const handleOpenRenameTemplate = (tpl: { id: number; name: string }) => {
+        setTemplateEditId(tpl.id);
+        setTemplateName(tpl.name);
+        setTemplateDialogOpen(true);
+    };
+
+    const handleSaveTemplate = async () => {
+        if (!templateName.trim()) return;
+        setTemplateSaving(true);
+        try {
+            if (templateEditId) {
+                await api.put(`/examination/marksheet-templates/${templateEditId}`, { name: templateName.trim() });
+                tt.success("template_updated_successfully");
+            } else {
+                const res = await api.post('/examination/marksheet-templates', { name: templateName.trim() });
+                const newTpl = res.data?.data || res.data;
+                if (newTpl?.id) {
+                    setAddExamForm(prev => ({ ...prev, marksheet_template: String(newTpl.id) }));
+                }
+                tt.success("template_created_successfully");
+            }
+            await fetchMarksheetTemplates();
+            setTemplateDialogOpen(false);
+        } catch {
+            tt.error("failed_to_save_template");
+        } finally {
+            setTemplateSaving(false);
+        }
+    };
+
     useEffect(() => {
         fetchGroups();
     }, [currentPage, itemsPerPage, searchTerm]);
 
     useEffect(() => {
         fetchGroups();
+        fetchExamTypes();
+        fetchMarksheetTemplates();
 
-        // Fetch classes & subjects
+        // Fetch classes, subjects & student categories
         const fetchClassesAndSubjects = async () => {
             try {
-                const [classRes, subRes] = await Promise.all([
+                const [classRes, subRes, catRes] = await Promise.all([
                     api.get('/academics/classes?no_paginate=true'),
-                    api.get('/academics/subjects?no_paginate=true')
+                    api.get('/academics/subjects?no_paginate=true'),
+                    api.get('/student-categories'),
                 ]);
                 setClasses(classRes.data?.data || classRes.data || []);
                 setAcademicSubjects(subRes.data?.data || subRes.data || []);
+                // Build id→name map for categories
+                const catList: { id: number; category_name: string }[] = catRes.data?.data?.data || catRes.data?.data || catRes.data || [];
+                const catMap: Record<number, string> = {};
+                catList.forEach((c) => { catMap[c.id] = c.category_name; });
+                setStudentCategories(catMap);
             } catch (error) {
-                console.error("Failed to fetch classes or subjects", error);
+                console.error("Failed to fetch classes, subjects or categories", error);
             }
         };
         fetchClassesAndSubjects();
@@ -212,6 +306,10 @@ export default function ExamGroupPage() {
     useEffect(() => {
         setCurrentPage(1);
     }, [rowsPerPage]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
 
     const fetchGroups = async () => {
         setLoading(true);
@@ -309,9 +407,24 @@ export default function ExamGroupPage() {
     };
 
     const handleOpenAddExam = () => {
+        setEditingExamId(null);
         setAddExamForm({
             name: "", session: "2026-27", is_published: false, is_result_published: false,
             roll_no_type: "admit_card", marksheet_template: "", description: "",
+        });
+        setAddExamOpen(true);
+    };
+
+    const handleEditExam = (exam: Exam) => {
+        setEditingExamId(exam.id);
+        setAddExamForm({
+            name: exam.name || "",
+            session: exam.session || "2026-27",
+            is_published: !!exam.is_published,
+            is_result_published: !!exam.is_result_published,
+            roll_no_type: "admit_card",
+            marksheet_template: exam.marksheet_template_id ? String(exam.marksheet_template_id) : "",
+            description: exam.description || "",
         });
         setAddExamOpen(true);
     };
@@ -328,14 +441,41 @@ export default function ExamGroupPage() {
 
         setSubmitting(true);
         try {
-            await api.post("/examination/exams", { ...addExamForm, exam_group_id: managingGroup.id });
-            tt.success("exam_created_successfully");
+            if (editingExamId) {
+                await api.put(`/examination/exams/${editingExamId}`, {
+                    ...addExamForm,
+                    exam_group_id: managingGroup.id,
+                    marksheet_template_id: addExamForm.marksheet_template || null,
+                });
+                tt.success("exam_updated_successfully");
+            } else {
+                await api.post("/examination/exams", {
+                    ...addExamForm,
+                    exam_group_id: managingGroup.id,
+                    marksheet_template_id: addExamForm.marksheet_template || null,
+                });
+                tt.success("exam_created_successfully");
+            }
             setAddExamOpen(false);
+            setEditingExamId(null);
             handleManageExams(managingGroup); // refresh
         } catch (error) {
-            tt.error("failed_to_create_exam");
+            tt.error(editingExamId ? "failed_to_update_exam" : "failed_to_create_exam");
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const executeDeleteExam = async () => {
+        if (!deleteExamId || !managingGroup) return;
+        try {
+            await api.delete(`/examination/exams/${deleteExamId}`);
+            tt.success("exam_deleted_successfully");
+            handleManageExams(managingGroup); // refresh
+        } catch (error) {
+            tt.error("failed_to_delete_exam");
+        } finally {
+            setDeleteExamId(null);
         }
     };
 
@@ -379,11 +519,20 @@ export default function ExamGroupPage() {
         setExamWeightages(prev => ({ ...prev, [examId]: weightage }));
     };
 
-    const handleOpenAssignStudent = (examId: number) => {
+    const handleOpenAssignStudent = async (examId: number) => {
         setAssignExamId(examId);
         setAssignFilters({ class_id: "", section_id: "" });
         setAssignStudents([]);
-        setSelectedStudents([]);
+        
+        try {
+            // Fetch currently assigned students
+            const res = await api.get(`/examination/exams/${examId}/students`);
+            setSelectedStudents(res.data?.data || []);
+        } catch (error) {
+            console.error(error);
+            setSelectedStudents([]);
+        }
+        
         setAssignStudentOpen(true);
     };
 
@@ -410,20 +559,22 @@ export default function ExamGroupPage() {
                 first_name?: string;
                 last_name?: string;
                 father_name?: string;
-                category?: string;
+                category?: string | number;
                 gender?: string;
             }) => ({
                 id: s.id,
                 admission_no: s.admission_no || "-",
                 name: `${s.first_name || ""} ${s.last_name || ""}`.trim(),
                 father_name: s.father_name || "-",
-                category: s.category || "-",
+                category: s.category
+                    ? (studentCategories[Number(s.category)] || String(s.category))
+                    : "-",
                 gender: s.gender || "-",
-                assigned: false // Default to false since there's no exam-student API yet
+                assigned: selectedStudents.includes(s.id)
             }));
 
             setAssignStudents(mappedStudents);
-            setSelectedStudents(mappedStudents.filter((s) => s.assigned).map((s) => s.id));
+            // Don't overwrite selectedStudents here, let the initial fetch or user selection govern it.
         } catch (error) {
             console.error("Failed to fetch students", error);
             tt.error("failed_to_fetch_students");
@@ -447,10 +598,12 @@ export default function ExamGroupPage() {
     };
 
     const handleSaveAssignStudents = async () => {
+        if (!assignExamId) return;
         setSubmitting(true);
         try {
-            // Mock API call
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await api.post(`/examination/exams/${assignExamId}/students`, {
+                student_ids: selectedStudents
+            });
             tt.success("students_assigned_to_exam_successfully");
             setAssignStudentOpen(false);
         } catch (error) {
@@ -460,12 +613,37 @@ export default function ExamGroupPage() {
         }
     };
 
-    const handleOpenExamSubject = (exam: Exam) => {
+    const handleOpenExamSubject = async (exam: Exam) => {
         setExamSubjectData({ exam, group: managingGroup });
-        setExamSubjectRows([
-            { id: Date.now().toString(), subject: "", date: "", start_time: "", duration: "", credit_hours: "", room_no: "", marks_max: "", marks_min: "" }
-        ]);
+        setExamSubjectRows([]);
         setExamSubjectOpen(true);
+
+        try {
+            const res = await api.post(`/examination/exam-schedules/search`, { exam_id: exam.id });
+            const schedules = res.data || [];
+            if (schedules.length > 0) {
+                setExamSubjectRows(schedules.map((s: any) => ({
+                    id: s.id.toString(),
+                    subject: s.subject_id?.toString() || "",
+                    date: s.date_from ? s.date_from.split('T')[0] : "",
+                    start_time: s.start_time || "",
+                    duration: s.duration || "",
+                    credit_hours: s.credit_hours || "",
+                    room_no: s.room_no || "",
+                    marks_max: s.max_marks || "",
+                    marks_min: s.min_marks || ""
+                })));
+            } else {
+                setExamSubjectRows([
+                    { id: Date.now().toString(), subject: "", date: "", start_time: "", duration: "", credit_hours: "", room_no: "", marks_max: "", marks_min: "" }
+                ]);
+            }
+        } catch (error) {
+            console.error(error);
+            setExamSubjectRows([
+                { id: Date.now().toString(), subject: "", date: "", start_time: "", duration: "", credit_hours: "", room_no: "", marks_max: "", marks_min: "" }
+            ]);
+        }
     };
 
     const handleAddExamSubjectRow = () => {
@@ -481,11 +659,27 @@ export default function ExamGroupPage() {
     };
 
     const handleSaveExamSubjects = async () => {
+        if (!examSubjectData.exam) return;
         setSubmitting(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            const payload = examSubjectRows.filter(r => r.subject).map(r => ({
+                subject_id: parseInt(r.subject),
+                date_from: r.date || null,
+                start_time: r.start_time || null,
+                duration: r.duration || null,
+                room_no: r.room_no || null,
+                max_marks: r.marks_max ? parseFloat(r.marks_max) : null,
+                min_marks: r.marks_min ? parseFloat(r.marks_min) : null,
+            }));
+
+            await api.post(`/examination/exam-schedules`, {
+                exam_id: examSubjectData.exam.id,
+                schedules: payload
+            });
+            
             tt.success("exam_subjects_saved_successfully");
             setExamSubjectOpen(false);
+            if (managingGroup) handleManageExams(managingGroup);
         } catch (error) {
             tt.error("failed_to_save_exam_subjects");
         } finally {
@@ -493,11 +687,126 @@ export default function ExamGroupPage() {
         }
     };
 
+    // Exam Marks Handlers
+    const handleOpenExamMarks = async (exam: Exam) => {
+        setExamMarksData({ exam });
+        setExamMarksSubjects([]);
+        setSelectedMarksSubject("");
+        setExamMarksStudents([]);
+        setExamMarksOpen(true);
+
+        try {
+            const res = await api.post(`/examination/exam-schedules/search`, { exam_id: exam.id });
+            const schedules = res.data || [];
+            // Map schedules to include subject details
+            const subjectsList = schedules.map((s: any) => ({
+                id: s.subject_id?.toString(),
+                name: s.subject?.name || `Subject ${s.subject_id}`
+            }));
+            setExamMarksSubjects(subjectsList);
+            if (subjectsList.length > 0) {
+                handleMarksSubjectChange(subjectsList[0].id, exam.id);
+            }
+        } catch (error) {
+            console.error(error);
+            tt.error("failed_to_fetch_exam_subjects");
+        }
+    };
+
+    const handleMarksSubjectChange = async (subjectId: string, examId: number) => {
+        setSelectedMarksSubject(subjectId);
+        setMarksLoading(true);
+        try {
+            const res = await api.get(`/examination/exams/${examId}/marks?subject_id=${subjectId}`);
+            setExamMarksStudents(res.data?.data || []);
+        } catch (error) {
+            console.error(error);
+            setExamMarksStudents([]);
+            tt.error("failed_to_fetch_marks");
+        } finally {
+            setMarksLoading(false);
+        }
+    };
+
+    const handleSaveExamMarks = async () => {
+        if (!examMarksData.exam || !selectedMarksSubject) return;
+        setSubmitting(true);
+        try {
+            await api.post(`/examination/exams/${examMarksData.exam.id}/marks`, {
+                subject_id: parseInt(selectedMarksSubject),
+                marks: examMarksStudents.map(s => ({
+                    student_id: s.id,
+                    theory_marks: s.theory_marks !== "" ? s.theory_marks : null,
+                    practical_marks: s.practical_marks !== "" ? s.practical_marks : null,
+                    is_absent: !!s.is_absent
+                }))
+            });
+            tt.success("exam_marks_saved_successfully");
+            setExamMarksOpen(false);
+        } catch (error) {
+            tt.error("failed_to_save_exam_marks");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Teacher Remarks Handlers
+    const handleOpenTeacherRemarks = async (exam: Exam) => {
+        setRemarksData({ exam });
+        setRemarksStudents([]);
+        setTeacherRemarksOpen(true);
+        setRemarksLoading(true);
+
+        try {
+            const res = await api.get(`/examination/exams/${exam.id}/remarks`);
+            setRemarksStudents(res.data?.data || []);
+        } catch (error) {
+            console.error(error);
+            tt.error("failed_to_fetch_remarks");
+        } finally {
+            setRemarksLoading(false);
+        }
+    };
+
+    const handleSaveTeacherRemarks = async () => {
+        if (!remarksData.exam) return;
+        setSubmitting(true);
+        try {
+            await api.post(`/examination/exams/${remarksData.exam.id}/remarks`, {
+                remarks: remarksStudents.map(s => ({
+                    student_id: s.id,
+                    note: s.note || ""
+                }))
+            });
+            tt.success("teacher_remarks_saved_successfully");
+            setTeacherRemarksOpen(false);
+        } catch (error) {
+            tt.error("failed_to_save_teacher_remarks");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Rank Generation
+    const handleGenerateRank = async (exam: Exam) => {
+        setSubmitting(true);
+        try {
+            await api.post(`/examination/exams/${exam.id}/generate-rank`);
+            tt.success("ranks_generated_successfully");
+            if (managingGroup) handleManageExams(managingGroup);
+        } catch (error) {
+            tt.error("failed_to_generate_ranks");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+
     if (managingGroup) {
         return (
             <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
                 {/* Back navigation */}
-                <Button variant="ghost" onClick={() => setManagingGroup(null)} className="-ml-3 text-gray-500 hover:text-indigo-600 gap-2 font-bold text-[11px] uppercase tracking-widest">
+                <Button variant="ghost" onClick={() => { setManagingGroup(null); fetchGroups(); }} className="-ml-3 text-gray-500 hover:text-indigo-600 gap-2 font-bold text-[11px] uppercase tracking-widest">
                     <ArrowLeft className="h-4 w-4" /> {t("back_to_groups")}
                 </Button>
 
@@ -532,7 +841,7 @@ export default function ExamGroupPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("linked_exams")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_exams_in_this_group", { count: managingGroup.exams?.length || 0 })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{managingGroup.exams?.length || 0} {t("exams_in_this_group")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
@@ -578,19 +887,19 @@ export default function ExamGroupPage() {
                                                     <Button size="icon" variant="ghost" title={t("exam_subject")} onClick={() => handleOpenExamSubject(exam)} className="h-8 w-8 text-indigo-500 hover:text-white hover:bg-indigo-500 rounded-lg">
                                                         <BookOpen className="h-4 w-4" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title={t("exam_marks")} className="h-8 w-8 text-purple-500 hover:text-white hover:bg-purple-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("exam_marks")} onClick={() => handleOpenExamMarks(exam)} className="h-8 w-8 text-purple-500 hover:text-white hover:bg-purple-500 rounded-lg">
                                                         <FileDigit className="h-4 w-4" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title={t("teacher_remarks")} className="h-8 w-8 text-pink-500 hover:text-white hover:bg-pink-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("teacher_remarks")} onClick={() => handleOpenTeacherRemarks(exam)} className="h-8 w-8 text-pink-500 hover:text-white hover:bg-pink-500 rounded-lg">
                                                         <MessageSquare className="h-4 w-4" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title={t("generate_rank")} className="h-8 w-8 text-amber-500 hover:text-white hover:bg-amber-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("generate_rank")} onClick={() => handleGenerateRank(exam)} disabled={submitting} className="h-8 w-8 text-amber-500 hover:text-white hover:bg-amber-500 rounded-lg disabled:opacity-50">
                                                         <Trophy className="h-4 w-4" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title={t("edit_exam")} className="h-8 w-8 text-amber-500 hover:text-white hover:bg-amber-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("edit_exam")} onClick={() => handleEditExam(exam)} className="h-8 w-8 text-amber-500 hover:text-white hover:bg-amber-500 rounded-lg">
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title={t("delete_exam")} className="h-8 w-8 text-red-500 hover:text-white hover:bg-red-500 rounded-lg">
+                                                    <Button size="icon" variant="ghost" title={t("delete_exam")} onClick={() => setDeleteExamId(exam.id)} className="h-8 w-8 text-red-500 hover:text-white hover:bg-red-500 rounded-lg">
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -607,7 +916,7 @@ export default function ExamGroupPage() {
                 <Dialog open={addExamOpen} onOpenChange={setAddExamOpen}>
                     <DialogContent className="max-w-3xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden bg-white">
                         <DialogHeader className="p-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative">
-                            <DialogTitle className="text-lg font-normal">{t("exam")}</DialogTitle>
+                            <DialogTitle className="text-lg font-normal">{editingExamId ? t("edit_exam") : t("add_exam")}</DialogTitle>
                         </DialogHeader>
 
                         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
@@ -656,14 +965,44 @@ export default function ExamGroupPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-sm font-normal text-gray-600">{t("marksheet_template")} <span className="text-red-500">*</span></Label>
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-normal text-gray-600">{t("marksheet_template")} <span className="text-red-500">*</span></Label>
+                                    <div className="flex items-center gap-1.5">
+                                        {addExamForm.marksheet_template && (() => {
+                                            const tpl = marksheetTemplates.find(t => String(t.id) === addExamForm.marksheet_template);
+                                            return tpl ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenRenameTemplate(tpl)}
+                                                    className="text-[10px] text-indigo-600 hover:underline font-semibold"
+                                                >
+                                                    {t("rename")}
+                                                </button>
+                                            ) : null;
+                                        })()}
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenAddTemplate}
+                                            className="flex items-center gap-0.5 text-[10px] text-indigo-600 hover:underline font-semibold"
+                                        >
+                                            <Plus className="h-3 w-3" />{t("add_new")}
+                                        </button>
+                                    </div>
+                                </div>
                                 <Select value={addExamForm.marksheet_template} onValueChange={(val) => setAddExamForm({ ...addExamForm, marksheet_template: val })}>
                                     <SelectTrigger className="h-9 border-gray-300 rounded shadow-sm focus:ring-indigo-500 w-full">
                                         <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="template1">Template 1</SelectItem>
-                                        <SelectItem value="template2">Template 2</SelectItem>
+                                        {marksheetTemplates.length === 0 ? (
+                                            <div className="px-3 py-2 text-xs text-gray-400 italic">{t("no_templates_found")}</div>
+                                        ) : (
+                                            marksheetTemplates.map((tpl) => (
+                                                <SelectItem key={tpl.id} value={String(tpl.id)}>
+                                                    {tpl.name}
+                                                </SelectItem>
+                                            ))
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -943,6 +1282,197 @@ export default function ExamGroupPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Delete Exam Confirmation Dialog */}
+                <AlertDialog open={!!deleteExamId} onOpenChange={(open) => !open && setDeleteExamId(null)}>
+                    <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("delete_exam")}</AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
+                                {t("are_you_sure_you_want_to_delete_this_exam_this_action_cannot_be_undone")}
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="mt-6">
+                            <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
+                            <AlertDialogAction onClick={executeDeleteExam} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                                {t("yes_delete")}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Add / Rename Marksheet Template Dialog */}
+                <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+                    <DialogContent className="max-w-sm rounded-lg border-0 shadow-2xl p-0 overflow-hidden bg-white">
+                        <DialogHeader className="p-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white">
+                            <DialogTitle className="text-sm font-semibold">
+                                {templateEditId ? t("rename_template") : t("add_marksheet_template")}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="p-5 space-y-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-sm font-normal text-gray-600">{t("template_name")} <span className="text-red-500">*</span></Label>
+                                <Input
+                                    value={templateName}
+                                    onChange={(e) => setTemplateName(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveTemplate()}
+                                    placeholder={t("enter_template_name")}
+                                    className="h-9 border-gray-300 rounded shadow-sm"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter className="p-4 border-t border-gray-100 flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setTemplateDialogOpen(false)} className="h-9 px-5 rounded text-xs">
+                                {t("cancel")}
+                            </Button>
+                            <Button
+                                onClick={handleSaveTemplate}
+                                disabled={templateSaving || !templateName.trim()}
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 px-6 rounded text-xs shadow"
+                            >
+                                {templateSaving ? t("saving") : templateEditId ? t("rename") : t("add")}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Exam Marks Modal */}
+                <Dialog open={examMarksOpen} onOpenChange={setExamMarksOpen}>
+                    <DialogContent className="max-w-4xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden bg-white">
+                        <DialogHeader className="p-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative">
+                            <DialogTitle className="text-lg font-normal">{t("exam_marks")}</DialogTitle>
+                        </DialogHeader>
+
+                        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                            <div className="w-1/3">
+                                <Label className="text-sm font-normal text-gray-600">{t("subject")} <span className="text-red-500">*</span></Label>
+                                <Select value={selectedMarksSubject} onValueChange={(val) => handleMarksSubjectChange(val, examMarksData.exam!.id)}>
+                                    <SelectTrigger className="h-9 border-gray-300 rounded shadow-sm focus:ring-indigo-500 w-full mt-1">
+                                        <SelectValue placeholder={t("select")} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {examMarksSubjects.length === 0 ? (
+                                            <div className="px-3 py-2 text-xs text-gray-400 italic">{t("no_subjects_found")}</div>
+                                        ) : (
+                                            examMarksSubjects.map((s) => (
+                                                <SelectItem key={s.id} value={String(s.id)}>
+                                                    {s.name}
+                                                </SelectItem>
+                                            ))
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {marksLoading ? (
+                                <div className="py-10 text-center text-gray-500">{t("loading")}...</div>
+                            ) : examMarksStudents.length === 0 ? (
+                                <div className="py-10 text-center text-gray-500 italic">{t("no_students_assigned_to_this_exam")}</div>
+                            ) : (
+                                <div className="rounded border border-gray-200 overflow-hidden">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-[#f3f4f6]">
+                                            <tr className="border-b border-gray-200">
+                                                <th className="py-2.5 px-3 text-left font-semibold text-gray-700">{t("admission_no")}</th>
+                                                <th className="py-2.5 px-3 text-left font-semibold text-gray-700">{t("student_name")}</th>
+                                                <th className="py-2.5 px-3 text-left font-semibold text-gray-700 w-24">{t("theory")}</th>
+                                                <th className="py-2.5 px-3 text-left font-semibold text-gray-700 w-24">{t("practical")}</th>
+                                                <th className="py-2.5 px-3 text-center font-semibold text-gray-700 w-24">{t("absent")}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {examMarksStudents.map((s, idx) => (
+                                                <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                                                    <td className="py-2.5 px-3 text-gray-700">{s.admission_no}</td>
+                                                    <td className="py-2.5 px-3 text-gray-700">{s.name}</td>
+                                                    <td className="py-2.5 px-3">
+                                                        <Input type="number" value={s.theory_marks ?? ""} onChange={(e) => {
+                                                            const newStudents = [...examMarksStudents];
+                                                            newStudents[idx].theory_marks = e.target.value;
+                                                            setExamMarksStudents(newStudents);
+                                                        }} className="h-8 text-sm px-2 text-gray-700 border-gray-300" />
+                                                    </td>
+                                                    <td className="py-2.5 px-3">
+                                                        <Input type="number" value={s.practical_marks ?? ""} onChange={(e) => {
+                                                            const newStudents = [...examMarksStudents];
+                                                            newStudents[idx].practical_marks = e.target.value;
+                                                            setExamMarksStudents(newStudents);
+                                                        }} className="h-8 text-sm px-2 text-gray-700 border-gray-300" />
+                                                    </td>
+                                                    <td className="py-2.5 px-3 text-center">
+                                                        <input type="checkbox" checked={!!s.is_absent} onChange={(e) => {
+                                                            const newStudents = [...examMarksStudents];
+                                                            newStudents[idx].is_absent = e.target.checked;
+                                                            setExamMarksStudents(newStudents);
+                                                        }} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        <DialogFooter className="p-4 border-t border-gray-200 flex justify-end">
+                            <Button onClick={handleSaveExamMarks} disabled={submitting || !selectedMarksSubject} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity text-white h-9 px-6 rounded shadow">
+                                {submitting ? t("saving") : t("save")}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Teacher Remarks Modal */}
+                <Dialog open={teacherRemarksOpen} onOpenChange={setTeacherRemarksOpen}>
+                    <DialogContent className="max-w-4xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden bg-white">
+                        <DialogHeader className="p-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative">
+                            <DialogTitle className="text-lg font-normal">{t("teacher_remarks")}</DialogTitle>
+                        </DialogHeader>
+
+                        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                            {remarksLoading ? (
+                                <div className="py-10 text-center text-gray-500">{t("loading")}...</div>
+                            ) : remarksStudents.length === 0 ? (
+                                <div className="py-10 text-center text-gray-500 italic">{t("no_students_assigned_to_this_exam")}</div>
+                            ) : (
+                                <div className="rounded border border-gray-200 overflow-hidden">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-[#f3f4f6]">
+                                            <tr className="border-b border-gray-200">
+                                                <th className="py-2.5 px-3 text-left font-semibold text-gray-700 w-32">{t("admission_no")}</th>
+                                                <th className="py-2.5 px-3 text-left font-semibold text-gray-700 w-1/4">{t("student_name")}</th>
+                                                <th className="py-2.5 px-3 text-left font-semibold text-gray-700">{t("remarks")}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {remarksStudents.map((s, idx) => (
+                                                <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                                                    <td className="py-2.5 px-3 text-gray-700">{s.admission_no}</td>
+                                                    <td className="py-2.5 px-3 text-gray-700">{s.name}</td>
+                                                    <td className="py-2.5 px-3">
+                                                        <Input value={s.note ?? ""} onChange={(e) => {
+                                                            const newStudents = [...remarksStudents];
+                                                            newStudents[idx].note = e.target.value;
+                                                            setRemarksStudents(newStudents);
+                                                        }} className="h-8 text-sm px-2 text-gray-700 border-gray-300" placeholder={t("enter_remarks_here")} />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        <DialogFooter className="p-4 border-t border-gray-200 flex justify-end">
+                            <Button onClick={handleSaveTeacherRemarks} disabled={submitting} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity text-white h-9 px-6 rounded shadow">
+                                {submitting ? t("saving") : t("save")}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
             </div>
         );
     }
@@ -987,11 +1517,9 @@ export default function ExamGroupPage() {
                                         <SelectValue placeholder={t("select_exam_type")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="General Purpose (Pass/Fail)">{t("general_purpose_pass_fail")}</SelectItem>
-                                        <SelectItem value="School Based Grading System">{t("school_based_grading_system")}</SelectItem>
-                                        <SelectItem value="College Based Grading System">{t("college_based_grading_system")}</SelectItem>
-                                        <SelectItem value="GPA Grading System">{t("gpa_grading_system")}</SelectItem>
-                                        <SelectItem value="Average Passing">{t("average_passing")}</SelectItem>
+                                        {examTypes.map((type) => (
+                                            <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -1059,7 +1587,7 @@ export default function ExamGroupPage() {
                         </CardHeader>
 
                         <CardContent className="p-6 space-y-6">
-                            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                            <div className="flex flex-col md:flex-row justify-end items-center gap-6">
                                 <div className="relative w-full md:w-72">
                                     <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
                                     <Input

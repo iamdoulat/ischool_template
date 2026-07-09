@@ -39,6 +39,8 @@ import VariablePicker from "@/components/ui/variable-picker";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { renderPdfHeader, renderPdfFooter } from "@/lib/pdf-utils";
+import { useSettings } from "@/components/providers/settings-provider";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -92,6 +94,7 @@ interface PaginationData {
 export default function EmailTemplatePage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const { settings } = useSettings();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const ckeditorRef = useRef<{ insertText: (text: string) => void }>(null);
     const [searchTerm, setSearchTerm] = useState("");
@@ -285,16 +288,28 @@ export default function EmailTemplatePage() {
         document.body.removeChild(link);
     };
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
+        let invoicePrintSettings = {};
+        try {
+            const res = await api.get("system-setting/print-settings");
+            if (res.data?.status === "success") {
+                invoicePrintSettings = (res.data.data || []).find((s: any) => s.type === "Email") || {};
+            }
+        } catch (err) {
+            console.error("Could not fetch print settings", err);
+        }
+        const baseApiUrl = api.defaults.baseURL?.replace('/api/v1', '') || "";
         const doc = new jsPDF();
-        doc.text(t("email_templates_report"), 14, 15);
+        const startY = await renderPdfHeader(doc, settings, invoicePrintSettings, baseApiUrl, t("email_templates_report").toUpperCase());
         const tableColumn = [t("title"), t("template_id"), t("message")];
         const tableRows = templates.map(t => [
             t.title,
             t.template_id || '--',
             t.message.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ')
         ]);
-        autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
+        autoTable(doc, { head: [tableColumn], body: tableRows, startY, headStyles: { fillColor: [99, 102, 241] } });
+        const finalY = (doc as any).lastAutoTable.finalY + 10;
+        renderPdfFooter(doc, (invoicePrintSettings as any).footer_content || "", finalY);
         doc.save("email_templates.pdf");
         tt.success("exported_to_pdf_successfully");
     };

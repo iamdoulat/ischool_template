@@ -17,6 +17,7 @@ import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { useImageUrl, useBaseUrl } from "@/lib/image-url";
 import { useTranslation } from "@/hooks/use-translation";
 import * as XLSX from 'xlsx';
+import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { renderPdfHeader, renderPdfFooter } from '@/lib/pdf-utils';
 import { useSettings } from "@/components/providers/settings-provider";

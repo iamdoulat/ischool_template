@@ -10,6 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { renderPdfHeader, renderPdfFooter } from "@/lib/pdf-utils";
+import { useSettings } from "@/components/providers/settings-provider";
 import {
     Plus, Search, Copy, FileSpreadsheet, FileText, Printer, Columns,
     ChevronLeft, ChevronRight, CheckCircle2, XCircle, Eye, Pencil, Trash2,
@@ -55,6 +59,7 @@ export default function OnlineExamPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
     const { toast } = useToast();
+    const { settings } = useSettings();
     const [searchTerm, setSearchTerm] = useState("");
     const [statusTab, setStatusTab] = useState("upcoming");
     const [exams, setExams] = useState<OnlineExam[]>([]);
@@ -178,6 +183,45 @@ export default function OnlineExamPage() {
         setIsDialogOpen(true);
     };
 
+    const exportToPDF = async () => {
+        if (exams.length === 0) {
+            tt.error("no_data_to_export");
+            return;
+        }
+        let invoicePrintSettings = {};
+        try {
+            const res = await api.get("system-setting/print-settings");
+            if (res.data?.status === "success") {
+                invoicePrintSettings = (res.data.data || []).find((s: any) => s.type === "Online Exam") || {};
+            }
+        } catch (err) {
+            console.error("Could not fetch print settings", err);
+        }
+        const baseApiUrl = api.defaults.baseURL?.replace('/api/v1', '') || "";
+        const doc = new jsPDF();
+        const startY = await renderPdfHeader(doc, settings, invoicePrintSettings, baseApiUrl, "ONLINE EXAMINATION LIST");
+        autoTable(doc, {
+            startY,
+            head: [["Title", "Type", "Questions", "Attempt", "From", "To", "Duration", "Published"]],
+            body: exams.map(e => [
+                e.title,
+                e.is_quiz ? "Quiz" : "Exam",
+                String(e.questions_count),
+                String(e.attempt),
+                new Date(e.exam_from).toLocaleDateString(),
+                new Date(e.exam_to).toLocaleDateString(),
+                e.duration,
+                e.is_published ? "Yes" : "No"
+            ]),
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [99, 102, 241] },
+        });
+        const finalY = (doc as any).lastAutoTable.finalY + 10;
+        renderPdfFooter(doc, (invoicePrintSettings as any).footer_content || "", finalY);
+        doc.save("online_exams.pdf");
+        tt.success("pdf_file_downloaded");
+    };
+
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
@@ -240,10 +284,10 @@ export default function OnlineExamPage() {
                                 <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                     <FileSpreadsheet className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                <Button variant="ghost" size="icon" onClick={exportToPDF} title="Export PDF" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                     <FileText className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                <Button variant="ghost" size="icon" onClick={() => window.print()} title="Print" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                     <Printer className="h-4 w-4" />
                                 </Button>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">

@@ -3,6 +3,7 @@ export function getImageUrl(
   baseUrl?: string
 ): string {
   if (!path) return "";
+  if (path.startsWith("data:")) return path;
 
   let cleanPath = path.replace(/\\/g, '/');
 

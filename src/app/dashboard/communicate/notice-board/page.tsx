@@ -48,6 +48,8 @@ import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { renderPdfHeader, renderPdfFooter } from "@/lib/pdf-utils";
+import { useSettings } from "@/components/providers/settings-provider";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -82,6 +84,7 @@ interface Notice {
 export default function NoticeBoardPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const { settings } = useSettings();
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -305,9 +308,19 @@ export default function NoticeBoardPage() {
         tt.success("exported_to_csv_successfully");
     };
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
+        let invoicePrintSettings = {};
+        try {
+            const res = await api.get("system-setting/print-settings");
+            if (res.data?.status === "success") {
+                invoicePrintSettings = (res.data.data || []).find((s: any) => s.type === "General Purpose") || {};
+            }
+        } catch (err) {
+            console.error("Could not fetch print settings", err);
+        }
+        const baseApiUrl = api.defaults.baseURL?.replace('/api/v1', '') || "";
         const doc = new jsPDF();
-        doc.text("Notices Report", 14, 15);
+        const startY = await renderPdfHeader(doc, settings, invoicePrintSettings, baseApiUrl, "NOTICES REPORT");
         const tableColumn = ["Title", "Notice Date", "Publish Date", "Status", "Message To"];
         const tableRows = notices.map(n => [
             n.title,
@@ -319,8 +332,11 @@ export default function NoticeBoardPage() {
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
-            startY: 20,
+            startY,
+            headStyles: { fillColor: [99, 102, 241] },
         });
+        const finalY = (doc as any).lastAutoTable.finalY + 10;
+        renderPdfFooter(doc, (invoicePrintSettings as any).footer_content || "", finalY);
         doc.save("notices.pdf");
         tt.success("exported_to_pdf_successfully");
     };
