@@ -326,12 +326,12 @@ export default function ClassTimetablePage() {
                     {searching ? (
                         <TimetableSkeleton days={orderedDays} />
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto rounded-lg border border-gray-200/50 shadow-sm">
                             <div className="flex min-w-max">
                                 {timetableData.map((dayData) => (
                                     <div key={dayData.day} className="flex-1 min-w-[200px] border-r last:border-r-0">
-                                        <div className="bg-gray-50/50 p-2 text-center border-b">
-                                            <span className="text-sm font-bold text-gray-700">{t(dayData.day.toLowerCase())}</span>
+                                        <div className="bg-gray-100 p-2 text-center border-b font-bold text-gray-700">
+                                            <span>{t(dayData.day.toLowerCase())}</span>
                                         </div>
                                         <div className="p-3 space-y-3 bg-white min-h-[400px]">
                                             {dayData.entries.length > 0 ? (

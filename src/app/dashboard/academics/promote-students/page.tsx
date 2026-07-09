@@ -298,9 +298,9 @@ export default function PromoteStudentsPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-4">
-                        <div className="rounded-md border overflow-x-auto">
+                        <div className="rounded-lg border border-gray-200/50 shadow-sm overflow-x-auto">
                             <Table>
-                                <TableHeader className="bg-gray-50 text-[11px] uppercase">
+                                <TableHeader className="bg-gray-100 text-[11px] uppercase font-bold text-gray-600">
                                     <TableRow>
                                         <TableHead className="w-[40px] px-4"></TableHead>
                                         <TableHead className="font-semibold text-gray-600">{t("admission_no")}</TableHead>
@@ -398,9 +398,9 @@ export default function PromoteStudentsPage() {
                             </div>
                         </div>
 
-                        <div className="rounded-md border overflow-x-auto">
+                        <div className="rounded-lg border border-gray-200/50 shadow-sm overflow-x-auto">
                             <Table>
-                                <TableHeader className="bg-gray-50 text-[11px] uppercase">
+                                <TableHeader className="bg-gray-100 text-[11px] uppercase font-bold text-gray-600">
                                     <TableRow>
                                         <TableHead className="w-[40px] px-4">
                                             <Checkbox

@@ -291,9 +291,9 @@ export default function SectionsPage() {
                             </div>
                         </div>
 
-                        <div className="rounded-md border border-gray-100 overflow-hidden">
+                        <div className="rounded-lg border border-gray-200/50 shadow-sm overflow-hidden">
                             <Table>
-                                <TableHeader className="bg-gray-50/50 text-[11px] uppercase">
+                                <TableHeader className="bg-gray-100 text-[11px] uppercase font-bold text-gray-600">
                                     <TableRow className="hover:bg-transparent border-gray-100">
                                         <TableHead className="font-bold text-gray-700 py-3">{t("section")}</TableHead>
                                         <TableHead className="font-bold text-gray-700 text-right py-3">{t("action")}</TableHead>

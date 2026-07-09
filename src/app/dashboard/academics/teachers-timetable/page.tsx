@@ -343,7 +343,7 @@ export default function TeachersTimetablePage() {
                             <div className="flex min-w-max gap-4">
                                 {timetableData.map((dayData) => (
                                     <div key={dayData.day} className="flex-1 min-w-[220px]">
-                                        <div className="bg-gray-50 py-2.5 px-3 text-left mb-3 rounded-t-lg border-b-2 border-indigo-500">
+                                        <div className="bg-gray-100 py-2.5 px-3 text-left mb-3 rounded-t-lg border-b-2 border-indigo-500 border border-gray-200/50 shadow-sm">
                                             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t(dayData.day.toLowerCase())}</span>
                                         </div>
                                         <div className="space-y-3 px-1">
