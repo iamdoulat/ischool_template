@@ -895,4 +895,10 @@ export const i18nFallbacksBn: Record<string, string> = {
   exported_to_csv: "সিএসভিতে এক্সপোর্ট করা হয়েছে",
   export_excel: "এক্সেল এক্সপোর্ট",
   export_pdf: "পিডিএফ এক্সপোর্ট",
+  salary_history: "বেতনের ইতিহাস",
+  last_12_months: "শেষ ১২ মাস",
+  failed_to_load_history: "বেতনের ইতিহাস লোড করতে ব্যর্থ",
+  paid_on: "পরিশোধের তারিখ",
+  x_staff_records: "{count} স্টাফ রেকর্ড",
+  x_staff_members_on_date: "{count} জন স্টাফ {date} তারিখে",
 };

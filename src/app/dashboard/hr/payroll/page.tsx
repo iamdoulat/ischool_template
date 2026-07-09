@@ -99,6 +99,30 @@ interface Meta {
     last_page: number;
 }
 
+interface HistoryEntry {
+    month: number;
+    year: number;
+    basic_salary: number | null;
+    allowances: number | null;
+    deductions: number | null;
+    net_salary: number | null;
+    status: string | null;
+    paid_on: string | null;
+    note: string | null;
+}
+
+interface HistoryData {
+    staff: {
+        id: number;
+        staff_id: string;
+        name: string;
+        role: string;
+        designation: string;
+        department: string;
+    };
+    history: HistoryEntry[];
+}
+
 interface SchoolInfo {
     school_name: string;
     address: string;
@@ -281,6 +305,10 @@ export default function PayrollPage() {
     const [slipRow, setSlipRow] = useState<PayrollRow | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
+    const [historyRow, setHistoryRow] = useState<PayrollRow | null>(null);
+    const [historyData, setHistoryData] = useState<HistoryData | null>(null);
+    const [historyLoading, setHistoryLoading] = useState(false);
+
     // ── Fetch school settings ──────────────────────────────────────────────────
     useEffect(() => {
         api.get("/system-setting/general-setting").then(res => {
@@ -380,6 +408,23 @@ export default function PayrollPage() {
 
     // ── Print ─────────────────────────────────────────────────────────────────
     const handlePrint = useReactToPrint({ contentRef: printRef });
+
+    // ── History ───────────────────────────────────────────────────────────
+    const openHistory = async (row: PayrollRow) => {
+        setHistoryRow(row);
+        setHistoryData(null);
+        setHistoryLoading(true);
+        try {
+            const res = await api.get(`/hr/payroll/history/${row.id}`);
+            if (res.data?.success) {
+                setHistoryData(res.data.data);
+            }
+        } catch {
+            tt.error("failed_to_load_history");
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
 
     // ── Export Functions ───────────────────────────────────────────────────────
     const handleCopy = () => {
@@ -627,6 +672,7 @@ export default function PayrollPage() {
                                                         variant="ghost"
                                                         className="h-7 w-7 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded transition-colors"
                                                         title={t("payroll_history")}
+                                                        onClick={() => openHistory(row)}
                                                     >
                                                         <History className="h-3.5 w-3.5" />
                                                     </Button>
@@ -896,6 +942,132 @@ export default function PayrollPage() {
                                 {t("print_payslip")}
                             </Button>
                         </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+            {/* ── Salary History Dialog ───────────────────────────────────── */}
+            <Dialog open={!!historyRow} onOpenChange={() => { setHistoryRow(null); setHistoryData(null); }}>
+                <DialogContent className="w-[95vw] max-w-5xl p-0 overflow-hidden border-0 shadow-2xl rounded-xl">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 bg-white/20 rounded-lg backdrop-blur-sm flex items-center justify-center shrink-0">
+                                <History className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-sm font-bold uppercase tracking-[.15em] leading-none">
+                                    {t("salary_history")}
+                                </DialogTitle>
+                                {historyData && (
+                                    <p className="text-[11px] text-white/80 mt-0.5 font-medium">
+                                        {historyData.staff.name} &bull; {historyData.staff.role}
+                                        {historyData.staff.designation ? ` • ${historyData.staff.designation}` : ""}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <Button size="icon" variant="ghost" onClick={() => { setHistoryRow(null); setHistoryData(null); }}
+                            className="h-8 w-8 hover:bg-white/10 text-white border-none rounded-full">
+                            <X className="h-5 w-5" />
+                        </Button>
+                    </div>
+
+                    {/* Staff Info Strip */}
+                    {historyData && (
+                        <div className="flex items-center gap-6 px-6 py-3 bg-indigo-50/60 border-b border-indigo-100/60">
+                            <div className="text-[10px] text-gray-500">
+                                <span className="font-bold uppercase tracking-widest text-gray-400 block">Staff ID</span>
+                                <span className="font-bold text-gray-700">{historyData.staff.staff_id}</span>
+                            </div>
+                            {historyData.staff.department && (
+                                <div className="text-[10px] text-gray-500">
+                                    <span className="font-bold uppercase tracking-widest text-gray-400 block">{t("department_name")}</span>
+                                    <span className="font-bold text-gray-700">{historyData.staff.department}</span>
+                                </div>
+                            )}
+                            <div className="ml-auto text-[10px] text-indigo-500 font-bold uppercase tracking-widest">
+                                {t("last_12_months")}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Table */}
+                    <div className="overflow-y-auto max-h-[60vh] bg-white">
+                        {historyLoading ? (
+                            <div className="flex flex-col items-center justify-center py-16 gap-3">
+                                <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+                                <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">{t("loading")}</p>
+                            </div>
+                        ) : historyData ? (
+                            <Table>
+                                <TableHeader className="bg-gray-100 sticky top-0">
+                                    <TableRow className="hover:bg-transparent border-gray-200">
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("month")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("basic_salary")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("allowances")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("deductions")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("net_salary")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">{t("status")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">{t("paid_on")}</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {historyData.history.map((entry, idx) => {
+                                        const monthNames = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+                                        const monthLabel = t(monthNames[entry.month - 1]) + " " + entry.year;
+                                        const isCurrentMonth = entry.month === (new Date().getMonth() + 1) && entry.year === new Date().getFullYear();
+                                        const hasData = entry.net_salary !== null;
+                                        return (
+                                            <TableRow key={idx} className={cn(
+                                                "border-b border-gray-50 text-[11px] transition-colors",
+                                                isCurrentMonth ? "bg-indigo-50/50" : "hover:bg-gray-50/40",
+                                                !hasData ? "opacity-50" : ""
+                                            )}>
+                                                <TableCell className="py-3 font-medium text-gray-700">
+                                                    <div className="flex items-center gap-2">
+                                                        {isCurrentMonth && <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shrink-0" />}
+                                                        {monthLabel}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="py-3 text-right text-gray-600">
+                                                    {hasData ? `${school.currency}${entry.basic_salary?.toLocaleString()}` : <span className="text-gray-300 italic text-[10px]">—</span>}
+                                                </TableCell>
+                                                <TableCell className="py-3 text-right text-green-600 font-medium">
+                                                    {hasData && (entry.allowances ?? 0) > 0 ? `+${school.currency}${entry.allowances?.toLocaleString()}` : <span className="text-gray-300">—</span>}
+                                                </TableCell>
+                                                <TableCell className="py-3 text-right text-red-500 font-medium">
+                                                    {hasData && (entry.deductions ?? 0) > 0 ? `-${school.currency}${entry.deductions?.toLocaleString()}` : <span className="text-gray-300">—</span>}
+                                                </TableCell>
+                                                <TableCell className="py-3 text-right font-bold text-gray-800">
+                                                    {hasData ? `${school.currency}${entry.net_salary?.toLocaleString()}` : <span className="text-gray-300 italic text-[10px]">Not Generated</span>}
+                                                </TableCell>
+                                                <TableCell className="py-3 text-center">
+                                                    {entry.status ? (
+                                                        <span className={cn(
+                                                            "text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-tighter",
+                                                            statusColors[entry.status]
+                                                        )}>{t(entry.status.toLowerCase())}</span>
+                                                    ) : (
+                                                        <span className="text-gray-300 text-[10px]">—</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="py-3 text-center text-gray-500 text-[10px]">
+                                                    {entry.paid_on ?? <span className="text-gray-300">—</span>}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        ) : null}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex justify-end items-center px-6 py-4 border-t border-gray-100 bg-gray-50">
+                        <Button variant="gradient" className="h-9 px-8 text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-md"
+                            onClick={() => { setHistoryRow(null); setHistoryData(null); }}>
+                            {t("close")}
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>
