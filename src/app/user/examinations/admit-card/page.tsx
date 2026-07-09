@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { AdmitCardData, AdmitCardTemplateLayout } from "@/components/examination/AdmitCardTemplateLayout";
-import ReactToPrint from "react-to-print";
+import { useReactToPrint } from "react-to-print";
 
 export default function UserAdmitCardPage() {
     const { t } = useTranslation();
@@ -16,6 +16,10 @@ export default function UserAdmitCardPage() {
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
     const componentRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const printRef = useRef<any>(null);
+    const handlePrint = useReactToPrint({
+        contentRef: printRef,
+    });
 
     useEffect(() => {
         const fetchAdmitCards = async () => {
@@ -75,15 +79,16 @@ export default function UserAdmitCardPage() {
                                             <h3 className="font-bold text-gray-800">{card.exam.name}</h3>
                                             <p className="text-xs text-gray-500">{card.exam.session}</p>
                                         </div>
-                                        <ReactToPrint
-                                            trigger={() => (
-                                                <Button className="h-8 gap-2 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 hover:opacity-90">
-                                                    <Printer className="h-4 w-4" />
-                                                    {t("print")}
-                                                </Button>
-                                            )}
-                                            content={() => componentRefs.current[index]}
-                                        />
+                                        <Button 
+                                            onClick={() => {
+                                                printRef.current = componentRefs.current[index];
+                                                handlePrint();
+                                            }}
+                                            className="h-8 gap-2 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 hover:opacity-90"
+                                        >
+                                            <Printer className="h-4 w-4" />
+                                            {t("print")}
+                                        </Button>
                                     </div>
                                     <div className="p-4 overflow-x-auto bg-gray-50 flex justify-center">
                                         <div className="bg-white shadow-sm border border-gray-200 print:shadow-none print:border-none">
