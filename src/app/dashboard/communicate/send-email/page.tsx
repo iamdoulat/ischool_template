@@ -95,6 +95,8 @@ interface ClassItem {
 export default function SendEmailPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const ttRef = useRef(tt);
+    ttRef.current = tt;
     const fileInputRef = useRef<HTMLInputElement>(null);
     const ckeditorRef = useRef<{ insertText: (text: string) => void }>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -140,9 +142,9 @@ export default function SendEmailPage() {
             const response = await api.get('/communicate/email-templates');
             setTemplates(response.data.data || response.data);
         } catch {
-            tt.toast("error", "failed_to_load_email_templates");
+            ttRef.current.toast("error", "failed_to_load_email_templates");
         }
-    }, [tt]);
+    }, []);
 
     const fetchUsersByRole = useCallback(async (role: string) => {
         setUsersLoading(true);
@@ -150,21 +152,21 @@ export default function SendEmailPage() {
             const response = await api.get(`/communicate/users-by-role/${role}`);
             setAllUsers(response.data?.data || response.data || []);
         } catch {
-            tt.toast("error", "failed_to_load_users");
+            ttRef.current.toast("error", "failed_to_load_users");
             setAllUsers([]);
         } finally {
             setUsersLoading(false);
         }
-    }, [tt]);
+    }, []);
 
     const fetchClasses = useCallback(async () => {
         try {
             const response = await api.get('/communicate/classes');
             setClasses(response.data?.data || response.data || []);
         } catch {
-            tt.toast("error", "failed_to_load_classes");
+            ttRef.current.toast("error", "failed_to_load_classes");
         }
-    }, [tt]);
+    }, []);
 
     const fetchStudentsByClass = useCallback(async (classId: string) => {
         setClassLoading(true);
@@ -172,12 +174,12 @@ export default function SendEmailPage() {
             const response = await api.get(`/communicate/students-by-class/${classId}`);
             setClassStudents(response.data?.data || response.data || []);
         } catch {
-            tt.toast("error", "failed_to_load_students");
+            ttRef.current.toast("error", "failed_to_load_students");
             setClassStudents([]);
         } finally {
             setClassLoading(false);
         }
-    }, [tt]);
+    }, []);
 
     const fetchBirthdayUsers = useCallback(async () => {
         setBirthdayLoading(true);
@@ -186,12 +188,12 @@ export default function SendEmailPage() {
             const response = await api.get('/communicate/birthday-users' + params);
             setBirthdayUsers(response.data?.data || response.data || []);
         } catch {
-            tt.toast("error", "failed_to_load_birthday_users");
+            ttRef.current.toast("error", "failed_to_load_birthday_users");
             setBirthdayUsers([]);
         } finally {
             setBirthdayLoading(false);
         }
-    }, [birthdayClassId, tt]);
+    }, [birthdayClassId]);
 
     useEffect(() => {
         fetchTemplates();
@@ -320,8 +322,9 @@ export default function SendEmailPage() {
             });
             tt.success("email_queued_for_delivery");
             resetForm();
-        } catch {
-            tt.toast("error", "failed_to_send_email");
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { message?: string } } };
+            tt.toast("error", err.response?.data?.message || "failed_to_send_email");
         } finally {
             setSubmitting(false);
         }

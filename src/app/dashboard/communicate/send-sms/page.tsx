@@ -78,6 +78,8 @@ interface ClassItem {
 export default function SendSMSPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const ttRef = useRef(tt);
+    ttRef.current = tt;
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [activeTab, setActiveTab] = useState("Group");
     const [templates, setTemplates] = useState<SmsTemplate[]>([]);
@@ -121,9 +123,9 @@ export default function SendSMSPage() {
             const response = await api.get('/communicate/sms-templates');
             setTemplates(response.data.data || response.data);
         } catch {
-            tt.toast("error", "failed_to_load_sms_templates");
+            ttRef.current.toast("error", "failed_to_load_sms_templates");
         }
-    }, [tt]);
+    }, []);
 
     const fetchUsersByRole = useCallback(async (role: string) => {
         setUsersLoading(true);
@@ -131,21 +133,21 @@ export default function SendSMSPage() {
             const response = await api.get(`/communicate/users-by-role/${role}`);
             setAllUsers(response.data?.data || response.data || []);
         } catch {
-            tt.toast("error", "failed_to_load_users");
+            ttRef.current.toast("error", "failed_to_load_users");
             setAllUsers([]);
         } finally {
             setUsersLoading(false);
         }
-    }, [tt]);
+    }, []);
 
     const fetchClasses = useCallback(async () => {
         try {
             const response = await api.get('/communicate/classes');
             setClasses(response.data?.data || response.data || []);
         } catch {
-            tt.toast("error", "failed_to_load_classes");
+            ttRef.current.toast("error", "failed_to_load_classes");
         }
-    }, [tt]);
+    }, []);
 
     const fetchStudentsByClass = useCallback(async (classId: string) => {
         setClassLoading(true);
@@ -153,12 +155,12 @@ export default function SendSMSPage() {
             const response = await api.get(`/communicate/students-by-class/${classId}`);
             setClassStudents(response.data?.data || response.data || []);
         } catch {
-            tt.toast("error", "failed_to_load_students");
+            ttRef.current.toast("error", "failed_to_load_students");
             setClassStudents([]);
         } finally {
             setClassLoading(false);
         }
-    }, [tt]);
+    }, []);
 
     const fetchBirthdayUsers = useCallback(async () => {
         setBirthdayLoading(true);
@@ -167,12 +169,12 @@ export default function SendSMSPage() {
             const response = await api.get('/communicate/birthday-users' + params);
             setBirthdayUsers(response.data?.data || response.data || []);
         } catch {
-            tt.toast("error", "failed_to_load_birthday_users");
+            ttRef.current.toast("error", "failed_to_load_birthday_users");
             setBirthdayUsers([]);
         } finally {
             setBirthdayLoading(false);
         }
-    }, [birthdayClassId, tt]);
+    }, [birthdayClassId]);
 
     useEffect(() => {
         fetchTemplates();
@@ -293,8 +295,9 @@ export default function SendSMSPage() {
             await api.post('/communicate/send-sms', payload);
             tt.success(formData.send_type === 'now' ? "sms_sent_successfully" : "sms_scheduled_successfully");
             resetForm();
-        } catch {
-            tt.toast("error", "failed_to_send_sms");
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { message?: string } } };
+            tt.toast("error", err.response?.data?.message || "failed_to_send_sms");
         } finally {
             setSubmitting(false);
         }

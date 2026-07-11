@@ -86,6 +86,8 @@ interface PaginationData {
 export default function SMSTemplatePage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const ttRef = useRef(tt);
+    ttRef.current = tt;
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [templates, setTemplates] = useState<SMSTemplate[]>([]);
@@ -134,11 +136,11 @@ export default function SMSTemplatePage() {
                 to: response.data.to
             });
         } catch {
-            tt.toast("error", "failed_to_fetch_sms_templates");
+            ttRef.current.toast("error", "failed_to_fetch_sms_templates");
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, limit, tt]);
+    }, [searchTerm, limit]);
 
     useEffect(() => {
         fetchTemplates();

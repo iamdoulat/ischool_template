@@ -94,6 +94,8 @@ interface PaginationData {
 export default function EmailTemplatePage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const ttRef = useRef(tt);
+    ttRef.current = tt;
     const { settings } = useSettings();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const ckeditorRef = useRef<{ insertText: (text: string) => void }>(null);
@@ -130,11 +132,11 @@ export default function EmailTemplatePage() {
                 to: response.data.to
             });
         } catch {
-            tt.toast("error", "failed_to_fetch_email_templates");
+            ttRef.current.toast("error", "failed_to_fetch_email_templates");
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, limit, tt]);
+    }, [searchTerm, limit]);
 
     useEffect(() => {
         fetchTemplates();

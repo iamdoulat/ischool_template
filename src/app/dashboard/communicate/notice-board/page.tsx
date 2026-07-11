@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 import {
@@ -84,6 +84,8 @@ interface Notice {
 export default function NoticeBoardPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const ttRef = useRef(tt);
+    ttRef.current = tt;
     const { settings } = useSettings();
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
@@ -141,11 +143,11 @@ export default function NoticeBoardPage() {
             setLastPage(response.data?.last_page || 1);
             setTotal(response.data?.total || 0);
         } catch {
-            tt.error("failed_to_fetch_notices");
+            ttRef.current.error("failed_to_fetch_notices");
         } finally {
             setLoading(false);
         }
-    }, [searchQuery, pageSize, tt]);
+    }, [searchQuery, pageSize]);
 
     useEffect(() => {
         fetchNotices(1);
