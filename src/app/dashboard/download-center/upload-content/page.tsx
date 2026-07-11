@@ -46,7 +46,9 @@ interface ContentItem {
     file_size: number;
     uploader?: { name: string };
     created_at: string;
-    content_type?: { name: string };
+    content_type_id?: number;
+    content_type?: { id: number; name: string };
+    description?: string;
 }
 
 interface PaginationData {
@@ -170,7 +172,7 @@ export default function UploadContentPage() {
         setIsEditing(item.id);
         setFormData({
             title: item.title,
-            content_type_id: String(item.content_type_id),
+            content_type_id: String(item.content_type_id || item.content_type?.id || ""),
             description: item.description || "",
             file: null,
         });
