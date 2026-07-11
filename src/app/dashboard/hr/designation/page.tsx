@@ -232,7 +232,7 @@ export default function DesignationPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("designation_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_designations", { count: filteredDesignations.length })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{filteredDesignations.length} {t("designations")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">

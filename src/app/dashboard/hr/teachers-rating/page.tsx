@@ -180,17 +180,17 @@ export default function TeachersRatingPage() {
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("teachers_rating")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("x_ratings_found", { count: filteredRatings.length })}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{filteredRatings.length} {t("ratings")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-4">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="relative w-full md:w-64">
                             <Input
-                                placeholder={t("search_by_staff_id_name_or_student")}
+                                placeholder={t("search") + "..."}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
+                                className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-full"
                             />
                         </div>
 

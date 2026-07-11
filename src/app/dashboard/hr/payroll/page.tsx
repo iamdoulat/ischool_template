@@ -43,6 +43,7 @@ import {
     X,
     Filter,
     Banknote,
+    Download,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -53,6 +54,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
 import { useReactToPrint } from "react-to-print";
+import { useCurrency } from "@/components/providers/currency-provider";
 
 // ─── Skeleton ──────────────────────────────────────────────────────────────────
 
@@ -90,6 +92,11 @@ interface PayrollRow {
     status: "Generated" | "Paid" | "Unpaid" | null;
     paid_on: string | null;
     note: string | null;
+    profile_basic_salary?: number;
+    profile_house_rent?: number;
+    profile_medical_allowance?: number;
+    profile_conveyance_allowance?: number;
+    profile_food_allowance?: number;
 }
 
 interface Meta {
@@ -162,27 +169,59 @@ function Payslip({ row, month, year, school, t }: {
         { label: "november", value: 11 },
         { label: "december", value: 12 },
     ];
+    const { selectedCurrency } = useCurrency();
+    
     const monthName = t(MONTHS.find(m => m.value === month)?.label ?? "");
     const grossSalary = row.basic_salary + row.allowances;
-    const cur = school.currency || "$";
+    const cur = selectedCurrency?.symbol || school.currency || "$";
+
+    const houseRent = grossSalary * 0.317;
+    const medical = grossSalary * 0.015;
+    const conveyance = grossSalary * 0.009;
+    const food = grossSalary * 0.025;
 
     return (
-        <div id="payslip-content" className="bg-white text-black p-8 text-[11px] font-sans w-full max-w-2xl mx-auto shadow-sm">
+        <div 
+            id="payslip-content" 
+            style={{
+                "--color-white": "#ffffff",
+                "--color-black": "#000000",
+                "--color-gray-50": "#f9fafb",
+                "--color-gray-100": "#f3f4f6",
+                "--color-gray-200": "#e5e7eb",
+                "--color-gray-300": "#d1d5db",
+                "--color-gray-400": "#9ca3af",
+                "--color-gray-500": "#6b7280",
+                "--color-gray-600": "#4b5563",
+                "--color-gray-700": "#374151",
+                "--color-gray-800": "#1f2937",
+                "--color-gray-900": "#111827",
+                "--color-indigo-50": "#e0e7ff",
+                "--color-indigo-100": "#c7d2fe",
+                "--color-indigo-200": "#a5b4fc",
+                "--color-indigo-500": "#6366f1",
+                "--color-indigo-600": "#4f46e5",
+                "--color-indigo-900": "#312e81",
+                "--color-green-200": "#bbf7d0",
+                "--color-green-500": "#22c55e",
+                "--color-green-600": "#16a34a",
+                "--color-red-500": "#ef4444",
+            } as React.CSSProperties}
+            className="bg-white text-black p-5 text-[11px] font-sans w-full max-w-2xl mx-auto shadow-sm"
+        >
             {/* Header */}
             <PrintHeader title={t("salary_payslip")} tabName="Payslip" />
             
-            <div className="flex justify-between items-center mb-6 mt-6">
-                <p className="text-[14px] font-semibold text-gray-800">
-                    {t("period_colon")} <span className="text-indigo-600">{monthName} {year}</span>
-                </p>
-                <div className="text-right">
-                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest mb-0.5">{t("payslip_id")}</span>
-                    <span className="font-bold text-gray-800">#{row.payroll_id ?? "—"}</span>
-                </div>
-            </div>
-
             {/* Staff info */}
-            <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-8 bg-gray-50/50 p-4 rounded-lg border border-gray-100">
+            <div className="grid grid-cols-3 gap-y-3 gap-x-6 mb-6 mt-4 bg-gray-50/50 p-4 rounded-lg border border-gray-100">
+                <div className="space-y-1">
+                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">SALARY PERIOD</span>
+                    <span className="text-gray-800 font-semibold">{monthName} {year}</span>
+                </div>
+                <div className="space-y-1">
+                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("payslip_id")}</span>
+                    <span className="text-gray-800 font-semibold">#{row.payroll_id ?? "—"}</span>
+                </div>
                 <div className="space-y-1">
                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("staff_id")}</span>
                     <span className="text-gray-800 font-semibold">{row.staff_id}</span>
@@ -211,10 +250,24 @@ function Payslip({ row, month, year, school, t }: {
                             <span className="font-semibold">{cur}{row.basic_salary.toLocaleString()}</span>
                         </div>
                         {row.allowances > 0 && (
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">{t("allowances")}</span>
-                                <span className="font-semibold text-green-600">+{cur}{row.allowances.toLocaleString()}</span>
-                            </div>
+                            <>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">House Rent</span>
+                                    <span className="font-semibold text-green-600">+{cur}{houseRent.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Medical Allowance</span>
+                                    <span className="font-semibold text-green-600">+{cur}{medical.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Conveyance Allowance</span>
+                                    <span className="font-semibold text-green-600">+{cur}{conveyance.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Food Allowance</span>
+                                    <span className="font-semibold text-green-600">+{cur}{food.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                                </div>
+                            </>
                         )}
                         <div className="pt-2 border-t border-gray-100 flex justify-between font-bold text-gray-800">
                             <span>{t("gross_earnings")}</span>
@@ -242,14 +295,14 @@ function Payslip({ row, month, year, school, t }: {
             </div>
 
             {/* Final Summary */}
-            <div className="bg-indigo-900 text-white rounded-lg p-6 flex justify-between items-center shadow-lg">
-                <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-[.2em]">{t("net_salary_payable")}</span>
-                    <p className="text-[24px] font-bold tracking-tight">{cur}{row.net_salary.toLocaleString()}</p>
+            <div className="bg-indigo-900 text-white rounded-lg p-4 flex justify-between items-center shadow-sm">
+                <div className="space-y-0.5">
+                    <span className="text-[9px] font-bold text-indigo-200 uppercase tracking-[.15em]">{t("net_salary_payable")}</span>
+                    <p className="text-[18px] font-bold tracking-tight">{cur}{row.net_salary.toLocaleString()}</p>
                 </div>
                 <div className="text-right space-y-1">
-                    <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest">{t("payment_status")}</span>
-                    <p className="text-[11px] font-bold bg-white/20 px-3 py-1 rounded-full">{row.status}</p>
+                    <span className="text-[9px] font-bold text-indigo-200 uppercase tracking-widest block">{t("payment_status")}</span>
+                    <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full inline-block mt-1">{row.status}</span>
                 </div>
             </div>
 
@@ -273,6 +326,7 @@ function Payslip({ row, month, year, school, t }: {
 export default function PayrollPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const { selectedCurrency } = useCurrency();
 
     // Criteria
     const [role, setRole] = useState("all");
@@ -296,7 +350,16 @@ export default function PayrollPage() {
     // Dialogs
     const [genOpen, setGenOpen] = useState(false);
     const [genRow, setGenRow] = useState<PayrollRow | null>(null);
-    const [genForm, setGenForm] = useState({ basic_salary: "", allowances: "", deductions: "", note: "" });
+    const [genForm, setGenForm] = useState({
+        gross_salary: "",
+        basic_salary: "",
+        house_rent: "",
+        medical_allowance: "",
+        conveyance_allowance: "",
+        food_allowance: "",
+        deductions: "",
+        note: ""
+    });
     const [genSaving, setGenSaving] = useState(false);
 
     const [payRow, setPayRow] = useState<PayrollRow | null>(null);
@@ -304,6 +367,8 @@ export default function PayrollPage() {
 
     const [slipRow, setSlipRow] = useState<PayrollRow | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
+    const [downloadingRow, setDownloadingRow] = useState<PayrollRow | null>(null);
+    const downloadRef = useRef<HTMLDivElement>(null);
 
     const [historyRow, setHistoryRow] = useState<PayrollRow | null>(null);
     const [historyData, setHistoryData] = useState<HistoryData | null>(null);
@@ -351,9 +416,38 @@ export default function PayrollPage() {
     // ── Generate ───────────────────────────────────────────────────────────────
     const openGenerate = (row: PayrollRow) => {
         setGenRow(row);
+        
+        const hasData = row.status != null;
+        const basic = row.basic_salary || 0;
+        
+        let house_rent, medical, conveyance, food, gross;
+
+        if (hasData) {
+            gross = basic + (row.allowances || 0);
+        }
+
+        // If it's not generated yet, or if the generated amount is exactly 0, fallback to the profile data
+        if (!hasData || !gross || gross === 0) {
+            const profileBasic = Number(row.profile_basic_salary) || Number(basic) || 0;
+            house_rent = Number(row.profile_house_rent) || 0;
+            medical = Number(row.profile_medical_allowance) || 0;
+            conveyance = Number(row.profile_conveyance_allowance) || 0;
+            food = Number(row.profile_food_allowance) || 0;
+            gross = profileBasic + house_rent + medical + conveyance + food;
+        } else {
+            house_rent = gross * 0.317;
+            medical = gross * 0.015;
+            conveyance = gross * 0.009;
+            food = gross * 0.025;
+        }
+
         setGenForm({
-            basic_salary: String(row.basic_salary || ""),
-            allowances: String(row.allowances || ""),
+            gross_salary: String(gross || ""),
+            basic_salary: String(basic || ""),
+            house_rent: String(house_rent || ""),
+            medical_allowance: String(medical || ""),
+            conveyance_allowance: String(conveyance || ""),
+            food_allowance: String(food || ""),
             deductions: String(row.deductions || ""),
             note: row.note ?? "",
         });
@@ -364,19 +458,24 @@ export default function PayrollPage() {
         if (!genRow) return;
         try {
             setGenSaving(true);
+            const calculatedAllowances = (parseFloat(genForm.house_rent) || 0) +
+                                         (parseFloat(genForm.medical_allowance) || 0) +
+                                         (parseFloat(genForm.conveyance_allowance) || 0) +
+                                         (parseFloat(genForm.food_allowance) || 0);
+
             const payload = {
                 user_id: genRow.id,
                 month,
                 year,
                 basic_salary: parseFloat(genForm.basic_salary) || 0,
-                allowances: parseFloat(genForm.allowances) || 0,
+                allowances: calculatedAllowances,
                 deductions: parseFloat(genForm.deductions) || 0,
                 note: genForm.note || null,
             };
 
             const res = await api.post("/hr/payroll", payload);
             if (res.data?.success) {
-                tt.success("payroll_generated_for_x", { name: genRow.name });
+                tt.success(`Payroll generated for ${genRow.name}`);
                 setGenOpen(false);
                 fetchPayroll();
             }
@@ -395,7 +494,7 @@ export default function PayrollPage() {
             setPayLoading(true);
             const res = await api.put(`/hr/payroll/${payRow.payroll_id}/pay`);
             if (res.data?.success) {
-                tt.success("x_marked_as_paid", { name: payRow.name });
+                tt.success(`${payRow.name} marked as paid`);
                 setPayRow(null);
                 fetchPayroll();
             }
@@ -408,6 +507,121 @@ export default function PayrollPage() {
 
     // ── Print ─────────────────────────────────────────────────────────────────
     const handlePrint = useReactToPrint({ contentRef: printRef });
+
+    const handleDownloadPdf = async (refToDownload = printRef, rowForName = slipRow) => {
+        if (!refToDownload.current || !rowForName) return;
+        try {
+            const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+                import("jspdf"),
+                import("html2canvas-pro"),
+            ]);
+            
+            const element = refToDownload.current;
+            let canvas;
+            
+            // ── Manual Base64 Proxy for Localhost Images ────────────────────────────
+            const images = Array.from(element.querySelectorAll('img'));
+            const originalSrcs = new Map<HTMLImageElement, string>();
+            
+            for (const img of images) {
+                const src = img.src || '';
+                if (src && (src.includes(':8000') || src.includes('localhost') || src.includes('127.0.0.1'))) {
+                    try {
+                        const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(src)}`;
+                        const res = await fetch(proxyUrl);
+                        if (res.ok) {
+                            const blob = await res.blob();
+                            const base64 = await new Promise<string>((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve(reader.result as string);
+                                reader.onerror = reject;
+                                reader.readAsDataURL(blob);
+                            });
+                            originalSrcs.set(img, src);
+                            img.src = base64;
+                            await img.decode().catch(() => {});
+                        }
+                    } catch (e) {
+                        console.warn("Failed to proxy image manually:", e);
+                    }
+                }
+            }
+            // ────────────────────────────────────────────────────────────────────────
+            const origLog = console.log;
+            const origInfo = console.info;
+            const origWarn = console.warn;
+            const origError = console.error;
+            const origDebug = console.debug;
+            
+            const silence = (orig: any) => (...args: any[]) => {
+                if (args[0] && typeof args[0] === 'string' && args[0].includes('oklch')) return;
+                orig(...args);
+            };
+            
+            console.log = silence(origLog);
+            console.info = silence(origInfo);
+            console.warn = silence(origWarn);
+            console.error = silence(origError);
+            console.debug = silence(origDebug);
+            
+            try {
+                canvas = await html2canvas(element, { 
+                    scale: 2, 
+                    useCORS: true, 
+                    logging: false
+                });
+            } finally {
+                console.log = origLog;
+                console.info = origInfo;
+                console.warn = origWarn;
+                console.error = origError;
+                console.debug = origDebug;
+                
+                // Restore original image sources
+                for (const [img, src] of originalSrcs.entries()) {
+                    img.src = src;
+                }
+            }
+            
+            const imgData = canvas.toDataURL("image/png");
+            
+            const pdf = new jsPDF({
+                orientation: "portrait",
+                unit: "mm",
+                format: "a5"
+            });
+            
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const margin = 0; // The HTML container already has p-5 internal padding
+            let imgWidthOnPdf = pdfWidth - (margin * 2);
+            let imgHeightOnPdf = (canvas.height * imgWidthOnPdf) / canvas.width;
+            
+            // Constrain height so the bottom never gets cut off!
+            if (imgHeightOnPdf > pdfHeight - (margin * 2)) {
+                imgHeightOnPdf = pdfHeight - (margin * 2);
+                imgWidthOnPdf = (canvas.width * imgHeightOnPdf) / canvas.height;
+            }
+            
+            // Center horizontally if width was constrained
+            const xPosition = margin + (pdfWidth - (margin * 2) - imgWidthOnPdf) / 2;
+            const yPosition = margin;
+            
+            pdf.addImage(imgData, "PNG", xPosition, yPosition, imgWidthOnPdf, imgHeightOnPdf);
+            pdf.save(`payslip-${rowForName.name || "staff"}-${month}-${year}.pdf`);
+        } catch (error) {
+            console.error("PDF generation failed:", error);
+            tt.error("failed_to_download_pdf");
+        }
+    };
+
+    const handleDownloadPdfDirect = async (row: PayrollRow) => {
+        setDownloadingRow(row);
+        setTimeout(async () => {
+            await handleDownloadPdf(downloadRef, row);
+            setDownloadingRow(null);
+        }, 300);
+    };
 
     // ── History ───────────────────────────────────────────────────────────
     const openHistory = async (row: PayrollRow) => {
@@ -538,7 +752,7 @@ export default function PayrollPage() {
                             onClick={handleSearch}
                             disabled={loading}
                             variant="gradient"
-                            className="gap-2 h-10 px-8 text-[11px] font-bold uppercase tracking-widest rounded shadow-md"
+                            className="gap-2 h-10 px-8 text-[11px] font-bold uppercase tracking-widest rounded-full shadow-md"
                         >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                             {t("search")}
@@ -573,7 +787,7 @@ export default function PayrollPage() {
                                     onClick={handleSearch}
                                     disabled={loading}
                                     variant="gradient"
-                                    className="h-8 px-6 text-[10px] font-bold uppercase rounded shadow-sm"
+                                    className="h-8 px-6 text-[10px] font-bold uppercase rounded-full shadow-sm"
                                 >
                                     {t("search")}
                                 </Button>
@@ -656,15 +870,26 @@ export default function PayrollPage() {
                                                     </Button>
 
                                                     {row.status && (
-                                                        <Button
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            onClick={() => setSlipRow(row)}
-                                                            className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded transition-colors shadow-sm"
-                                                            title={t("view_payslip")}
-                                                        >
-                                                            <Eye className="h-3.5 w-3.5" />
-                                                        </Button>
+                                                        <>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                onClick={() => setSlipRow(row)}
+                                                                className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded transition-colors shadow-sm"
+                                                                title={t("view_payslip")}
+                                                            >
+                                                                <Eye className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                onClick={() => handleDownloadPdfDirect(row)}
+                                                                className="h-7 w-7 bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors shadow-sm"
+                                                                title="Download PDF Payslip"
+                                                            >
+                                                                <Download className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </>
                                                     )}
 
                                                     <Button
@@ -770,8 +995,8 @@ export default function PayrollPage() {
 
             {/* ── Generate Payroll Dialog ──────────────────────────────────────── */}
             <Dialog open={genOpen} onOpenChange={setGenOpen}>
-                <DialogContent className="sm:max-w-[450px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-lg">
-                    <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-5 text-white">
+                <DialogContent className="sm:max-w-[450px] p-0 font-sans border-0 shadow-2xl overflow-hidden gap-0 rounded-lg max-h-[90vh] flex flex-col">
+                    <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-5 text-white shrink-0">
                         <div className="flex justify-between items-center w-full pr-6">
                             <div className="space-y-0.5">
                                 <DialogTitle className="text-sm font-bold uppercase tracking-wider">
@@ -785,26 +1010,15 @@ export default function PayrollPage() {
                         </div>
                     </DialogHeader>
 
-                    <div className="p-6 space-y-5">
+                    <div className="p-6 space-y-5 overflow-y-auto">
                         <div className="grid grid-cols-1 gap-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">{t("basic_salary")} <span className="text-red-500">*</span></Label>
-                                <Input
-                                    type="number"
-                                    value={genForm.basic_salary}
-                                    onChange={e => setGenForm(prev => ({ ...prev, basic_salary: e.target.value }))}
-                                    className="h-10 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
-                                    placeholder={t("enter_amount")}
-                                />
-                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1 text-green-600">{t("allowances")}</Label>
+                                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Gross Salary (Auto-fill) <span className="text-red-500">*</span></Label>
                                     <Input
-                                        type="number"
-                                        value={genForm.allowances}
-                                        onChange={e => setGenForm(prev => ({ ...prev, allowances: e.target.value }))}
-                                        className="h-10 text-xs border-gray-100 bg-green-50/30 focus-visible:ring-green-500 rounded-lg shadow-none"
+                                        readOnly
+                                        value={genForm.gross_salary || "0.00"}
+                                        className="h-10 text-xs border-gray-200 rounded-lg shadow-none font-bold text-gray-500 bg-gray-50 cursor-not-allowed"
                                         placeholder="0.00"
                                     />
                                 </div>
@@ -819,6 +1033,52 @@ export default function PayrollPage() {
                                     />
                                 </div>
                             </div>
+                            
+                            <div className="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100 space-y-4">
+                                <Label className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block border-b border-indigo-100 pb-2 mb-2">Salary Breakdown (Allowances)</Label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold text-gray-500 uppercase ml-1 text-green-600">House Rent</Label>
+                                        <Input
+                                            type="number"
+                                            value={genForm.house_rent}
+                                            onChange={e => setGenForm(prev => ({ ...prev, house_rent: e.target.value }))}
+                                            className="h-10 text-xs border-gray-100 bg-green-50/30 focus-visible:ring-green-500 rounded-lg shadow-none"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold text-gray-500 uppercase ml-1 text-green-600">Medical</Label>
+                                        <Input
+                                            type="number"
+                                            value={genForm.medical_allowance}
+                                            onChange={e => setGenForm(prev => ({ ...prev, medical_allowance: e.target.value }))}
+                                            className="h-10 text-xs border-gray-100 bg-green-50/30 focus-visible:ring-green-500 rounded-lg shadow-none"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold text-gray-500 uppercase ml-1 text-green-600">Conveyance</Label>
+                                        <Input
+                                            type="number"
+                                            value={genForm.conveyance_allowance}
+                                            onChange={e => setGenForm(prev => ({ ...prev, conveyance_allowance: e.target.value }))}
+                                            className="h-10 text-xs border-gray-100 bg-green-50/30 focus-visible:ring-green-500 rounded-lg shadow-none"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold text-gray-500 uppercase ml-1 text-green-600">Food</Label>
+                                        <Input
+                                            type="number"
+                                            value={genForm.food_allowance}
+                                            onChange={e => setGenForm(prev => ({ ...prev, food_allowance: e.target.value }))}
+                                            className="h-10 text-xs border-gray-100 bg-green-50/30 focus-visible:ring-green-500 rounded-lg shadow-none"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="bg-indigo-900 rounded-lg p-4 flex justify-between items-center shadow-inner overflow-hidden relative">
@@ -826,9 +1086,12 @@ export default function PayrollPage() {
                             <div className="space-y-0.5">
                                 <span className="text-[9px] font-bold text-indigo-300 uppercase tracking-[.2em]">{t("net_calculated")}</span>
                                 <p className="text-[20px] font-bold text-white tracking-tight">
-                                    {school.currency || "$"}{(
+                                    {selectedCurrency?.symbol || school.currency || "$"}{(
                                         (parseFloat(genForm.basic_salary) || 0) +
-                                        (parseFloat(genForm.allowances) || 0) -
+                                        (parseFloat(genForm.house_rent) || 0) +
+                                        (parseFloat(genForm.medical_allowance) || 0) +
+                                        (parseFloat(genForm.conveyance_allowance) || 0) +
+                                        (parseFloat(genForm.food_allowance) || 0) -
                                         (parseFloat(genForm.deductions) || 0)
                                     ).toLocaleString()}
                                 </p>
@@ -866,7 +1129,7 @@ export default function PayrollPage() {
                 <DialogContent className="sm:max-w-[400px] p-6 rounded-lg border-0 shadow-2xl">
                     <div className="flex flex-col items-center text-center space-y-4">
                         <div className="h-16 w-16 bg-green-50 rounded-full flex items-center justify-center mb-2">
-                            <DollarSign className="h-8 w-8 text-green-600" />
+                            <span className="text-3xl font-bold text-green-600 leading-none">{selectedCurrency?.symbol || school.currency || "$"}</span>
                         </div>
                         <div className="space-y-1">
                             <DialogTitle className="text-lg font-bold text-gray-800">{t("confirm_payment")}</DialogTitle>
@@ -882,7 +1145,7 @@ export default function PayrollPage() {
                             </div>
                             <div className="flex justify-between text-[11px] text-gray-500">
                                 <span>{t("net_salary")}</span>
-                                <span className="font-bold text-indigo-600">{school.currency || "$"}{payRow?.net_salary?.toLocaleString()}</span>
+                                <span className="font-bold text-indigo-600">{selectedCurrency?.symbol || school.currency || "$"}{payRow?.net_salary?.toLocaleString()}</span>
                             </div>
                         </div>
 
@@ -934,6 +1197,14 @@ export default function PayrollPage() {
                         <div className="flex gap-2">
                             <Button variant="outline" className="h-10 px-6 text-[11px] font-bold uppercase tracking-widest rounded-lg" onClick={() => setSlipRow(null)}>{t("close")}</Button>
                             <Button
+                                onClick={() => handleDownloadPdf(printRef, slipRow)}
+                                variant="outline"
+                                className="h-10 px-6 text-[11px] font-bold uppercase tracking-widest rounded-lg gap-2 border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                            >
+                                <Download className="h-4 w-4" />
+                                Download PDF
+                            </Button>
+                            <Button
                                 onClick={handlePrint}
                                 variant="gradient"
                                 className="h-10 px-8 text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-md gap-2"
@@ -947,7 +1218,7 @@ export default function PayrollPage() {
             </Dialog>
             {/* ── Salary History Dialog ───────────────────────────────────── */}
             <Dialog open={!!historyRow} onOpenChange={() => { setHistoryRow(null); setHistoryData(null); }}>
-                <DialogContent className="w-[95vw] max-w-5xl p-0 overflow-hidden border-0 shadow-2xl rounded-xl">
+                <DialogContent className="w-[95vw] max-w-[1400px] p-0 overflow-hidden border-0 shadow-2xl rounded-xl">
                     {/* Header */}
                     <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white">
                         <div className="flex items-center gap-3">
@@ -992,7 +1263,7 @@ export default function PayrollPage() {
                     )}
 
                     {/* Table */}
-                    <div className="overflow-y-auto max-h-[60vh] bg-white">
+                    <div className="overflow-auto max-h-[60vh] bg-white">
                         {historyLoading ? (
                             <div className="flex flex-col items-center justify-center py-16 gap-3">
                                 <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
@@ -1004,7 +1275,10 @@ export default function PayrollPage() {
                                     <TableRow className="hover:bg-transparent border-gray-200">
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("month")}</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("basic_salary")}</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("allowances")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">House Rent</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Medical Allowance</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Conveyance</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Food Allowance</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("deductions")}</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("net_salary")}</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-center">{t("status")}</TableHead>
@@ -1016,7 +1290,12 @@ export default function PayrollPage() {
                                         const monthNames = ["january","february","march","april","may","june","july","august","september","october","november","december"];
                                         const monthLabel = t(monthNames[entry.month - 1]) + " " + entry.year;
                                         const isCurrentMonth = entry.month === (new Date().getMonth() + 1) && entry.year === new Date().getFullYear();
-                                        const hasData = entry.net_salary !== null;
+                                        const hasData = entry.net_salary != null || entry.status != null;
+                                        const gross = hasData ? ((entry.basic_salary ?? 0) + (entry.allowances ?? 0)) : 0;
+                                        const houseRent = gross * 0.317;
+                                        const medicalAllowance = gross * 0.015;
+                                        const conveyanceAllowance = gross * 0.009;
+                                        const foodAllowance = gross * 0.025;
                                         return (
                                             <TableRow key={idx} className={cn(
                                                 "border-b border-gray-50 text-[11px] transition-colors",
@@ -1033,7 +1312,16 @@ export default function PayrollPage() {
                                                     {hasData ? `${school.currency}${entry.basic_salary?.toLocaleString()}` : <span className="text-gray-300 italic text-[10px]">—</span>}
                                                 </TableCell>
                                                 <TableCell className="py-3 text-right text-green-600 font-medium">
-                                                    {hasData && (entry.allowances ?? 0) > 0 ? `+${school.currency}${entry.allowances?.toLocaleString()}` : <span className="text-gray-300">—</span>}
+                                                    {hasData && houseRent > 0 ? `+${school.currency}${houseRent.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}` : <span className="text-gray-300">—</span>}
+                                                </TableCell>
+                                                <TableCell className="py-3 text-right text-green-600 font-medium">
+                                                    {hasData && medicalAllowance > 0 ? `+${school.currency}${medicalAllowance.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}` : <span className="text-gray-300">—</span>}
+                                                </TableCell>
+                                                <TableCell className="py-3 text-right text-green-600 font-medium">
+                                                    {hasData && conveyanceAllowance > 0 ? `+${school.currency}${conveyanceAllowance.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}` : <span className="text-gray-300">—</span>}
+                                                </TableCell>
+                                                <TableCell className="py-3 text-right text-green-600 font-medium">
+                                                    {hasData && foodAllowance > 0 ? `+${school.currency}${foodAllowance.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}` : <span className="text-gray-300">—</span>}
                                                 </TableCell>
                                                 <TableCell className="py-3 text-right text-red-500 font-medium">
                                                     {hasData && (entry.deductions ?? 0) > 0 ? `-${school.currency}${entry.deductions?.toLocaleString()}` : <span className="text-gray-300">—</span>}
@@ -1071,6 +1359,20 @@ export default function PayrollPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {downloadingRow && (
+                <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+                    <div ref={downloadRef}>
+                        <Payslip
+                            row={downloadingRow}
+                            month={month}
+                            year={year}
+                            school={school}
+                            t={t}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

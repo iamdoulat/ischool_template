@@ -238,7 +238,7 @@ export default function DepartmentPage() {
                                 {t("department_list")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {t("x_departments", { count: filteredDepartments.length })}
+                                {filteredDepartments.length} {t("departments")}
                             </p>
                         </div>
                     </CardHeader>

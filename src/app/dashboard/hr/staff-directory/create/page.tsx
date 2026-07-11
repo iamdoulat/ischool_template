@@ -62,9 +62,41 @@ export default function CreateStaffPage() {
         work_experience: "",
         note: "",
         pan_number: "",
+        basic_salary: "",
+        house_rent: "",
+        medical_allowance: "",
+        conveyance_allowance: "",
+        food_allowance: "",
     });
     const [isAutoStaffId, setIsAutoStaffId] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [grossSalaryInput, setGrossSalaryInput] = useState("");
+
+    const handleFillBreakdown = () => {
+        const gross = Number(grossSalaryInput) || 0;
+        if (gross > 0) {
+            setFormData(prev => ({
+                ...prev,
+                basic_salary: (gross * 0.634).toFixed(2),
+                house_rent: (gross * 0.317).toFixed(2),
+                medical_allowance: (gross * 0.015).toFixed(2),
+                conveyance_allowance: (gross * 0.009).toFixed(2),
+                food_allowance: (gross * 0.025).toFixed(2),
+            }));
+        }
+    };
+
+    useEffect(() => {
+        const sum = (Number(formData.basic_salary) || 0) +
+            (Number(formData.house_rent) || 0) +
+            (Number(formData.medical_allowance) || 0) +
+            (Number(formData.conveyance_allowance) || 0) +
+            (Number(formData.food_allowance) || 0);
+
+        if (sum > 0) {
+            setGrossSalaryInput(sum.toFixed(2));
+        }
+    }, [formData.basic_salary, formData.house_rent, formData.medical_allowance, formData.conveyance_allowance, formData.food_allowance]);
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -563,6 +595,83 @@ export default function CreateStaffPage() {
                                     placeholder={t("enter_additional_notes")}
                                     className="border-gray-200 min-h-[80px]"
                                 />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Salary Details Section */}
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">Salary Details</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-500 uppercase">Basic Salary</Label>
+                                <Input
+                                    type="number"
+                                    value={formData.basic_salary}
+                                    onChange={(e) => handleInputChange("basic_salary", e.target.value)}
+                                    placeholder="0.00"
+                                    className="h-11 border-gray-200"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-500 uppercase">House Rent</Label>
+                                <Input
+                                    type="number"
+                                    value={formData.house_rent}
+                                    onChange={(e) => handleInputChange("house_rent", e.target.value)}
+                                    placeholder="0.00"
+                                    className="h-11 border-gray-200"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-500 uppercase">Medical Allowance</Label>
+                                <Input
+                                    type="number"
+                                    value={formData.medical_allowance}
+                                    onChange={(e) => handleInputChange("medical_allowance", e.target.value)}
+                                    placeholder="0.00"
+                                    className="h-11 border-gray-200"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-500 uppercase">Conveyance Allowance</Label>
+                                <Input
+                                    type="number"
+                                    value={formData.conveyance_allowance}
+                                    onChange={(e) => handleInputChange("conveyance_allowance", e.target.value)}
+                                    placeholder="0.00"
+                                    className="h-11 border-gray-200"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-500 uppercase">Food Allowance</Label>
+                                <Input
+                                    type="number"
+                                    value={formData.food_allowance}
+                                    onChange={(e) => handleInputChange("food_allowance", e.target.value)}
+                                    placeholder="0.00"
+                                    className="h-11 border-gray-200"
+                                />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <Label className="text-xs font-bold text-gray-500 uppercase text-indigo-600">Gross Salary (Auto-fill)</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        type="number"
+                                        value={grossSalaryInput}
+                                        onChange={(e) => setGrossSalaryInput(e.target.value)}
+                                        placeholder="0.00"
+                                        className="h-11 border-indigo-200 bg-indigo-50/50 font-bold text-indigo-700 flex-1"
+                                    />
+                                    <Button
+                                        type="button"
+                                        onClick={handleFillBreakdown}
+                                        className="h-11 bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm shrink-0 px-6"
+                                    >
+                                        $ Fill Breakdown
+                                    </Button>
+                                </div>
+                                <p className="text-[10px] text-gray-400">Enter amount and click Fill to auto-calculate breakdown</p>
                             </div>
                         </div>
                     </div>

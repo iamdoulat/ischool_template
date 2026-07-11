@@ -298,14 +298,14 @@ export default function ApplyLeavePage() {
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("apply_leave")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("x_leave_requests", { count: meta?.total ?? requests.length })}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{(meta?.total ?? requests.length)} {t("leave_requests")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-4 space-y-4">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="flex items-center gap-2 w-full md:w-auto">
                             <Input
-                                placeholder={t("search_dotdotdot")}
+                                placeholder={t("search") + "..."}
                                 value={keyword}
                                 onChange={(e) => setKeyword(e.target.value)}
                                 onKeyDown={e => e.key === "Enter" && handleSearch()}
@@ -315,7 +315,7 @@ export default function ApplyLeavePage() {
                                 onClick={handleSearch}
                                 disabled={loading}
                                 variant="gradient"
-                                className="gap-2 h-8 px-6 text-[11px] font-bold uppercase rounded shadow-sm flex items-center"
+                                className="gap-2 h-8 px-6 text-[11px] font-bold uppercase rounded-full shadow-sm flex items-center"
                             >
                                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
                                 {t("search")}

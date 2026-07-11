@@ -49,6 +49,14 @@ const destinationOptions = ["Email", "SMS", "Mobile App", "WhatsApp"];
 const recipientOptions = ["Student", "Guardian", "Staff"];
 
 const eventVariables: Record<string, string[]> = {
+    // ── HR / Payroll ─────────────────────────────────────────────────
+    "Salary Generated": [
+        "name", "net_salary", "month_name", "year", "basic_salary", "allowances", "deductions",
+    ],
+    "Salary Paid": [
+        "name", "net_salary", "month_name", "year", "paid_on",
+    ],
+
     // ── Online Admission ─────────────────────────────────────────────
     "Online Admission Fees Submission": [
         "firstname", "lastname", "paid_amount", "date", "reference_no",
