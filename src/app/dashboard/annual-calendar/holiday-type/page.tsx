@@ -206,7 +206,7 @@ export default function HolidayTypePage() {
                                         {loading ? <TableSkeleton cols={2} /> : holidayTypes.length === 0 ? (
                                             <TableRow><TableCell colSpan={2} className="py-14 text-center"><div className="flex flex-col items-center gap-2 text-gray-400"><FolderOpen className="h-8 w-8 opacity-40" /><span className="text-xs">No holiday types found.</span></div></TableCell></TableRow>
                                         ) : holidayTypes.map((item, idx) => (
-                                            <TableRow key={item.id || idx} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                            <TableRow key={item.id || idx} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                 <TableCell className="py-3 font-medium text-gray-800">{item.name}</TableCell>
                                                 <TableCell className="py-3 text-right">
                                                     <div className="flex items-center justify-end gap-1">

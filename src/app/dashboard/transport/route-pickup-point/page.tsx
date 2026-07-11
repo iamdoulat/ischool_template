@@ -278,7 +278,7 @@ export default function RoutePickupPointPage() {
                                 ) : allFilteredData.length === 0 ? (
                                     <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_mappings_found")}</TableCell></TableRow>
                                 ) : paginatedData.map((item) => (
-                                    <TableRow key={item.id} className="text-xs hover:bg-gray-50/60 transition-colors align-top">
+                                    <TableRow key={item.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer align-top">
                                         <TableCell className="py-4 text-gray-700 font-medium">{item.title}</TableCell>
                                         <TableCell className="py-4">
                                             <div className="space-y-1">{item.pickup_points.map((stop, i) => (<div key={i} className="text-gray-600 font-medium">{stop.name}</div>))}</div>

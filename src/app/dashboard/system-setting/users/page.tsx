@@ -572,7 +572,7 @@ export default function UsersPage() {
                             </TableHeader>
                             <TableBody>
                                 {users.map((user) => (
-                                    <TableRow key={user.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors h-10 group">
+                                    <TableRow key={user.id} className="border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer h-10 group">
                                         {activeTab === 'Student' ? (
                                             <>
                                                 <TableCell className="py-2 px-4">

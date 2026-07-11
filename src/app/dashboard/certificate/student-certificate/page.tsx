@@ -474,7 +474,7 @@ export default function StudentCertificatePage() {
                                                 </TableCell>
                                             </TableRow>
                                         ) : templates.map((template) => (
-                                            <TableRow key={template.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                            <TableRow key={template.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                                 <TableCell className="py-3 text-[#6366f1] font-medium">{template.name}</TableCell>
                                                 <TableCell className="py-3">
                                                     {template.background_image ? (

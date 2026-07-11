@@ -503,7 +503,7 @@ export default function CopyOldLessonsPage() {
                                         </div>
 
                                         {sourceLessons.map((lesson, index) => (
-                                            <div key={lesson.id} className="grid grid-cols-[40px_1fr] p-4 group hover:bg-gray-50/30 transition-all border-b border-gray-50">
+                                            <div key={lesson.id} className="grid grid-cols-[40px_1fr] p-4 group hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer transition-all border-b border-gray-50">
                                                 <div className="text-[11px] text-gray-400 font-bold">{index + 1}</div>
                                                 <div className="space-y-4">
                                                     <div className="text-xs font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">

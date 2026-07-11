@@ -385,7 +385,7 @@ export default function SubjectsPage() {
                                         </TableRow>
                                     ) : (
                                         subjects.map((sub) => (
-                                            <TableRow key={sub.id} className="text-[13px] hover:bg-gray-50/50 border-b last:border-0 border-gray-50">
+                                            <TableRow key={sub.id} className="text-[13px] hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b last:border-0 border-gray-50">
                                                 <TableCell className="text-gray-600 font-medium py-3.5 align-middle">{sub.name}</TableCell>
                                                 <TableCell className="text-gray-500 text-right py-3.5 align-middle font-mono text-xs">{sub.code || '-'}</TableCell>
                                                 <TableCell className="text-gray-600 py-3.5 align-middle pl-8 capitalize">{t(sub.type === "theory" ? "theory" : "practical")}</TableCell>

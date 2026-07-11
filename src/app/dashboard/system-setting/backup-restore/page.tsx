@@ -317,7 +317,7 @@ export default function BackupRestorePage() {
                                         </TableRow>
                                     ) : (
                                         backups.map((file) => (
-                                            <TableRow key={file.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors group">
+                                            <TableRow key={file.id} className="border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group">
                                                 <TableCell className="py-2 px-4">
                                                     <div className="flex flex-col">
                                                         <span className="text-[11px] font-medium text-blue-500 hover:text-blue-600 hover:underline cursor-pointer transition-colors">

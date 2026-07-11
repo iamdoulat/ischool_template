@@ -249,7 +249,7 @@ export default function RoutePage() {
                                     ) : paginatedData.length === 0 ? (
                                         <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_routes_found")}</TableCell></TableRow>
                                     ) : paginatedData.map((route) => (
-                                        <TableRow key={route.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                        <TableRow key={route.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 text-gray-700 font-medium">{route.title}</TableCell>
                                             <TableCell className="py-3 text-right">
                                                 <div className="flex items-center justify-end gap-1">

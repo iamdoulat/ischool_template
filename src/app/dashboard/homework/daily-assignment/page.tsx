@@ -379,7 +379,7 @@ export default function DailyAssignmentPage() {
                                     </TableRow>
                                 ) : (
                                     assignments.map((a) => (
-                                        <TableRow key={a.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
+                                        <TableRow key={a.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                             <TableCell className="py-3 text-gray-700 font-medium">{a.student?.name}</TableCell>
                                             <TableCell className="py-3 text-gray-500">{a.class?.name}</TableCell>
                                             <TableCell className="py-3 text-gray-500">{a.section?.name}</TableCell>

@@ -357,7 +357,7 @@ export default function AddStaffLibraryPage() {
                                     <TableRow
                                         key={staff.id}
                                         className={cn(
-                                            "text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap",
+                                            "text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap",
                                             staff.library_member && "bg-[#e8f5e9]/60 hover:bg-[#c8e6c9]/60"
                                         )}
                                     >

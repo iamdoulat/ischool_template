@@ -332,7 +332,7 @@ export default function ItemSupplierPage() {
                                     ) : suppliers.length === 0 ? (
                                         <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell></TableRow>
                                     ) : suppliers.map((s) => (
-                                        <TableRow key={s.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                        <TableRow key={s.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-4">
                                                 <div className="space-y-1.5 min-w-[200px]">
                                                     <div className="font-semibold text-gray-700">{s.item_supplier}</div>

@@ -419,7 +419,7 @@ export default function PromoteStudentsPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {students.map((student) => (
-                                        <TableRow key={student.id} className="text-[13px] hover:bg-gray-50/50">
+                                        <TableRow key={student.id} className="text-[13px] hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="px-4">
                                                 <Checkbox
                                                     checked={selectedStudentIds.includes(student.id)}

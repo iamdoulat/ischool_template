@@ -441,7 +441,7 @@ export default function OnlineCoursePage() {
                                 </TableRow>
                             ) : (
                                 courses.map((course) => (
-                                    <TableRow key={course.id} className="text-[13px] hover:bg-gray-50/50 border-b last:border-0 border-gray-50">
+                                    <TableRow key={course.id} className="text-[13px] hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b last:border-0 border-gray-50">
                                         <TableCell className="py-3.5 align-middle">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-10 w-14 rounded-lg overflow-hidden bg-gray-100 shrink-0">

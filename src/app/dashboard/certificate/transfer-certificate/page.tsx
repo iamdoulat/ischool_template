@@ -412,7 +412,7 @@ export default function TransferCertificatePage() {
                                 ) : filtered.length === 0 ? (
                                     <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_students_found")}</TableCell></TableRow>
                                 ) : filtered.map((s) => (
-                                    <TableRow key={s.id} className={cn("text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap", issuingId === s.id && "opacity-60 pointer-events-none")}>
+                                    <TableRow key={s.id} className={cn("text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap", issuingId === s.id && "opacity-60 pointer-events-none")}>
                                         <TableCell className="py-3 text-gray-700 font-medium">{s.admission_no || "-"}</TableCell>
                                         <TableCell className="py-3 text-[#6366f1] font-medium">{studentName(s)}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "-"}</TableCell>

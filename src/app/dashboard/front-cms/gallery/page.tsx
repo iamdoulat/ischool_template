@@ -182,7 +182,7 @@ export default function GalleryListPage() {
                                 {loading ? <TableSkeleton cols={3} /> : paginated.length === 0 ? (
                                     <TableRow><TableCell colSpan={3} className="py-14 text-center"><div className="flex flex-col items-center gap-2 text-gray-400"><FolderOpen className="h-8 w-8 opacity-40" /><span className="text-xs">{t("no_gallery_items_found")}</span></div></TableCell></TableRow>
                                 ) : paginated.map(item => (
-                                    <TableRow key={item.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                    <TableRow key={item.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                         <TableCell className="py-2">
                                             <div className="h-10 w-14 rounded-md border border-gray-100 bg-gray-50 overflow-hidden">
                                                 {resolveImg(item.image_path) && <img src={resolveImg(item.image_path)!} alt={item.title} className="h-full w-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />}

@@ -299,7 +299,7 @@ export default function AssignIncidentPage() {
                                     </TableRow>
                                 ) : (
                                     students.map((student) => (
-                                        <TableRow key={student.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                        <TableRow key={student.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3">
                                                 <Checkbox
                                                     checked={selectedStudents.includes(student.id)}

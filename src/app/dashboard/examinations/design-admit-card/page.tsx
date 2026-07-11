@@ -560,7 +560,7 @@ export default function DesignAdmitCardPage() {
                                             </TableRow>
                                         ) : (
                                             templates.map((item) => (
-                                                <TableRow key={item.id} className="text-[13px] text-gray-600 hover:bg-gray-50/30 group border-b last:border-0 border-gray-50 transition-colors">
+                                                <TableRow key={item.id} className="text-[13px] text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group border-b last:border-0 border-gray-50 transition-colors">
                                                     <TableCell className="py-4 px-6">
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-indigo-600 uppercase tracking-tight">{item.name}</span>

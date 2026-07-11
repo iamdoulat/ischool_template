@@ -131,7 +131,7 @@ export default function OverviewPage() {
                         {loading ? <SkeletonRows cols={6} /> : !data?.fees_details?.length ? (
                             <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                         ) : data.fees_details.map((row) => (
-                            <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                            <TableRow key={row.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                 <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>
                                 <TableCell className="py-3 text-center text-gray-500">{row.session}</TableCell>
                                 <TableCell className="py-3 text-center text-gray-500 tabular-nums">{row.students}</TableCell>
@@ -159,7 +159,7 @@ export default function OverviewPage() {
                             {loading ? <SkeletonRows cols={3} /> : !data?.admission_details?.length ? (
                                 <TableRow><TableCell colSpan={3} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                             ) : data.admission_details.map((row) => (
-                                <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                <TableRow key={row.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                     <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>
                                     <TableCell className="py-3 text-center text-gray-500 tabular-nums">{row.offline}</TableCell>
                                     <TableCell className="py-3 text-right text-blue-600 font-medium tabular-nums">{row.online}</TableCell>
@@ -184,7 +184,7 @@ export default function OverviewPage() {
                             {loading ? <SkeletonRows cols={4} /> : !data?.library_details?.length ? (
                                 <TableRow><TableCell colSpan={4} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                             ) : data.library_details.map((row) => (
-                                <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                <TableRow key={row.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                     <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>
                                     <TableCell className="py-3 text-center text-gray-500 tabular-nums">{row.totalBooks}</TableCell>
                                     <TableCell className="py-3 text-center text-gray-500 tabular-nums">{row.members}</TableCell>
@@ -213,7 +213,7 @@ export default function OverviewPage() {
                         {loading ? <SkeletonRows cols={6} /> : !data?.payroll_details?.length ? (
                             <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                         ) : data.payroll_details.map((row) => (
-                            <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                            <TableRow key={row.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                 <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>
                                 <TableCell className="py-3 text-center text-gray-500 tabular-nums">{row.totalStaff}</TableCell>
                                 <TableCell className="py-3 text-center text-gray-500 tabular-nums">{row.generated}</TableCell>
@@ -242,7 +242,7 @@ export default function OverviewPage() {
                             {loading ? <SkeletonRows cols={4} /> : !data?.attendance_details?.length ? (
                                 <TableRow><TableCell colSpan={4} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                             ) : data.attendance_details.map((row) => (
-                                <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                <TableRow key={row.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                     <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>
                                     <TableCell className="py-3 text-center text-gray-500 tabular-nums">{row.totalStaff}</TableCell>
                                     <TableCell className="py-3 text-center text-emerald-600 font-medium tabular-nums">{row.present}</TableCell>
@@ -267,7 +267,7 @@ export default function OverviewPage() {
                             {loading ? <SkeletonRows cols={3} /> : !data?.transport_details?.length ? (
                                 <TableRow><TableCell colSpan={3} className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data")}</TableCell></TableRow>
                             ) : data.transport_details.map((row) => (
-                                <TableRow key={row.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                <TableRow key={row.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                     <TableCell className="py-3 font-medium text-gray-700">{row.branch}</TableCell>
                                     <TableCell className="py-3 text-gray-500 tabular-nums">{row.totalFees}</TableCell>
                                     <TableCell className="py-3 text-right text-rose-600 font-medium tabular-nums">{row.balanceFees}</TableCell>

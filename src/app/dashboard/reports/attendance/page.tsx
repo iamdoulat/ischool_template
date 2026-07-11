@@ -532,7 +532,7 @@ export default function AttendanceReportPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {attendanceData.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
-                                        <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-2 px-3 font-medium text-indigo-600 sticky left-0 bg-white">{s.name}</TableCell>
                                             <TableCell className="py-2 px-1 text-center"><span className="bg-emerald-500 text-white px-1 rounded text-[8px]">{s.percentage}</span></TableCell>
                                             <TableCell className="py-2 px-1 text-center">{s.p}</TableCell>
@@ -1108,7 +1108,7 @@ export default function AttendanceReportPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {staffAttendanceData.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
-                                        <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-2 px-3 font-medium text-indigo-600 sticky left-0 bg-white">{s.name}</TableCell>
                                             <TableCell className="py-2 px-1 text-center"><span className="bg-emerald-500 text-white px-1 rounded text-[8px]">{s.percentage}</span></TableCell>
                                             <TableCell className="py-2 px-1 text-center">{s.p}</TableCell>

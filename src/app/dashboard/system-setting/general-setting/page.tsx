@@ -1353,7 +1353,7 @@ export default function GeneralSettingPage() {
                                                                 </thead>
                                                                 <tbody>
                                                                     {roleGroup.settings.map((setting: any, idx: number) => (
-                                                                        <tr key={idx} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/30 transition-colors">
+                                                                        <tr key={idx} className="border-b border-gray-50 last:border-b-0 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                                             <td className="py-4 px-4 text-xs font-bold text-gray-600">{setting.type}</td>
                                                                             <td className="py-4 px-4">
                                                                                 <div className="relative group max-w-[150px]">
@@ -1464,7 +1464,7 @@ export default function GeneralSettingPage() {
                                                                                 </thead>
                                                                                 <tbody>
                                                                                     {section.settings.map((setting: any, settingIdx: number) => (
-                                                                                        <tr key={settingIdx} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/30 transition-colors">
+                                                                                        <tr key={settingIdx} className="border-b border-gray-50 last:border-b-0 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                                                             <td className="py-2 px-3 text-xs font-bold text-gray-600">{setting.type}</td>
                                                                                             <td className="py-2 px-3">
                                                                                                 <div className="relative group max-w-[150px]">

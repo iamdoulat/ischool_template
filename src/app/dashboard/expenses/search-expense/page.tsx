@@ -217,7 +217,7 @@ export default function SearchExpensePage() {
                                     </TableRow>
                                 ) : (
                                     expenses.map((item) => (
-                                        <TableRow key={item.id} className="text-sm hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={item.id} className="text-sm hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="font-medium text-gray-700">{item.name}</TableCell>
                                             <TableCell className="text-gray-600">{item.invoice_number}</TableCell>
                                             <TableCell className="text-gray-600 font-medium">{item.expense_head.expense_head}</TableCell>

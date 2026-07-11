@@ -479,7 +479,7 @@ export default function ApproveLeavePage() {
                                     </TableRow>
                                 ) : (
                                     leaves.slice(0, parseInt(rowsPerPage)).map((item) => (
-                                        <TableRow key={item.id} className="text-sm border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                                        <TableRow key={item.id} className="text-sm border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group">
                                             <TableCell className="py-4 px-6">
                                                 {item.user.avatar ? (
                                                     <img

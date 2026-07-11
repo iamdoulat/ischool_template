@@ -653,7 +653,7 @@ export default function OnlineExaminationsReportPage() {
                                 <TableSkeleton cols={activeTab === "Result Report" ? 7 : (activeTab === "Exams Rank Report" ? 15 : (activeTab === "Student Exams Attempt Report" ? 10 : 9))} />
                             ) : paginatedData.length > 0 ? (
                                 paginatedData.map((item, index) => (
-                                    <TableRow key={index} className="hover:bg-gray-50/50 border-b border-gray-100 text-[11px] text-gray-600">
+                                    <TableRow key={index} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-100 text-[11px] text-gray-600">
                                         {activeTab === "Result Report" ? (
                                             <>
                                                 <TableCell className="py-3 px-4 font-medium">{item.admission_no}</TableCell>
@@ -789,7 +789,7 @@ export default function OnlineExaminationsReportPage() {
                             <button 
                                 disabled={safeCurrentPage === 1}
                                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none"
+                                className="h-8 w-8 bg-white hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none"
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </button>
@@ -801,7 +801,7 @@ export default function OnlineExaminationsReportPage() {
                                         "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer border-none font-bold",
                                         safeCurrentPage === page 
                                             ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white font-extrabold shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95" 
-                                            : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
+                                            : "bg-white hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
                                     )}
                                 >
                                     {page}
@@ -810,7 +810,7 @@ export default function OnlineExaminationsReportPage() {
                             <button 
                                 disabled={safeCurrentPage === totalPages}
                                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none"
+                                className="h-8 w-8 bg-white hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none"
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </button>

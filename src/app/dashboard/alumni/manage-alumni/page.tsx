@@ -405,7 +405,7 @@ export default function ManageAlumniPage() {
                                 </TableRow>
                             ) : (
                                 paginatedData.map(student => (
-                                    <TableRow key={student.id} className="hover:bg-gray-50/50">
+                                    <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                         <TableCell className="py-3 px-4 font-medium text-indigo-600">{student.admission_no}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-700">{student.name}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-500">{student.school_class?.name} {student.section?.name}</TableCell>

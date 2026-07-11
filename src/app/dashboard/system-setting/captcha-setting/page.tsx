@@ -191,7 +191,7 @@ export default function CaptchaSettingPage() {
                                         </TableHeader>
                                         <TableBody>
                                             {paginated.map((item) => (
-                                                <TableRow key={item.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors h-11 group">
+                                                <TableRow key={item.id} className="border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer h-11 group">
                                                     <TableCell className="py-2 px-4 text-[12px] text-gray-600 font-medium">{item.name}</TableCell>
                                                     <TableCell className="py-2 px-4 text-right">
                                                         <div className="flex justify-end items-center gap-2">

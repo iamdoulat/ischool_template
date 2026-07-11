@@ -472,7 +472,7 @@ export default function AssignClassTeacherPage() {
                                             </TableCell>
                                         </TableRow>
                                     ) : filteredAssignments.map((assignment) => (
-                                        <TableRow key={assignment.id} className={`text-[13px] hover:bg-gray-50/50 group ${selectedKeys.includes(assignment.id) ? 'bg-indigo-50/30' : ''}`}>
+                                        <TableRow key={assignment.id} className={`text-[13px] hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group ${selectedKeys.includes(assignment.id) ? 'bg-indigo-50/30' : ''}`}>
                                             <TableCell className="pl-4">
                                                 <Checkbox
                                                     checked={selectedKeys.includes(assignment.id)}

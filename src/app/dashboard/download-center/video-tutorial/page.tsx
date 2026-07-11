@@ -53,12 +53,60 @@ interface PaginationData {
     to: number;
 }
 
+const getVideoThumbnail = (video: Tutorial) => {
+    if (video.thumbnail) return video.thumbnail;
+    const url = video.video_url || "";
+    
+    // YouTube detection
+    const ytMatch = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+    if (ytMatch && ytMatch[2].length === 11) {
+        return `https://img.youtube.com/vi/${ytMatch[2]}/mqdefault.jpg`;
+    }
+    
+    const ytShortsMatch = url.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
+    if (ytShortsMatch) {
+        return `https://img.youtube.com/vi/${ytShortsMatch[1]}/mqdefault.jpg`;
+    }
+
+    // Vimeo detection
+    const vimeoMatch = url.match(/(?:vimeo\.com\/|video\/)(\d+)/);
+    if (vimeoMatch) {
+        return `https://vumbnail.com/${vimeoMatch[1]}.jpg`;
+    }
+    
+    return null;
+};
+
+const getEmbedUrl = (url: string) => {
+    if (!url) return "";
+    
+    // YouTube
+    const ytMatch = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+    if (ytMatch && ytMatch[2].length === 11) {
+        return `https://www.youtube.com/embed/${ytMatch[2]}?autoplay=1`;
+    }
+    
+    const ytShortsMatch = url.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
+    if (ytShortsMatch) {
+        return `https://www.youtube.com/embed/${ytShortsMatch[1]}?autoplay=1`;
+    }
+
+    // Vimeo
+    const vimeoMatch = url.match(/(?:vimeo\.com\/|video\/)(\d+)/);
+    if (vimeoMatch) {
+        return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`;
+    }
+    
+    return url;
+};
+
 export default function VideoTutorialPage() {
     const { toast } = useToast();
     const { t } = useTranslation();
     const [tutorials, setTutorials] = useState<Tutorial[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
     const [loading, setLoading] = useState(false);
+    const [previewVideo, setPreviewVideo] = useState<Tutorial | null>(null);
     const [classes, setClasses] = useState<any[]>([]);
     const [sections, setSections] = useState<any[]>([]);
 
@@ -212,46 +260,48 @@ export default function VideoTutorialPage() {
                             <p className="text-xs">{t("no_video_tutorials_found")}</p>
                         </div>
                     ) : (
-                        tutorials.map((video) => (
-                            <div key={video.id} className="group cursor-pointer flex flex-col h-full">
-                                <div className="relative aspect-video rounded-lg overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
-                                    {video.thumbnail ? (
-                                        <>
-                                            <Image
-                                                src={video.thumbnail}
-                                                alt={video.title}
-                                                fill
-                                                className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                            />
-                                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                                <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 scale-90 group-hover:scale-100 transition-transform">
-                                                    <PlayCircle className="h-8 w-8 text-white fill-white/20" />
+                        tutorials.map((video) => {
+                            const thumbnailUrl = getVideoThumbnail(video);
+                            return (
+                                <div key={video.id} onClick={() => setPreviewVideo(video)} className="group cursor-pointer flex flex-col h-full">
+                                    <div className="relative aspect-video rounded-lg overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
+                                        {thumbnailUrl ? (
+                                            <>
+                                                <img
+                                                    src={thumbnailUrl}
+                                                    alt={video.title}
+                                                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                                                />
+                                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 scale-90 group-hover:scale-100 transition-transform">
+                                                        <PlayCircle className="h-8 w-8 text-white fill-white/20" />
+                                                    </div>
                                                 </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center">
+                                                    <Video className="h-6 w-6 text-indigo-200" />
+                                                </div>
+                                                <span className="text-[8px] text-gray-300 font-bold uppercase tracking-widest">Preview Unavailable</span>
                                             </div>
-                                        </>
-                                    ) : (
-                                        <div className="flex flex-col items-center gap-2">
-                                            <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center">
-                                                <Video className="h-6 w-6 text-indigo-200" />
+                                        )}
+                                    </div>
+                                    <div className="mt-3 flex-1 flex flex-col">
+                                        <h3 className="text-[10px] font-bold text-gray-700 uppercase tracking-tight line-clamp-2 leading-relaxed group-hover:text-indigo-600 transition-colors" title={video.title}>
+                                            {video.title}
+                                        </h3>
+                                        {(video.school_class || video.section) && (
+                                            <div className="mt-1 flex items-center gap-1">
+                                                <span className="text-[8px] px-1.5 py-0.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white rounded-full font-bold uppercase tracking-tighter shadow-sm">
+                                                    {video.school_class?.name} {video.section?.name}
+                                                </span>
                                             </div>
-                                            <span className="text-[8px] text-gray-300 font-bold uppercase tracking-widest">Preview Unavailable</span>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="mt-3 flex-1 flex flex-col">
-                                    <h3 className="text-[10px] font-bold text-gray-700 uppercase tracking-tight line-clamp-2 leading-relaxed group-hover:text-indigo-600 transition-colors" title={video.title}>
-                                        {video.title}
-                                    </h3>
-                                    {(video.school_class || video.section) && (
-                                        <div className="mt-1 flex items-center gap-1">
-                                            <span className="text-[8px] px-1.5 py-0.5 bg-gray-50 text-gray-400 rounded-full border border-gray-100 font-medium uppercase tracking-tighter">
-                                                {video.school_class?.name} {video.section?.name}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
 
@@ -362,6 +412,55 @@ export default function VideoTutorialPage() {
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">Cancel</Button>
                         <Button onClick={handleSave} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">Save Tutorial</Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Video Preview Dialog */}
+            <Dialog open={!!previewVideo} onOpenChange={(open) => !open && setPreviewVideo(null)}>
+                <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden bg-black border-none rounded-xl shadow-2xl">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>{previewVideo?.title || "Video Preview"}</DialogTitle>
+                    </DialogHeader>
+                    <div className="relative aspect-video w-full bg-black">
+                        {previewVideo && (() => {
+                            const embedUrl = getEmbedUrl(previewVideo.video_url);
+                            const isEmbeddable = embedUrl.includes('youtube.com') || embedUrl.includes('vimeo.com');
+                            
+                            if (isEmbeddable) {
+                                return (
+                                    <iframe
+                                        src={embedUrl}
+                                        title={previewVideo.title}
+                                        className="w-full h-full border-none"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    />
+                                );
+                            } else {
+                                return (
+                                    <video
+                                        src={previewVideo.video_url}
+                                        controls
+                                        autoPlay
+                                        className="w-full h-full"
+                                    />
+                                );
+                            }
+                        })()}
+                    </div>
+                    <div className="p-4 bg-gray-900 text-white flex justify-between items-center">
+                        <div>
+                            <h3 className="text-sm font-bold uppercase tracking-tight line-clamp-1">{previewVideo?.title}</h3>
+                            <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{previewVideo?.description || "No description provided."}</p>
+                        </div>
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => setPreviewVideo(null)} 
+                            className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full h-8 px-4 text-xs font-bold uppercase transition-all"
+                        >
+                            Close
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

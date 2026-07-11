@@ -746,7 +746,7 @@ export default function FinanceReportPage() {
                                                     <TableRow
                                                         key={fIdx}
                                                         className={cn(
-                                                            "text-[10px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors",
+                                                            "text-[10px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer",
                                                             fee.isTransport && "bg-red-50/40"
                                                         )}
                                                     >
@@ -2571,7 +2571,7 @@ export default function FinanceReportPage() {
                                         </TableHeader>
                                         <TableBody>
                                             {feesStatementData.fees.map((fee: any, idx: number) => (
-                                                <TableRow key={idx} className={cn("text-[10px] hover:bg-gray-50/50 transition-colors border-b border-gray-50", fee.status === "Unpaid" && "bg-red-50/40")}>
+                                                <TableRow key={idx} className={cn("text-[10px] hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50", fee.status === "Unpaid" && "bg-red-50/40")}>
                                                     <TableCell className="py-2 px-3 font-medium text-gray-700">{fee.group}</TableCell>
                                                     <TableCell className="py-2 px-3 text-gray-500">{fee.code}</TableCell>
                                                     <TableCell className="py-2 px-3 text-center text-gray-500">{fee.dueDate}</TableCell>

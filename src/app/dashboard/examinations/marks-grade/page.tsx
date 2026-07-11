@@ -748,7 +748,7 @@ export default function MarksGradePage() {
                                     </div>
                                 ) : (
                                     examTypes.map((type) => (
-                                        <div key={type.id} className="flex items-center justify-between px-4 py-2.5 border-b last:border-0 border-gray-50 hover:bg-gray-50/50 group">
+                                        <div key={type.id} className="flex items-center justify-between px-4 py-2.5 border-b last:border-0 border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group">
                                             {editingExamType?.id === type.id ? (
                                                 <div className="flex items-center gap-2 flex-1">
                                                     <Input

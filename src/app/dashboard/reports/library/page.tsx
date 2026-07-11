@@ -557,7 +557,7 @@ export default function LibraryReportPage() {
                                         </TableRow>
                                     ) : paginated.length > 0 ? (
                                         paginated.map((row, idx) => (
-                                            <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                            <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                 <TableCell className="py-3 px-4 text-gray-700 font-medium">{row.bookTitle}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{row.bookNumber}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{row.issueDate}</TableCell>
@@ -760,7 +760,7 @@ export default function LibraryReportPage() {
                                         </TableRow>
                                     ) : paginated.length > 0 ? (
                                         paginated.map((row, idx) => (
-                                            <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                            <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                 <TableCell className="py-3 px-4 text-gray-700 font-medium">{row.bookTitle}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{row.bookNumber}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{row.issueDate}</TableCell>
@@ -918,7 +918,7 @@ export default function LibraryReportPage() {
                                         </TableRow>
                                     ) : paginatedInv.length > 0 ? (
                                         paginatedInv.map((row) => (
-                                            <TableRow key={row.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                            <TableRow key={row.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                 <TableCell className="py-3 px-4 text-gray-700 font-medium">{row.bookTitle}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{row.bookNumber}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{row.isbnNumber}</TableCell>
@@ -1048,7 +1048,7 @@ export default function LibraryReportPage() {
                                         </TableRow>
                                     ) : paginatedRet.length > 0 ? (
                                         paginatedRet.map((row) => (
-                                            <TableRow key={row.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                            <TableRow key={row.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                 <TableCell className="py-3 px-4 text-gray-700 font-medium">{row.bookTitle}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{row.bookNumber}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{row.issueDate}</TableCell>

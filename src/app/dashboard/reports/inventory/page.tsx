@@ -597,7 +597,7 @@ export default function InventoryReportPage() {
                                     </TableRow>
                                 ) : paginatedStackList.length > 0 ? (
                                     paginatedStackList.map((item, idx) => (
-                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 px-4 text-gray-700 font-medium">{item.name}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{item.category}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{item.supplier}</TableCell>
@@ -663,7 +663,7 @@ export default function InventoryReportPage() {
                                     </TableRow>
                                 ) : paginatedAddList.length > 0 ? (
                                     paginatedAddList.map((item, idx) => (
-                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 px-4 text-gray-700 font-medium">{item.name}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{item.category}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{item.supplier}</TableCell>
@@ -729,7 +729,7 @@ export default function InventoryReportPage() {
                                     </TableRow>
                                 ) : paginatedIssueList.length > 0 ? (
                                     paginatedIssueList.map((item, idx) => (
-                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 px-4 text-gray-700 font-medium">{item.item}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{item.note}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{item.category}</TableCell>

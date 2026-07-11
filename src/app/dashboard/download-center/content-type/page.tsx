@@ -16,6 +16,13 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import {
     Search,
     Copy,
     FileSpreadsheet,
@@ -26,6 +33,8 @@ import {
     ChevronRight,
     Pencil,
     Trash2,
+    Eye,
+    X,
 } from "lucide-react";
 import {
     Select,
@@ -58,6 +67,7 @@ export default function ContentTypePage() {
     const [loading, setLoading] = useState(false);
     const [limit, setLimit] = useState("50");
     const [isEditing, setIsEditing] = useState<number | null>(null);
+    const [viewType, setViewType] = useState<ContentType | null>(null);
 
     const [formData, setFormData] = useState({
         name: "",
@@ -271,7 +281,7 @@ export default function ContentTypePage() {
                         {/* Table */}
                         <div className="rounded border border-gray-50 overflow-hidden">
                             <Table>
-                                <TableHeader className="bg-gray-50/50">
+                                <TableHeader className="bg-gray-100">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100">
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Name</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Description</TableHead>
@@ -287,26 +297,34 @@ export default function ContentTypePage() {
                                         </TableRow>
                                     ) : (
                                         contentTypes.map((type) => (
-                                            <TableRow key={type.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap group">
+                                            <TableRow key={type.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 whitespace-nowrap group cursor-pointer">
                                                 <TableCell className="py-3 text-gray-700 font-medium">{type.name}</TableCell>
                                                 <TableCell className="py-3 text-gray-500">{type.description || "-"}</TableCell>
                                                 <TableCell className="py-3 text-right">
-                                                    <div className="flex items-center justify-end gap-1">
+                                                    <div className="flex items-center justify-end gap-1.5 pr-2">
                                                         <Button 
                                                             size="icon" 
-                                                            variant="ghost" 
+                                                            onClick={() => setViewType(type)}
+                                                            className="h-8 w-8 rounded-lg bg-[#00B578] hover:bg-[#00A068] text-white shadow-md shadow-[#00B578]/20 transition-all hover:scale-105 active:scale-95"
+                                                            title="View"
+                                                        >
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button 
+                                                            size="icon" 
                                                             onClick={() => handleEdit(type)}
-                                                            className="h-7 w-7 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-full"
+                                                            className="h-8 w-8 rounded-lg bg-[#FFA000] hover:bg-[#E69000] text-white shadow-md shadow-[#FFA000]/20 transition-all hover:scale-105 active:scale-95"
+                                                            title="Edit"
                                                         >
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button 
                                                             size="icon" 
-                                                            variant="ghost" 
                                                             onClick={() => handleDelete(type.id)}
-                                                            className="h-7 w-7 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-full"
+                                                            className="h-8 w-8 rounded-lg bg-[#FF3B30] hover:bg-[#E0342B] text-white shadow-md shadow-[#FF3B30]/20 transition-all hover:scale-105 active:scale-95"
+                                                            title="Delete"
                                                         >
-                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                            <X className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
                                                 </TableCell>
@@ -360,6 +378,45 @@ export default function ContentTypePage() {
                     </div>
                 </div>
             </div>
+
+            {/* View Dialog */}
+            <Dialog open={!!viewType} onOpenChange={(open) => !open && setViewType(null)}>
+                <DialogContent className="max-w-md rounded-xl p-6 border-[0.5px] border-gray-200 bg-white shadow-2xl">
+                    <DialogHeader className="border-b border-muted pb-4 flex flex-row items-center gap-3 space-y-0">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
+                            <Eye className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <DialogTitle className="text-base font-bold text-slate-800 leading-none">
+                                View Content Type
+                            </DialogTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                Detailed content type information
+                            </p>
+                        </div>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4 text-xs">
+                        <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Name</span>
+                            <span className="text-sm font-semibold text-foreground block bg-muted/20 p-2.5 rounded-lg border border-muted/50">{viewType?.name}</span>
+                        </div>
+                        <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Description</span>
+                            <span className="text-sm font-medium text-foreground block bg-muted/20 p-2.5 rounded-lg border border-muted/50 whitespace-pre-wrap min-h-[80px]">
+                                {viewType?.description || "No description provided."}
+                            </span>
+                        </div>
+                    </div>
+                    <DialogFooter className="border-t border-muted pt-4">
+                        <Button 
+                            onClick={() => setViewType(null)} 
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold active:scale-95 transition-transform"
+                        >
+                            Close
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

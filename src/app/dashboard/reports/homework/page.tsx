@@ -1231,7 +1231,7 @@ export default function HomeworkReportPage() {
                                     </TableRow>
                                 ) : paginatedList.length > 0 ? (
                                     paginatedList.map((h, idx) => (
-                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 px-4 text-gray-700 font-bold">{h.class}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{h.section}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{h.subjectGroup}</TableCell>
@@ -1384,7 +1384,7 @@ export default function HomeworkReportPage() {
                                     </TableRow>
                                 ) : paginatedEvalList.length > 0 ? (
                                     paginatedEvalList.map((e, idx) => (
-                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 px-4 text-indigo-600 underline font-bold cursor-pointer">{e.subject}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{e.homeworkDate}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500 font-medium">{e.submissionDate}</TableCell>
@@ -1533,7 +1533,7 @@ export default function HomeworkReportPage() {
                                     </TableRow>
                                 ) : paginatedAssignList.length > 0 ? (
                                     paginatedAssignList.map((a, idx) => (
-                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 px-4 text-indigo-600 font-bold">{a.studentName}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{a.class}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{a.section}</TableCell>
@@ -1690,7 +1690,7 @@ export default function HomeworkReportPage() {
                                     </TableRow>
                                 ) : paginatedMarksList.length > 0 ? (
                                     paginatedMarksList.map((m, idx) => (
-                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 px-4 text-indigo-600 font-bold">{m.admissionNo}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-800 font-medium">{m.studentName}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{m.rollNo}</TableCell>

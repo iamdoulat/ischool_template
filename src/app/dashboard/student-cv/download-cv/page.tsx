@@ -391,7 +391,7 @@ export default function DownloadCVPage() {
                 paginatedStudents.map((item, idx) => (
                   <TableRow
                     key={item.id || idx}
-                    className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap"
+                    className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap"
                   >
                     <TableCell className="py-3 px-4 text-gray-600 font-medium">{item.admission_no}</TableCell>
                     <TableCell className="py-3 px-4 text-[#6366f1] font-semibold">{item.name}</TableCell>

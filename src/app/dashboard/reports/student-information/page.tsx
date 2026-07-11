@@ -806,7 +806,7 @@ export default function StudentInformationReportPage() {
                                 <TableBody>
                                     {loading ? <TableSkeleton cols={12} /> : students.length > 0 ? (
                                         students.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-gray-600">{student.section?.name || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
@@ -940,7 +940,7 @@ export default function StudentInformationReportPage() {
                             <TableBody>
                                 {classSectionLoading ? <TableSkeleton cols={4} /> : classSectionData.length > 0 ? (
                                     classSectionData.map((row, idx) => (
-                                        <TableRow key={idx} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                        <TableRow key={idx} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                             <TableCell className="py-3 px-4 text-gray-600">{row.s_no}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-800 font-medium">{row.class_name} ({row.section_name})</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-600">{row.students_count}</TableCell>
@@ -1070,7 +1070,7 @@ export default function StudentInformationReportPage() {
                                 <TableBody>
                                     {guardianLoading ? <TableSkeleton cols={11} /> : guardianStudents.length > 0 ? (
                                         guardianStudents.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.school_class?.name || 'N/A'} ({student.section?.name || 'N/A'})</TableCell>
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
@@ -1216,7 +1216,7 @@ export default function StudentInformationReportPage() {
                                 <TableBody>
                                     {historyLoading ? <TableSkeleton cols={9} /> : historyStudents.length > 0 ? (
                                         historyStudents.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{student.admission_date || 'N/A'}</TableCell>
@@ -1317,7 +1317,7 @@ export default function StudentInformationReportPage() {
                                 <TableBody>
                                     {credentialLoading ? <TableSkeleton cols={4} /> : credentialStudents.length > 0 ? (
                                         credentialStudents.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{student.email || student.admission_no || 'N/A'}</TableCell>
@@ -1411,7 +1411,7 @@ export default function StudentInformationReportPage() {
                                 <TableBody>
                                     {parentCredentialLoading ? <TableSkeleton cols={4} /> : parentCredentialStudents.length > 0 ? (
                                         parentCredentialStudents.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">parent_{student.admission_no || student.id}</TableCell>
@@ -1538,7 +1538,7 @@ export default function StudentInformationReportPage() {
                                             item.subject?.toLowerCase().includes(classSubjectSearch.toLowerCase()) ||
                                             item.teacher?.toLowerCase().includes(classSubjectSearch.toLowerCase())
                                         ).map((row, idx) => (
-                                            <TableRow key={row.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={row.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{row.class || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{row.section || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{row.subject || 'N/A'}</TableCell>
@@ -1624,7 +1624,7 @@ export default function StudentInformationReportPage() {
                                 <TableBody>
                                     {admissionLoading ? <TableSkeleton cols={9} /> : admissionData.length > 0 ? (
                                         admissionData.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.school_class?.name || 'N/A'}</TableCell>
@@ -1758,7 +1758,7 @@ export default function StudentInformationReportPage() {
                                             student.name?.toLowerCase().includes(siblingSearch.toLowerCase()) ||
                                             student.guardian_name?.toLowerCase().includes(siblingSearch.toLowerCase())
                                         ).map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-gray-500">{student.father_name || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{student.mother_name || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{student.guardian_name || 'N/A'}</TableCell>
@@ -1917,7 +1917,7 @@ export default function StudentInformationReportPage() {
                                             student.name?.toLowerCase().includes(profileSearch.toLowerCase()) ||
                                             student.admission_no?.toLowerCase().includes(profileSearch.toLowerCase())
                                         ).map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{student.roll_no || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.school_class?.name || 'N/A'}</TableCell>
@@ -2010,7 +2010,7 @@ export default function StudentInformationReportPage() {
                                         genderRatioData.filter(item => 
                                             item.class_section?.toLowerCase().includes(genderRatioSearch.toLowerCase())
                                         ).map((row, idx) => (
-                                            <TableRow key={idx} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={idx} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{row.class_section}</TableCell>
                                                 <TableCell className="py-3 px-4 text-center text-gray-600">{row.total_boys}</TableCell>
                                                 <TableCell className="py-3 px-4 text-center text-gray-600">{row.total_girls}</TableCell>
@@ -2088,7 +2088,7 @@ export default function StudentInformationReportPage() {
                                         teacherRatioData.filter(item => 
                                             item.class_section?.toLowerCase().includes(teacherRatioSearch.toLowerCase())
                                         ).map((row, idx) => (
-                                            <TableRow key={idx} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={idx} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{row.class_section}</TableCell>
                                                 <TableCell className="py-3 px-4 text-center text-gray-600">{row.total_students}</TableCell>
                                                 <TableCell className="py-3 px-4 text-center text-gray-600">{row.total_teachers}</TableCell>
@@ -2204,7 +2204,7 @@ export default function StudentInformationReportPage() {
                                 <TableBody>
                                     {onlineAdmissionLoading ? <TableSkeleton cols={11} /> : onlineAdmissionData.length > 0 ? (
                                         onlineAdmissionData.map((row, idx) => (
-                                            <TableRow key={row.id} className="hover:bg-gray-50/50 border-b border-gray-50 transition-colors">
+                                            <TableRow key={row.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-3 px-4 text-indigo-600 font-medium">{row.reference_no}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{row.admission_no || 'N/A'}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-800 font-medium">{row.first_name} {row.last_name || ''}</TableCell>

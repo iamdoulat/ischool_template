@@ -230,7 +230,7 @@ export default function LibraryMembersPage() {
                                         </TableCell>
                                     </TableRow>
                                 ) : members.map((member) => (
-                                    <TableRow key={member.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                    <TableRow key={member.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                         <TableCell className="py-3 text-gray-500">{member.member_id}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{member.library_card_no || "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{member.user?.admission_no || member.user?.staff_id || "-"}</TableCell>

@@ -1032,7 +1032,7 @@ export default function HumanResourceReportPage() {
                                     <TableSkeleton cols={25} />
                                 ) : paginatedStaff.length > 0 ? (
                                     paginatedStaff.map((staff, idx) => (
-                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 px-4 text-gray-700 font-medium">{staff.id}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{staff.role}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{staff.designation}</TableCell>
@@ -1197,7 +1197,7 @@ export default function HumanResourceReportPage() {
                                 ) : paginatedPayroll.length > 0 ? (
                                     <>
                                         {paginatedPayroll.map((pay, idx) => (
-                                            <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                            <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                 <TableCell className="py-3 px-4 text-gray-700 font-bold">{pay.name}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{pay.role}</TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-500">{pay.designation}</TableCell>
@@ -1348,7 +1348,7 @@ export default function HumanResourceReportPage() {
                                     <TableSkeleton cols={8} />
                                 ) : paginatedLeave.length > 0 ? (
                                     paginatedLeave.map((leave, idx) => (
-                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 px-4 text-gray-700 font-bold">{leave.staff}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{leave.leaveType}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500 font-medium">{leave.halfDay || "-"}</TableCell>
@@ -1491,7 +1491,7 @@ export default function HumanResourceReportPage() {
                                     <TableSkeleton cols={7} />
                                 ) : paginatedMyLeave.length > 0 ? (
                                     paginatedMyLeave.map((leave, idx) => (
-                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 px-4 text-gray-700 font-bold">{leave.staff}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500">{leave.leaveType}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500 font-medium">{leave.halfDay || "-"}</TableCell>

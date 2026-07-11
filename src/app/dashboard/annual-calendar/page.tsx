@@ -246,7 +246,7 @@ export default function AnnualCalendarPage() {
                                 {loading ? <TableSkeleton cols={6} /> : calendarData.length === 0 ? (
                                     <TableRow><TableCell colSpan={6} className="py-14 text-center"><div className="flex flex-col items-center gap-2 text-gray-400"><FolderOpen className="h-8 w-8 opacity-40" /><span className="text-xs">No calendar entries found.</span></div></TableCell></TableRow>
                                 ) : calendarData.map((item, idx) => (
-                                    <TableRow key={item.id || idx} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                    <TableRow key={item.id || idx} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                         <TableCell className="py-3 font-medium text-gray-800">
                                             <span className="flex items-center gap-1.5 whitespace-nowrap"><Calendar className="h-3 w-3 text-indigo-400" />{formatDate(item.start_date)} – {formatDate(item.end_date)}</span>
                                         </TableCell>

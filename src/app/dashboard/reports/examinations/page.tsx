@@ -330,7 +330,7 @@ export default function ExaminationsReportPage() {
                                     row.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                     row.admission_no.toLowerCase().includes(searchTerm.toLowerCase())
                                 ).map((row, i) => (
-                                    <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50">
+                                    <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                         <TableCell className="py-3 px-4 font-bold text-indigo-600">{row.rank}</TableCell>
                                         <TableCell className="py-3 px-4">{row.admission_no}</TableCell>
                                         <TableCell className="py-3 px-4">{row.roll_no}</TableCell>

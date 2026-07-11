@@ -199,7 +199,7 @@ export default function EventPage() {
                                 {loading ? <TableSkeleton cols={4} /> : paginated.length === 0 ? (
                                     <TableRow><TableCell colSpan={4} className="py-14 text-center text-xs text-gray-400">{t("no_events_found")}</TableCell></TableRow>
                                 ) : paginated.map(item => (
-                                    <TableRow key={item.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                    <TableRow key={item.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                         <TableCell className="py-3 font-medium text-gray-800">{item.title}</TableCell>
                                         <TableCell className="py-3 text-gray-500">
                                             <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{item.start_date}{item.end_date ? ` – ${item.end_date}` : ""}</span>

@@ -384,7 +384,7 @@ export default function MarksDivisionPage() {
                                             </TableRow>
                                         ) : (
                                             divisions.map((division) => (
-                                                <TableRow key={division.id} className="text-sm text-gray-600 hover:bg-gray-50/30 group border-b last:border-0 border-gray-50 transition-colors">
+                                                <TableRow key={division.id} className="text-sm text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group border-b last:border-0 border-gray-50 transition-colors">
                                                     <TableCell className="py-4 px-6 font-bold text-indigo-600 tracking-tight">{division.name}</TableCell>
                                                     <TableCell className="py-4 px-6">
                                                         <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full font-bold text-[11px] border border-emerald-100">

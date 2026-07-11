@@ -292,7 +292,7 @@ export default function AuditTrailReportPage() {
                                 </TableRow>
                             ) : paginatedReportList.length > 0 ? (
                                 paginatedReportList.map((item, idx) => (
-                                    <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap">
+                                    <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                         <TableCell className="py-3 px-4 text-gray-700 font-medium max-w-[400px] truncate" title={item.message}>{item.message}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-700 font-medium">{item.users}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-500">{item.ip_address}</TableCell>

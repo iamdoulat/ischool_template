@@ -186,7 +186,7 @@ export default function CurrencyPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {currencies.map((currency, idx) => (
-                                            <TableRow key={currency.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors h-12">
+                                            <TableRow key={currency.id} className="border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer h-12">
                                                 <TableCell className="py-2 px-4 text-[11px] text-gray-500 font-medium">
                                                     {idx + 1}.
                                                 </TableCell>

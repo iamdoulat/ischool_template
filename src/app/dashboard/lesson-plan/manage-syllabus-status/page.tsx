@@ -374,7 +374,7 @@ export default function ManageSyllabusStatusPage() {
                                             <tr><td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
                                         ) : (
                                             syllabusData.map((lesson, idx) => (
-                                                <tr key={lesson.id} className="group hover:bg-gray-50/30 transition-colors border-b border-gray-50">
+                                                <tr key={lesson.id} className="group hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50">
                                                     <td className="p-4 text-[11px] text-gray-400 align-top font-medium">{idx + 1}</td>
                                                     <td className="p-4 align-top">
                                                         <div className="space-y-4">

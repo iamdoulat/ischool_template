@@ -358,7 +358,7 @@ export default function HostelMasterPage() {
                                         </TableRow>
                                     ) : (
                                         paginatedHostels.map((hostel) => (
-                                            <TableRow key={hostel.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
+                                            <TableRow key={hostel.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                                 <TableCell className="py-3 text-gray-700 font-medium">{hostel.name}</TableCell>
                                                 <TableCell className="py-3 text-gray-500 capitalize">{hostel.type}</TableCell>
                                                 <TableCell className="py-3 text-gray-500">{hostel.address || '-'}</TableCell>

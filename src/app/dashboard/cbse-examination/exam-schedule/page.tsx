@@ -160,7 +160,7 @@ export default function ExamSchedulePage() {
                                     </TableHeader>
                                     <TableBody>
                                         {group.schedules.map((subject, index) => (
-                                            <TableRow key={index} className="text-[13px] border-b last:border-0 border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                            <TableRow key={index} className="text-[13px] border-b last:border-0 border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                 <TableCell className="py-5 px-8">
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-8 w-8 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-400">

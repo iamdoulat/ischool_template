@@ -405,7 +405,7 @@ export default function SendEmailPage() {
                                 "flex items-center gap-2 px-5 py-2 text-[10px] font-bold rounded-lg transition-all duration-300 uppercase tracking-tight",
                                 activeTab === tab.id
                                     ? "bg-indigo-500 text-white shadow-md shadow-indigo-100"
-                                    : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/50"
+                                    : "text-gray-400 hover:text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer"
                             )}
                         >
                             <tab.Icon className="h-3.5 w-3.5" />
@@ -477,7 +477,7 @@ export default function SendEmailPage() {
                                     onClick={() => fileInputRef.current?.click()}
                                     className={cn(
                                         "border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center transition-all cursor-pointer group relative overflow-hidden",
-                                        selectedFile ? "border-indigo-200 bg-indigo-50/30" : "border-gray-100 hover:border-indigo-200 hover:bg-gray-50/50"
+                                        selectedFile ? "border-indigo-200 bg-indigo-50/30" : "border-gray-100 hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer"
                                     )}
                                 >
                                     <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-tight text-gray-500 group-hover:text-indigo-500 transition-colors">
@@ -567,7 +567,7 @@ export default function SendEmailPage() {
                                                     "flex items-center gap-3 p-3 rounded-lg transition-all duration-300 cursor-pointer border border-transparent",
                                                     selectedRoles.includes(role.id)
                                                         ? "bg-indigo-50/50 border-indigo-100"
-                                                        : "hover:bg-gray-50/50 hover:border-gray-100"
+                                                        : "hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer hover:border-gray-100"
                                                 )}
                                             >
                                                 <Checkbox
@@ -619,7 +619,7 @@ export default function SendEmailPage() {
                                                         onClick={() => toggleUser(u.id)}
                                                         className={cn(
                                                             "flex items-center gap-3 p-2.5 rounded-lg transition-all cursor-pointer border border-transparent",
-                                                            selectedUsers.has(u.id) ? "bg-indigo-50/50 border-indigo-100" : "hover:bg-gray-50/50 hover:border-gray-100"
+                                                            selectedUsers.has(u.id) ? "bg-indigo-50/50 border-indigo-100" : "hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer hover:border-gray-100"
                                                         )}
                                                     >
                                                         <Checkbox
@@ -665,7 +665,7 @@ export default function SendEmailPage() {
                                                             onClick={() => toggleStudent(s.id)}
                                                             className={cn(
                                                                 "flex items-center gap-3 p-2.5 rounded-lg transition-all cursor-pointer border border-transparent",
-                                                                selectedStudents.has(s.id) ? "bg-indigo-50/50 border-indigo-100" : "hover:bg-gray-50/50 hover:border-gray-100"
+                                                                selectedStudents.has(s.id) ? "bg-indigo-50/50 border-indigo-100" : "hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer hover:border-gray-100"
                                                             )}
                                                         >
                                                             <Checkbox

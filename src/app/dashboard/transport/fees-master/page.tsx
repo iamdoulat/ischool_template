@@ -148,7 +148,7 @@ export default function TransportFeesMasterPage() {
 
                             <div className="space-y-1">
                                 {fees.map((fee, idx) => (
-                                    <div key={fee.month} className="flex flex-col lg:flex-row lg:items-center gap-6 py-4 border-b border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors px-2 rounded-lg">
+                                    <div key={fee.month} className="flex flex-col lg:flex-row lg:items-center gap-6 py-4 border-b border-gray-50 last:border-0 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer px-2 rounded-lg">
                                         <div className="w-24 shrink-0">
                                             <span className="text-[11px] font-bold text-gray-700">{fee.month}</span>
                                         </div>

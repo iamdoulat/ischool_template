@@ -308,7 +308,7 @@ export default function SectionsPage() {
                                         </tr>
                                     ) : (
                                         sections.map((sec) => (
-                                            <TableRow key={sec.id} className="text-[13px] hover:bg-gray-50/50 group border-b last:border-0 border-gray-50">
+                                            <TableRow key={sec.id} className="text-[13px] hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group border-b last:border-0 border-gray-50">
                                                 <TableCell className="text-gray-600 font-normal py-3.5">{sec.name}</TableCell>
                                                 <TableCell className="text-right py-3.5">
                                                     <div className="flex items-center justify-end gap-1 transition-opacity">

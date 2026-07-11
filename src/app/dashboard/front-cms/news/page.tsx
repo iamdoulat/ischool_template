@@ -194,7 +194,7 @@ export default function NewsListPage() {
                                 {loading ? <TableSkeleton cols={3} /> : paginated.length === 0 ? (
                                     <TableRow><TableCell colSpan={3} className="py-14 text-center"><div className="flex flex-col items-center gap-2 text-gray-400"><FolderOpen className="h-8 w-8 opacity-40" /><span className="text-xs">{t("no_news_found")}</span></div></TableCell></TableRow>
                                 ) : paginated.map(item => (
-                                    <TableRow key={item.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                    <TableRow key={item.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                         <TableCell className="py-3 font-medium text-gray-800">{item.title}</TableCell>
                                         <TableCell className="py-3 text-gray-500">
                                             <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{item.date}</span>

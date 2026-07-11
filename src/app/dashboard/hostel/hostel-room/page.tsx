@@ -427,7 +427,7 @@ export default function HostelRoomPage() {
                                         </TableRow>
                                     ) : (
                                         paginatedRooms.map((room) => (
-                                            <TableRow key={room.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
+                                            <TableRow key={room.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                                 <TableCell className="py-3 text-gray-700 font-medium">{room.room_number}</TableCell>
                                                 <TableCell className="py-3 text-gray-500">{room.hostel?.name}</TableCell>
                                                 <TableCell className="py-3 text-gray-500">{room.room_type?.name}</TableCell>

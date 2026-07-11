@@ -235,7 +235,7 @@ export default function LanguagesPage() {
                                     </TableCell>
                                 </TableRow>
                             ) : filteredLanguages.map((lang, idx) => (
-                                <TableRow key={lang.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors h-14">
+                                <TableRow key={lang.id} className="border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer h-14">
                                     <TableCell className="py-2 px-4 text-[11px] text-gray-400 font-bold text-center">
                                         {idx + 1}
                                     </TableCell>

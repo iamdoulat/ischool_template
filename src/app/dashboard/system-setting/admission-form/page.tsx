@@ -517,7 +517,7 @@ export default function AdmissionFormPage() {
                                                             </TableHeader>
                                                             <TableBody>
                                                                 {table.rows.map((row, rowIndex) => (
-                                                                    <TableRow key={`${tableIndex}-${rowIndex}`} className="hover:bg-gray-50/50 transition-colors">
+                                                                    <TableRow key={`${tableIndex}-${rowIndex}`} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                                         {row.cells.map((cell, cellIndex) => (
                                                                             <TableCell key={cellIndex} className="p-0">
                                                                                 <Input
@@ -591,7 +591,7 @@ export default function AdmissionFormPage() {
                                                     </TableHeader>
                                                     <TableBody>
                                                         {officeUseTable.rows.map((row, rowIndex) => (
-                                                            <TableRow key={row.id} className="hover:bg-gray-50/50 transition-colors">
+                                                            <TableRow key={row.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                                 {row.cells.map((cell, cellIndex) => (
                                                                     <TableCell key={cellIndex} className="p-0">
                                                                         <Input
@@ -713,7 +713,7 @@ export default function AdmissionFormPage() {
                                                 <TableBody>
                                                     {filteredFields.length > 0 ? (
                                                         filteredFields.map((field, index) => (
-                                                            <TableRow key={field.id} className="hover:bg-gray-50/50 transition-colors">
+                                                            <TableRow key={field.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                                 <TableCell className="text-[11px] text-gray-500 w-10">{index + 1}</TableCell>
                                                                 <TableCell className="text-[12px] font-medium text-gray-700">{field.name}</TableCell>
                                                                 <TableCell className="text-[11px] text-gray-500 font-mono">{field.field_name}</TableCell>

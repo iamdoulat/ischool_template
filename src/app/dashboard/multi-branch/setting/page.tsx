@@ -233,7 +233,7 @@ export default function SettingPage() {
                                 ) : branches.length === 0 ? (
                                     <TableRow><TableCell colSpan={TABLE_COLS} className="py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_branches_found")}</TableCell></TableRow>
                                 ) : branches.map((item) => (
-                                    <TableRow key={item.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                    <TableRow key={item.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                         <TableCell className="py-3">
                                             <div className="flex items-center gap-2">
                                                 <span className="h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500"><Building2 className="h-4 w-4" /></span>

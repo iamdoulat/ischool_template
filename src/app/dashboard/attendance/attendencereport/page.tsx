@@ -289,7 +289,7 @@ export default function AttendanceReportPage() {
                                         </TableRow>
                                     ) : (
                                         students.map((student, idx) => (
-                                            <TableRow key={student.id} className="text-sm border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                                            <TableRow key={student.id} className="text-sm border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group">
                                                 <TableCell className="py-4 px-6 text-center font-medium text-gray-400">{idx + 1}</TableCell>
                                                 <TableCell className="py-4 px-6 font-bold text-gray-800">{student.admission_no}</TableCell>
                                                 <TableCell className="py-4 px-6 text-gray-600 font-medium">{student.roll_no || "-"}</TableCell>

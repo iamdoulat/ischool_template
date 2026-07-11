@@ -298,7 +298,7 @@ export default function GenerateIDCardPage() {
                                 ) : filtered.length === 0 ? (
                                     <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_students_found")}</TableCell></TableRow>
                                 ) : filtered.map((s) => (
-                                    <TableRow key={s.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                    <TableRow key={s.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                         <TableCell className="py-3"><Checkbox checked={selected.includes(s.id)} onCheckedChange={() => toggleOne(s.id)} className="h-3.5 w-3.5" /></TableCell>
                                         <TableCell className="py-3 text-gray-700 font-medium">{s.admission_no || "-"}</TableCell>
                                         <TableCell className="py-3 text-[#6366f1] font-medium">{studentName(s)}</TableCell>

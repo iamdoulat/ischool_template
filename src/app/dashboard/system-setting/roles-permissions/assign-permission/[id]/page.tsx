@@ -203,7 +203,7 @@ export default function AssignPermissionPage() {
                                 {Object.entries(permissionsMatrix).map(([module, features]: [string, any]) => (
                                     <>
                                         {Object.entries(features).map(([feature, perms]: [string, any], featureIdx) => (
-                                            <TableRow key={`${module}-${feature}`} className="border-b border-gray-100 hover:bg-gray-50/10 transition-colors h-10 group">
+                                            <TableRow key={`${module}-${feature}`} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer h-10 group">
                                                 <TableCell
                                                     className={`py-2 px-6 border-r border-gray-50 text-[12px] ${featureIdx === 0 ? 'font-bold text-gray-800' : 'text-transparent selection:bg-transparent cursor-default'}`}
                                                 >

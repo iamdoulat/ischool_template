@@ -357,11 +357,11 @@ export default function UploadContentPage() {
                             </div>
                         </div>
                         <div className="p-0">
-                             <div className="flex justify-between items-center p-4 border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
+                             <div className="flex justify-between items-center p-4 border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Total Documents</span>
                                 <span className="text-[11px] font-bold text-gray-700">{stats.total_documents}</span>
                             </div>
-                            <div className="flex justify-between items-center p-4 hover:bg-gray-50/30 transition-colors">
+                            <div className="flex justify-between items-center p-4 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Size</span>
                                 <span className="text-[11px] font-bold text-gray-700">{formatBytes(stats.total_size)}</span>
                             </div>

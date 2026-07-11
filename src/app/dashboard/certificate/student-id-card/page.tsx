@@ -384,7 +384,7 @@ export default function StudentIDCardPage() {
                                         ) : templates.length === 0 ? (
                                             <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_id_cards_found")}</TableCell></TableRow>
                                         ) : templates.map((template) => (
-                                            <TableRow key={template.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap">
+                                            <TableRow key={template.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                                 <TableCell className="py-3 text-[#6366f1] font-medium">{template.title}</TableCell>
                                                 <TableCell className="py-3">
                                                     {template.background_image ? (

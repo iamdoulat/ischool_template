@@ -410,7 +410,7 @@ export default function AlumniEventsPage() {
                                         </TableRow>
                                     ) : (
                                         paginatedEvents.map((event, index) => (
-                                            <TableRow key={event.id} className="hover:bg-gray-50/50">
+                                            <TableRow key={event.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                 <TableCell className="py-4 text-sm text-slate-600">
                                                     {event.event_title}
                                                 </TableCell>

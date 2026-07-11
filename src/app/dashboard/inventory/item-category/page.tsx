@@ -302,7 +302,7 @@ export default function ItemCategoryPage() {
                                     ) : categories.length === 0 ? (
                                         <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell></TableRow>
                                     ) : categories.map((cat) => (
-                                        <TableRow key={cat.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                        <TableRow key={cat.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 text-gray-700 font-medium">{cat.item_category}</TableCell>
                                             <TableCell className="py-3 text-gray-400 italic">{cat.description || t("no_description")}</TableCell>
                                             <TableCell className="py-3 text-right">

@@ -249,7 +249,7 @@ export default function NfcAssignmentPage() {
                   </TableRow>
                 ) : (
                   users.map((user) => (
-                    <TableRow key={user.id} className="hover:bg-gray-50/60 transition-colors">
+                    <TableRow key={user.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                       <TableCell className="text-sm font-medium">{user.name}</TableCell>
                       <TableCell>
                         <span className="px-2 py-0.5 bg-slate-100 rounded text-xs font-medium">{user.role}</span>

@@ -1043,7 +1043,7 @@ export default function ExamGroupPage() {
                                             <tr><td colSpan={3} className="text-center py-6 text-gray-400 italic">{t("no_available_exams_found")}</td></tr>
                                         ) : (
                                             availableExams.map((exam) => (
-                                                <tr key={exam.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                                                <tr key={exam.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                     <td className="py-2.5 px-3 text-center">
                                                         <input type="checkbox" checked={examWeightages[exam.id] !== undefined} onChange={(e) => toggleExamSelection(exam.id, e.target.checked)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
                                                     </td>
@@ -1144,7 +1144,7 @@ export default function ExamGroupPage() {
                                             <tr><td colSpan={6} className="text-center py-8 text-gray-400 italic border-b border-gray-50">{t("please_select_class_and_section_to_search_students")}</td></tr>
                                         ) : (
                                             assignStudents.map((student) => (
-                                                <tr key={student.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                                                <tr key={student.id} className="border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                     <td className="py-2.5 px-3">
                                                         <input
                                                             type="checkbox"
@@ -1223,7 +1223,7 @@ export default function ExamGroupPage() {
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {examSubjectRows.map((row) => (
-                                            <tr key={row.id} className="hover:bg-gray-50/50">
+                                            <tr key={row.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                 <td className="py-2 px-1.5">
                                                     <Select value={row.subject} onValueChange={(val) => handleUpdateExamSubjectRow(row.id, "subject", val)}>
                                                         <SelectTrigger className="h-9 border-gray-200 shadow-none text-xs w-full bg-white rounded-sm">
@@ -1383,7 +1383,7 @@ export default function ExamGroupPage() {
                                         </thead>
                                         <tbody>
                                             {examMarksStudents.map((s, idx) => (
-                                                <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                                                <tr key={s.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                     <td className="py-2.5 px-3 text-gray-700">{s.admission_no}</td>
                                                     <td className="py-2.5 px-3 text-gray-700">{s.name}</td>
                                                     <td className="py-2.5 px-3">
@@ -1447,7 +1447,7 @@ export default function ExamGroupPage() {
                                         </thead>
                                         <tbody>
                                             {remarksStudents.map((s, idx) => (
-                                                <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                                                <tr key={s.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                     <td className="py-2.5 px-3 text-gray-700">{s.admission_no}</td>
                                                     <td className="py-2.5 px-3 text-gray-700">{s.name}</td>
                                                     <td className="py-2.5 px-3">
@@ -1620,7 +1620,7 @@ export default function ExamGroupPage() {
                                             </TableRow>
                                         ) : (
                                             groups.map((group) => (
-                                                <TableRow key={group.id} className="text-[13px] text-gray-600 hover:bg-gray-50/30 group border-b last:border-0 border-gray-50 transition-colors">
+                                                <TableRow key={group.id} className="text-[13px] text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group border-b last:border-0 border-gray-50 transition-colors">
                                                     <TableCell className="py-4 px-6">
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-indigo-600 uppercase tracking-tight">{group.name}</span>

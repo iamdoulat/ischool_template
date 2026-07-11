@@ -303,7 +303,7 @@ export default function ReportsPage() {
                                     </TableRow>
                                 ) : (
                                     reports.map((item) => (
-                                        <TableRow key={item.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                        <TableRow key={item.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 text-gray-500 tabular-nums">{item.admission_no}</TableCell>
                                             <TableCell className="py-3">
                                                 <div className="flex items-center gap-2.5">

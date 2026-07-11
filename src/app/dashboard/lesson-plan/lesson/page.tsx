@@ -514,7 +514,7 @@ export default function LessonPage() {
                                         </TableRow>
                                     ) : (
                                         paginatedLessons.map((entry) => (
-                                            <TableRow key={entry.id} className="text-[11px] text-gray-600 hover:bg-gray-50/50 group border-b border-gray-50 transition-colors">
+                                            <TableRow key={entry.id} className="text-[11px] text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group border-b border-gray-50 transition-colors">
                                                 <TableCell className="py-4 px-3 align-top font-medium">{entry.className}</TableCell>
                                                 <TableCell className="py-4 px-3 align-top">{entry.section}</TableCell>
                                                 <TableCell className="py-4 px-3 align-top">{entry.subjectGroup}</TableCell>

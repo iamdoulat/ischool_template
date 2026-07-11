@@ -366,7 +366,7 @@ export default function BookListPage() {
                                         </TableCell>
                                     </TableRow>
                                 ) : books.map((book) => (
-                                    <TableRow key={book.id} className="text-xs hover:bg-gray-50/60 transition-colors whitespace-nowrap group">
+                                    <TableRow key={book.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap group">
                                         <TableCell className="py-3 text-gray-700 font-medium">{book.title}</TableCell>
                                         <TableCell className="py-3 text-gray-400 max-w-[200px] truncate" title={book.description}>{book.description || "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{book.book_number}</TableCell>
@@ -379,7 +379,7 @@ export default function BookListPage() {
                                         <TableCell className="py-3 font-bold text-indigo-600">{book.available}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{book.price ? `${currencySymbol}${book.price}` : "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{book.post_date ? formatDate(book.post_date) : "-"}</TableCell>
-                                        <TableCell className="py-3 text-right sticky right-0 bg-white group-hover:bg-gray-50/60 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
+                                        <TableCell className="py-3 text-right sticky right-0 bg-white group-hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
                                             <div className="flex items-center justify-end gap-1">
                                                 <Button
                                                     size="sm"

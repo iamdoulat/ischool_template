@@ -293,7 +293,7 @@ export default function ItemStorePage() {
                                     ) : stores.length === 0 ? (
                                         <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell></TableRow>
                                     ) : stores.map((store) => (
-                                        <TableRow key={store.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                        <TableRow key={store.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 text-gray-700 font-medium">{store.item_store}</TableCell>
                                             <TableCell className="py-3 text-gray-500">{store.code || "—"}</TableCell>
                                             <TableCell className="py-3 text-gray-400 max-w-[300px] whitespace-normal">{store.description || "—"}</TableCell>

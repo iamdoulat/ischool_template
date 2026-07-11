@@ -418,7 +418,7 @@ export default function StaffAttendancePage() {
                                                 </TableCell>
                                             </TableRow>
                                         ) : paginatedData.map((staff, idx) => (
-                                            <TableRow key={staff.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
+                                            <TableRow key={staff.id} className="border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                 <TableCell className="py-4 pl-4 text-center text-gray-400 font-mono text-[10px]">{startIndex + idx + 1}</TableCell>
                                                 <TableCell className="py-4">
                                                     <div className="flex flex-col">

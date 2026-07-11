@@ -288,7 +288,7 @@ export default function BuildCVPage() {
                                 </TableRow>
                             ) : (
                                 paginatedStudents.map((item, idx) => (
-                                    <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap">
+                                    <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                         <TableCell className="py-3 px-4 text-gray-600 font-medium">{item.admission_no}</TableCell>
                                         <TableCell className="py-3 px-4 text-[#6366f1] font-semibold hover:underline cursor-pointer">{item.name}</TableCell>
                                         <TableCell className="py-3 px-4 text-center text-gray-600">{formatDob(item.dob) || "—"}</TableCell>

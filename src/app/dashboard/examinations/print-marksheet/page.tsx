@@ -498,7 +498,7 @@ export default function PrintMarksheetPage() {
                                     </TableRow>
                                 ) : (
                                     students.map((student) => (
-                                        <TableRow key={student.id} className="text-[12px] text-gray-600 hover:bg-gray-50/30 group border-b last:border-0 border-gray-50 transition-colors">
+                                        <TableRow key={student.id} className="text-[12px] text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group border-b last:border-0 border-gray-50 transition-colors">
                                             <TableCell className="text-center px-6 py-4">
                                                 <Checkbox
                                                     className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"

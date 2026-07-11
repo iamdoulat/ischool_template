@@ -233,7 +233,7 @@ export default function LiveMeetingReportPage() {
                                 </TableRow>
                             ) : (
                                 reports.map((item, idx) => (
-                                    <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap">
+                                    <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                         <TableCell className="py-3 px-4 text-gray-700 font-medium">{item.title}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-500 max-w-[250px] truncate" title={item.description}>{item.description || "-"}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-600">{formatDateTime(item.date_time)}</TableCell>
@@ -381,7 +381,7 @@ export default function LiveMeetingReportPage() {
                                         </TableRow>
                                     ) : (
                                         filteredJoinList.map((user, uidx) => (
-                                            <TableRow key={uidx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap">
+                                            <TableRow key={uidx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                                 <TableCell className="py-2.5 px-4 text-gray-700 font-medium">
                                                     {user.name} ({user.role} : {user.id})
                                                 </TableCell>

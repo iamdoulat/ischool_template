@@ -244,7 +244,7 @@ export default function IncidentsPage() {
                                     </TableRow>
                                 ) : (
                                     incidents.map((incident) => (
-                                        <TableRow key={incident.id} className="text-xs hover:bg-gray-50/60 transition-colors group">
+                                        <TableRow key={incident.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group">
                                             <TableCell className="py-3">
                                                 <div className="flex items-center gap-2.5">
                                                     <span className={cn(

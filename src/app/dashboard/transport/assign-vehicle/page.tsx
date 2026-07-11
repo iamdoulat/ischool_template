@@ -278,7 +278,7 @@ export default function AssignVehiclePage() {
                                     ) : paginatedAssignments.length === 0 ? (
                                         <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_assignments_found")}</TableCell></TableRow>
                                     ) : paginatedAssignments.map((assignment) => (
-                                        <TableRow key={assignment.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                        <TableRow key={assignment.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                             <TableCell className="py-3 text-gray-700 font-medium">{assignment.title}</TableCell>
                                             <TableCell className="py-3 text-gray-500 italic">{assignment.vehicles.map(v => v.vehicle_no).join(", ")}</TableCell>
                                             <TableCell className="py-3 text-right">

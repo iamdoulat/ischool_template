@@ -577,7 +577,7 @@ export default function StudentAttendancePage() {
                                             <TableRow
                                                 key={student.id}
                                                 className={cn(
-                                                    "text-[12px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors bg-white"
+                                                    "text-[12px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer bg-white"
                                                 )}
                                             >
                                                 <TableCell className="py-3 px-4 text-center text-gray-400 font-medium">

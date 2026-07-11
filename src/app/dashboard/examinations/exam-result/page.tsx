@@ -354,7 +354,7 @@ export default function ExamResultPage() {
                                     </TableRow>
                                 ) : (
                                     filteredStudents.map((student) => (
-                                        <TableRow key={student.id} className="text-[12px] text-gray-600 hover:bg-gray-50/30 transition-colors border-b last:border-0 border-gray-50">
+                                        <TableRow key={student.id} className="text-[12px] text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b last:border-0 border-gray-50">
                                             <TableCell className="py-4 px-6 font-bold text-gray-500 uppercase tracking-tighter bg-gray-50/20">{student.admission_no}</TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex items-center gap-2">

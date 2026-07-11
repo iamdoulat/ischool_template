@@ -475,7 +475,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                         </TableRow>
                                     ) : (
                                         issuedBooks.map((book) => (
-                                            <TableRow key={book.id} className={cn("text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap", book.return_date && "bg-green-50/50")}>
+                                            <TableRow key={book.id} className={cn("text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap", book.return_date && "bg-green-50/50")}>
                                                 <TableCell className="py-3 text-gray-700 font-medium">{book.book.title}</TableCell>
                                                 <TableCell className="py-3 text-gray-500">{book.book.book_number}</TableCell>
                                                 <TableCell className="py-3 text-gray-500">{book.issue_date ? formatDate(book.issue_date) : "-"}</TableCell>

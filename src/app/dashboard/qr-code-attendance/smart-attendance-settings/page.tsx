@@ -106,7 +106,7 @@ export default function SmartAttendanceSettingsPage() {
                         </>
                     ) : (
                         METHODS.map(({ key, label, desc, Icon, color }) => (
-                            <div key={key} className="flex items-center justify-between border rounded-lg p-4 hover:bg-gray-50/60 transition-colors">
+                            <div key={key} className="flex items-center justify-between border rounded-lg p-4 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                 <div className="flex items-center gap-4 min-w-0">
                                     <div className={`p-3 rounded-full shrink-0 ${color}`}>
                                         <Icon className="h-6 w-6" />

@@ -303,7 +303,7 @@ export default function UserLogPage() {
                                 </TableRow>
                             ) : paginatedReportList.length > 0 ? (
                                 paginatedReportList.map((log, idx) => (
-                                    <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors whitespace-nowrap">
+                                    <TableRow key={idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                         <TableCell className="py-3 px-4 text-gray-700 font-medium">{log.user}</TableCell>
                                         <TableCell className="py-3 px-4">
                                             <span className={cn(

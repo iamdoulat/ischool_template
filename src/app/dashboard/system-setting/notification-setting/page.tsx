@@ -546,7 +546,7 @@ export default function NotificationSettingPage() {
                                         events.map((item, idx) => {
                                             const vars = eventVariables[item.event_name] || [];
                                             return (
-                                                <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors align-top">
+                                                <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer align-top">
                                                     <TableCell className="py-4 px-4 font-medium text-gray-700 leading-relaxed">{item.event_name}</TableCell>
 
                                                     <TableCell className="py-4 px-4">

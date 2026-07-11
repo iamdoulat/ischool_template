@@ -216,7 +216,7 @@ export default function PagesListPage() {
                                 {loading ? <TableSkeleton cols={4} /> : paginated.length === 0 ? (
                                     <TableRow><TableCell colSpan={4} className="py-14 text-center"><div className="flex flex-col items-center gap-2 text-gray-400"><FolderOpen className="h-8 w-8 opacity-40" /><span className="text-xs">{t("no_pages_found")}</span></div></TableCell></TableRow>
                                 ) : paginated.map(page => (
-                                    <TableRow key={page.id} className="text-xs hover:bg-gray-50/60 transition-colors">
+                                    <TableRow key={page.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                         <TableCell className="py-3 font-medium text-gray-800">{page.title}</TableCell>
                                         <TableCell
                                             className="py-3 text-indigo-500 font-medium hover:underline cursor-pointer"

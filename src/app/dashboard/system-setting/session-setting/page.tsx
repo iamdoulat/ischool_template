@@ -455,7 +455,7 @@ export default function SessionSettingPage() {
                                                 <TableSkeleton cols={3} />
                                             ) : filteredSessions.length > 0 ? (
                                                 filteredSessions.map((item) => (
-                                                    <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                                    <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
                                                         <TableCell className="py-3 px-4 text-gray-700">{item.session}</TableCell>
                                                         <TableCell className="py-3 px-4">
                                                             <button

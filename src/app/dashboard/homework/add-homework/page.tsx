@@ -447,7 +447,7 @@ export default function AddHomeworkPage() {
                                             </tr>
                                         );
                                         return displayData.map((item) => (
-                                        <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/30 transition-colors whitespace-nowrap">
+                                        <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                             <TableCell className="py-3 text-gray-700 font-medium">{item.schoolClass?.name || item.class?.name || "-"}</TableCell>
                                             <TableCell className="py-3 text-gray-500">{item.section?.name || "-"}</TableCell>
                                             <TableCell className="py-3 text-gray-500">{item.subjectGroup?.name || "-"}</TableCell>
