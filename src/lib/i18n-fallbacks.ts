@@ -1056,6 +1056,6 @@ export const i18nFallbacks: Record<string, string> = {
     last_12_months: "Last 12 Months",
     failed_to_load_history: "Failed to load salary history",
     paid_on: "Paid On",
-    x_staff_records: "{count} Staff Records",
+
     x_staff_members_on_date: "{count} Staff Members on {date}",
 };

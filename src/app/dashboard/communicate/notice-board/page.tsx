@@ -522,8 +522,8 @@ export default function NoticeBoardPage() {
                             <div className="relative w-full max-w-sm group">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 <Input
-                                    placeholder={t("search_notices")}
-                                    className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    placeholder={t("search") + "..."}
+                                    className="pl-10 h-10 rounded-full bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -671,7 +671,7 @@ export default function NoticeBoardPage() {
                         {total > 0 && (
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                    {t("showing_x_to_y_of_z", { from: Math.min((currentPage - 1) * pageSize + 1, total), to: Math.min(currentPage * pageSize, total), total })}
+                                    {t("showing")} {Math.min((currentPage - 1) * pageSize + 1, total)} {t("to")} {Math.min(currentPage * pageSize, total)} {t("of")} {total} {t("entries")}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
