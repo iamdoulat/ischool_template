@@ -899,6 +899,4 @@ export const i18nFallbacksBn: Record<string, string> = {
   last_12_months: "শেষ ১২ মাস",
   failed_to_load_history: "বেতনের ইতিহাস লোড করতে ব্যর্থ",
   paid_on: "পরিশোধের তারিখ",
-
-  x_staff_members_on_date: "{count} জন স্টাফ {date} তারিখে",
 };
