@@ -12,7 +12,8 @@ import {
     List,
     ChevronLeft,
     ChevronRight,
-    FileIcon
+    FileIcon,
+    Pencil
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useImageUrl } from "@/lib/image-url";
@@ -66,6 +67,7 @@ export default function UploadContentPage() {
     const [stats, setStats] = useState({ total_documents: 0, total_size: 0 });
     const [loading, setLoading] = useState(false);
     const [contentTypes, setContentTypes] = useState<any[]>([]);
+    const [isEditing, setIsEditing] = useState<number | null>(null);
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [formData, setFormData] = useState({
@@ -120,7 +122,11 @@ export default function UploadContentPage() {
     };
 
     const handleUpload = async () => {
-        if (!formData.file || !formData.title || !formData.content_type_id) {
+        if (!isEditing && !formData.file) {
+            toast({ title: "Error", description: "Please upload a file", variant: "destructive" });
+            return;
+        }
+        if (!formData.title || !formData.content_type_id) {
             toast({ title: "Error", description: "Please fill all required fields", variant: "destructive" });
             return;
         }
@@ -129,24 +135,46 @@ export default function UploadContentPage() {
         data.append('title', formData.title);
         data.append('content_type_id', formData.content_type_id);
         data.append('description', formData.description);
-        data.append('file', formData.file);
+        if (formData.file) {
+            data.append('file', formData.file);
+        }
 
         try {
-            await api.post('/download-center/uploaded-contents', data, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            toast({ title: "Success", description: "Content uploaded successfully" });
+            if (isEditing) {
+                data.append('_method', 'PUT');
+                await api.post(`/download-center/uploaded-contents/${isEditing}`, data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                toast({ title: "Success", description: "Content updated successfully" });
+            } else {
+                await api.post('/download-center/uploaded-contents', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                toast({ title: "Success", description: "Content uploaded successfully" });
+            }
             setIsDialogOpen(false);
+            setIsEditing(null);
             setFormData({ title: "", content_type_id: "", description: "", file: null });
             fetchContents();
             fetchStats();
         } catch (error: any) {
             toast({
                 title: "Error",
-                description: error.response?.data?.message || "Failed to upload content",
+                description: error.response?.data?.message || "Failed to save content",
                 variant: "destructive",
             });
         }
+    };
+
+    const handleEdit = (item: ContentItem) => {
+        setIsEditing(item.id);
+        setFormData({
+            title: item.title,
+            content_type_id: String(item.content_type_id),
+            description: item.description || "",
+            file: null,
+        });
+        setIsDialogOpen(true);
     };
 
     const handleDelete = async (id: number) => {
@@ -176,7 +204,7 @@ export default function UploadContentPage() {
         if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
             return (
                 <div className="relative h-12 w-12 rounded-lg border border-gray-100 overflow-hidden shrink-0 shadow-sm">
-                    <Image src={getImageUrl(item.file_path)} alt={item.title} fill className="object-cover" />
+                    <img src={getImageUrl(item.file_path)} alt={item.title} className="object-cover w-full h-full" />
                 </div>
             );
         }
@@ -259,30 +287,55 @@ export default function UploadContentPage() {
                                 </div>
                             ) : (
                                 contents.map((item) => (
-                                    <div key={item.id} className="relative group bg-white border border-gray-100 rounded-lg p-4 hover:shadow-lg hover:border-indigo-100 transition-all duration-300">
+                                    <div key={item.id} className="relative group bg-white border border-gray-100 rounded-lg p-4 shadow-md border-indigo-50/50 hover:shadow-lg hover:border-indigo-100 transition-all duration-300">
                                         <div className="flex items-start gap-4">
                                             {getFileIcon(item)}
                                             <div className="flex-1 min-w-0 pr-6">
                                                 <p className="text-[11px] font-bold text-gray-700 uppercase tracking-tight truncate cursor-pointer hover:text-indigo-600 transition-colors" title={item.title}>
                                                     {item.title}
                                                 </p>
-                                                <div className="flex items-center gap-1.5 mt-1">
-                                                    <span className="text-[9px] px-1.5 py-0.5 bg-indigo-50 text-indigo-500 rounded-full font-bold uppercase">
+                                                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="h-5 px-2 text-[9px] font-bold uppercase bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100 rounded-full shadow-none cursor-default"
+                                                    >
                                                         {item.content_type?.name}
-                                                    </span>
-                                                    <span className="text-[9px] text-gray-400 font-medium">{item.uploader?.name}</span>
+                                                    </Button>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="h-5 px-2 text-[9px] font-semibold bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 rounded-full shadow-none cursor-default"
+                                                    >
+                                                        {item.uploader?.name}
+                                                    </Button>
                                                 </div>
-                                                <p className="text-[9px] text-gray-300 mt-1">{formatDate(item.created_at)} • {formatBytes(item.file_size)}</p>
+                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-2 font-medium">{formatDate(item.created_at)} • {formatBytes(item.file_size)}</p>
+                                                {item.description && (
+                                                    <p className="text-[10px] text-gray-500 mt-2 font-medium bg-gray-50/50 p-2 rounded border border-gray-100 whitespace-pre-line line-clamp-3">
+                                                        {item.description}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
 
                                         {/* Item Actions */}
-                                        <div className="mt-4 flex items-center justify-end gap-2 border-t border-gray-50 pt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="mt-4 flex items-center justify-end gap-2 border-t border-gray-50 pt-3">
+                                            <Button 
+                                                size="icon" 
+                                                variant="ghost" 
+                                                onClick={() => handleEdit(item)}
+                                                className="h-8 w-8 bg-amber-50 text-amber-500 hover:bg-amber-500 hover:text-white rounded-full transition-all"
+                                                title="Edit"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
                                             <Button 
                                                 size="icon" 
                                                 variant="ghost" 
                                                 onClick={() => window.open(getImageUrl(item.file_path), '_blank')}
                                                 className="h-8 w-8 bg-indigo-50 text-indigo-500 hover:bg-indigo-500 hover:text-white rounded-full transition-all"
+                                                title="Download"
                                             >
                                                 <Download className="h-4 w-4" />
                                             </Button>
@@ -291,6 +344,7 @@ export default function UploadContentPage() {
                                                 variant="ghost" 
                                                 onClick={() => handleDelete(item.id)}
                                                 className="h-8 w-8 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-full transition-all"
+                                                title="Delete"
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
@@ -371,10 +425,16 @@ export default function UploadContentPage() {
             </div>
 
             {/* Upload Content Dialog */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) {
+                    setIsEditing(null);
+                    setFormData({ title: "", content_type_id: "", description: "", file: null });
+                }
+            }}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-gray-800">Upload Content</DialogTitle>
+                        <DialogTitle className="text-lg font-bold text-gray-800">{isEditing ? "Edit Content" : "Upload Content"}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="space-y-1.5">
@@ -400,7 +460,7 @@ export default function UploadContentPage() {
                             </Select>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Select File <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Select File {!isEditing && <span className="text-red-500">*</span>}</Label>
                             <div className="relative">
                                 <Input 
                                     type="file"
@@ -421,7 +481,7 @@ export default function UploadContentPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">Cancel</Button>
-                        <Button onClick={handleUpload} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">Upload & Save</Button>
+                        <Button onClick={handleUpload} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">{isEditing ? "Update & Save" : "Upload & Save"}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

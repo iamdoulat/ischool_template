@@ -43,11 +43,24 @@ function youtubeId(url: string): string | null {
     return null;
 }
 
-/** Best available thumbnail: explicit DB value, else derived YouTube thumbnail. */
+/** Extract a Vimeo video id from common URL shapes. */
+function vimeoId(url: string): string | null {
+    if (!url) return null;
+    const match = url.match(/(?:vimeo\.com\/|video\/)(\d+)/);
+    return match ? match[1] : null;
+}
+
+/** Best available thumbnail: explicit DB value, else derived YouTube/Vimeo thumbnail. */
 function thumbFor(video: Video): string | null {
     if (video.thumbnail) return video.thumbnail;
-    const id = youtubeId(video.videoUrl);
-    return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
+    
+    const ytId = youtubeId(video.videoUrl);
+    if (ytId) return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+    
+    const vimId = vimeoId(video.videoUrl);
+    if (vimId) return `https://vumbnail.com/${vimId}.jpg`;
+    
+    return null;
 }
 
 export default function UserVideoTutorialPage() {
@@ -302,27 +315,46 @@ export default function UserVideoTutorialPage() {
                         </div>
 
                         <div className="relative aspect-video bg-black w-full">
-                            {activeId ? (
-                                <iframe
-                                    className="absolute inset-0 w-full h-full"
-                                    src={`https://www.youtube.com/embed/${activeId}?autoplay=1&rel=0`}
-                                    title={active.title}
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                />
-                            ) : (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-300">
-                                    <Youtube className="h-12 w-12" />
-                                    <a
-                                        href={active.videoUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1.5 text-[13px] text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors"
-                                    >
-                                        <ExternalLink className="h-4 w-4" /> {t("open_video_in_new_tab")}
-                                    </a>
-                                </div>
-                            )}
+                            {(() => {
+                                const ytId = youtubeId(active.videoUrl);
+                                const vimId = vimeoId(active.videoUrl);
+                                
+                                if (ytId) {
+                                    return (
+                                        <iframe
+                                            className="absolute inset-0 w-full h-full"
+                                            src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`}
+                                            title={active.title}
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                        />
+                                    );
+                                } else if (vimId) {
+                                    return (
+                                        <iframe
+                                            className="absolute inset-0 w-full h-full"
+                                            src={`https://player.vimeo.com/video/${vimId}?autoplay=1`}
+                                            title={active.title}
+                                            allow="autoplay; fullscreen; picture-in-picture"
+                                            allowFullScreen
+                                        />
+                                    );
+                                } else {
+                                    return (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-300">
+                                            <VideoIcon className="h-12 w-12" />
+                                            <a
+                                                href={active.videoUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1.5 text-[13px] text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors"
+                                            >
+                                                <ExternalLink className="h-4 w-4" /> {t("open_video_in_new_tab")}
+                                            </a>
+                                        </div>
+                                    );
+                                }
+                            })()}
                         </div>
 
                         {(active.description || active.videoUrl) && (

@@ -238,9 +238,14 @@ export default function UserContentPage() {
                                         return (
                                             <TableRow
                                                 key={item.id}
-                                                className="text-[13px] border-b border-gray-100 hover:bg-indigo-50/30 transition-colors"
+                                                className="text-[13px] border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer"
                                             >
-                                                <TableCell className="py-3 px-4 font-medium text-gray-800">{item.title}</TableCell>
+                                                <TableCell className="py-3 px-4 font-medium text-gray-800">
+                                                    <div>{item.title}</div>
+                                                    {item.description && (
+                                                        <div className="text-[11px] text-gray-400 font-normal mt-1 line-clamp-1 max-w-xs">{item.description}</div>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell className="py-3 px-4 text-gray-600">{formatDate(item.share_date)}</TableCell>
                                                 <TableCell className="py-3 px-4">
                                                     <span className={cn(
@@ -288,9 +293,14 @@ export default function UserContentPage() {
                                 {items.map((item) => {
                                     const expired = isExpired(item.valid_upto);
                                     return (
-                                        <div key={item.id} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 flex flex-col gap-2.5">
+                                        <div key={item.id} className="rounded-xl border border-gray-200 bg-white shadow-md border-indigo-50/50 hover:shadow-lg transition-all duration-300 p-4 flex flex-col gap-2.5">
                                             <div className="flex items-start justify-between gap-2">
-                                                <h3 className="text-[13px] font-bold text-gray-800 leading-snug">{item.title}</h3>
+                                                <div>
+                                                    <h3 className="text-[13px] font-bold text-gray-800 leading-snug">{item.title}</h3>
+                                                    {item.description && (
+                                                        <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+                                                    )}
+                                                </div>
                                                 {expired && (
                                                     <Badge className="shrink-0 bg-red-100 text-red-600 border-red-200 hover:bg-red-100 text-[10px]">{t("expired")}</Badge>
                                                 )}
