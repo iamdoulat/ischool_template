@@ -278,7 +278,6 @@ const menuItems = [
                 color: "indigo",
                 submenus: [
                     { name: "online_course", href: "/dashboard/online-course/online-course-list" },
-                    { name: "question_bank", href: "/dashboard/online-course/question-bank" },
                     { name: "offline_payment", href: "/dashboard/online-course/offline-payment" },
                     { name: "online_course_report", href: "/dashboard/online-course/reports" },
                     { name: "setting", href: "/dashboard/online-course/settings" },

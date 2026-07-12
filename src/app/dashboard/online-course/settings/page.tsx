@@ -117,7 +117,7 @@ export default function SettingPage() {
     }
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500 pb-20 font-sans text-slate-800">
+        <div className="space-y-6">
             {/* Strategy Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
                 <div className="flex items-center gap-2.5">
@@ -132,19 +132,19 @@ export default function SettingPage() {
             </div>
 
             {/* Curriculum Setting Section */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
-                        <Zap className="h-5 w-5" />
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-sm">
+                        <Zap className="h-4 w-4" />
                     </div>
-                    <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase tracking-widest">{t("course_curriculum_registry")}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-10 space-y-8">
-                    <div className="flex flex-col md:flex-row md:items-center gap-12">
-                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] min-w-[200px]">
+                    <h2 className="text-sm font-bold text-gray-900">{t("course_curriculum_registry")}</h2>
+                </div>
+                <div className="space-y-6">
+                    <div className="flex flex-col md:flex-row md:items-center gap-6">
+                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight min-w-[200px]">
                             {t("assessment_modules")}
                         </label>
-                        <div className="flex flex-wrap items-center gap-8">
+                        <div className="flex flex-wrap items-center gap-6">
                             <CheckboxItem
                                 id="quiz"
                                 label={t("quiz_protocol")}
@@ -165,29 +165,29 @@ export default function SettingPage() {
                             />
                         </div>
                     </div>
-                    <div className="flex justify-end pt-8 border-t border-gray-50">
+                    <div className="flex justify-end pt-5 border-t border-gray-50">
                         <Button
                             onClick={() => setConfirmSection('curriculum')}
                             disabled={saving.curriculum}
-                            className="btn-gradient text-white px-12 h-14 text-[11px] font-black uppercase tracking-[0.2em] gap-3 shadow-2xl shadow-orange-200/50 active:scale-95 transition-all rounded-full group"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-6 text-xs font-bold rounded-lg shadow-sm flex items-center gap-2"
                         >
-                            {saving.curriculum ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5 group-hover:scale-110 transition-transform" />}
+                            {saving.curriculum ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             {t("sync_curriculum")}
                         </Button>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             {/* AWS S3 Bucket Setting Section */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-inner">
-                        <Cloud className="h-5 w-5" />
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm">
+                        <Cloud className="h-4 w-4" />
                     </div>
-                    <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase tracking-widest">{t("cloud_storage_infrastructure")}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-10 space-y-10">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                    <h2 className="text-sm font-bold text-gray-900">{t("cloud_storage_infrastructure")}</h2>
+                </div>
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                         <InputField
                             label={t("aws_access_key_id")}
                             required
@@ -218,52 +218,52 @@ export default function SettingPage() {
                             onChange={(val) => setSettings({...settings, aws_region: val})}
                         />
                     </div>
-                    <div className="flex justify-end pt-8 border-t border-gray-50">
+                    <div className="flex justify-end pt-5 border-t border-gray-50">
                         <Button
                             onClick={() => setConfirmSection('aws')}
                             disabled={saving.aws}
-                            className="btn-gradient text-white px-12 h-14 text-[11px] font-black uppercase tracking-[0.2em] gap-3 shadow-2xl shadow-orange-200/50 active:scale-95 transition-all rounded-full group"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-6 text-xs font-bold rounded-lg shadow-sm flex items-center gap-2"
                         >
-                            {saving.aws ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5 group-hover:scale-110 transition-transform" />}
+                            {saving.aws ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             {t("commit_cloud_sync")}
                         </Button>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             {/* Guest User Section */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <CardHeader className="px-8 py-6 border-b border-muted/50 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-inner">
-                        <UserCircle className="h-5 w-5" />
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-sm">
+                        <UserCircle className="h-4 w-4" />
                     </div>
-                    <CardTitle className="text-lg font-black tracking-tight text-slate-700 uppercase tracking-widest">{t("guest_node_configuration")}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-10 space-y-10">
-                    <div className="flex flex-col md:flex-row md:items-center gap-12 p-8 bg-slate-50/50 rounded-[2.5rem] border border-gray-50 shadow-inner">
+                    <h2 className="text-sm font-bold text-gray-900">{t("guest_node_configuration")}</h2>
+                </div>
+                <div className="space-y-6">
+                    <div className="flex flex-col md:flex-row md:items-center gap-8 p-6 bg-slate-50/50 rounded-lg border border-gray-50">
                         <div className="space-y-1">
-                            <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
-                                {t("guest_access_protocol")} <span className="text-destructive">*</span>
+                            <label className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">
+                                {t("guest_access_protocol")} <span className="text-red-500">*</span>
                             </label>
-                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter italic">{t("allow_unauthenticated_nodes_preview")}</p>
+                            <p className="text-xs text-gray-400">{t("allow_unauthenticated_nodes_preview")}</p>
                         </div>
                         <button
                             onClick={() => setSettings({...settings, guest_login: !settings.guest_login})}
                             className={cn(
-                                "relative inline-flex h-7 w-14 shrink-0 cursor-pointer items-center rounded-full transition-all duration-500 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/20",
-                                settings.guest_login ? "bg-indigo-600 shadow-lg shadow-indigo-100" : "bg-gray-200"
+                                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                                settings.guest_login ? "bg-indigo-600" : "bg-gray-200"
                             )}
                         >
                             <span
                                 className={cn(
-                                    "pointer-events-none block h-5 w-5 rounded-full bg-white shadow-xl ring-0 transition-all duration-500",
-                                    settings.guest_login ? "translate-x-8" : "translate-x-1"
+                                    "pointer-events-none block h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-all duration-300",
+                                    settings.guest_login ? "translate-x-6" : "translate-x-1"
                                 )}
                             />
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                         <InputField
                             label={t("guest_prefix")}
                             required
@@ -280,38 +280,34 @@ export default function SettingPage() {
                             onChange={(val) => setSettings({...settings, guest_user_id_start: parseInt(val) || 0})}
                         />
                     </div>
-                    <div className="flex justify-end pt-8 border-t border-gray-50">
+                    <div className="flex justify-end pt-5 border-t border-gray-50">
                         <Button
                             onClick={() => setConfirmSection('guest')}
                             disabled={saving.guest}
-                            className="btn-gradient text-white px-12 h-14 text-[11px] font-black uppercase tracking-[0.2em] gap-3 shadow-2xl shadow-orange-200/50 active:scale-95 transition-all rounded-full group"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-6 text-xs font-bold rounded-lg shadow-sm flex items-center gap-2"
                         >
-                            {saving.guest ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5 group-hover:scale-110 transition-transform" />}
+                            {saving.guest ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             {t("initialize_guest_protocol")}
                         </Button>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             {/* Commit Confirmation Dialog */}
             <AlertDialog open={confirmSection !== null} onOpenChange={(open) => !open && setConfirmSection(null)}>
-                <AlertDialogContent className="rounded-[2.5rem] border-0 shadow-2xl p-10 max-w-lg bg-white">
+                <AlertDialogContent>
                     <AlertDialogHeader>
-                        <div className="h-20 w-20 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-100 mb-8 shadow-inner transform rotate-3">
-                            <ShieldCheck className="h-10 w-10" />
-                        </div>
-                        <AlertDialogTitle className="text-2xl font-black text-gray-800 uppercase tracking-tight leading-tight">{t("confirm_parameter_sync")}</AlertDialogTitle>
-                        <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-4 font-medium">
+                        <AlertDialogTitle>{t("confirm_parameter_sync")}</AlertDialogTitle>
+                        <AlertDialogDescription>
                             {t("parameter_sync_description", { section: confirmSection || "" })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-12 gap-4">
-                        <AlertDialogCancel className="h-14 px-10 rounded-full text-[10px] font-black uppercase tracking-widest border-gray-100 hover:bg-gray-50 transition-all">{t("abort_sync")}</AlertDialogCancel>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>{t("abort_sync")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={() => confirmSection && handleSave(confirmSection)}
-                            className="bg-indigo-600 hover:bg-indigo-700 h-14 px-12 rounded-full text-[10px] font-black uppercase tracking-widest border-0 shadow-2xl shadow-indigo-200 active:scale-95 transition-all flex gap-3"
+                            className="bg-indigo-600 hover:bg-indigo-700"
                         >
-                            <Check className="h-4 w-4" />
                             {t("confirm_commit")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -326,9 +322,9 @@ function CheckboxItem({ id, label, checked, onChange }: { id: string, label: str
         <div
             onClick={() => onChange(!checked)}
             className={cn(
-                "flex items-center space-x-4 group cursor-pointer p-5 rounded-[1.5rem] border-2 transition-all duration-300 min-w-[200px]",
+                "flex items-center space-x-3 group cursor-pointer p-4 rounded-lg border transition-all duration-300 min-w-[160px]",
                 checked
-                    ? "border-indigo-500 bg-indigo-50/50 shadow-xl shadow-indigo-100/50"
+                    ? "border-indigo-500 bg-indigo-50/50"
                     : "border-gray-100 bg-white hover:border-gray-200"
             )}
         >
@@ -337,15 +333,15 @@ function CheckboxItem({ id, label, checked, onChange }: { id: string, label: str
                 checked={checked}
                 onCheckedChange={(val) => onChange(!!val)}
                 className={cn(
-                    "h-6 w-6 rounded-lg border-2 transition-all",
-                    checked ? "bg-indigo-500 border-indigo-500 shadow-lg shadow-indigo-200" : "border-gray-200"
+                    "h-4 w-4 rounded transition-all",
+                    checked ? "bg-indigo-500 border-indigo-500" : "border-gray-300"
                 )}
             />
             <label
                 htmlFor={id}
                 className={cn(
-                    "text-[10px] font-black uppercase tracking-widest cursor-pointer transition-colors",
-                    checked ? "text-indigo-700" : "text-slate-500 group-hover:text-indigo-600"
+                    "text-xs font-semibold cursor-pointer transition-colors",
+                    checked ? "text-indigo-700" : "text-gray-600 group-hover:text-indigo-600"
                 )}
             >
                 {label}
@@ -356,17 +352,17 @@ function CheckboxItem({ id, label, checked, onChange }: { id: string, label: str
 
 function InputField({ label, required, value, onChange, type = "text", icon }: { label: string, required?: boolean, value: string, onChange: (val: string) => void, type?: string, icon?: React.ReactNode }) {
     return (
-        <div className="space-y-3 group">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-indigo-500 transition-colors flex items-center gap-2">
+        <div className="space-y-2 group">
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight flex items-center gap-2">
                 {icon}
-                {label} {required && <span className="text-destructive font-bold">*</span>}
+                {label} {required && <span className="text-red-500">*</span>}
             </label>
             <div className="relative">
                 <Input
                     type={type}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    className="h-14 rounded-lg border-gray-100 bg-white focus-visible:ring-4 focus-visible:ring-indigo-500/10 focus-visible:border-indigo-500 transition-all font-bold text-sm px-6 shadow-sm"
+                    className="h-9 rounded-lg border-gray-200 bg-white focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 transition-all text-xs px-3 shadow-sm"
                     placeholder={`Enter ${label.toLowerCase()}...`}
                 />
             </div>

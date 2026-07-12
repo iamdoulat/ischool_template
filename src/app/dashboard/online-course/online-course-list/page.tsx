@@ -107,6 +107,12 @@ interface QuizItem {
     points: number;
 }
 
+interface OptionItem {
+    id: number;
+    name: string;
+    sections?: { id: number; name: string }[];
+}
+
 interface Course {
     id: string;
     title: string;
@@ -118,6 +124,10 @@ interface Course {
     original_price: number;
     image: string;
     class_name: string;
+    class_id?: number | null;
+    section_id?: number | null;
+    school_class?: { id: number; name: string };
+    section?: { id: number; name: string };
     total_lessons: number;
     total_hours: string;
     total_exams: number;
@@ -140,6 +150,7 @@ export default function OnlineCoursePage() {
     const [total, setTotal] = useState(0);
     const [from, setFrom] = useState(0);
     const [to, setTo] = useState(0);
+    const [classes, setClasses] = useState<OptionItem[]>([]);
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -159,6 +170,8 @@ export default function OnlineCoursePage() {
         original_price: "",
         description: "",
         class_name: "",
+        class_id: "",
+        section_id: "",
         instructor_name: "",
         thumbnail: null as File | null,
         thumbnail_preview: "",
@@ -166,6 +179,19 @@ export default function OnlineCoursePage() {
         live_classes: [] as LiveClassItem[],
         quizzes: [] as QuizItem[],
     });
+
+    const formFilteredSections = form.class_id
+        ? classes.find(c => String(c.id) === form.class_id)?.sections || []
+        : [];
+
+    const fetchInitialData = async () => {
+        try {
+            const res = await api.get("/academics/classes?no_paginate=true");
+            setClasses(res.data.data || []);
+        } catch (e) {
+            console.error("Error fetching classes:", e);
+        }
+    };
 
     const fetchCourses = useCallback(async (page?: number) => {
         setLoading(true);
@@ -198,6 +224,7 @@ export default function OnlineCoursePage() {
     }, [searchTerm, currentPage, perPage, t]);
 
     useEffect(() => {
+        fetchInitialData();
         fetchCourses(1);
     }, []);
 
@@ -207,7 +234,7 @@ export default function OnlineCoursePage() {
     }, [searchTerm]);
 
     const resetForm = () => {
-        setForm({ title: "", subtitle: "", category: "", price: "", original_price: "", description: "", class_name: "", instructor_name: "", thumbnail: null, thumbnail_preview: "", outline: [], live_classes: [], quizzes: [] });
+        setForm({ title: "", subtitle: "", category: "", price: "", original_price: "", description: "", class_name: "", class_id: "", section_id: "", instructor_name: "", thumbnail: null, thumbnail_preview: "", outline: [], live_classes: [], quizzes: [] });
         setEditingId(null);
     };
 
@@ -225,7 +252,9 @@ export default function OnlineCoursePage() {
             price: course.price.toString(),
             original_price: (course.original_price || "").toString(),
             description: course.description,
-            class_name: course.class_name,
+            class_name: course.class_name || "",
+            class_id: course.class_id ? String(course.class_id) : "",
+            section_id: course.section_id ? String(course.section_id) : "",
             instructor_name: course.instructor?.name || "",
             thumbnail: null,
             thumbnail_preview: course.image || "",
@@ -248,6 +277,8 @@ export default function OnlineCoursePage() {
             fd.append("original_price", form.original_price);
             fd.append("description", form.description);
             fd.append("class_name", form.class_name);
+            if (form.class_id) fd.append("class_id", form.class_id);
+            if (form.section_id) fd.append("section_id", form.section_id);
             fd.append("instructor_name", form.instructor_name);
             fd.append("outline", JSON.stringify(form.outline));
             fd.append("live_classes", JSON.stringify(form.live_classes));
@@ -307,7 +338,7 @@ export default function OnlineCoursePage() {
     };
 
     const exportToCopy = () => {
-        const text = courses.map((c) => `${c.title}\t${c.category}\t${formatCurrency(c.price)}\t${c.class_name}`).join("\n");
+        const text = courses.map((c) => `${c.title}\t${c.category}\t${formatCurrency(c.price)}\t${c.school_class?.name || c.class_name || ""}\t${c.section?.name || ""}`).join("\n");
         navigator.clipboard.writeText(text);
         toast.success(t("copied_to_clipboard"));
     };
@@ -317,7 +348,8 @@ export default function OnlineCoursePage() {
             Title: c.title,
             Category: c.category,
             Price: c.price,
-            Class: c.class_name,
+            Class: c.school_class?.name || c.class_name || "",
+            Section: c.section?.name || "",
             Instructor: c.instructor?.name || "",
         }));
         const ws = XLSX.utils.json_to_sheet(data);
@@ -329,8 +361,8 @@ export default function OnlineCoursePage() {
     const exportToPDF = () => {
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [[t("title"), t("category"), t("price"), t("class"), t("instructor")]],
-            body: courses.map((c) => [c.title, c.category, formatCurrency(c.price), c.class_name, c.instructor?.name || ""]),
+            head: [[t("title"), t("category"), t("price"), t("class"), t("section"), t("instructor")]],
+            body: courses.map((c) => [c.title, c.category, formatCurrency(c.price), c.school_class?.name || c.class_name || "", c.section?.name || "", c.instructor?.name || ""]),
         });
         doc.save("courses.pdf");
     };
@@ -342,8 +374,8 @@ export default function OnlineCoursePage() {
             <html><head><title>${t("courses")}</title>
             <style>table { width:100%; border-collapse:collapse; } th,td { border:1px solid #ddd; padding:8px; text-align:left; } th { background:#f5f5f5; }</style>
             </head><body><h2>${t("courses")}</h2><table>
-            <thead><tr><th>${t("title")}</th><th>${t("category")}</th><th>${t("price")}</th><th>${t("class")}</th><th>${t("instructor")}</th></tr></thead>
-            <tbody>${courses.map((c) => `<tr><td>${c.title}</td><td>${c.category}</td><td>${formatCurrency(c.price)}</td><td>${c.class_name}</td><td>${c.instructor?.name || ""}</td></tr>`).join("")}
+            <thead><tr><th>${t("title")}</th><th>${t("category")}</th><th>${t("price")}</th><th>${t("class")}</th><th>${t("section")}</th><th>${t("instructor")}</th></tr></thead>
+            <tbody>${courses.map((c) => `<tr><td>${c.title}</td><td>${c.category}</td><td>${formatCurrency(c.price)}</td><td>${c.school_class?.name || c.class_name || ""}</td><td>${c.section?.name || ""}</td><td>${c.instructor?.name || ""}</td></tr>`).join("")}
             </tbody></table></body></html>`);
         win.document.close();
         win.print();
@@ -425,6 +457,7 @@ export default function OnlineCoursePage() {
                                 <TableHead className="font-bold text-gray-700 py-3">{t("course")}</TableHead>
                                 <TableHead className="font-bold text-gray-700 py-3">{t("category")}</TableHead>
                                 <TableHead className="font-bold text-gray-700 py-3">{t("class")}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3">{t("section")}</TableHead>
                                 <TableHead className="font-bold text-gray-700 py-3">{t("instructor")}</TableHead>
                                 <TableHead className="font-bold text-gray-700 py-3 text-right">{t("price_with_symbol", { symbol })}</TableHead>
                                 <TableHead className="font-bold text-gray-700 py-3 text-right">{t("action")}</TableHead>
@@ -458,7 +491,8 @@ export default function OnlineCoursePage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-gray-600 py-3.5 align-middle capitalize">{course.category || "-"}</TableCell>
-                                        <TableCell className="text-gray-600 py-3.5 align-middle">{course.class_name || "-"}</TableCell>
+                                        <TableCell className="text-gray-600 py-3.5 align-middle">{course.school_class?.name || course.class_name || "-"}</TableCell>
+                                        <TableCell className="text-gray-600 py-3.5 align-middle">{course.section?.name || "-"}</TableCell>
                                         <TableCell className="text-gray-600 py-3.5 align-middle">{course.instructor?.name || "-"}</TableCell>
                                         <TableCell className="text-right py-3.5 align-middle font-medium text-gray-800">{formatCurrency(course.price)}</TableCell>
                                         <TableCell className="text-right py-3.5 align-middle">
@@ -571,7 +605,29 @@ export default function OnlineCoursePage() {
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("class")}</Label>
-                                <Input value={form.class_name} onChange={(e) => setForm({ ...form, class_name: e.target.value })} className="h-9 text-xs border-gray-200 rounded-lg" placeholder={t("class_placeholder")} />
+                                <Select value={form.class_id} onValueChange={(v) => setForm({ ...form, class_id: v, section_id: "" })}>
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_class")} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {classes.map((c) => (
+                                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("section")}</Label>
+                                <Select value={form.section_id} onValueChange={(v) => setForm({ ...form, section_id: v })} disabled={!form.class_id}>
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_section")} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {formFilteredSections.map((s) => (
+                                            <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("price_with_symbol", { symbol })}</Label>

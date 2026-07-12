@@ -558,6 +558,12 @@ export const i18nFallbacks: Record<string, string> = {
     // Academics
     class_timetable: "Class Timetable",
     teachers_timetable: "Teachers Timetable",
+    teacher_time_table: "Teacher Timetable",
+    select_criteria: "Select Criteria",
+    not_scheduled: "Not Scheduled",
+    x_subjects_selected: "{count} Subjects Selected",
+    please_select_a_teacher: "Please select a teacher",
+    timetable_loaded: "Timetable loaded successfully",
     assign_class_teacher: "Assign Class Teacher",
     promote_students: "Promote Students",
     subjects: "Subjects",
@@ -599,6 +605,7 @@ export const i18nFallbacks: Record<string, string> = {
     add_course: "Add Course",
     edit_course: "Edit Course",
     course_details: "Course Details",
+    x_teachers_available: "{count} Teachers Available",
     // Library
     book_list: "Book List",
     issue_return: "Issue Return",
