@@ -16,7 +16,8 @@ import {
     Check,
     X,
     ExternalLink,
-    Landmark
+    Landmark,
+    Download
 } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,8 @@ import { Textarea } from "@/components/ui/textarea";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import html2canvas from "html2canvas-pro";
+import { useSettings } from "@/components/providers/settings-provider";
 
 interface OfflinePayment {
     id: number;
@@ -70,6 +73,9 @@ interface OfflinePayment {
         fee_master: {
             fee_type: { name: string };
         };
+    };
+    course?: {
+        title: string;
     };
 }
 
@@ -102,6 +108,9 @@ export default function OfflineBankPaymentsPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
     const { symbol, formatCurrency } = useCurrencyFormatter();
+    const [invoiceData, setInvoiceData] = useState<any>(null);
+    const [printSettings, setPrintSettings] = useState<any>(null);
+    const { settings } = useSettings();
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
@@ -186,7 +195,7 @@ export default function OfflineBankPaymentsPage() {
             "Student Name": `${p.student.name} ${p.student.last_name}`,
             "Admission No": p.student.admission_no,
             "Class & Section": `${p.student.school_class.class} (${p.student.section.section})`,
-            "Payment Fee Type": p.student_fee_master?.fee_master.fee_type.name || 'General Payment',
+            "Payment Fee Type": p.course ? `Course Purchase: ${p.course.title}` : (p.student_fee_master?.fee_master.fee_type.name || 'General Payment'),
             "Reference No": p.reference_no || 'N/A',
             "Payment Date": new Date(p.payment_date).toLocaleDateString(),
             "Bank Name": p.bank_name || 'N/A',
@@ -207,7 +216,7 @@ export default function OfflineBankPaymentsPage() {
             "Student Name": `${p.student.name} ${p.student.last_name}`,
             "Admission No": p.student.admission_no,
             "Class & Section": `${p.student.school_class.class} (${p.student.section.section})`,
-            "Payment Fee Type": p.student_fee_master?.fee_master.fee_type.name || 'General Payment',
+            "Payment Fee Type": p.course ? `Course Purchase: ${p.course.title}` : (p.student_fee_master?.fee_master.fee_type.name || 'General Payment'),
             "Reference No": p.reference_no || 'N/A',
             "Payment Date": new Date(p.payment_date).toLocaleDateString(),
             "Bank Name": p.bank_name || 'N/A',
@@ -232,13 +241,63 @@ export default function OfflineBankPaymentsPage() {
         const tableRows = filteredPayments.map(p => [
             `#${p.id}`,
             `${p.student.name} ${p.student.last_name}`,
-            `${p.student_fee_master?.fee_master.fee_type.name || 'General Payment'} (Ref: ${p.reference_no || 'N/A'})`,
+            p.course ? `Course Purchase: ${p.course.title} (Ref: ${p.reference_no || 'N/A'})` : `${p.student_fee_master?.fee_master.fee_type.name || 'General Payment'} (Ref: ${p.reference_no || 'N/A'})`,
             `${symbol}${p.amount.toFixed(2)}`,
             p.status
         ]);
         autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
         doc.save("offline_payments.pdf");
         tt.success("exported_to_pdf");
+    };
+
+    const downloadPaymentInvoice = async (payment: OfflinePayment) => {
+        let currentSettings = printSettings;
+        if (!currentSettings) {
+            try {
+                const res = await api.get('system-setting/print-settings');
+                if (res.data?.status === 'success') {
+                    const invoiceSetting = res.data.data.find((s: any) => s.type === 'Invoice');
+                    setPrintSettings(invoiceSetting);
+                    currentSettings = invoiceSetting;
+                }
+            } catch (e) {}
+        }
+
+        const paymentType = payment.course 
+            ? `Course Purchase: ${payment.course.title}` 
+            : (payment.student_fee_master?.fee_master.fee_type.name || t("general_payment"));
+
+        setInvoiceData({
+            type: 'bank',
+            id: payment.id,
+            date: payment.payment_date,
+            reference_no: payment.reference_no,
+            studentName: `${payment.student.name} ${payment.student.last_name}`,
+            admissionNo: payment.student.admission_no,
+            detail: paymentType,
+            amount: payment.amount,
+        });
+
+        setTimeout(async () => {
+            const element = document.getElementById('modern-invoice-template-bank');
+            if (element) {
+                try {
+                    const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true });
+                    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                    const pdf = new jsPDF();
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save(`invoice_${payment.id}.pdf`);
+                    tt.success("invoice_downloaded");
+                } catch (e: any) {
+                    console.error("PDF Gen Error:", e);
+                    tt.error(`Failed to generate PDF: ${e.message || 'Unknown error'}`);
+                } finally {
+                    setInvoiceData(null);
+                }
+            }
+        }, 500);
     };
 
     const getStatusBadge = (status: string) => {
@@ -407,7 +466,9 @@ export default function OfflineBankPaymentsPage() {
                                                 </TableCell>
                                                 <TableCell className="py-4">
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-semibold text-slate-600">{payment.student_fee_master?.fee_master.fee_type.name || t("general_payment")}</span>
+                                                        <span className="text-sm font-semibold text-slate-600">
+                                                            {payment.course ? `Course Purchase: ${payment.course.title}` : (payment.student_fee_master?.fee_master.fee_type.name || t("general_payment"))}
+                                                        </span>
                                                         <span className="text-[10px] text-muted-foreground font-medium">{t("ref_label")} {payment.reference_no || 'N/A'}</span>
                                                         <span className="text-[10px] text-muted-foreground font-medium">{t("date_label")} {new Date(payment.payment_date).toLocaleDateString('en-GB')}</span>
                                                     </div>
@@ -415,7 +476,17 @@ export default function OfflineBankPaymentsPage() {
                                                 <TableCell className="py-4 text-sm font-black text-slate-800 text-right">{formatCurrency(payment.amount)}</TableCell>
                                                 <TableCell className="py-4">{getStatusBadge(payment.status)}</TableCell>
                                                 <TableCell className="py-4 pr-8">
-                                                    <div className="flex justify-center">
+                                                    <div className="flex justify-center gap-2">
+                                                        {payment.status === 'approved' && (
+                                                            <Button
+                                                                size="icon"
+                                                                onClick={() => downloadPaymentInvoice(payment)}
+                                                                className="h-9 w-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-white shadow-lg shadow-slate-800/20 transition-all hover:scale-110 active:scale-95"
+                                                                title="Download Invoice"
+                                                            >
+                                                                <Download className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
                                                         <Button
                                                             size="icon"
                                                             onClick={() => {
@@ -587,6 +658,124 @@ export default function OfflineBankPaymentsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Invoice Template (Hidden) */}
+            {invoiceData && (
+                <div style={{ position: 'fixed', top: 0, left: 0, zIndex: -50, opacity: 0, pointerEvents: 'none' }}>
+                    <div id="modern-invoice-template-bank" style={{ width: '800px', backgroundColor: '#ffffff', padding: '48px', fontFamily: 'sans-serif', color: '#1e293b', minHeight: '1122px', boxSizing: 'border-box' }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                            {/* Left Column: Logo + School Name */}
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                {printSettings?.header_image_base64 ? (
+                                    <img src={printSettings.header_image_base64} alt="Header" style={{ maxHeight: '80px', objectFit: 'contain', marginBottom: '8px' }} />
+                                ) : settings?.print_logo_base64 ? (
+                                    <img src={settings.print_logo_base64} alt="Logo" style={{ maxHeight: '80px', objectFit: 'contain', marginBottom: '8px' }} />
+                                ) : null}
+                                <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#1e293b', lineHeight: '1.2', margin: 0 }}>{settings?.school_name || "iSchool"}</h1>
+                            </div>
+                            
+                            {/* Right Column: Address and Others */}
+                            <div style={{ textAlign: 'right', fontSize: '13px', color: '#1e293b', lineHeight: '1.5' }}>
+                                {settings?.address && (
+                                    <div><span style={{ fontWeight: 'bold' }}>Address:</span> {settings.address}</div>
+                                )}
+                                {settings?.phone && (
+                                    <div><span style={{ fontWeight: 'bold' }}>Phone No.:</span> {settings.phone}</div>
+                                )}
+                                {settings?.email && (
+                                    <div><span style={{ fontWeight: 'bold' }}>Email:</span> {settings.email}</div>
+                                )}
+                                {settings?.base_url && (
+                                    <div><span style={{ fontWeight: 'bold' }}>Website:</span> {settings.base_url.replace(/^https?:\/\//, '')}</div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Centered full-width black bar */}
+                        <div style={{ backgroundColor: '#000000', color: '#ffffff', fontWeight: 'bold', textAlign: 'center', padding: '10px 0', letterSpacing: '0.2em', fontSize: '15px', marginBottom: '24px', textTransform: 'uppercase', borderRadius: '4px' }}>
+                            INVOICE
+                        </div>
+
+                        {/* Invoice Meta Row */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#475569', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '24px' }}>
+                            <div style={{ display: 'flex', gap: '24px' }}>
+                                <div>
+                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Request ID:</span> <span style={{ color: '#4f46e5', fontWeight: '900' }}>#{invoiceData.id}</span>
+                                </div>
+                                {invoiceData.reference_no && (
+                                    <div>
+                                        <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Ref No:</span> <span style={{ color: '#4f46e5', fontWeight: 'bold' }}>{invoiceData.reference_no}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Date:</span> <span style={{ fontWeight: '600' }}>{new Date(invoiceData.date).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+
+                        {/* Billed To */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', backgroundColor: '#f8fafc', padding: '24px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Billed To</p>
+                                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: '0 0 4px 0' }}>{invoiceData.studentName}</h3>
+                                <p style={{ fontSize: '14px', color: '#64748b', fontWeight: '500', margin: 0 }}>Admission No: {invoiceData.admissionNo}</p>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Status</p>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '32px', padding: '0 16px', fontSize: '12px', fontWeight: 'bold', borderRadius: '4px', backgroundColor: '#dcfce7', color: '#15803d' }}>
+                                    PAID
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Table */}
+                        <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '32px' }}>
+                            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</th>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9' }}>
+                                            <p style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '14px', margin: 0 }}>{invoiceData.detail}</p>
+                                        </td>
+                                        <td style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontWeight: 'bold', color: '#1e293b', fontSize: '14px' }}>
+                                            {formatCurrency(invoiceData.amount)}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Total */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '64px' }}>
+                            <div style={{ width: '50%', backgroundColor: '#f8fafc', borderRadius: '12px', padding: '24px', border: '1px solid #f1f5f9', boxSizing: 'border-box' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#64748b' }}>Subtotal</span>
+                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b' }}>{formatCurrency(invoiceData.amount)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #e2e8f0', marginTop: '16px' }}>
+                                    <span style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>Total Paid</span>
+                                    <span style={{ fontSize: '20px', fontWeight: '900', color: '#4f46e5' }}>{formatCurrency(invoiceData.amount)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ textAlign: 'center', paddingTop: '32px', borderTop: '1px solid #e2e8f0' }}>
+                            {printSettings?.footer_content ? (
+                                <div style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: printSettings.footer_content }} />
+                            ) : (
+                                <p style={{ fontSize: '14px', fontWeight: '500', color: '#64748b', margin: 0 }}>Thank you for your payment!</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

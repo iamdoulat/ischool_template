@@ -23,6 +23,7 @@ interface GeneralSettings {
     base_url: string;
     file_upload_path: string;
     print_logo: string;
+    print_logo_base64?: string;
     admin_logo: string;
     admin_small_logo: string;
     app_logo: string;
@@ -83,6 +84,7 @@ function createDefaultSettings(): GeneralSettings {
         base_url: fallbackBaseUrl,
         file_upload_path: "uploads/",
         print_logo: "",
+        print_logo_base64: "",
         admin_logo: "",
         admin_small_logo: "",
         app_logo: "",
@@ -160,7 +162,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     'school_name', 'school_slogan', 'school_description', 'school_code', 'address', 'phone', 'email',
                     'session', 'session_start_month', 'date_format', 'time_format', 'timezone',
                     'start_day_of_week', 'currency_format', 'base_url', 'file_upload_path',
-                    'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo',
+                    'print_logo', 'print_logo_base64', 'admin_logo', 'admin_small_logo', 'app_logo',
                     'login_page_background_admin', 'login_page_background_user',
                     'theme_mode', 'skins', 'side_menu', 'primary_color', 'box_content',
                     'theme_mode', 'skins', 'side_menu', 'primary_color', 'box_content',

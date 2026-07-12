@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
 import {
     Card,
@@ -11,26 +11,46 @@ import {
     CardTitle
 } from "@/components/ui/card";
 import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
     Search,
-    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     FileText,
     FileSearch,
     ArrowRight,
     BarChart3,
     Trophy,
     CheckCircle2,
-    Users,
-    Activity,
     ShoppingBag,
-    RefreshCw
+    RefreshCw,
+    Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+
+const activeGradient = "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:from-[#FF9800] hover:to-[#6366F1]";
 
 const reportTypes = [
     { id: "purchase", name: "Student Course Purchase Report", icon: FileText },
     { id: "sell_count", name: "Course Sell Count Report", icon: ShoppingBag },
-    { id: "trending", name: "Course Trending Report", icon: Activity },
+    { id: "trending", name: "Course Trending Report", icon: BarChart3 },
     { id: "complete", name: "Course Complete Report", icon: CheckCircle2 },
     { id: "assignment", name: "Course Assignment Report", icon: FileText },
     { id: "exam_result", name: "Course Exam Result Report", icon: Trophy },
@@ -49,19 +69,23 @@ interface ReportData {
     price: number;
 }
 
+interface OptionItem {
+    id: string;
+    label: string;
+}
+
 export default function OnlineCourseReportPage() {
-    const { toast } = useToast();
     const { t } = useTranslation();
+    const { symbol, formatCurrency } = useCurrencyFormatter();
     const [selectedReport, setSelectedReport] = useState(reportTypes[0]);
     const [loading, setLoading] = useState(false);
     const [criteria, setCriteria] = useState<{
-        search_types: any[],
-        payment_types: any[],
-        payment_status: any[],
-        user_types: any[]
+        search_types: OptionItem[];
+        payment_types: OptionItem[];
+        payment_status: OptionItem[];
+        user_types: OptionItem[];
     }>({ search_types: [], payment_types: [], payment_status: [], user_types: [] });
 
-    // Filter State
     const [filters, setFilters] = useState({
         search_type: "all",
         payment_type: "all",
@@ -70,32 +94,63 @@ export default function OnlineCourseReportPage() {
     });
 
     const [reports, setReports] = useState<ReportData[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [from, setFrom] = useState(0);
+    const [to, setTo] = useState(0);
+    const [perPage, setPerPage] = useState(20);
 
     useEffect(() => {
         fetchCriteria();
     }, []);
 
+    useEffect(() => {
+        const timer = setTimeout(() => fetchReports(1), 300);
+        return () => clearTimeout(timer);
+    }, [selectedReport, filters]);
+
     const fetchCriteria = async () => {
         try {
-            const response = await api.get('/online-course/reports/criteria');
-            setCriteria(response.data);
+            const response = await api.get("/online-course/reports/criteria");
+            const data = response.data?.data || response.data || {};
+            setCriteria({
+                search_types: data.search_types || [],
+                payment_types: data.payment_types || [],
+                payment_status: data.payment_status || [],
+                user_types: data.user_types || [],
+            });
         } catch (error) {
-            console.error("Failed to fetch course report criteria");
+            console.error("Failed to fetch criteria:", error);
         }
     };
 
-    const fetchReports = async () => {
+    const fetchReports = async (page = currentPage) => {
         setLoading(true);
         try {
-            const response = await api.get('/online-course/reports', {
+            const response = await api.get("/online-course/reports", {
                 params: {
                     report_type: selectedReport.id,
+                    page,
+                    per_page: perPage,
                     ...filters
                 }
             });
-            setReports(response.data.data || []);
-        } catch (error) {
-            toast({ title: t("error"), description: t("failed_to_fetch_analytical_report"), variant: "destructive" });
+            const d = response.data;
+            if (d.data) {
+                const list = Array.isArray(d.data) ? d.data : d.data.data || [];
+                setReports(list);
+                setTotal(d.total || d.meta?.total || 0);
+                setLastPage(d.last_page || d.meta?.last_page || 1);
+                setCurrentPage(d.current_page || d.meta?.current_page || 1);
+                setFrom(d.from || d.meta?.from || 0);
+                setTo(d.to || d.meta?.to || 0);
+            } else {
+                setReports([]);
+                setTotal(0);
+            }
+        } catch {
+            toast.error(t("failed_to_fetch_analytical_report"));
         } finally {
             setLoading(false);
         }
@@ -115,8 +170,8 @@ export default function OnlineCourseReportPage() {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-20 font-sans">
-            {/* Title */}
+        <div className="space-y-6 pb-20">
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
                 <div className="flex items-center gap-2.5">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
@@ -129,195 +184,220 @@ export default function OnlineCourseReportPage() {
                 </div>
             </div>
 
-            {/* Report Selection Grid */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <CardContent className="p-4 sm:p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {/* Report Selection */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("select_report_type")}</p>
+                </div>
+                <div className="p-4 sm:p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                         {reportTypes.map((report) => (
                             <button
                                 key={report.name}
                                 onClick={() => setSelectedReport(report)}
                                 className={cn(
-                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all text-left group",
+                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold transition-all text-left group",
                                     selectedReport.id === report.id
-                                        ? "bg-muted text-primary shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                                        ? "bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] text-gray-800 shadow-sm border border-indigo-100"
+                                        : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
                                 )}
                             >
                                 <report.icon className={cn(
-                                    "h-4 w-4 transition-colors",
-                                    selectedReport.id === report.id ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                                    "h-4 w-4 shrink-0 transition-colors",
+                                    selectedReport.id === report.id ? "text-[#6366F1]" : "text-gray-400 group-hover:text-gray-600"
                                 )} />
                                 <span className="truncate">{getTranslatedReportName(report)}</span>
                             </button>
                         ))}
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             {/* Filter Section */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden text-slate-800">
-                <CardHeader className="px-6 py-4 border-b border-muted/50">
-                    <CardTitle className="text-lg font-bold tracking-tight">{getTranslatedReportName(selectedReport)}</CardTitle>
+            <Card className="border-gray-100 shadow-sm overflow-hidden">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Search className="h-4 w-4" />
+                        </span>
+                        <CardTitle className="text-sm font-bold text-gray-800 leading-none">{getTranslatedReportName(selectedReport)}</CardTitle>
+                    </div>
                 </CardHeader>
-                <CardContent className="p-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
-                        <FilterSelect
-                            label={t("search_type")}
-                            required
-                            options={criteria.search_types}
-                            value={filters.search_type}
-                            onChange={(val) => setFilters({...filters, search_type: val})}
-                        />
-                        <FilterSelect
-                            label={t("payment_type")}
-                            required
-                            options={criteria.payment_types}
-                            value={filters.payment_type}
-                            onChange={(val) => setFilters({...filters, payment_type: val})}
-                        />
-                        <FilterSelect
-                            label={t("payment_status")}
-                            options={criteria.payment_status}
-                            value={filters.payment_status}
-                            onChange={(val) => setFilters({...filters, payment_status: val})}
-                        />
-                        <FilterSelect
-                            label={t("users_type")}
-                            options={criteria.user_types}
-                            value={filters.user_type}
-                            onChange={(val) => setFilters({...filters, user_type: val})}
-                        />
-
-                        <div className="lg:col-start-4 flex justify-end">
-                            <Button
-                                onClick={fetchReports}
-                                disabled={loading}
-                                className="h-10 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all group"
-                            >
-                                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />}
-                                {t("search")}
-                            </Button>
+                <CardContent className="p-4 sm:p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("search_type")}</Label>
+                            <Select value={filters.search_type} onValueChange={(v) => setFilters({ ...filters, search_type: v })}>
+                                <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {criteria.search_types.map((opt) => (
+                                        <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("payment_type")}</Label>
+                            <Select value={filters.payment_type} onValueChange={(v) => setFilters({ ...filters, payment_type: v })}>
+                                <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {criteria.payment_types.map((opt) => (
+                                        <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("payment_status")}</Label>
+                            <Select value={filters.payment_status} onValueChange={(v) => setFilters({ ...filters, payment_status: v })}>
+                                <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {criteria.payment_status.map((opt) => (
+                                        <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("users_type")}</Label>
+                            <Select value={filters.user_type} onValueChange={(v) => setFilters({ ...filters, user_type: v })}>
+                                <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {criteria.user_types.map((opt) => (
+                                        <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="flex justify-end mt-4">
+                        <Button
+                            onClick={() => fetchReports(1)}
+                            disabled={loading}
+                            className={cn("h-9 px-6 text-xs font-bold rounded-full shadow-md", activeGradient)}
+                        >
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                            {t("search")}
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
 
             {/* Results Table */}
-            <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto relative">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-muted/30 text-muted-foreground text-[10px] font-black uppercase tracking-widest border-y border-muted/50">
-                                <tr>
-                                    <th className="px-6 py-4">{t("student_guest")}</th>
-                                    <th className="px-6 py-4 text-center">{t("date")}</th>
-                                    <th className="px-6 py-4">{t("course")}</th>
-                                    <th className="px-6 py-4">{t("course_provider")}</th>
-                                    <th className="px-6 py-4 text-center">{t("payment_type")}</th>
-                                    <th className="px-6 py-4 text-center">{t("payment_method")}</th>
-                                    <th className="px-6 py-4 text-right">{t("price_with_symbol", { symbol: "$" })}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-6 py-20 text-center">
-                                            <div className="flex flex-col items-center justify-center space-y-3">
-                                                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t("executing_course_analytical_audit")}</p>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader className="bg-gray-50/50 text-[11px] uppercase">
+                            <TableRow className="hover:bg-transparent border-gray-100">
+                                <TableHead className="font-bold text-gray-700 py-3">{t("student_guest")}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3 text-center">{t("date")}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3">{t("course")}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3">{t("course_provider")}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3 text-center">{t("payment_type")}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3 text-center">{t("payment_method")}</TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3 text-right">{t("price")}</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="h-40 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-2">
+                                            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t("executing_course_analytical_audit")}</p>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ) : reports.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="h-40 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <FileSearch className="h-10 w-10 text-gray-300" />
+                                            <p className="text-xs font-medium text-gray-400">{t("no_data_available_in_table")}</p>
+                                            <button onClick={() => fetchReports(1)} className="flex items-center gap-2 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors">
+                                                <ArrowRight className="h-3.5 w-3.5" />
+                                                {t("add_new_record_or_search_different_criteria")}
+                                            </button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                reports.map((item) => (
+                                    <TableRow key={item.id} className="text-[13px] hover:bg-indigo-50/40 transition-all border-b last:border-0 border-gray-50">
+                                        <TableCell className="py-3.5 align-middle">
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-gray-800">{item.user_name}</span>
+                                                <span className="text-[10px] font-semibold text-gray-400 uppercase">{item.user_type}</span>
                                             </div>
-                                        </td>
-                                    </tr>
-                                ) : reports.length === 0 ? (
-                                    <tr className="group transition-colors">
-                                        <td colSpan={7} className="px-6 py-20 text-center">
-                                            <div className="flex flex-col items-center justify-center space-y-4">
-                                                <p className="text-destructive/60 font-medium text-xs">{t("no_data_available_in_table")}</p>
+                                        </TableCell>
+                                        <TableCell className="py-3.5 align-middle text-center text-gray-600">{item.date}</TableCell>
+                                        <TableCell className="py-3.5 align-middle font-medium text-gray-800">{item.course}</TableCell>
+                                        <TableCell className="py-3.5 align-middle text-gray-600">{item.provider}</TableCell>
+                                        <TableCell className="py-3.5 align-middle text-center">
+                                            <span className={cn(
+                                                "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide",
+                                                item.payment_type === "Online" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" : "bg-amber-50 text-amber-600 border border-amber-100"
+                                            )}>
+                                                {item.payment_type}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="py-3.5 align-middle text-center text-gray-600">{item.payment_method}</TableCell>
+                                        <TableCell className="py-3.5 align-middle text-right font-semibold text-gray-800">{formatCurrency(item.price)}</TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
 
-                                                <div className="relative group/folder cursor-help mb-4">
-                                                    <div className="absolute -inset-4 bg-primary/5 rounded-full scale-0 group-hover/folder:scale-100 transition-transform duration-500" />
-                                                    <div className="relative p-6 bg-card rounded-lg shadow-sm border border-muted/50">
-                                                        <FileSearch className="h-16 w-16 text-muted-foreground/20 group-hover/folder:text-primary/40 transition-colors duration-500" />
-                                                    </div>
-                                                </div>
-
-                                                <button onClick={fetchReports} className="flex items-center gap-2 group/btn px-4 py-2 hover:bg-primary/5 rounded-full transition-all">
-                                                    <ArrowRight className="h-4 w-4 text-emerald-500 group-hover/btn:translate-x-1 transition-transform" />
-                                                    <span className="text-[11px] font-black text-emerald-600 uppercase tracking-widest">{t("add_new_record_or_search_different_criteria")}</span>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    reports.map((item) => (
-                                        <tr key={item.id} className="hover:bg-muted/30 border-b border-muted/10 transition-colors group">
-                                            <td className="px-6 py-4 font-bold text-slate-700">
-                                                <div className="flex flex-col">
-                                                    <span>{item.user_name}</span>
-                                                    <span className="text-[10px] font-black uppercase text-muted-foreground/50 tracking-tighter">{item.user_type}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center tabular-nums text-slate-500">{item.date}</td>
-                                            <td className="px-6 py-4 font-bold text-slate-700">{item.course}</td>
-                                            <td className="px-6 py-4 text-slate-500">{item.provider}</td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={cn(
-                                                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
-                                                    item.payment_type === 'Online' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'bg-orange-50 text-orange-600 border border-orange-100'
-                                                )}>
-                                                    {item.payment_type}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center text-slate-500">{item.payment_method}</td>
-                                            <td className="px-6 py-4 text-right tabular-nums font-black text-slate-800">${item.price.toFixed(2)}</td>
-                                        </tr>
-                                    ))
+                {/* Pagination */}
+                <div className="flex items-center justify-between text-xs text-gray-500 font-medium px-4 py-3 border-t border-gray-100">
+                    <div className="flex items-center gap-1.5">
+                        <span>{t("showing_x_to_y_of_z", { from, to, total })}</span>
+                    </div>
+                    <div className="flex gap-1">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-7 p-0 border-gray-200"
+                            disabled={currentPage === 1}
+                            onClick={() => fetchReports(currentPage - 1)}
+                        >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        {Array.from({ length: lastPage }, (_, i) => i + 1).map((page) => (
+                            <Button
+                                key={page}
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                className={cn(
+                                    "h-7 w-7 p-0 border-gray-200 text-[11px]",
+                                    currentPage === page ? activeGradient : "hover:bg-indigo-50 hover:text-indigo-600"
                                 )}
-                            </tbody>
-                        </table>
+                                onClick={() => fetchReports(page)}
+                            >
+                                {page}
+                            </Button>
+                        ))}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-7 p-0 border-gray-200"
+                            disabled={currentPage === lastPage}
+                            onClick={() => fetchReports(currentPage + 1)}
+                        >
+                            <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
                     </div>
-
-                    {/* Pagination Footer */}
-                    <div className="px-6 py-4 bg-muted/10 border-t border-muted/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                            {t("showing_x_to_y_of_z", { from: reports.length > 0 ? 1 : 0, to: reports.length, total: reports.length })}
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all" disabled>
-                                <ChevronDown className="h-4 w-4 rotate-90" />
-                            </Button>
-                            <Button className="h-8 w-8 rounded-lg border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
-                                {reports.length > 0 ? 1 : 0}
-                            </Button>
-                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-muted/50 text-muted-foreground hover:bg-card active:scale-95 transition-all" disabled>
-                                <ChevronDown className="h-4 w-4 -rotate-90" />
-                            </Button>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-    );
-}
-
-function FilterSelect({ label, required, value, onChange, options }: { label: string, required?: boolean, value: string, onChange: (val: string) => void, options: any[] }) {
-    return (
-        <div className="space-y-2 group">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                {label} {required && <span className="text-destructive">*</span>}
-            </label>
-            <div className="relative">
-                <select
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer font-bold"
-                >
-                    {options.map((opt) => (
-                        <option key={opt.id} value={opt.id}>{opt.label}</option>
-                    ))}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                </div>
             </div>
         </div>
     );

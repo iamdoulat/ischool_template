@@ -7,13 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, Search, Loader2, Filter, ListChecks } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Loader2, Filter, ListChecks, Download } from "lucide-react";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { useTranslation } from "@/hooks/use-translation";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate } from "@/lib/utils";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas-pro";
+import { useSettings } from "@/components/providers/settings-provider";
 
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -51,6 +54,21 @@ export default function SearchIncomePage() {
     const [endDate, setEndDate] = useState("");
     const [incomes, setIncomes] = useState<IncomeRecord[]>([]);
     const [loading, setLoading] = useState(false);
+    const [invoiceData, setInvoiceData] = useState<any>(null);
+    const [printSettings, setPrintSettings] = useState<any>(null);
+    const { settings } = useSettings();
+    
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage, setPerPage] = useState(20);
+
+    // Compute paginated data
+    const totalRecords = incomes.length;
+    const totalPages = Math.ceil(totalRecords / perPage) || 1;
+    const activePage = Math.min(currentPage, totalPages);
+    const startIndex = (activePage - 1) * perPage;
+    const endIndex = Math.min(startIndex + perPage, totalRecords);
+    const paginatedIncomes = incomes.slice(startIndex, endIndex);
 
     const fetchIncomes = async (params: Record<string, string>) => {
         try {
@@ -75,6 +93,7 @@ export default function SearchIncomePage() {
                     amount: parseFloat(String(item.amount))
                 }));
                 setIncomes(mappedData);
+                setCurrentPage(1);
                 if (mappedData.length === 0) {
                     toast.info(t("no_records_found_for_criteria"));
                 }
@@ -85,6 +104,52 @@ export default function SearchIncomePage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const downloadIncomeInvoice = async (income: IncomeRecord) => {
+        let currentSettings = printSettings;
+        if (!currentSettings) {
+            try {
+                const res = await api.get('system-setting/print-settings');
+                if (res.data?.status === 'success') {
+                    const invoiceSetting = res.data.data.find((s: any) => s.type === 'Invoice');
+                    setPrintSettings(invoiceSetting);
+                    currentSettings = invoiceSetting;
+                }
+            } catch (e) {}
+        }
+
+        setInvoiceData({
+            type: 'income',
+            id: income.id,
+            date: income.date,
+            reference_no: income.invoice_number,
+            studentName: income.name,
+            admissionNo: income.description || "",
+            detail: `Income Category: ${income.income_head_name}`,
+            amount: income.amount,
+        });
+
+        setTimeout(async () => {
+            const element = document.getElementById('modern-invoice-template-income');
+            if (element) {
+                try {
+                    const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true });
+                    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                    const pdf = new jsPDF();
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save(`invoice_${income.invoice_number || income.id}.pdf`);
+                    toast.success(t("invoice_downloaded") || "Invoice downloaded successfully");
+                } catch (e: any) {
+                    console.error("PDF Gen Error:", e);
+                    toast.error(`Failed to generate PDF: ${e.message || 'Unknown error'}`);
+                } finally {
+                    setInvoiceData(null);
+                }
+            }
+        }, 500);
     };
 
     const handlePeriodSearch = () => {
@@ -205,7 +270,7 @@ export default function SearchIncomePage() {
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("income_list")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{incomes.length} {incomes.length === 1 ? t("record_found") : t("records_found")}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{totalRecords} {totalRecords === 1 ? t("record_found") : t("records_found")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -213,19 +278,20 @@ export default function SearchIncomePage() {
                         <Table>
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow>
-                                    <TableHead className="font-semibold text-gray-600">{t("name")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("invoice_number")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("income_head")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("date")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">{t("amount")} ({symbol})</TableHead>
+                                    <TableHead className="font-bold text-black">{t("name")}</TableHead>
+                                    <TableHead className="font-bold text-black">{t("invoice_number")}</TableHead>
+                                    <TableHead className="font-bold text-black">{t("income_head")}</TableHead>
+                                    <TableHead className="font-bold text-black">{t("date")}</TableHead>
+                                    <TableHead className="font-bold text-black text-right">{t("amount")} ({symbol})</TableHead>
+                                    <TableHead className="font-bold text-black text-center">{t("invoice") || "Invoice"}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableSkeleton rows={5} cols={5} />
+                                    <TableSkeleton rows={5} cols={6} />
                                 ) : incomes.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-64 text-center">
+                                        <TableCell colSpan={6} className="h-64 text-center">
                                             <div className="flex flex-col items-center justify-center space-y-3 text-red-500/80">
                                                 <span className="text-xs font-medium uppercase tracking-wider">{t("no_data_available_in_table")}</span>
                                                 <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-2 shadow-inner border border-gray-100">
@@ -245,13 +311,27 @@ export default function SearchIncomePage() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    incomes.map((income) => (
+                                    paginatedIncomes.map((income) => (
                                         <TableRow key={income.id} className="hover:bg-gray-50 transition-colors">
                                             <TableCell className="font-medium text-gray-700 py-3">{income.name}</TableCell>
                                             <TableCell className="text-gray-600">{income.invoice_number}</TableCell>
                                             <TableCell className="text-gray-600">{income.income_head_name}</TableCell>
                                             <TableCell className="text-gray-600">{formatDate(income.date)}</TableCell>
                                             <TableCell className="text-gray-600 text-right font-semibold">{formatCurrency(income.amount)}</TableCell>
+                                            <TableCell className="text-center">
+                                                {income.invoice_number ? (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 rounded-lg bg-green-500 text-white hover:bg-green-600 hover:text-white transition-colors flex items-center justify-center shadow-sm mx-auto"
+                                                        onClick={() => downloadIncomeInvoice(income)}
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                    </Button>
+                                                ) : (
+                                                    <span className="text-gray-400 text-xs">-</span>
+                                                )}
+                                            </TableCell>
                                         </TableRow>
                                     ))
                                 )}
@@ -259,18 +339,188 @@ export default function SearchIncomePage() {
                         </Table>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
-                        <div>
-                            {t("showing_x_to_y_of_z", { from: incomes.length > 0 ? 1 : 0, to: incomes.length, total: incomes.length })}
+                    <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 font-medium pt-2 gap-4">
+                        <div className="flex items-center gap-4">
+                            <div>
+                                {t("showing_x_to_y_of_z", { 
+                                    from: totalRecords > 0 ? startIndex + 1 : 0, 
+                                    to: endIndex, 
+                                    total: totalRecords 
+                                })}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span>{t("show") || "Show"}:</span>
+                                <Select value={String(perPage)} onValueChange={(val) => { setPerPage(Number(val)); setCurrentPage(1); }}>
+                                    <SelectTrigger className="h-7 w-[70px] text-xs bg-white border border-gray-200">
+                                        <SelectValue placeholder="20" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="20">20</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                        <SelectItem value="200">200</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                         <div className="flex gap-1">
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronLeft className="h-4 w-4" /></Button>
-                            <Button variant="default" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md">1</Button>
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronRight className="h-4 w-4" /></Button>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm"
+                                disabled={activePage === 1}
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            
+                            {Array.from({ length: totalPages }).map((_, idx) => {
+                                const pageNum = idx + 1;
+                                if (totalPages > 5 && Math.abs(pageNum - activePage) > 1 && pageNum !== 1 && pageNum !== totalPages) {
+                                    if (pageNum === 2 || pageNum === totalPages - 1) {
+                                        return <span key={pageNum} className="px-1 text-gray-400">...</span>;
+                                    }
+                                    return null;
+                                }
+                                return (
+                                    <Button 
+                                        key={pageNum}
+                                        variant={activePage === pageNum ? "default" : "outline"} 
+                                        size="sm" 
+                                        className={`h-8 w-8 p-0 rounded-[10px] shadow-sm ${activePage === pageNum ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white" : "bg-white border border-gray-200 text-gray-600"}`}
+                                        onClick={() => setCurrentPage(pageNum)}
+                                    >
+                                        {pageNum}
+                                    </Button>
+                                );
+                            })}
+
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm"
+                                disabled={activePage === totalPages}
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
                         </div>
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Invoice Template (Hidden) */}
+            {invoiceData && (
+                <div style={{ position: 'fixed', top: 0, left: 0, zIndex: -50, opacity: 0, pointerEvents: 'none' }}>
+                    <div id="modern-invoice-template-income" style={{ width: '800px', backgroundColor: '#ffffff', padding: '48px', fontFamily: 'sans-serif', color: '#1e293b', minHeight: '1122px', boxSizing: 'border-box' }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                            {/* Left Column: Logo + School Name */}
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                {printSettings?.header_image_base64 ? (
+                                    <img src={printSettings.header_image_base64} alt="Header" style={{ maxHeight: '80px', objectFit: 'contain', marginBottom: '8px' }} />
+                                ) : settings?.print_logo_base64 ? (
+                                    <img src={settings.print_logo_base64} alt="Logo" style={{ maxHeight: '80px', objectFit: 'contain', marginBottom: '8px' }} />
+                                ) : null}
+                                <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#1e293b', lineHeight: '1.2', margin: 0 }}>{settings?.school_name || "iSchool"}</h1>
+                            </div>
+                            
+                            {/* Right Column: Address and Others */}
+                            <div style={{ textAlign: 'right', fontSize: '13px', color: '#1e293b', lineHeight: '1.5' }}>
+                                {settings?.address && (
+                                    <div><span style={{ fontWeight: 'bold' }}>Address:</span> {settings.address}</div>
+                                )}
+                                {settings?.phone && (
+                                    <div><span style={{ fontWeight: 'bold' }}>Phone No.:</span> {settings.phone}</div>
+                                )}
+                                {settings?.email && (
+                                    <div><span style={{ fontWeight: 'bold' }}>Email:</span> {settings.email}</div>
+                                )}
+                                {settings?.base_url && (
+                                    <div><span style={{ fontWeight: 'bold' }}>Website:</span> {settings.base_url.replace(/^https?:\/\//, '')}</div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Centered full-width black bar */}
+                        <div style={{ backgroundColor: '#000000', color: '#ffffff', fontWeight: 'bold', textAlign: 'center', padding: '10px 0', letterSpacing: '0.2em', fontSize: '15px', marginBottom: '24px', textTransform: 'uppercase', borderRadius: '4px' }}>
+                            INVOICE
+                        </div>
+
+                        {/* Invoice Meta Row */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#475569', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '24px' }}>
+                            <div>
+                                <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Invoice No:</span> <span style={{ color: '#4f46e5', fontWeight: '900' }}>{invoiceData.reference_no}</span>
+                            </div>
+                            <div>
+                                <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Date:</span> <span style={{ fontWeight: '600' }}>{new Date(invoiceData.date).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+
+                        {/* Billed To */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', backgroundColor: '#f8fafc', padding: '24px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Received From</p>
+                                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: '0 0 4px 0' }}>{invoiceData.studentName}</h3>
+                                {invoiceData.admissionNo && (
+                                    <p style={{ fontSize: '14px', color: '#64748b', fontWeight: '500', margin: 0 }}>Description: {invoiceData.admissionNo}</p>
+                                )}
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Status</p>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '32px', padding: '0 16px', fontSize: '12px', fontWeight: 'bold', borderRadius: '4px', backgroundColor: '#dcfce7', color: '#15803d' }}>
+                                    RECEIVED
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Table */}
+                        <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '32px' }}>
+                            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</th>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9' }}>
+                                            <p style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '14px', margin: 0 }}>{invoiceData.detail}</p>
+                                        </td>
+                                        <td style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontWeight: 'bold', color: '#1e293b', fontSize: '14px' }}>
+                                            {formatCurrency(invoiceData.amount)}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Total */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '64px' }}>
+                            <div style={{ width: '50%', backgroundColor: '#f8fafc', borderRadius: '12px', padding: '24px', border: '1px solid #f1f5f9', boxSizing: 'border-box' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#64748b' }}>Subtotal</span>
+                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b' }}>{formatCurrency(invoiceData.amount)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #e2e8f0', marginTop: '16px' }}>
+                                    <span style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>Total Paid</span>
+                                    <span style={{ fontSize: '20px', fontWeight: '900', color: '#4f46e5' }}>{formatCurrency(invoiceData.amount)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ textAlign: 'center', paddingTop: '32px', borderTop: '1px solid #e2e8f0' }}>
+                            {printSettings?.footer_content ? (
+                                <div style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: printSettings.footer_content }} />
+                            ) : (
+                                <p style={{ fontSize: '14px', fontWeight: '500', color: '#64748b', margin: 0 }}>Thank you for your payment!</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
