@@ -104,7 +104,13 @@ const menuItems: { group: string; items: MenuItem[] }[] = [
             { name: "class_timetable", label: "Class Timetable", icon: Calendar, href: "/user/class-timetable", submenus: [], color: "amber" },
             { name: "lesson_plan", label: "Lesson Plan", icon: BookMarked, href: "/user/lesson-plan", submenus: [], color: "emerald" },
             { name: "syllabus_status", label: "Syllabus Status", icon: ClipboardList, href: "/user/syllabus-status", submenus: [], color: "rose" },
-            { name: "homework", label: "Homework", icon: BookOpen, href: "/user/homework", submenus: [], color: "amber" },
+            { 
+                name: "homework", label: "Homework", icon: BookOpen, href: "#", color: "amber",
+                submenus: [
+                    { name: "homework", href: "/user/homework", label: "Homework" },
+                    { name: "daily_assignment", href: "/user/homework/daily-assignment", label: "Daily Assignment" }
+                ]
+            },
             { name: "online_exam", label: "Online Exam", icon: Rss, href: "/user/online-exam", submenus: [], color: "fuchsia" },
             { name: "apply_leave", label: "Apply Leave", icon: CalendarDays, href: "/user/apply-leave", submenus: [], color: "cyan" },
             { name: "visitor_book", label: "Visitor Book", icon: Building2, href: "/user/visitor-book", submenus: [], color: "indigo" },

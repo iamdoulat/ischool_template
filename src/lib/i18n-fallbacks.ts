@@ -594,6 +594,11 @@ export const i18nFallbacks: Record<string, string> = {
     // Online Course
     offline_payment: "Offline Payment",
     online_course_report: "Online Course Report",
+    x_courses_in_your_catalog: "{count} Courses In Your Catalog",
+    online_courses: "Online Courses",
+    add_course: "Add Course",
+    edit_course: "Edit Course",
+    course_details: "Course Details",
     // Library
     book_list: "Book List",
     issue_return: "Issue Return",

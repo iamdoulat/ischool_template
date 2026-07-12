@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
@@ -46,7 +46,9 @@ import {
     Trash2,
     ArrowUpDown,
     Filter,
-    BookOpenCheck
+    BookOpenCheck,
+    CheckCircle2,
+    Paperclip
 } from "lucide-react";
 import {
     Select,
@@ -56,6 +58,11 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -74,18 +81,36 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     );
 }
 
+const getAttachmentUrl = (path: string) => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    const baseApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+    const origin = baseApiUrl.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "");
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return `${origin}${normalizedPath}`;
+};
+
 interface HomeworkRecord {
     id: number;
-    schoolClass?: { name: string };
-    class?: { name: string };
-    section?: { name: string };
-    subjectGroup?: { name: string };
-    subject?: { name: string };
+    school_class?: { id: number; name: string };
+    schoolClass?: { id: number; name: string };
+    class?: { id: number; name: string };
+    section?: { id: number; name: string };
+    subject_group?: { id: number; name: string };
+    subjectGroup?: { id: number; name: string };
+    subject?: { id: number; name: string };
+    title?: string;
     homework_date: string;
     submission_date: string;
     evaluation_date?: string;
-    creator?: { name: string };
+    creator?: { id: number; name: string };
     description: string;
+    class_id?: number;
+    section_id?: number;
+    subject_group_id?: number;
+    subject_id?: number;
+    max_marks?: number | string;
+    attachment?: string;
 }
 
 interface PaginationData {
@@ -100,6 +125,22 @@ interface OptionItem {
     id: number;
     name: string;
     school_class_id?: number;
+    sections?: { id: number; name: string }[];
+}
+
+interface SubjectItem {
+    id: number;
+    name: string;
+    code?: string;
+    type?: string;
+}
+
+interface SubjectGroupItem {
+    id: number;
+    name: string;
+    school_class_id: number;
+    description?: string;
+    subjects?: SubjectItem[];
 }
 
 export default function AddHomeworkPage() {
@@ -112,8 +153,8 @@ export default function AddHomeworkPage() {
 
     const [classes, setClasses] = useState<OptionItem[]>([]);
     const [sections, setSections] = useState<OptionItem[]>([]);
-    const [subjectGroups, setSubjectGroups] = useState<OptionItem[]>([]);
-    const [subjects, setSubjects] = useState<OptionItem[]>([]);
+    const [subjectGroups, setSubjectGroups] = useState<SubjectGroupItem[]>([]);
+    const [subjects, setSubjects] = useState<SubjectItem[]>([]);
 
     const [filters, setFilters] = useState({
         class_id: "",
@@ -130,30 +171,137 @@ export default function AddHomeworkPage() {
         section_id: "",
         subject_group_id: "",
         subject_id: "",
+        title: "",
         homework_date: new Date().toISOString().split('T')[0],
         submission_date: new Date().toISOString().split('T')[0],
+        evaluation_date: "",
         description: "",
+        max_marks: "",
+        attachment_url: "",
     });
 
+    // Evaluate dialog
+    const [isEvaluateOpen, setIsEvaluateOpen] = useState(false);
+    const [evaluateHomework, setEvaluateHomework] = useState<HomeworkRecord | null>(null);
+    const [submissions, setSubmissions] = useState<any[]>([]);
+    const [evalLoading, setEvalLoading] = useState(false);
+    const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(null);
+    const [evalFormData, setEvalFormData] = useState({
+        marks_obtained: "",
+        evaluation_date: new Date().toISOString().split('T')[0],
+        teacher_remarks: "",
+    });
+
+    const [isEditing, setIsEditing] = useState(false);
+    const [editId, setEditId] = useState<number | null>(null);
+    const [isViewOpen, setIsViewOpen] = useState(false);
+    const [viewRecord, setViewRecord] = useState<HomeworkRecord | null>(null);
+    const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+
+    const startEdit = (item: HomeworkRecord) => {
+        setIsEditing(true);
+        setEditId(item.id);
+        setFormData({
+            class_id: String(item.class_id || item.school_class?.id || ""),
+            section_id: String(item.section_id || item.section?.id || ""),
+            subject_group_id: String(item.subject_group_id || item.subject_group?.id || ""),
+            subject_id: String(item.subject_id || item.subject?.id || ""),
+            title: item.title || "",
+            homework_date: item.homework_date ? new Date(item.homework_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            submission_date: item.submission_date ? new Date(item.submission_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            evaluation_date: item.evaluation_date ? new Date(item.evaluation_date).toISOString().split('T')[0] : "",
+            description: item.description || "",
+            max_marks: item.max_marks !== undefined && item.max_marks !== null ? String(item.max_marks) : "",
+            attachment_url: item.attachment || "",
+        });
+        setAttachmentFile(null);
+        setIsDialogOpen(true);
+    };
+
+    const startView = (item: HomeworkRecord) => {
+        setViewRecord(item);
+        setIsViewOpen(true);
+    };
+
+    const startEvaluate = (item: HomeworkRecord) => {
+        setEvaluateHomework(item);
+        setIsEvaluateOpen(true);
+        fetchSubmissions(item.id);
+    };
+
+    const fetchSubmissions = async (homeworkId: number) => {
+        setEvalLoading(true);
+        try {
+            const res = await api.get(`/homework/homeworks/${homeworkId}/submissions?limit=1000`);
+            setSubmissions(res.data.submissions?.data || res.data.submissions || []);
+        } catch {
+            toast({ title: t("error") || "Error", description: "Failed to fetch submissions", variant: "destructive" });
+        } finally {
+            setEvalLoading(false);
+        }
+    };
+
+    const saveEvaluation = async (submissionId: number) => {
+        try {
+            await api.put(`/homework/submissions/${submissionId}/evaluate`, evalFormData);
+            toast({ title: t("success") || "Success", description: "Evaluation saved" });
+            setActiveSubmissionId(null);
+            if (evaluateHomework) fetchSubmissions(evaluateHomework.id);
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } } };
+            toast({ title: t("error") || "Error", description: e.response?.data?.message || "Failed to evaluate", variant: "destructive" });
+        }
+    };
+
     const filteredSections = filters.class_id
-        ? sections.filter(s => String(s.school_class_id) === filters.class_id)
-        : sections;
+        ? classes.find(c => String(c.id) === filters.class_id)?.sections || []
+        : [];
     const filteredSubjectGroups = filters.class_id
         ? subjectGroups.filter(sg => String(sg.school_class_id) === filters.class_id)
         : subjectGroups;
-    const filteredSubjects = filters.class_id
-        ? subjects.filter(s => String(s.school_class_id) === filters.class_id)
-        : subjects;
+    const filteredSubjects = useMemo(() => {
+        if (filters.subject_group_id) {
+            const group = subjectGroups.find(sg => String(sg.id) === filters.subject_group_id);
+            return group?.subjects || [];
+        }
+        if (filters.class_id) {
+            const classGroups = subjectGroups.filter(sg => String(sg.school_class_id) === filters.class_id);
+            const subjectsMap = new Map<number, SubjectItem>();
+            classGroups.forEach(sg => {
+                sg.subjects?.forEach(s => {
+                    subjectsMap.set(s.id, s);
+                });
+            });
+            return Array.from(subjectsMap.values());
+        }
+        return subjects;
+    }, [filters.class_id, filters.subject_group_id, subjectGroups, subjects]);
 
     const formFilteredSections = formData.class_id
-        ? sections.filter(s => String(s.school_class_id) === formData.class_id)
-        : sections;
+        ? classes.find(c => String(c.id) === formData.class_id)?.sections || []
+        : [];
     const formFilteredSubjectGroups = formData.class_id
         ? subjectGroups.filter(sg => String(sg.school_class_id) === formData.class_id)
         : subjectGroups;
-    const formFilteredSubjects = formData.class_id
-        ? subjects.filter(s => String(s.school_class_id) === formData.class_id)
-        : subjects;
+    const formFilteredSubjects = useMemo(() => {
+        if (formData.subject_group_id) {
+            const group = subjectGroups.find(sg => String(sg.id) === formData.subject_group_id);
+            return group?.subjects || [];
+        }
+        if (formData.class_id) {
+            const classGroups = subjectGroups.filter(sg => String(sg.school_class_id) === formData.class_id);
+            const subjectsMap = new Map<number, SubjectItem>();
+            classGroups.forEach(sg => {
+                sg.subjects?.forEach(s => {
+                    subjectsMap.set(s.id, s);
+                });
+            });
+            return Array.from(subjectsMap.values());
+        }
+        return subjects;
+    }, [formData.class_id, formData.subject_group_id, subjectGroups, subjects]);
 
     const { t } = useTranslation();
 
@@ -163,6 +311,7 @@ export default function AddHomeworkPage() {
 
     useEffect(() => {
         fetchInitialData();
+        fetchHomeworks(1);
     }, []);
 
     const fetchInitialData = async () => {
@@ -215,8 +364,29 @@ export default function AddHomeworkPage() {
 
     const handleSave = async () => {
         try {
-            await api.post('/homework/homeworks', formData);
-            toast({ title: t("success"), description: t("homework_added_successfully") });
+            const data = new FormData();
+            data.append('class_id', formData.class_id);
+            data.append('section_id', formData.section_id);
+            data.append('subject_group_id', formData.subject_group_id);
+            data.append('subject_id', formData.subject_id);
+            data.append('title', formData.title);
+            data.append('homework_date', formData.homework_date);
+            data.append('submission_date', formData.submission_date);
+            if (formData.evaluation_date) data.append('evaluation_date', formData.evaluation_date);
+            data.append('description', formData.description);
+            data.append('max_marks', formData.max_marks);
+            if (attachmentFile) {
+                data.append('attachment', attachmentFile);
+            }
+
+            if (isEditing && editId) {
+                data.append('_method', 'PUT');
+                await api.post(`/homework/homeworks/${editId}`, data);
+                toast({ title: t("success"), description: t("homework_updated_successfully") || "Homework updated successfully" });
+            } else {
+                await api.post('/homework/homeworks', data);
+                toast({ title: t("success"), description: t("homework_added_successfully") });
+            }
             setIsDialogOpen(false);
             fetchHomeworks();
         } catch (error) {
@@ -229,27 +399,28 @@ export default function AddHomeworkPage() {
         }
     };
 
-    const handleDelete = async (id: number) => {
-        if (confirm(t("are_you_sure_delete_homework"))) {
-            try {
-                await api.delete(`/homework/homeworks/${id}`);
-                toast({ title: t("success"), description: t("homework_deleted_successfully") });
-                fetchHomeworks();
-            } catch (error) {
-                toast({ title: t("error"), description: t("failed_to_delete_homework"), variant: "destructive" });
-            }
+    const handleDelete = async () => {
+        if (!deleteId) return;
+        try {
+            await api.delete(`/homework/homeworks/${deleteId}`);
+            toast({ title: t("success"), description: t("homework_deleted_successfully") });
+            setIsDeleteOpen(false);
+            fetchHomeworks();
+        } catch (error) {
+            console.error(error);
+            toast({ title: t("error"), description: t("failed_to_delete_homework"), variant: "destructive" });
         }
     };
 
     const handleCopy = () => {
-        const text = homeworks.map(h => `${h.schoolClass?.name}\t${h.subject?.name}\t${h.homework_date}`).join('\n');
+        const text = homeworks.map(h => `${h.school_class?.name || h.schoolClass?.name}\t${h.subject?.name}\t${h.title || "—"}\t${h.max_marks !== null && h.max_marks !== undefined ? h.max_marks : "—"}\t${h.homework_date}`).join('\n');
         navigator.clipboard.writeText(text);
         toast({ title: t("copied"), description: t("data_copied_to_clipboard") });
     };
 
     const handleExportCSV = () => {
-        const headers = [t("class"), t("section"), t("subject"), t("homework_date"), t("submission_date")];
-        const rows = homeworks.map(h => [h.schoolClass?.name, h.section?.name, h.subject?.name, h.homework_date, h.submission_date]);
+        const headers = [t("class"), t("section"), t("subject"), t("title") || "Title", t("homework_date"), t("submission_date"), t("max_marks") || "Max Marks"];
+        const rows = homeworks.map(h => [h.school_class?.name || h.schoolClass?.name, h.section?.name, h.subject?.name, h.title || "—", h.homework_date, h.submission_date, h.max_marks !== null && h.max_marks !== undefined ? h.max_marks : "—"]);
         const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -271,6 +442,7 @@ export default function AddHomeworkPage() {
     ];
 
     return (
+        <>
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
             {/* Select Criteria Section */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
@@ -356,7 +528,25 @@ export default function AddHomeworkPage() {
                             <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? homeworks.length} {t("homework_records")}</p>
                         </div>
                     </div>
-                    <Button onClick={() => setIsDialogOpen(true)} className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
+                    <Button onClick={() => {
+                        setIsEditing(false);
+                        setEditId(null);
+                        setFormData({
+                            class_id: "",
+                            section_id: "",
+                            subject_group_id: "",
+                            subject_id: "",
+                            title: "",
+                            homework_date: new Date().toISOString().split('T')[0],
+                            submission_date: new Date().toISOString().split('T')[0],
+                            evaluation_date: "",
+                            description: "",
+                            max_marks: "",
+                            attachment_url: "",
+                        });
+                        setAttachmentFile(null);
+                        setIsDialogOpen(true);
+                    }} className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
                         <Plus className="h-3.5 w-3.5" /> {t("add_homework")}
                     </Button>
                 </CardHeader>
@@ -399,6 +589,8 @@ export default function AddHomeworkPage() {
                                             <SelectItem value="10">10</SelectItem>
                                             <SelectItem value="25">25</SelectItem>
                                             <SelectItem value="50">50</SelectItem>
+                                            <SelectItem value="100">100</SelectItem>
+                                            <SelectItem value="200">200</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
@@ -420,7 +612,7 @@ export default function AddHomeworkPage() {
                             </div>
                         </div>
 
-                        <div className="rounded border border-gray-50 overflow-hidden">
+                        <div className="rounded border border-gray-50 overflow-x-auto">
                             <Table>
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow className="hover:bg-transparent border-b border-gray-100">
@@ -430,47 +622,63 @@ export default function AddHomeworkPage() {
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("section")}</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("subject_group")}</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("subject")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("title") || "Title"}</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("homework_date")}</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("submission_date")}</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("evaluation_date")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Status</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("max_marks") || "Max Marks"}</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("created_by")}</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action") || "Action"}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {(() => {
                                         const displayData = activeTab === "upcoming" ? upcomingHomeworks : closedHomeworks;
-                                        if (loading) return <TableSkeleton rows={5} cols={9} />;
+                                        if (loading) return <TableSkeleton rows={5} cols={11} />;
                                         if (displayData.length === 0) return (
                                             <tr>
-                                                <td colSpan={9} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
+                                                <td colSpan={11} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                             </tr>
                                         );
-                                        return displayData.map((item) => (
-                                        <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
-                                            <TableCell className="py-3 text-gray-700 font-medium">{item.schoolClass?.name || item.class?.name || "-"}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{item.section?.name || "-"}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{item.subjectGroup?.name || "-"}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{item.subject?.name || "-"}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{formatDate(item.homework_date)}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{formatDate(item.submission_date)}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{item.evaluation_date ? formatDate(item.evaluation_date) : "-"}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{item.creator?.name || "-"}</TableCell>
-                                            <TableCell className="py-3 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <Button size="icon" variant="ghost" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-sm">
-                                                        <Eye className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button size="icon" variant="ghost" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-sm">
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button size="icon" variant="ghost" onClick={() => handleDelete(item.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm">
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))})()}
+                                        return displayData.map((item) => {
+                                            const today = new Date().toISOString().split('T')[0];
+                                            const isUpcoming = item.submission_date >= today;
+                                            return (
+                                                <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
+                                                    <TableCell className="py-3 text-gray-700 font-medium">{item.school_class?.name || item.schoolClass?.name || item.class?.name || "-"}</TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{item.section?.name || "-"}</TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{item.subject_group?.name || item.subjectGroup?.name || "-"}</TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{item.subject?.name || "-"}</TableCell>
+                                                    <TableCell className="py-3 text-gray-700 font-medium">{item.title || "—"}</TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{formatDate(item.homework_date)}</TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{formatDate(item.submission_date)}</TableCell>
+                                                    <TableCell className="py-3">
+                                                        <Badge className={cn("text-[10px] font-bold border", isUpcoming ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-gray-100 text-gray-600 border-gray-200")}>
+                                                            {isUpcoming ? "Upcoming" : "Closed"}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{item.max_marks !== null && item.max_marks !== undefined ? item.max_marks : "-"}</TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{item.creator?.name || "-"}</TableCell>
+                                                    <TableCell className="py-3 text-right">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <Button size="icon" variant="ghost" onClick={() => startEvaluate(item)} className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-sm" title="Evaluate Submissions">
+                                                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" onClick={() => startView(item)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-sm">
+                                                                <Eye className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" onClick={() => startEdit(item)} className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-sm">
+                                                                <Pencil className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" onClick={() => { setDeleteId(item.id); setIsDeleteOpen(true); }} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm">
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        });
+                                    })()}
                                 </TableBody>
                             </Table>
                         </div>
@@ -520,9 +728,19 @@ export default function AddHomeworkPage() {
                         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                             <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
                                 <DialogHeader className="px-6 py-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
-                                    <DialogTitle className="text-lg font-bold text-white">{t("add_homework")}</DialogTitle>
+                                    <DialogTitle className="text-lg font-bold text-white">{isEditing ? "Edit Homework" : t("add_homework")}</DialogTitle>
                                 </DialogHeader>
-                                <div className="grid grid-cols-2 gap-4 px-6 py-4">
+                                <div className="grid grid-cols-2 gap-4 px-6 py-4 max-h-[75vh] overflow-y-auto">
+                                    <div className="space-y-1.5 col-span-2">
+                                        <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("title") || "Title"} <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.title}
+                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                            className="h-9 border-gray-200 text-xs shadow-none"
+                                            placeholder={t("enter_title") || "Enter Title"}
+                                            required
+                                        />
+                                    </div>
                                     <div className="space-y-1.5">
                                         <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("class")} <span className="text-red-500">*</span></Label>
                                         <Select value={formData.class_id} onValueChange={(v) => setFormData({ ...formData, class_id: v, section_id: "", subject_group_id: "", subject_id: "" })}>
@@ -581,6 +799,39 @@ export default function AddHomeworkPage() {
                                             onChange={(date) => setFormData({ ...formData, submission_date: date })}
                                         />
                                     </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("evaluation_date")}</Label>
+                                        <DatePicker
+                                            value={formData.evaluation_date}
+                                            onChange={(date) => setFormData({ ...formData, evaluation_date: date })}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("max_marks") || "Max Marks"}</Label>
+                                        <Input
+                                            type="number"
+                                            value={formData.max_marks}
+                                            onChange={(e) => setFormData({ ...formData, max_marks: e.target.value })}
+                                            className="h-9 border-gray-200 text-xs shadow-none"
+                                            placeholder={t("enter_max_marks") || "Enter Max Marks"}
+                                            min="0"
+                                            step="any"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("attachment") || "Attachment"}</Label>
+                                        <Input
+                                            type="file"
+                                            onChange={(e) => setAttachmentFile(e.target.files?.[0] || null)}
+                                            className="h-9 border-gray-200 text-xs shadow-none cursor-pointer p-1.5"
+                                            accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                                        />
+                                        {formData.attachment_url && (
+                                            <p className="text-[10px] text-gray-500 mt-1">
+                                                Current file: <a href={getAttachmentUrl(formData.attachment_url)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">{formData.attachment_url.split('/').pop()}</a>
+                                            </p>
+                                        )}
+                                    </div>
                                     <div className="space-y-1.5 col-span-2">
                                         <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("description")}</Label>
                                         <Textarea
@@ -594,7 +845,80 @@ export default function AddHomeworkPage() {
                                 <DialogFooter className="px-6 pb-6">
                                     <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">{t("cancel")}</Button>
                                     <Button onClick={handleSave} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">{t("save_homework")}</Button>
-                                    <Button onClick={handleSave} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">Save Homework</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+
+                        {/* View Homework Dialog */}
+                        <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+                            <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
+                                <DialogHeader className="px-6 py-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
+                                    <DialogTitle className="text-lg font-bold text-white">Homework Details</DialogTitle>
+                                </DialogHeader>
+                                {viewRecord && (
+                                    <div className="p-6 space-y-4 text-xs">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="col-span-2 border-b pb-2">
+                                                <span className="font-bold text-gray-500 uppercase block mb-1">{t("title") || "Title"}</span>
+                                                <span className="text-gray-900 font-bold text-sm">{viewRecord.title || "—"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-500 uppercase block mb-1">{t("class")}</span>
+                                                <span className="text-gray-900 font-medium">{viewRecord.school_class?.name || viewRecord.schoolClass?.name || viewRecord.class?.name || "-"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-500 uppercase block mb-1">{t("section")}</span>
+                                                <span className="text-gray-900 font-medium">{viewRecord.section?.name || "-"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-500 uppercase block mb-1">{t("subject_group")}</span>
+                                                <span className="text-gray-900 font-medium">{viewRecord.subject_group?.name || viewRecord.subjectGroup?.name || "-"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-500 uppercase block mb-1">{t("subject")}</span>
+                                                <span className="text-gray-900 font-medium">{viewRecord.subject?.name || "-"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-500 uppercase block mb-1">{t("homework_date")}</span>
+                                                <span className="text-gray-900 font-medium">{formatDate(viewRecord.homework_date)}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-500 uppercase block mb-1">{t("submission_date")}</span>
+                                                <span className="text-gray-900 font-medium">{formatDate(viewRecord.submission_date)}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-500 uppercase block mb-1">{t("evaluation_date")}</span>
+                                                <span className="text-gray-900 font-medium">{viewRecord.evaluation_date ? formatDate(viewRecord.evaluation_date) : "-"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-500 uppercase block mb-1">{t("max_marks") || "Max Marks"}</span>
+                                                <span className="text-gray-900 font-medium">{viewRecord.max_marks !== null && viewRecord.max_marks !== undefined ? viewRecord.max_marks : "-"}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-500 uppercase block mb-1">{t("attachment") || "Attachment"}</span>
+                                                {viewRecord.attachment ? (
+                                                    <a href={getAttachmentUrl(viewRecord.attachment)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-medium">
+                                                        Download Attachment
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-gray-900 font-medium">-</span>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-500 uppercase block mb-1">{t("created_by")}</span>
+                                                <span className="text-gray-900 font-medium">{viewRecord.creator?.name || "-"}</span>
+                                            </div>
+                                        </div>
+                                        <div className="border-t pt-4">
+                                            <span className="font-bold text-gray-500 uppercase block mb-2">{t("description")}</span>
+                                            <div className="bg-gray-50 p-3 rounded-lg border text-gray-700 min-h-[100px] whitespace-pre-wrap">
+                                                {viewRecord.description || "No description available"}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                <DialogFooter className="px-6 pb-6">
+                                    <Button variant="outline" onClick={() => setIsViewOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full px-6">{t("close") || "Close"}</Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
@@ -602,5 +926,128 @@ export default function AddHomeworkPage() {
                 </CardContent>
             </Card>
         </div>
+
+        {/* Evaluate Submissions Dialog */}
+        <Dialog open={isEvaluateOpen} onOpenChange={setIsEvaluateOpen}>
+            <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden">
+                <DialogHeader className="px-6 py-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
+                    <DialogTitle className="text-lg font-bold text-white">Evaluate Submissions</DialogTitle>
+                </DialogHeader>
+                <div className="p-6">
+                    {evalLoading ? (
+                        <div className="py-12 text-center text-sm text-gray-400">Loading submissions...</div>
+                    ) : submissions.length === 0 ? (
+                        <div className="py-12 text-center text-sm text-gray-400">No submissions found for this homework.</div>
+                    ) : (
+                        <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-4">
+                            {submissions.map(sub => (
+                                <div key={sub.id} className="border border-gray-100 rounded-lg p-4 bg-gray-50/50">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <div className="font-bold text-gray-800 text-sm">{sub.student?.name || "Unknown Student"}</div>
+                                            <div className="text-[10px] text-gray-500 uppercase mt-0.5">
+                                                Status: <Badge variant="outline" className={cn("text-[9px] border-0", sub.status === 'evaluated' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700')}>{sub.status}</Badge>
+                                            </div>
+                                        </div>
+                                        {sub.submission_file ? (
+                                            <a href={getAttachmentUrl(sub.submission_file)} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-indigo-600 flex items-center hover:underline">
+                                                <Paperclip className="h-3 w-3 mr-1" /> View File
+                                            </a>
+                                        ) : (
+                                            <span className="text-[10px] text-gray-400">No File</span>
+                                        )}
+                                    </div>
+                                    
+                                    {sub.student_answer && (
+                                        <div className="text-xs text-gray-600 bg-white p-2 rounded border border-gray-100 mb-3 whitespace-pre-wrap">
+                                            {sub.student_answer}
+                                        </div>
+                                    )}
+
+                                    {activeSubmissionId === sub.id ? (
+                                        <div className="bg-white p-3 rounded-md border border-gray-200 grid grid-cols-2 gap-3 mt-3">
+                                            <div className="space-y-1">
+                                                <Label className="text-[10px] uppercase font-bold text-gray-500">Marks</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    value={evalFormData.marks_obtained}
+                                                    onChange={e => setEvalFormData({...evalFormData, marks_obtained: e.target.value})}
+                                                    className="h-8 text-xs" 
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[10px] uppercase font-bold text-gray-500">Date</Label>
+                                                <Input 
+                                                    type="date" 
+                                                    value={evalFormData.evaluation_date}
+                                                    onChange={e => setEvalFormData({...evalFormData, evaluation_date: e.target.value})}
+                                                    className="h-8 text-xs" 
+                                                />
+                                            </div>
+                                            <div className="col-span-2 space-y-1">
+                                                <Label className="text-[10px] uppercase font-bold text-gray-500">Remarks</Label>
+                                                <Textarea 
+                                                    value={evalFormData.teacher_remarks}
+                                                    onChange={e => setEvalFormData({...evalFormData, teacher_remarks: e.target.value})}
+                                                    className="min-h-[60px] text-xs"
+                                                />
+                                            </div>
+                                            <div className="col-span-2 flex justify-end gap-2 mt-1">
+                                                <Button size="sm" variant="ghost" onClick={() => setActiveSubmissionId(null)} className="h-7 text-[10px]">Cancel</Button>
+                                                <Button size="sm" onClick={() => saveEvaluation(sub.id)} className="h-7 text-[10px] bg-indigo-500 text-white">Save Marks</Button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
+                                            <div className="text-xs text-gray-600">
+                                                <span className="font-bold">Marks:</span> {sub.marks_obtained ?? "-"} / {evaluateHomework?.max_marks ?? "-"}
+                                                {sub.teacher_remarks && <div className="text-[10px] text-gray-500 mt-0.5">Note: {sub.teacher_remarks}</div>}
+                                            </div>
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setActiveSubmissionId(sub.id);
+                                                    setEvalFormData({
+                                                        marks_obtained: sub.marks_obtained != null ? String(sub.marks_obtained) : "",
+                                                        evaluation_date: sub.evaluation_date ? sub.evaluation_date.split('T')[0] : new Date().toISOString().split('T')[0],
+                                                        teacher_remarks: sub.teacher_remarks || "",
+                                                    });
+                                                }} 
+                                                className="h-7 text-[10px] font-bold"
+                                            >
+                                                {sub.status === 'evaluated' ? 'Edit Marks' : 'Evaluate'}
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <DialogFooter className="px-6 pb-6 bg-gray-50">
+                    <Button variant="outline" onClick={() => setIsEvaluateOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full px-6">{t("close") || "Close"}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation AlertDialog */}
+        <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Homework?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will permanently delete the homework record. This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 text-white">
+                        Delete
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        </>
     );
 }

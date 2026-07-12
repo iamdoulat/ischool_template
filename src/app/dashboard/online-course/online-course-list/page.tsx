@@ -505,9 +505,11 @@ export default function OnlineCoursePage() {
             {/* Add/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setIsDialogOpen(false); resetForm(); } }}>
                 <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto rounded-lg border-none shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-base font-bold text-gray-800 flex items-center gap-2">
-                            <BookOpen className="h-5 w-5 text-indigo-500" />
+                    <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b">
+                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <BookOpen className="h-4 w-4" />
+                            </span>
                             {editingId ? t("edit_course") : t("add_course")}
                         </DialogTitle>
                     </DialogHeader>
@@ -731,9 +733,11 @@ export default function OnlineCoursePage() {
             {/* View Detail Dialog */}
             <Dialog open={isViewDialogOpen} onOpenChange={(open) => { if (!open) { setIsViewDialogOpen(false); setPlayingVideoId(null); setShowFullDetails(false); } }}>
                 <DialogContent className="sm:max-w-[650px] max-h-[85vh] overflow-y-auto rounded-lg border-none shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-base font-bold text-gray-800 flex items-center gap-2">
-                            <BookOpen className="h-5 w-5 text-indigo-500" />
+                    <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b">
+                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <BookOpen className="h-4 w-4" />
+                            </span>
                             {viewCourse?.title || t("course_details")}
                         </DialogTitle>
                     </DialogHeader>
