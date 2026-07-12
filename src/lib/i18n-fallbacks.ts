@@ -559,7 +559,6 @@ export const i18nFallbacks: Record<string, string> = {
     class_timetable: "Class Timetable",
     teachers_timetable: "Teachers Timetable",
     teacher_time_table: "Teacher Timetable",
-    select_criteria: "Select Criteria",
     not_scheduled: "Not Scheduled",
     x_subjects_selected: "{count} Subjects Selected",
     please_select_a_teacher: "Please select a teacher",
