@@ -88,7 +88,7 @@ export default function LoginPage() {
     const handleRoleFill = (roleEmail: string) => {
         setEmailOrUsername(roleEmail);
         const passwords: Record<string, string> = {
-            "superadmin@ischool.com": "superadmin@123",
+            "superadmin@ischool.com": "superadmin123",
             "admin@ischool.com": "admin1234",
             "teacher@ischool.com": "teacher@123",
             "accountant@ischool.com": "accountant@123",
