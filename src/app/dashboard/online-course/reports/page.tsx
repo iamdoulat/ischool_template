@@ -214,7 +214,7 @@ export default function OnlineCourseReportPage() {
             </div>
 
             {/* Filter Section */}
-            <Card className="border-gray-100 shadow-sm overflow-hidden">
+            <Card className="border-gray-100 shadow-sm overflow-hidden p-0 gap-0">
                 <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">

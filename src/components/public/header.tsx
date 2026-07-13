@@ -14,7 +14,8 @@ import {
     GraduationCap,
     Menu,
     X,
-    House
+    House,
+    LayoutGrid
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -22,11 +23,21 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useImageUrl } from "@/lib/image-url";
 import { getPublicMenus, type PublicMenuItem as MenuItem } from "@/lib/public-menus";
+import api from "@/lib/api";
 
 interface NavItem {
     name: string;
     href: string;
     newTab?: boolean;
+}
+
+interface HeaderUser {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    avatar?: string;
+    permissions?: string[];
 }
 
 export function PublicHeader() {
@@ -35,6 +46,8 @@ export function PublicHeader() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [dynamicMenus, setDynamicMenus] = useState<MenuItem[]>([]);
     const getImageUrl = useImageUrl();
+    const [mounted, setMounted] = useState(false);
+    const [user, setUser] = useState<HeaderUser | null>(null);
 
     useEffect(() => {
         let active = true;
@@ -43,6 +56,36 @@ export function PublicHeader() {
         });
         return () => { active = false; };
     }, []);
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+            if (!token) {
+                setMounted(true);
+                return;
+            }
+            try {
+                const response = await api.get("/profile", { skipGlobalErrorHandler: true });
+                if (response.data?.success) {
+                    setUser(response.data.data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch profile in public header:", error);
+            } finally {
+                setMounted(true);
+            }
+        };
+        checkAuth();
+    }, []);
+
+    const getDashboardUrl = () => {
+        if (!user) return "/login";
+        const role = (user.role || "").toLowerCase();
+        if (role === "student" || role === "parent") {
+            return "/user/dashboard";
+        }
+        return "/dashboard";
+    };
 
     const defaultNavItems = [
         { name: "Home", href: "/" },
@@ -122,12 +165,21 @@ export function PublicHeader() {
                             )}
                         </div>
                         <div className="w-px h-4 bg-primary-foreground/30 hidden md:block" />
-                        <Link href="/login">
-                            <Button variant="secondary" size="sm" className="h-7 px-3 text-xs bg-white text-primary hover:bg-white/90">
-                                <LogIn className="h-3 w-3 mr-1" />
-                                Login
-                            </Button>
-                        </Link>
+                        {!mounted || !user ? (
+                            <Link href="/login">
+                                <Button variant="secondary" size="sm" className="h-7 px-3 text-xs bg-white text-primary hover:bg-white/90">
+                                    <LogIn className="h-3 w-3 mr-1" />
+                                    Login
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Link href={getDashboardUrl()}>
+                                <Button variant="secondary" size="sm" className="h-7 px-3 text-xs bg-white text-primary hover:bg-white/90">
+                                    <LayoutGrid className="h-3 w-3 mr-1" />
+                                    Dashboard
+                                </Button>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>

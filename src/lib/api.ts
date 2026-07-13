@@ -34,17 +34,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        // Skip the global error handling / redirects for requests that opted out (e.g. background polling or custom components)
+        const config = error.config as InternalAxiosRequestConfig & { skipGlobalErrorHandler?: boolean };
+        if (config?.skipGlobalErrorHandler) {
+            return Promise.reject(error);
+        }
+
         // No `error.response` means the request never got an HTTP reply: the
         // backend is down/restarting, the network dropped, or the request was
         // cancelled (e.g. Fast Refresh / navigation). Surface a clear message
         // instead of a raw "Network Error" and skip the 401 redirect logic.
         if (!error.response) {
             if (axios.isCancel?.(error) || error.code === 'ERR_CANCELED') {
-                return Promise.reject(error);
-            }
-            // Skip the global toast for requests that opted out (e.g. background polling)
-            const config = error.config as InternalAxiosRequestConfig & { skipGlobalErrorHandler?: boolean };
-            if (config?.skipGlobalErrorHandler) {
                 return Promise.reject(error);
             }
             if (typeof window !== 'undefined') {
