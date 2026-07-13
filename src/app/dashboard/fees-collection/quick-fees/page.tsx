@@ -110,6 +110,12 @@ export default function QuickFeesPage() {
     }, [toast]);
 
     useEffect(() => {
+        if (students.length === 1 && !selectedStudentId) {
+            setSelectedStudentId(students[0].id.toString());
+        }
+    }, [students, selectedStudentId]);
+
+    useEffect(() => {
         fetchStudents(selectedClass, selectedSection);
     }, [selectedClass, selectedSection, fetchStudents]);
 
@@ -227,7 +233,7 @@ export default function QuickFeesPage() {
                                     onChange={(e) => setSelectedStudentId(e.target.value)}
                                     disabled={fetchingStudents}
                                 >
-                                    <option value="">{fetchingStudents ? "Loading..." : "Select Student"}</option>
+                                    <option value="">{fetchingStudents ? "Loading..." : `Select Student (${students.length})`}</option>
                                     {students.map(s => <option key={s.id} value={s.id}>{s.name} {s.last_name} ({s.admission_no})</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-transform group-focus-within:rotate-180" />

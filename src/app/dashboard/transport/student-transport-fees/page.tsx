@@ -28,6 +28,7 @@ import {
     Eye,
     SlidersHorizontal,
     Bus,
+    BadgeDollarSign,
 } from "lucide-react";
 import {
     Select,
@@ -41,6 +42,8 @@ import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import {
     Dialog,
     DialogContent,
@@ -61,16 +64,13 @@ interface StudentTransport {
     school_class?: { name: string };
     schoolClass?: { name: string };
     section?: { name: string };
-    transport_assignment?: {
-        route?: { title: string; id: number };
-        vehicle?: { vehicle_no: string; id: number };
-        pickup_point?: { name: string; id: number };
-    };
+    transport_assignment?: any;
     transportAssignment?: {
         route?: { title: string; id: number };
         vehicle?: { vehicle_no: string; id: number };
         pickupPoint?: { name: string; id: number };
     };
+    transportFees?: any[];
 }
 
 const TABLE_COLS = 9;
@@ -95,6 +95,7 @@ export default function StudentTransportFeesPage() {
     const { toast } = useToast();
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const { symbol } = useCurrencyFormatter();
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
     const [fetchingInitial, setFetchingInitial] = useState(true);
@@ -106,6 +107,11 @@ export default function StudentTransportFeesPage() {
     const [routes, setRoutes] = useState<any[]>([]);
     const [vehicles, setVehicles] = useState<any[]>([]);
     const [pickupPoints, setPickupPoints] = useState<any[]>([]);
+    const [feeMasters, setFeeMasters] = useState<any[]>([]);
+    const [routePickupPoints, setRoutePickupPoints] = useState<any[]>([]);
+    const [isAssignFeesModalOpen, setIsAssignFeesModalOpen] = useState(false);
+    const [selectedFeeMasterIds, setSelectedFeeMasterIds] = useState<number[]>([]);
+    const [monthlyFeeAmount, setMonthlyFeeAmount] = useState<number>(0);
 
     const [filters, setFilters] = useState({ class_id: "", section_id: "" });
 
@@ -120,16 +126,20 @@ export default function StudentTransportFeesPage() {
     const fetchInitialData = async () => {
         setFetchingInitial(true);
         try {
-            const [classesRes, routesRes, vehiclesRes, pointsRes] = await Promise.all([
+            const [classesRes, routesRes, vehiclesRes, pointsRes, feeMastersRes, rppRes] = await Promise.all([
                 api.get("/academics/classes"),
                 api.get("/transport/routes"),
                 api.get("/transport/vehicles"),
                 api.get("/transport/pickup-points"),
+                api.get("/transport/fees-master"),
+                api.get("/transport/route-pickup-points"),
             ]);
             setClasses(classesRes.data.data.data || classesRes.data.data || []);
             setRoutes(routesRes.data.data.data || routesRes.data.data || []);
             setVehicles(vehiclesRes.data.data.data || vehiclesRes.data.data || []);
             setPickupPoints(pointsRes.data.data.data || pointsRes.data.data || []);
+            setFeeMasters(feeMastersRes.data.data || []);
+            setRoutePickupPoints(rppRes.data.data || []);
         } catch (error) {
             tt.error("failed_to_load_initial_data");
         } finally {
@@ -152,21 +162,14 @@ export default function StudentTransportFeesPage() {
     };
 
     const handleSearch = async () => {
-        if (!filters.class_id) {
-            toast("error", t("please_select_a_class"));
-            return;
-        }
         setLoading(true);
-        setSearched(true);
         try {
-            const params: any = {};
-            if (filters.class_id) params.class_id = filters.class_id;
-            if (filters.section_id) params.section_id = filters.section_id;
-            const res = await api.get("/transport/student-assignments", { params });
-            setStudents(res.data.data);
+            const res = await api.get("/transport/student-assignments", { params: filters });
+            setStudents(res.data.data || []);
+            setSearched(true);
             setCurrentPage(1);
         } catch (error) {
-            tt.error("failed_to_fetch_students");
+            tt.error("failed_to_load_students");
         } finally {
             setLoading(false);
         }
@@ -176,27 +179,30 @@ export default function StudentTransportFeesPage() {
         setSelectedStudent(student);
         const assignment = student.transportAssignment || student.transport_assignment;
         setAssignmentForm({
-            route_id: assignment?.route?.id?.toString() || "",
-            vehicle_id: assignment?.vehicle?.id?.toString() || "",
-            pickup_point_id: (assignment as any)?.pickupPoint?.id?.toString() || assignment?.pickup_point?.id?.toString() || "",
+            route_id: assignment?.route?.id?.toString() || assignment?.route_id?.toString() || "",
+            vehicle_id: assignment?.vehicle?.id?.toString() || assignment?.vehicle_id?.toString() || "",
+            pickup_point_id: (assignment as any)?.pickupPoint?.id?.toString() || assignment?.pickup_point_id?.toString() || assignment?.pickup_point?.id?.toString() || "",
         });
         setIsAssignModalOpen(true);
     };
 
     const handleAssign = async () => {
-        if (!selectedStudent) return;
-        if (!assignmentForm.route_id || !assignmentForm.vehicle_id || !assignmentForm.pickup_point_id) {
-            toast("error", t("please_select_all_fields"));
+        if (!selectedStudent || !assignmentForm.route_id || !assignmentForm.vehicle_id || !assignmentForm.pickup_point_id) {
+            toast("error", t("please_fill_all_required_fields"));
             return;
         }
         setLoading(true);
         try {
-            await api.post("/transport/student-assignments", { student_id: selectedStudent.id, ...assignmentForm });
-            tt.success("transport_assigned_successfully");
+            const payload = {
+                student_id: selectedStudent.id,
+                ...assignmentForm
+            };
+            const res = await api.post("/transport/student-assignments", payload);
+            tt.success(res.data.message || "transport_assigned_successfully");
             setIsAssignModalOpen(false);
             handleSearch();
-        } catch (error) {
-            tt.error("failed_to_assign_transport");
+        } catch (error: any) {
+            toast("error", error.response?.data?.message || t("failed_to_assign_transport"));
         } finally {
             setLoading(false);
         }
@@ -211,6 +217,61 @@ export default function StudentTransportFeesPage() {
         } catch (error) {
             tt.error("failed_to_remove_assignment");
         }
+    };
+
+    const handleOpenAssignFeesModal = (student: StudentTransport) => {
+        setSelectedStudent(student);
+        const assignment = student.transportAssignment || student.transport_assignment;
+        if (!assignment) return;
+        
+        const routeId = assignment.route_id || assignment.route?.id;
+        const pickupPointId = assignment.pickup_point_id || (assignment as any).pickupPoint?.id || assignment.pickup_point?.id;
+        
+        const route = routePickupPoints.find((r: any) => r.id == routeId);
+        const pickupPointsArray = route?.pickupPoints || route?.pickup_points || [];
+        const pickupPoint = pickupPointsArray.find((p: any) => p.id == pickupPointId);
+        
+        const mapping = pickupPoint?.pivot || pickupPointsArray.find((p: any) => p.pivot?.pickup_point_id == pickupPointId)?.pivot;
+        
+        setMonthlyFeeAmount(mapping ? parseFloat(mapping.monthly_fees || mapping.monthlyFees || 0) : 0);
+
+        const existingFeeMasterIds = (student.transportFees || []).map(f => f.transport_fee_master_id);
+        
+        if (existingFeeMasterIds.length > 0) {
+            setSelectedFeeMasterIds(existingFeeMasterIds);
+        } else {
+            const currentMonthName = new Date().toLocaleString('default', { month: 'long' });
+            const currentFeeMaster = feeMasters.find(fm => fm.month === currentMonthName);
+            setSelectedFeeMasterIds(currentFeeMaster ? [currentFeeMaster.id] : []);
+        }
+        
+        setIsAssignFeesModalOpen(true);
+    };
+
+    const submitAssignFees = async () => {
+        if (!selectedStudent) return;
+        if (selectedFeeMasterIds.length === 0) {
+            toast("error", t("please_select_at_least_one_month") || "Please select at least one month");
+            return;
+        }
+        setLoading(true);
+        try {
+            const res = await api.post(`/transport/student-assignments/${selectedStudent.id}/fees`, {
+                fee_master_ids: selectedFeeMasterIds
+            });
+            tt.success(res.data.message || "transport_fees_assigned_successfully");
+            setIsAssignFeesModalOpen(false);
+        } catch (error: any) {
+            toast("error", error.response?.data?.message || t("failed_to_assign_fees"));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleFeeMasterToggle = (id: number) => {
+        setSelectedFeeMasterIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
     };
 
     const filteredStudents = students.filter((s) =>
@@ -377,7 +438,10 @@ export default function StudentTransportFeesPage() {
                                                 <Button title={t("view")} onClick={() => { setSelectedStudent(s); setIsViewModalOpen(true); }} size="sm" className="h-7 w-7 bg-blue-500 hover:bg-blue-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Eye className="h-4 w-4" /></Button>
                                                 <Button title={t("edit")} onClick={() => handleOpenAssign(s)} size="sm" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-4 w-4" /></Button>
                                                 {(s.transportAssignment || s.transport_assignment) && (
-                                                    <Button title={t("delete")} onClick={() => handleRemoveAssignment(s.id)} size="sm" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-4 w-4" /></Button>
+                                                    <>
+                                                        <Button title={t("assign_fees") || "Assign Fees"} onClick={() => handleOpenAssignFeesModal(s)} size="sm" className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><BadgeDollarSign className="h-4 w-4" /></Button>
+                                                        <Button title={t("delete")} onClick={() => handleRemoveAssignment(s.id)} size="sm" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-4 w-4" /></Button>
+                                                    </>
                                                 )}
                                             </div>
                                         </TableCell>
@@ -452,6 +516,48 @@ export default function StudentTransportFeesPage() {
                     </div>
                     <DialogFooter>
                         <Button onClick={() => setIsViewModalOpen(false)} className="rounded-full px-8 h-9 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all">{t("close")}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Assign Fees Modal */}
+            <Dialog open={isAssignFeesModalOpen} onOpenChange={setIsAssignFeesModalOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Assign Fees : {selectedStudent?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-2">
+                        <div className="flex justify-between items-center mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <span className="font-bold text-gray-500 uppercase tracking-tight text-xs">{t("pickup_point_fee") || "Pickup Point Fee"}:</span>
+                            <span className="font-bold text-[#6366f1] text-sm">{symbol}{monthlyFeeAmount.toFixed(2)}</span>
+                        </div>
+                        <Label className="mb-3 block text-gray-700">{t("select_months") || "Select Months"}</Label>
+                        <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
+                            {feeMasters.map(fm => (
+                                <div key={fm.id} className="flex items-center space-x-2 border p-2 rounded hover:bg-gray-50">
+                                    <Checkbox 
+                                        id={`fm-${fm.id}`} 
+                                        checked={selectedFeeMasterIds.includes(fm.id)} 
+                                        onCheckedChange={() => handleFeeMasterToggle(fm.id)} 
+                                        className="border-gray-300" 
+                                    />
+                                    <Label htmlFor={`fm-${fm.id}`} className="text-xs cursor-pointer font-medium text-gray-700 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1">
+                                        {fm.month}
+                                    </Label>
+                                </div>
+                            ))}
+                        </div>
+                        {feeMasters.length === 0 && (
+                            <div className="text-center py-4 text-xs text-red-500 bg-red-50 rounded border border-red-100">
+                                No transport fee masters found for active session.
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAssignFeesModalOpen(false)} className="h-9 text-[11px] rounded-full px-6">{t("cancel")}</Button>
+                        <Button disabled={loading || feeMasters.length === 0} onClick={submitAssignFees} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all min-w-[120px]">
+                            {loading ? t("saving") : t("assign")}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
