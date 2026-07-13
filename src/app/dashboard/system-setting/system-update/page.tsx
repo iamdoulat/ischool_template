@@ -2,17 +2,44 @@
 
 import { useSettings } from "@/components/providers/settings-provider";
 import { Info, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
     Card,
     CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
+import { useState } from "react";
+import api from "@/lib/api";
+import { toast } from "sonner";
 
 export default function SystemUpdatePage() {
     const { t } = useTranslation();
     const { settings } = useSettings();
-    const version = settings?.app_version || "7.2.0";
+    const [version, setVersion] = useState(settings?.app_version || "7.2.0");
+    const [loading, setLoading] = useState(false);
+
+    const handleCheckUpdate = async () => {
+        setLoading(true);
+        try {
+            const response = await api.post("/system-setting/system-update/check");
+            if (response.data && response.data.data) {
+                setVersion(response.data.data.version);
+                if (response.data.data.is_latest) {
+                    toast.success(response.data.message || t("you_are_using_latest_version"));
+                } else {
+                    toast.info(t("update_available"));
+                }
+            } else {
+                toast.success(t("you_are_using_latest_version"));
+            }
+        } catch (error) {
+            console.error("Failed to check for updates:", error);
+            toast.error(t("failed_to_check_for_updates"));
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
@@ -28,8 +55,13 @@ export default function SystemUpdatePage() {
                             <p className="text-[11px] text-gray-500 mt-1">{t("check_for_the_latest_version")}</p>
                         </div>
                     </div>
-                    <Button variant="gradient" className="px-6 h-8 text-[11px] uppercase">
-                        <RefreshCw className="mr-2 h-3 w-3" />
+                    <Button 
+                        variant="gradient" 
+                        className="px-6 h-8 text-[11px] uppercase"
+                        onClick={handleCheckUpdate}
+                        disabled={loading}
+                    >
+                        <RefreshCw className={cn("mr-2 h-3 w-3", loading && "animate-spin")} />
                         {t("check_for_updates")}
                     </Button>
                 </div>
