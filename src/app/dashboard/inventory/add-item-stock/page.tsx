@@ -67,6 +67,7 @@ interface ItemStock {
     document?: string;
     item?: { item_name: string };
     item_category?: { item_category: string };
+    itemCategory?: { item_category: string };
     supplier?: { item_supplier: string };
     store?: { item_store: string };
 }
@@ -421,7 +422,7 @@ export default function AddItemStockPage() {
                                     ) : stocks.map((stock) => (
                                         <TableRow key={stock.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                             <TableCell className="py-3 text-gray-700 font-medium">{stock.item?.item_name}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{stock.item_category?.item_category}</TableCell>
+                                            <TableCell className="py-3 text-gray-500">{(stock.itemCategory || stock.item_category)?.item_category}</TableCell>
                                             <TableCell className="py-3 text-gray-500">{stock.supplier?.item_supplier || "—"}</TableCell>
                                             <TableCell className="py-3 text-gray-500">{stock.store?.item_store || "—"}</TableCell>
                                             <TableCell className="py-3 text-right font-bold text-indigo-600">{stock.quantity}</TableCell>

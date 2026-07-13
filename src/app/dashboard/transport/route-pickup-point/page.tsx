@@ -67,7 +67,8 @@ interface Stop {
 interface RouteMapping {
     id: number;
     title: string;
-    pickup_points: Stop[];
+    pickup_points?: Stop[];
+    pickupPoints?: Stop[];
 }
 
 const TABLE_COLS = 6;
@@ -190,7 +191,7 @@ export default function RoutePickupPointPage() {
     const paginatedData = allFilteredData.slice(startIndex, startIndex + itemsPerPage);
 
     const exportToExcel = () => {
-        const dataToExport = mappings.flatMap(route => route.pickup_points.map((stop) => ({
+        const dataToExport = mappings.flatMap(route => (route.pickupPoints || route.pickup_points || []).map((stop) => ({
             'Route': route.title, 'Pickup Point': stop.name, 'Monthly Fees': stop.pivot.monthly_fees,
             'Distance (km)': stop.pivot.distance, 'Pickup Time': stop.pivot.pickup_time
         })));
@@ -203,13 +204,13 @@ export default function RoutePickupPointPage() {
     const exportToPDF = () => {
         const doc = new jsPDF();
         doc.text("Route Pickup Point Mappings", 14, 15);
-        const tableData = mappings.flatMap(route => route.pickup_points.map((stop) => [route.title, stop.name, stop.pivot.monthly_fees, stop.pivot.distance, stop.pivot.pickup_time]));
+        const tableData = mappings.flatMap(route => (route.pickupPoints || route.pickup_points || []).map((stop) => [route.title, stop.name, stop.pivot.monthly_fees, stop.pivot.distance, stop.pivot.pickup_time]));
         autoTable(doc, { head: [['Route', 'Pickup Point', 'Monthly Fees', 'Distance (km)', 'Pickup Time']], body: tableData, startY: 20 });
         doc.save("route_pickup_points.pdf");
     };
 
     const copyToClipboard = () => {
-        const text = mappings.flatMap(route => route.pickup_points.map((stop) => `${route.title}\t${stop.name}\t${stop.pivot.monthly_fees}\t${stop.pivot.distance}\t${stop.pivot.pickup_time}`)).join('\n');
+        const text = mappings.flatMap(route => (route.pickupPoints || route.pickup_points || []).map((stop) => `${route.title}\t${stop.name}\t${stop.pivot.monthly_fees}\t${stop.pivot.distance}\t${stop.pivot.pickup_time}`)).join('\n');
         navigator.clipboard.writeText(text);
         tt.success("data_copied_to_clipboard");
     };
@@ -277,31 +278,42 @@ export default function RoutePickupPointPage() {
                                     <SkeletonRows rows={6} cols={TABLE_COLS} />
                                 ) : allFilteredData.length === 0 ? (
                                     <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_mappings_found")}</TableCell></TableRow>
-                                ) : paginatedData.map((item) => (
-                                    <TableRow key={item.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer align-top">
-                                        <TableCell className="py-4 text-gray-700 font-medium">{item.title}</TableCell>
-                                        <TableCell className="py-4">
-                                            <div className="space-y-1">{item.pickup_points.map((stop, i) => (<div key={i} className="text-gray-600 font-medium">{stop.name}</div>))}</div>
-                                        </TableCell>
-                                        <TableCell className="py-4">
-                                            <div className="space-y-1">{item.pickup_points.map((stop, i) => (<div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.monthly_fees}</div>))}</div>
-                                        </TableCell>
-                                        <TableCell className="py-4">
-                                            <div className="space-y-1">{item.pickup_points.map((stop, i) => (<div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.distance || '-'}</div>))}</div>
-                                        </TableCell>
-                                        <TableCell className="py-4">
-                                            <div className="space-y-1">{item.pickup_points.map((stop, i) => (<div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.pickup_time || '-'}</div>))}</div>
-                                        </TableCell>
-                                        <TableCell className="py-4 text-right">
-                                            <div className="space-y-1">{item.pickup_points.map((stop, i) => (
-                                                <div key={i} className="flex items-center justify-end gap-1">
-                                                    <Button onClick={() => handleEdit(item, stop)} size="sm" className="h-6 w-6 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-3 w-3" /></Button>
-                                                    <Button onClick={() => handleDelete(stop.pivot.id)} size="sm" className="h-6 w-6 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-3 w-3" /></Button>
-                                                </div>
-                                            ))}</div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                ) : paginatedData.map((item) => {
+                                    const stops = item.pickupPoints || item.pickup_points || [];
+                                    if (stops.length === 0) {
+                                        return (
+                                            <TableRow key={item.id} className="text-xs">
+                                                <TableCell className="py-3 font-semibold text-gray-700">{item.title}</TableCell>
+                                                <TableCell colSpan={5} className="py-3 text-gray-400 italic text-center">{t("no_pickup_points_assigned")}</TableCell>
+                                            </TableRow>
+                                        );
+                                    }
+                                    return (
+                                        <TableRow key={item.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer align-top">
+                                            <TableCell className="py-4 text-gray-700 font-medium">{item.title}</TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="space-y-1">{stops.map((stop, i) => (<div key={i} className="text-gray-600 font-medium">{stop.name}</div>))}</div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="space-y-1">{stops.map((stop, i) => (<div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.monthly_fees}</div>))}</div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="space-y-1">{stops.map((stop, i) => (<div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.distance || '-'}</div>))}</div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="space-y-1">{stops.map((stop, i) => (<div key={i} className="flex items-center h-4 text-gray-600">{stop.pivot.pickup_time || '-'}</div>))}</div>
+                                            </TableCell>
+                                            <TableCell className="py-4 text-right">
+                                                <div className="space-y-1">{stops.map((stop, i) => (
+                                                    <div key={i} className="flex items-center justify-end gap-1">
+                                                        <Button onClick={() => handleEdit(item, stop)} size="sm" className="h-6 w-6 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-3 w-3" /></Button>
+                                                        <Button onClick={() => handleDelete(stop.pivot.id)} size="sm" className="h-6 w-6 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-3 w-3" /></Button>
+                                                    </div>
+                                                ))}</div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </div>

@@ -72,6 +72,7 @@ interface InventoryIssue {
     status: "issued" | "returned";
     item?: { item_name: string };
     item_category?: { item_category: string };
+    itemCategory?: { item_category: string };
 }
 
 interface PaginationData {
@@ -332,7 +333,7 @@ export default function IssueItemPage() {
                                     <TableRow key={issue.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                         <TableCell className="py-3 text-gray-700 font-medium">{issue.item?.item_name}</TableCell>
                                         <TableCell className="py-3 text-gray-400">{issue.note || "—"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{issue.item_category?.item_category}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{(issue.itemCategory || issue.item_category)?.item_category}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{issue.issue_date} — {issue.return_date || t("open")}</TableCell>
                                         <TableCell className="py-3 text-gray-700 font-medium">{issue.issue_to}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{issue.issue_by}</TableCell>

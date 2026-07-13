@@ -54,11 +54,13 @@ import {
 
 interface InventoryItem {
     id: number;
-    item_name: string;
-    description: string;
     item_category_id: number;
+    item_name: string;
     unit: string;
-    item_category?: { id: number; item_category: string };
+    description: string;
+    available_qty: number;
+    item_category?: { item_category: string };
+    itemCategory?: { item_category: string };
     available_quantity?: number;
 }
 
@@ -329,7 +331,7 @@ export default function AddItemPage() {
                                         <TableRow key={item.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                             <TableCell className="py-3 text-gray-700 font-medium">{item.item_name}</TableCell>
                                             <TableCell className="py-3 text-gray-400 italic max-w-[160px] truncate">{item.description || "—"}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{item.item_category?.item_category || "—"}</TableCell>
+                                            <TableCell className="py-3 text-gray-500">{(item.itemCategory || item.item_category)?.item_category || "—"}</TableCell>
                                             <TableCell className="py-3 text-gray-500">{item.unit}</TableCell>
                                             <TableCell className="py-3 font-bold text-indigo-600">{item.available_quantity ?? 0}</TableCell>
                                             <TableCell className="py-3 text-right">

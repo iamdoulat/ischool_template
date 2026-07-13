@@ -36,7 +36,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
@@ -59,11 +59,17 @@ interface StudentTransport {
     father_name: string;
     dob: string;
     school_class?: { name: string };
+    schoolClass?: { name: string };
     section?: { name: string };
     transport_assignment?: {
         route?: { title: string; id: number };
         vehicle?: { vehicle_no: string; id: number };
         pickup_point?: { name: string; id: number };
+    };
+    transportAssignment?: {
+        route?: { title: string; id: number };
+        vehicle?: { vehicle_no: string; id: number };
+        pickupPoint?: { name: string; id: number };
     };
 }
 
@@ -168,10 +174,11 @@ export default function StudentTransportFeesPage() {
 
     const handleOpenAssign = (student: StudentTransport) => {
         setSelectedStudent(student);
+        const assignment = student.transportAssignment || student.transport_assignment;
         setAssignmentForm({
-            route_id: student.transport_assignment?.route?.id?.toString() || "",
-            vehicle_id: student.transport_assignment?.vehicle?.id?.toString() || "",
-            pickup_point_id: student.transport_assignment?.pickup_point?.id?.toString() || "",
+            route_id: assignment?.route?.id?.toString() || "",
+            vehicle_id: assignment?.vehicle?.id?.toString() || "",
+            pickup_point_id: (assignment as any)?.pickupPoint?.id?.toString() || assignment?.pickup_point?.id?.toString() || "",
         });
         setIsAssignModalOpen(true);
     };
@@ -214,11 +221,14 @@ export default function StudentTransportFeesPage() {
     const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
 
     const exportToExcel = () => {
-        const dataToExport = filteredStudents.map(s => ({
-            'Admission No': s.admission_no, 'Student Name': s.name, 'Class': `${s.school_class?.name || ''}(${s.section?.name || ''})`,
-            'Father Name': s.father_name, 'Route': s.transport_assignment?.route?.title || '-',
-            'Vehicle': s.transport_assignment?.vehicle?.vehicle_no || '-', 'Pickup Point': s.transport_assignment?.pickup_point?.name || '-'
-        }));
+        const dataToExport = filteredStudents.map(s => {
+            const assignment = s.transportAssignment || s.transport_assignment;
+            return {
+                'Admission No': s.admission_no, 'Student Name': s.name, 'Class': `${(s.schoolClass || s.school_class)?.name || ''}(${s.section?.name || ''})`,
+                'Father Name': s.father_name, 'Route': assignment?.route?.title || '-',
+                'Vehicle': assignment?.vehicle?.vehicle_no || '-', 'Pickup Point': (assignment as any)?.pickupPoint?.name || assignment?.pickup_point?.name || '-'
+            };
+        });
         const ws = XLSX.utils.json_to_sheet(dataToExport);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Students Transport");
@@ -228,13 +238,19 @@ export default function StudentTransportFeesPage() {
     const exportToPDF = () => {
         const doc = new jsPDF('l');
         doc.text("Student Transport Fees Report", 14, 15);
-        const tableData = filteredStudents.map(s => [s.admission_no, s.name, `${s.school_class?.name || ''}(${s.section?.name || ''})`, s.father_name, s.transport_assignment?.route?.title || '-', s.transport_assignment?.vehicle?.vehicle_no || '-', s.transport_assignment?.pickup_point?.name || '-']);
+        const tableData = filteredStudents.map(s => {
+            const assignment = s.transportAssignment || s.transport_assignment;
+            return [s.admission_no, s.name, `${(s.schoolClass || s.school_class)?.name || ''}(${s.section?.name || ''})`, s.father_name, assignment?.route?.title || '-', assignment?.vehicle?.vehicle_no || '-', (assignment as any)?.pickupPoint?.name || assignment?.pickup_point?.name || '-'];
+        });
         autoTable(doc, { head: [['Admission No', 'Student Name', 'Class', 'Father Name', 'Route', 'Vehicle', 'Pickup Point']], body: tableData, startY: 20 });
         doc.save("student_transport_fees.pdf");
     };
 
     const copyToClipboard = () => {
-        navigator.clipboard.writeText(filteredStudents.map(s => `${s.admission_no}\t${s.name}\t${s.school_class?.name || '-'}\t${s.transport_assignment?.route?.title || '-'}`).join('\n'));
+        navigator.clipboard.writeText(filteredStudents.map(s => {
+            const assignment = s.transportAssignment || s.transport_assignment;
+            return `${s.admission_no}\t${s.name}\t${(s.schoolClass || s.school_class)?.name || '-'}\t${assignment?.route?.title || '-'}`;
+        }).join('\n'));
         tt.success("data_copied_to_clipboard");
     };
 
@@ -346,22 +362,22 @@ export default function StudentTransportFeesPage() {
                                     <SkeletonRows rows={6} cols={TABLE_COLS} />
                                 ) : paginatedStudents.length === 0 ? (
                                     <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{searched ? t("no_students_found") : t("select_class_and_search")}</TableCell></TableRow>
-                                ) : paginatedStudents.map((student) => (
-                                    <TableRow key={student.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
-                                        <TableCell className="py-3 text-gray-700 font-medium">{student.admission_no}</TableCell>
-                                        <TableCell className="py-3"><span className="text-[#6366f1] font-medium">{student.name}</span></TableCell>
-                                        <TableCell className="py-3 text-gray-500">{`${student.school_class?.name || ''}(${student.section?.name || ''})`}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.father_name}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.dob}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.transport_assignment?.route?.title || '-'}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.transport_assignment?.vehicle?.vehicle_no || '-'}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.transport_assignment?.pickup_point?.name || '-'}</TableCell>
+                                ) : paginatedStudents.map((s) => (
+                                    <TableRow key={s.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
+                                        <TableCell className="py-3 text-gray-700 font-medium">{s.admission_no}</TableCell>
+                                        <TableCell className="py-3"><span className="text-[#6366f1] font-medium">{s.name}</span></TableCell>
+                                        <TableCell className="py-3 text-gray-500">{`${(s.schoolClass || s.school_class)?.name || ''}(${s.section?.name || ''})`}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.father_name || "—"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{formatDate(s.dob) || "—"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{(s.transportAssignment || s.transport_assignment)?.route?.title || '-'}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{(s.transportAssignment || s.transport_assignment)?.vehicle?.vehicle_no || '-'}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{((s.transportAssignment || s.transport_assignment) as any)?.pickupPoint?.name || (s.transportAssignment || s.transport_assignment)?.pickup_point?.name || '-'}</TableCell>
                                         <TableCell className="py-3 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <Button title={t("view")} onClick={() => { setSelectedStudent(student); setIsViewModalOpen(true); }} size="sm" className="h-7 w-7 bg-blue-500 hover:bg-blue-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Eye className="h-4 w-4" /></Button>
-                                                <Button title={t("edit")} onClick={() => handleOpenAssign(student)} size="sm" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-4 w-4" /></Button>
-                                                {student.transport_assignment && (
-                                                    <Button title={t("delete")} onClick={() => handleRemoveAssignment(student.id)} size="sm" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-4 w-4" /></Button>
+                                                <Button title={t("view")} onClick={() => { setSelectedStudent(s); setIsViewModalOpen(true); }} size="sm" className="h-7 w-7 bg-blue-500 hover:bg-blue-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Eye className="h-4 w-4" /></Button>
+                                                <Button title={t("edit")} onClick={() => handleOpenAssign(s)} size="sm" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-4 w-4" /></Button>
+                                                {(s.transportAssignment || s.transport_assignment) && (
+                                                    <Button title={t("delete")} onClick={() => handleRemoveAssignment(s.id)} size="sm" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-4 w-4" /></Button>
                                                 )}
                                             </div>
                                         </TableCell>
@@ -429,10 +445,10 @@ export default function StudentTransportFeesPage() {
                     <div className="grid gap-3 py-4 text-[12px]">
                         <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("admission_no")}</span><span className="text-gray-700 font-medium">{selectedStudent?.admission_no}</span></div>
                         <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("student_name")}</span><span className="text-[#6366f1] font-bold">{selectedStudent?.name}</span></div>
-                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("class")}</span><span className="text-gray-700 font-medium">{selectedStudent?.school_class?.name} ({selectedStudent?.section?.name})</span></div>
-                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("route")}</span><span className="text-indigo-600 font-bold">{selectedStudent?.transport_assignment?.route?.title || t("not_assigned")}</span></div>
-                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("vehicle")}</span><span className="text-gray-700 font-medium">{selectedStudent?.transport_assignment?.vehicle?.vehicle_no || t("not_assigned")}</span></div>
-                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("pickup_point")}</span><span className="text-gray-700 font-medium">{selectedStudent?.transport_assignment?.pickup_point?.name || t("not_assigned")}</span></div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("class")}</span><span className="text-gray-700 font-medium">{(selectedStudent?.schoolClass || selectedStudent?.school_class)?.name} ({selectedStudent?.section?.name})</span></div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("route")}</span><span className="text-indigo-600 font-bold">{(selectedStudent?.transportAssignment || selectedStudent?.transport_assignment)?.route?.title || t("not_assigned")}</span></div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("vehicle")}</span><span className="text-gray-700 font-medium">{(selectedStudent?.transportAssignment || selectedStudent?.transport_assignment)?.vehicle?.vehicle_no || t("not_assigned")}</span></div>
+                        <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-bold text-gray-400 uppercase tracking-tight">{t("pickup_point")}</span><span className="text-gray-700 font-medium">{((selectedStudent?.transportAssignment || selectedStudent?.transport_assignment) as any)?.pickupPoint?.name || (selectedStudent?.transportAssignment || selectedStudent?.transport_assignment)?.pickup_point?.name || t("not_assigned")}</span></div>
                     </div>
                     <DialogFooter>
                         <Button onClick={() => setIsViewModalOpen(false)} className="rounded-full px-8 h-9 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold uppercase shadow-lg active:scale-95 transition-all">{t("close")}</Button>
