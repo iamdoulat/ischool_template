@@ -44,6 +44,7 @@ interface HostelMaster {
     name: string;
     type: string;
     address: string;
+    intake: number | null;
     description: string;
 }
 
@@ -79,6 +80,7 @@ export default function HostelMasterPage() {
         name: "",
         type: "",
         address: "",
+        intake: null as number | null,
         description: "",
     });
 
@@ -120,7 +122,7 @@ export default function HostelMasterPage() {
                 await api.post("/hostels", submitData);
                 tt.success("hostel_created_successfully");
             }
-            setForm({ id: null, name: "", type: "", address: "", description: "" });
+            setForm({ id: null, name: "", type: "", address: "", intake: null, description: "" });
             fetchHostels();
         } catch (error) {
             tt.error("failed_to_save_hostel");
@@ -135,6 +137,7 @@ export default function HostelMasterPage() {
             name: hostel.name,
             type: hostel.type,
             address: hostel.address || "",
+            intake: hostel.intake || null,
             description: hostel.description || "",
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -165,7 +168,8 @@ export default function HostelMasterPage() {
         const data = filteredHostels.map(h => ({
             [t("hostel_name")]: h.name,
             [t("type")]: h.type,
-            [t("address")]: h.address
+            [t("address")]: h.address,
+            [t("intake")]: h.intake
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -179,15 +183,15 @@ export default function HostelMasterPage() {
         const doc = new jsPDF();
         doc.text(t("hostel_list"), 14, 15);
         autoTable(doc, {
-            head: [[t("hostel_name"), t("type"), t("address")]],
-            body: filteredHostels.map(h => [h.name, h.type, h.address]),
+            head: [[t("hostel_name"), t("type"), t("address"), t("intake")]],
+            body: filteredHostels.map(h => [h.name, h.type, h.address, h.intake || ""]),
             startY: 20,
         });
         doc.save("hostels.pdf");
     };
 
     const copyToClipboard = () => {
-        const text = filteredHostels.map(h => h.name + '\t' + h.type + '\t' + h.address).join('\n');
+        const text = filteredHostels.map(h => h.name + '\t' + h.type + '\t' + h.address + '\t' + (h.intake || '')).join('\n');
         navigator.clipboard.writeText(text);
         tt.success("copied_to_clipboard");
     };
@@ -247,6 +251,17 @@ export default function HostelMasterPage() {
                             </div>
 
                             <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("intake")}</Label>
+                                <Input
+                                    type="number"
+                                    value={form.intake || ""}
+                                    onChange={(e) => setForm({ ...form, intake: e.target.value ? parseInt(e.target.value) : null })}
+                                    className="h-8 border-gray-200 text-[11px] focus-visible:ring-indigo-500 rounded shadow-none"
+                                    placeholder=""
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("description")}</Label>
                                 <Textarea
                                     value={form.description}
@@ -297,7 +312,6 @@ export default function HostelMasterPage() {
 
                             <div className="flex items-center gap-2">
                                 <div className="flex items-center gap-1.5 mr-2">
-                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{itemsPerPage}</span>
                                     <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
                                         <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
                                             <SelectValue />
@@ -344,6 +358,9 @@ export default function HostelMasterPage() {
                                             <div className="flex items-center gap-1 cursor-pointer">{t("address")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
+                                            <div className="flex items-center gap-1 cursor-pointer">{t("intake")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
+                                        </TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
                                             <div className="flex items-center gap-1 cursor-pointer">{t("description")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div>
                                         </TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
@@ -351,10 +368,10 @@ export default function HostelMasterPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {fetching ? (
-                                        <SkeletonRows cols={5} />
+                                        <SkeletonRows cols={6} />
                                     ) : paginatedHostels.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="text-center py-10 text-gray-400 italic">{t("no_hostels_found")}</TableCell>
+                                            <TableCell colSpan={6} className="text-center py-10 text-gray-400 italic">{t("no_hostels_found")}</TableCell>
                                         </TableRow>
                                     ) : (
                                         paginatedHostels.map((hostel) => (
@@ -362,6 +379,7 @@ export default function HostelMasterPage() {
                                                 <TableCell className="py-3 text-gray-700 font-medium">{hostel.name}</TableCell>
                                                 <TableCell className="py-3 text-gray-500 capitalize">{hostel.type}</TableCell>
                                                 <TableCell className="py-3 text-gray-500">{hostel.address || '-'}</TableCell>
+                                                <TableCell className="py-3 text-gray-500">{hostel.intake || '-'}</TableCell>
                                                 <TableCell className="py-3 text-gray-500 max-w-[200px] truncate">{hostel.description || '-'}</TableCell>
                                                 <TableCell className="py-3 text-right">
                                                     <div className="flex items-center justify-end gap-1">

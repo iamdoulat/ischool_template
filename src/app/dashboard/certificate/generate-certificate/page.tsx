@@ -286,7 +286,7 @@ export default function GenerateCertificatePage() {
                         </span>
                         <div className="min-w-0">
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_of_y_selected", { selected: selected.length, total: filtered.length })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{selected.length} of {filtered.length} Selected</p>
                         </div>
                     </div>
                     <Button onClick={handleGenerate} disabled={selected.length === 0} className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all disabled:opacity-40">
