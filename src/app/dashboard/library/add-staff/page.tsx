@@ -274,16 +274,16 @@ export default function AddStaffLibraryPage() {
     return (
         <div className="space-y-6">
             {/* Staff Member List Section */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+            <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
+                <div className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <UserCog className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("staff_member_list")}</CardTitle>
+                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("staff_member_list")}</h1>
                         <p className="text-[11px] text-gray-500 mt-1">{t("staff_records_count", { count: pagination?.total ?? staffList.length })}</p>
                     </div>
-                </CardHeader>
+                </div>
                 <CardContent className="space-y-4">
                     {/* Toolbar */}
                     <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
@@ -445,11 +445,11 @@ export default function AddStaffLibraryPage() {
 
             {/* Add / Edit Membership Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-[425px] p-0 flex flex-col">
+                    <DialogHeader className="px-6 py-4 border-b border-gray-100 shrink-0 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10 rounded-t-lg">
                         <DialogTitle className="text-lg font-bold text-gray-800">{isEditing ? t("edit_library_member") : t("add_library_member")}</DialogTitle>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    <div className="grid gap-4 p-6 overflow-y-auto">
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("staff_name")}</Label>
                             <Input value={selectedStaff?.name || ""} disabled className="h-9 bg-gray-50 border-gray-200 text-xs shadow-none" />
@@ -477,7 +477,7 @@ export default function AddStaffLibraryPage() {
                             </div>
                         </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="px-6 py-4 border-t border-gray-100 shrink-0 bg-gray-50/50 rounded-b-lg">
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full" disabled={saving}>{t("cancel")}</Button>
                         <Button onClick={isEditing ? updateMembership : saveMembership} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] uppercase font-bold shadow-lg active:scale-95 transition-all" disabled={saving}>
                             {saving ? t("saving") : isEditing ? t("update_member") : t("add_member")}

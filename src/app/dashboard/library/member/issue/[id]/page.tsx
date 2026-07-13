@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import QRCode from "qrcode";
+import { getImageUrl } from "@/lib/image-url";
 
 interface MemberData {
     id: number;
@@ -54,8 +55,10 @@ interface MemberData {
         phone?: string;
         email?: string;
         dob?: string;
-        school_class?: { class: string };
-        section?: { section: string };
+        avatar?: string;
+        school_class?: { name: string };
+        schoolClass?: { name: string };
+        section?: { name: string };
     };
 }
 
@@ -308,7 +311,11 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                         <div className="p-6 flex flex-col items-center border-b border-gray-100">
                             <div className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-100 mb-2 bg-gray-100 flex items-center justify-center text-2xl font-bold text-gray-400">
-                                {member?.user?.name?.charAt(0)?.toUpperCase() || "?"}
+                                {member?.user?.avatar ? (
+                                    <img src={getImageUrl(member.user.avatar)} alt={member.user.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    member?.user?.name?.charAt(0)?.toUpperCase() || "?"
+                                )}
                             </div>
                             <h2 className="text-sm font-bold text-gray-800">{member?.user?.name || t("loading")}</h2>
                         </div>
@@ -321,7 +328,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                 { label: t("gender"), value: member?.user?.gender || "-" },
                                 { label: t("member_type"), value: member?.member_type ? (member.member_type.charAt(0).toUpperCase() + member.member_type.slice(1)) : "-" },
                                 { label: t("mobile_number"), value: member?.user?.phone || "-", color: "text-indigo-400" },
-                                { label: t("class_section"), value: member?.user?.school_class ? `${member.user.school_class.class} (${member.user.section?.section || ""})` : "-", color: "text-indigo-400" },
+                                { label: t("class_section"), value: member?.member_type === "staff" ? "None" : ((member?.user?.schoolClass || member?.user?.school_class) ? `${(member?.user?.schoolClass || member?.user?.school_class)?.name} (${member.user.section?.name || ""})` : "-"), color: "text-indigo-400" },
                             ].map((item, i) => (
                                 <div key={i} className="flex justify-between items-center py-2.5 px-4 border-b border-gray-50 last:border-0">
                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{item.label}</span>

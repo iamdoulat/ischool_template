@@ -274,13 +274,13 @@ export default function BookListPage() {
 
     return (
         <div className="space-y-6">
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+            <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
+                <div className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <Library className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("book_list")}</CardTitle>
+                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("book_list")}</h1>
                         <p className="text-[11px] text-gray-500 mt-1">{t("books_in_library_count", { count: pagination?.total ?? books.length })}</p>
                     </div>
                     <Button
@@ -289,7 +289,7 @@ export default function BookListPage() {
                     >
                         <Plus className="h-4 w-4" /> {t("add_book")}
                     </Button>
-                </CardHeader>
+                </div>
                 <CardContent className="space-y-4">
                     {/* Toolbar */}
                     <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
@@ -451,11 +451,11 @@ export default function BookListPage() {
 
             {/* Add/Edit Book Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[600px]">
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="px-6 py-4 border-b border-gray-100 shrink-0 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10 rounded-t-lg">
                         <DialogTitle className="text-lg font-bold text-gray-800">{editingBook ? t("edit_book") : t("add_new_book")}</DialogTitle>
                     </DialogHeader>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 overflow-y-auto custom-scrollbar flex-1">
                         <div className="space-y-1.5 sm:col-span-2">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("book_title_label")} <span className="text-red-500">*</span></Label>
                             <Input
@@ -548,7 +548,7 @@ export default function BookListPage() {
                             />
                         </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="px-6 py-4 border-t border-gray-100 shrink-0 bg-gray-50/50 rounded-b-lg">
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full" disabled={saving}>{t("cancel")}</Button>
                         <Button onClick={handleSave} disabled={saving} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] uppercase font-bold shadow-lg active:scale-95 transition-all">
                             {saving ? t("saving") : t("save_book")}

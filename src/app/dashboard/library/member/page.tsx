@@ -150,16 +150,16 @@ export default function LibraryMembersPage() {
 
     return (
         <div className="space-y-6">
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+            <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
+                <div className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <Users className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("library_members")}</CardTitle>
+                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("library_members")}</h1>
                         <p className="text-[11px] text-gray-500 mt-1">{t("members_registered_count", { count: pagination?.total ?? members.length })}</p>
                     </div>
-                </CardHeader>
+                </div>
                 <CardContent className="space-y-4">
                     {/* Toolbar */}
                     <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
