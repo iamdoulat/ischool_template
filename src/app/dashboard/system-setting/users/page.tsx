@@ -303,6 +303,19 @@ export default function UsersPage() {
         }
     };
 
+    const handleEditStudentSelect = async (studentId: string) => {
+        setEditSelectedStudentId(studentId);
+        if (!studentId) return;
+        try {
+            const response = await api.get(`/students/${studentId}/matching-parent-username`);
+            if (response.data.data?.parent_username) {
+                setEditFormData(prev => ({ ...prev, username: response.data.data.parent_username }));
+            }
+        } catch (error) {
+            console.error("Error fetching matching parent username:", error);
+        }
+    };
+
     const openEditDialog = async (user: any) => {
         setEditingUserId(user.id);
         setEditFormData({
@@ -329,6 +342,12 @@ export default function UsersPage() {
                 setEditSelectedClassId(classId);
                 await fetchEditSections(classId);
                 if (sectionId) {
+                    setEditSections(prev => {
+                        if (!prev.some(s => s.id.toString() === sectionId)) {
+                            return [...prev, { id: parseInt(sectionId), name: linked.section?.name || 'Unknown' }];
+                        }
+                        return prev;
+                    });
                     setEditSelectedSectionId(sectionId);
                     await fetchEditStudents(classId, sectionId);
                     setEditSelectedStudentId(studentId);
@@ -605,11 +624,11 @@ export default function UsersPage() {
                                                         </AvatarFallback>
                                                     </Avatar>
                                                 </TableCell>
-                                                <TableCell className="py-2 px-4 text-[12px] font-medium text-indigo-500 hover:underline cursor-pointer">{user.guardian_name || user.name}</TableCell>
+                                                <TableCell className="py-2 px-4 text-[12px] font-medium text-indigo-500 hover:underline cursor-pointer">{user.linked_student?.guardian_name || user.guardian_name || user.name}</TableCell>
                                                 <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.linked_student?.full_name || (user.linked_student?.name && user.linked_student?.last_name ? `${user.linked_student.name} ${user.linked_student.last_name}` : user.linked_student?.name) || user.full_name || user.name || "N/A"}</TableCell>
-                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.guardian_phone || user.phone || "N/A"}</TableCell>
-                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.guardian_email || user.email || "N/A"}</TableCell>
-                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.username || "N/A"}</TableCell>
+                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.linked_student?.guardian_phone || user.guardian_phone || user.phone || "N/A"}</TableCell>
+                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.linked_student?.guardian_email || user.guardian_email || user.email || "N/A"}</TableCell>
+                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.linked_student?.parent_username || user.parent_username || user.username || "N/A"}</TableCell>
                                             </>
                                         ) : (
                                             <>
@@ -622,7 +641,7 @@ export default function UsersPage() {
                                                     </Avatar>
                                                 </TableCell>
                                                 <TableCell className="py-2 px-4 text-[12px] font-medium text-indigo-500 hover:underline cursor-pointer">{user.name}</TableCell>
-                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.username || "N/A"}</TableCell>
+                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.username || user.email || "N/A"}</TableCell>
                                                 <TableCell className="py-2 px-4 text-[12px] text-gray-500">
                                                     <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold">
                                                         {user.role}
@@ -1037,12 +1056,33 @@ export default function UsersPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label>{t("username")}</Label>
-                                <Input
-                                    value={editFormData.username}
-                                    onChange={(e) => setEditFormData(prev => ({ ...prev, username: e.target.value }))}
-                                    placeholder="Username"
-                                    className="h-9 text-[12px]"
-                                />
+                                <div className="flex gap-1.5">
+                                    <Input
+                                        value={editFormData.username}
+                                        onChange={(e) => setEditFormData(prev => ({ ...prev, username: e.target.value }))}
+                                        placeholder="Username"
+                                        className="h-9 text-[12px]"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-9 w-9 shrink-0"
+                                        onClick={async () => {
+                                            try {
+                                                const response = await api.get("/system-setting/users/generate-parent-username");
+                                                if (response.data.data?.auto_enabled) {
+                                                    setEditFormData(prev => ({ ...prev, username: response.data.data.username }));
+                                                }
+                                            } catch (error) {
+                                                console.error("Error fetching parent username:", error);
+                                            }
+                                        }}
+                                        title={t("generate_username")}
+                                    >
+                                        <RefreshCw className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                             <div className="space-y-2">
                                 <Label>{t("guardian_name")}</Label>
@@ -1098,7 +1138,7 @@ export default function UsersPage() {
                             <Label>{t("link_to_student")}</Label>
                             <select
                                 value={editSelectedStudentId}
-                                onChange={(e) => setEditSelectedStudentId(e.target.value)}
+                                onChange={(e) => handleEditStudentSelect(e.target.value)}
                                 className="flex h-9 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-1.5 text-[12px] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:bg-card transition-all appearance-none cursor-pointer"
                                 disabled={!editSelectedSectionId || editLoadingStudents}
                             >

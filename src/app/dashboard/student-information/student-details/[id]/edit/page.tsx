@@ -203,9 +203,8 @@ export default function StudentEditPage() {
 
     const fetchPrerequisites = async () => {
         try {
-            const [classesRes, sectionsRes, categoriesRes, housesRes, disableReasonsRes, feeGroupsRes, feeDiscountsRes, routesRes, pickupsRes, hostelsRes, roomsRes] = await Promise.all([
+            const [classesRes, categoriesRes, housesRes, disableReasonsRes, feeGroupsRes, feeDiscountsRes, routesRes, pickupsRes, hostelsRes, roomsRes] = await Promise.all([
                 api.get("/academics/classes?no_paginate=true"),
-                api.get("/academics/sections?no_paginate=true"),
                 api.get("/student-categories"),
                 api.get("/student-houses"),
                 api.get("/disable-reasons"),
@@ -217,7 +216,6 @@ export default function StudentEditPage() {
                 api.get("/rooms")
             ]);
             setClasses(classesRes.data.data?.data || classesRes.data.data || []);
-            setSections(sectionsRes.data.data?.data || sectionsRes.data.data || []);
             setCategories(categoriesRes.data.data?.data || categoriesRes.data.data || []);
             setHouses(housesRes.data.data?.data || housesRes.data.data || []);
             setDisableReasons(disableReasonsRes.data.data?.data || disableReasonsRes.data.data || []);
@@ -232,10 +230,36 @@ export default function StudentEditPage() {
         }
     };
 
+    const fetchSectionsForClass = async (classId: string, currentSectionId?: string, currentSectionName?: string) => {
+        if (!classId) {
+            setSections([]);
+            return;
+        }
+        try {
+            const response = await api.get(`/academics/sections?no_paginate=true&school_class_id=${classId}`);
+            let fetchedSections = response.data.data?.data || response.data.data || [];
+            
+            // Ensure the current section is in the list (in case it's a globally grouped ID that doesn't strictly belong to this class)
+            if (currentSectionId && currentSectionName) {
+                if (!fetchedSections.some((s: any) => s.id.toString() === currentSectionId.toString())) {
+                    fetchedSections = [...fetchedSections, { id: parseInt(currentSectionId), name: currentSectionName }];
+                }
+            }
+            
+            setSections(fetchedSections);
+        } catch (error) {
+            console.error("Error fetching sections for class:", error);
+        }
+    };
+
     const fetchStudentData = async () => {
         try {
             const response = await api.get(`/students/${id}`);
             const student = response.data.data;
+            
+            if (student.school_class_id) {
+                fetchSectionsForClass(student.school_class_id.toString(), student.section_id?.toString(), student.section?.name);
+            }
             
             setFormData({
                 admission_no: student.admission_no || "",
@@ -470,6 +494,11 @@ export default function StudentEditPage() {
                     setAvatarPreview(reader.result as string);
                 };
                 reader.readAsDataURL(value);
+            }
+
+            if (field === "school_class_id") {
+                newData.section_id = "";
+                fetchSectionsForClass(value);
             }
 
             return newData;
