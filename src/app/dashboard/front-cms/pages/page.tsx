@@ -96,7 +96,9 @@ export default function PagesListPage() {
         setLoading(true);
         try {
             const res = await api.get("front-cms/pages");
-            setPages(res.data?.data ?? []);
+            // Defensive unwrapping to handle any backend response shape inconsistency
+            const extractedData = res.data?.data?.data || res.data?.data || res.data || [];
+            setPages(Array.isArray(extractedData) ? extractedData : []);
         } catch {
             tt.error("failed_to_load_pages");
         } finally { setLoading(false); }

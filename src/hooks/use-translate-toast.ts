@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslation } from "@/hooks/use-translation";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -17,7 +18,7 @@ export function useTranslateToast() {
     const { t } = useTranslation();
     const { toast } = useToast();
 
-    return {
+    return useMemo(() => ({
         success: (key: string, params?: Record<string, string | number>) =>
             toast("success", t(key, params)),
         error: (key: string, params?: Record<string, string | number>) =>
@@ -26,5 +27,5 @@ export function useTranslateToast() {
             toast(type, t(key, params)),
         info: (key: string, params?: Record<string, string | number>) =>
             toast({ title: t("info"), description: t(key, params), duration: 4000 }),
-    };
+    }), [t, toast]);
 }

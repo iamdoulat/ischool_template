@@ -343,7 +343,7 @@ export default function MenusPage() {
                             )}
 
                             <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-4 mt-4 border-t border-gray-100">
-                                <div>{t("showing_x_entries", { count: currentMenus.length })}</div>
+                                <div>{t("showing")} {currentMenus.length} {t("entries")}</div>
                             </div>
                         </CardContent>
                     </Card>

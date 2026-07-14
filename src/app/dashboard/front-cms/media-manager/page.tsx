@@ -83,7 +83,8 @@ export default function MediaManagerPage() {
         setLoading(true);
         try {
             const res = await api.get("front-cms/media");
-            setMedia(res.data?.data ?? []);
+            const extractedData = res.data?.data?.data || res.data?.data || res.data || [];
+            setMedia(Array.isArray(extractedData) ? extractedData : []);
         } catch {
             tt.error("failed_to_load_media");
         } finally { setLoading(false); }
@@ -181,7 +182,7 @@ export default function MediaManagerPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold text-slate-800 leading-none">{t("media_library")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_files_in_library", { count: media.length })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{media.length} {t("files_in_library")}</p>
                         </div>
                     </div>
                 </CardHeader>
