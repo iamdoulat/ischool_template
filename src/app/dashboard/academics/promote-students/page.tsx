@@ -77,9 +77,23 @@ export default function PromoteStudentsPage() {
     const [promoteClassId, setPromoteClassId] = useState<string>("");
     const [promoteSectionId, setPromoteSectionId] = useState<string>("");
 
+    // Unique sections helper to avoid double/duplicate section letters (e.g. A, B, A, B)
+    const getUniqueSections = (allSections: Section[], classId: string): Section[] => {
+        const classSpecific = classId ? allSections.filter(s => String(s.school_class_id) === String(classId)) : [];
+        const candidates = classSpecific.length > 0 ? classSpecific : allSections.filter(s => !s.school_class_id || String(s.school_class_id) === String(classId));
+
+        const seen = new Set<string>();
+        return candidates.filter(s => {
+            const key = s.name.trim().toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    };
+
     // Filtered sections by selected class
-    const filteredSections = sections.filter(s => s.school_class_id === parseInt(currentClassId));
-    const promoteFilteredSections = sections.filter(s => s.school_class_id === parseInt(promoteClassId));
+    const filteredSections = getUniqueSections(sections, currentClassId);
+    const promoteFilteredSections = getUniqueSections(sections, promoteClassId);
 
     // Results
     const [students, setStudents] = useState<Student[]>([]);
@@ -133,10 +147,12 @@ export default function PromoteStudentsPage() {
                     section_id: currentSectionId
                 }
             });
-            const fetchedStudents = (response.data.data || []).map((s: Student) => ({
+            const data = response.data?.data?.data || response.data?.data || response.data || [];
+            const rawList = Array.isArray(data) ? data : [];
+            const fetchedStudents = rawList.map((s: Student) => ({
                 ...s,
-                result: "pass", // Default Pass
-                status: "continue" // Default Continue
+                result: s.result || "pass", // Default Pass
+                status: s.status || "continue" // Default Continue
             }));
             setStudents(fetchedStudents);
             setSelectedStudentIds(fetchedStudents.map((s: Student) => s.id));
@@ -482,7 +498,7 @@ export default function PromoteStudentsPage() {
                 </Card>
             )}
 
-            {students.length === 0 && !searching && (
+            {!hasSearched && !searching && students.length === 0 && (
                 <div className="bg-white rounded-lg shadow-sm border p-12 flex flex-col items-center justify-center text-center space-y-4">
                     <div className="p-4 bg-indigo-50 rounded-full">
                         <Search className="h-8 w-8 text-indigo-400 opacity-50" />

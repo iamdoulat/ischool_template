@@ -59,15 +59,10 @@ api.interceptors.response.use(
         if (error.response?.status === 401) {
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('auth_token');
-                // Avoid an infinite reload loop: only redirect to /login when we
-                // are NOT already on a public auth page. The login page itself
-                // calls public endpoints on mount that can legitimately 401.
+                // Only redirect to /login if the user is on a protected route (/dashboard or /user)
                 const path = window.location.pathname;
-                const publicAuthPaths = ['/login', '/forgot-password', '/reset-password'];
-                const onPublicAuthPage = publicAuthPaths.some(
-                    (p) => path === p || path.startsWith(`${p}/`)
-                );
-                if (!onPublicAuthPage) {
+                const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/user');
+                if (isProtectedRoute) {
                     window.location.href = '/login';
                 }
             }

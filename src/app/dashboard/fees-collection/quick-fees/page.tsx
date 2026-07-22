@@ -1,13 +1,13 @@
 "use client";
 
 interface FeePayment { amount: number; [key: string]: unknown; }
-interface DueFee { id: number; fee_master: { amount: number; fee_group?: { name?: string }; fee_type?: { name?: string; code?: string }; due_date?: string; fine_amount?: number; [key: string]: unknown }; payments: FeePayment[]; due_date?: string; [key: string]: unknown; }
-interface StudentData { name?: string; last_name?: string; admission_no?: string; [key: string]: unknown; }
+interface DueFee { id: number; is_transport?: boolean; fee_master_id?: number; transport_fee_master_id?: number; fee_master: { amount: number; fee_group?: { name?: string }; fee_type?: { name?: string; code?: string }; due_date?: string; fine_amount?: number; [key: string]: unknown }; payments: FeePayment[]; due_date?: string; [key: string]: unknown; }
+interface StudentData { id?: number; name?: string; last_name?: string; admission_no?: string; [key: string]: unknown; }
 interface ClassItem { id: number; name: string; sections?: SectionItem[]; [key: string]: unknown; }
 interface SectionItem { id: number; name: string; [key: string]: unknown; }
 interface StudentItem { id: number; name: string; last_name?: string; admission_no?: string; [key: string]: unknown; }
 
-import { Search, Zap, ChevronDown, UserCircle, CreditCard, Calendar, FileText, CheckCircle2, Loader2 } from "lucide-react";
+import { Search, Zap, ChevronDown, UserCircle, CreditCard, Calendar, FileText, CheckCircle2, Loader2, Edit, Trash2, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -51,13 +52,17 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function QuickFeesPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const paramStudentId = searchParams.get("student_id") || "";
+
     const { symbol } = useCurrencyFormatter();
     const [classes, setClasses] = useState<ClassItem[]>([]);
     const [sections, setSections] = useState<SectionItem[]>([]);
     const [students, setStudents] = useState<StudentItem[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
     const [selectedSection, setSelectedSection] = useState("");
-    const [selectedStudentId, setSelectedStudentId] = useState("");
+    const [selectedStudentId, setSelectedStudentId] = useState(paramStudentId);
 
     const [loading, setLoading] = useState(false);
     const [fetchingStudents, setFetchingStudents] = useState(false);
@@ -74,13 +79,6 @@ export default function QuickFeesPage() {
         note: "",
         date: new Date().toISOString().split('T')[0]
     });
-
-    const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
-    const [feeMasters, setFeeMasters] = useState<any[]>([]);
-    const [transportFeeMasters, setTransportFeeMasters] = useState<any[]>([]);
-    const [selectedFeeMasterId, setSelectedFeeMasterId] = useState("");
-    const [selectedTransportFeeMasterId, setSelectedTransportFeeMasterId] = useState("");
-    const [invoiceLoading, setInvoiceLoading] = useState(false);
 
     const { toast } = useToast();
 
@@ -102,19 +100,38 @@ export default function QuickFeesPage() {
     }, [fetchDropdowns]);
 
     const fetchStudents = useCallback(async (classId: string, sectionId: string) => {
-        if (!classId || !sectionId) return;
+        if (!classId) {
+            setStudents([]);
+            return;
+        }
         setFetchingStudents(true);
         try {
-            const res = await api.get("/fee-collection/search-students", {
-                params: { school_class_id: classId, section_id: sectionId, no_paginate: true }
-            });
-            setStudents(res.data.data?.data || res.data.data || []);
+            const params: Record<string, unknown> = { school_class_id: classId, no_paginate: true };
+            if (sectionId) {
+                params.section_id = sectionId;
+            }
+            const res = await api.get("/fee-collection/search-students", { params });
+            const list = res.data.data?.data || res.data.data || res.data || [];
+            setStudents(Array.isArray(list) ? list : []);
         } catch (error) {
-            toast("error", "Failed to fetch students");
+            console.error("Failed to fetch students:", error);
+            setStudents([]);
         } finally {
             setFetchingStudents(false);
         }
-    }, [toast]);
+    }, []);
+
+    const filteredSections = (() => {
+        const classSpecific = selectedClass ? sections.filter(s => String((s as Record<string, unknown>).school_class_id || '') === String(selectedClass)) : [];
+        const candidates = classSpecific.length > 0 ? classSpecific : sections.filter(s => !(s as Record<string, unknown>).school_class_id || String((s as Record<string, unknown>).school_class_id || '') === String(selectedClass));
+        const seen = new Set<string>();
+        return candidates.filter(s => {
+            const key = s.name.trim().toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    })();
 
     useEffect(() => {
         if (students.length === 1 && !selectedStudentId) {
@@ -136,7 +153,7 @@ export default function QuickFeesPage() {
             const res = await api.get(`/fee-collection/student-fees/${selectedStudentId}`);
             setStudentData(res.data.data.student);
             setDueFees(res.data.data.fees);
-        } catch (error) {
+        } catch {
             toast("error", "Failed to fetch student fees");
         } finally {
             setLoading(false);
@@ -162,7 +179,7 @@ export default function QuickFeesPage() {
         if (!selectedFee) return;
         setLoading(true);
         try {
-            const payload: any = { ...paymentData };
+            const payload: Record<string, unknown> = { ...paymentData };
             if (selectedFee.is_transport) {
                 payload.student_transport_fee_id = selectedFee.id;
             } else {
@@ -180,49 +197,37 @@ export default function QuickFeesPage() {
         }
     };
 
-    const openInvoiceDialog = async () => {
-        if (!selectedStudentId) {
-            toast("error", "Please select a student first");
-            return;
-        }
-
-        if (!studentData || studentData.id?.toString() !== selectedStudentId) {
-            await handleSearch();
-        }
-
-        setIsInvoiceDialogOpen(true);
+    const handleDeleteFee = async (fee: DueFee) => {
+        if (!confirm("Are you sure you want to delete this invoice fee item?")) return;
+        setLoading(true);
         try {
-            const [res1, res2] = await Promise.all([
-                api.get("/fees-masters?no_paginate=true"),
-                api.get("/transport/fees-master")
-            ]);
-            setFeeMasters(res1.data.data?.data || res1.data.data || []);
-            setTransportFeeMasters(res2.data.data?.data || res2.data.data || []);
-        } catch (error) {
-            toast("error", "Failed to load fee masters");
-        }
-    };
-
-    const handleInvoiceSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedFeeMasterId && !selectedTransportFeeMasterId) return;
-        setInvoiceLoading(true);
-        try {
-            await api.post("/fee-collection/assign-manual-fee", {
-                student_id: selectedStudentId,
-                fee_master_id: selectedFeeMasterId || null,
-                transport_fee_master_id: selectedTransportFeeMasterId || null
+            await api.delete(`/fee-collection/student-fees/${fee.id}`, {
+                params: { is_transport: fee.is_transport ? true : false }
             });
-            toast("success", "Invoice generated successfully");
-            setIsInvoiceDialogOpen(false);
-            setSelectedFeeMasterId("");
-            setSelectedTransportFeeMasterId("");
+            toast("success", "Invoice fee item deleted successfully");
             handleSearch();
         } catch (error) {
             const err = error as { response?: { data?: { message?: string } } };
-            toast("error", err.response?.data?.message || "Failed to generate invoice");
+            toast("error", err.response?.data?.message || "Failed to delete fee item");
         } finally {
-            setInvoiceLoading(false);
+            setLoading(false);
+        }
+    };
+
+    const handleToggleStatus = async (fee: DueFee, targetStatus: "paid" | "unpaid") => {
+        setLoading(true);
+        try {
+            await api.put(`/fee-collection/student-fees/${fee.id}`, {
+                is_transport: fee.is_transport ? true : false,
+                status: targetStatus
+            });
+            toast("success", `Fee status changed to ${targetStatus.toUpperCase()}`);
+            handleSearch();
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string } } };
+            toast("error", err.response?.data?.message || "Failed to change fee status");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -271,7 +276,7 @@ export default function QuickFeesPage() {
                                     onChange={(e) => { setSelectedSection(e.target.value); setSelectedStudentId(""); }}
                                 >
                                     <option value="">Select Section</option>
-                                    {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    {filteredSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-transform group-focus-within:rotate-180" />
                             </div>
@@ -287,21 +292,26 @@ export default function QuickFeesPage() {
                                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                     value={selectedStudentId}
                                     onChange={(e) => setSelectedStudentId(e.target.value)}
-                                    disabled={fetchingStudents}
+                                    disabled={fetchingStudents || !selectedClass}
                                 >
-                                    <option value="">{fetchingStudents ? "Loading..." : `Select Student (${students.length})`}</option>
-                                    {students.map(s => <option key={s.id} value={s.id}>{s.name} {s.last_name} ({s.admission_no})</option>)}
+                                    <option value="">
+                                        {!selectedClass ? "Select Class First" : (fetchingStudents ? "Loading..." : (students.length === 0 ? "No Students Found" : `Select Student (${students.length})`))}
+                                    </option>
+                                    {students.map(s => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.name} {s.last_name || ""} {s.admission_no ? `(${s.admission_no})` : ""}
+                                        </option>
+                                    ))}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-transform group-focus-within:rotate-180" />
                             </div>
                         </div>
 
-                        <div className="md:col-span-3 flex justify-end gap-3">
+                        <div className="md:col-span-3 flex justify-end gap-3 flex-wrap">
                             <Button
                                 variant="outline"
-                                className="h-11 px-6 rounded-lg font-bold border-muted/50 flex items-center gap-2 transition-all hover:bg-muted/50"
-                                onClick={openInvoiceDialog}
-                                disabled={!selectedStudentId || loading}
+                                className="h-11 px-6 rounded-lg font-bold border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 flex items-center gap-2 transition-all"
+                                onClick={() => router.push(selectedStudentId ? `/dashboard/fees-collection/generate-invoice?student_id=${selectedStudentId}` : '/dashboard/fees-collection/generate-invoice')}
                             >
                                 <FileText className="h-4 w-4" />
                                 Generate Invoice
@@ -402,19 +412,54 @@ export default function QuickFeesPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="py-4 text-center pr-8">
-                                                        {isPaid ? (
-                                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] uppercase tracking-wider">
-                                                                <CheckCircle2 className="h-3 w-3" /> Paid
-                                                            </div>
-                                                        ) : (
-                                                            <Button
-                                                                size="sm"
-                                                                onClick={() => openPaymentDialog(fee)}
-                                                                className="h-8 rounded-lg bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-200 flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 px-3"
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            {isPaid ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleToggleStatus(fee, "unpaid")}
+                                                                    title="Click to mark as Unpaid"
+                                                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold text-[10px] uppercase tracking-wider cursor-pointer transition-colors"
+                                                                >
+                                                                    <CheckCircle2 className="h-3 w-3" /> Paid
+                                                                </button>
+                                                            ) : (
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={() => openPaymentDialog(fee)}
+                                                                    className="h-8 rounded-lg bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-200 flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 px-3"
+                                                                >
+                                                                    <span className="font-bold text-sm leading-none">{symbol}</span> Collect
+                                                                </Button>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    router.push(`/dashboard/fees-collection/generate-invoice?student_id=${selectedStudentId}&fee_id=${fee.id}&auto_pdf=true`);
+                                                                }}
+                                                                title="Download PDF Invoice"
+                                                                className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 transition-colors border border-transparent hover:border-emerald-100"
                                                             >
-                                                                <span className="font-bold text-sm leading-none">{symbol}</span> Collect
-                                                            </Button>
-                                                        )}
+                                                                <Download className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    router.push(`/dashboard/fees-collection/generate-invoice?edit_id=${fee.id}&student_id=${selectedStudentId}`);
+                                                                }}
+                                                                title="Edit Full Invoice"
+                                                                className="p-1.5 rounded-lg hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 transition-colors border border-transparent hover:border-indigo-100"
+                                                            >
+                                                                <Edit className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteFee(fee)}
+                                                                title="Delete Fee Record"
+                                                                className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors border border-transparent hover:border-red-100"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -565,129 +610,6 @@ export default function QuickFeesPage() {
                             >
                                 {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
                                 Complete Payment
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
-
-            {/* Manual Invoice Dialog */}
-            <Dialog open={isInvoiceDialogOpen} onOpenChange={setIsInvoiceDialogOpen}>
-                <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden rounded-lg border-none shadow-2xl">
-                    <DialogHeader className="p-8 bg-gradient-to-r from-emerald-500 to-teal-500 text-white relative">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-white/20 rounded-lg backdrop-blur-md border border-white/30">
-                                <FileText className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <DialogTitle className="text-2xl font-bold tracking-tight">Generate Invoice</DialogTitle>
-                                <DialogDescription className="text-white/80 font-medium">
-                                    Assign a new fee to this student
-                                </DialogDescription>
-                            </div>
-                        </div>
-                    </DialogHeader>
-
-                    <form onSubmit={handleInvoiceSubmit}>
-                        <div className="p-8 space-y-6">
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Select Fee Master
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all font-medium"
-                                        value={selectedFeeMasterId}
-                                        onChange={(e) => setSelectedFeeMasterId(e.target.value)}
-                                    >
-                                        <option value="">Select a regular fee type (optional)...</option>
-                                        {feeMasters.map((fm: any) => {
-                                            const assignedFee = dueFees.find((df: any) => !df.is_transport && df.fee_master_id === fm.id);
-                                            let isDisabled = false;
-                                            let labelSuffix = "";
-
-                                            if (assignedFee) {
-                                                const total = Number(assignedFee.fee_master?.amount || 0);
-                                                const paid = assignedFee.payments?.reduce((acc: number, p: any) => acc + Number(p.amount), 0) || 0;
-                                                
-                                                if (paid >= total && total > 0) {
-                                                    isDisabled = true;
-                                                    labelSuffix = " [Paid]";
-                                                } else {
-                                                    isDisabled = false;
-                                                    labelSuffix = " [Assigned - Unpaid]";
-                                                }
-                                            }
-
-                                            return (
-                                                <option key={fm.id} value={fm.id} disabled={isDisabled}>
-                                                    {fm.fee_group?.name} - {fm.fee_type?.name} ({symbol}{fm.amount}){labelSuffix}
-                                                </option>
-                                            );
-                                        })}
-                                    </select>
-                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Select Transport Fee
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all font-medium"
-                                        value={selectedTransportFeeMasterId}
-                                        onChange={(e) => setSelectedTransportFeeMasterId(e.target.value)}
-                                    >
-                                        <option value="">Select a transport fee month (optional)...</option>
-                                        {transportFeeMasters.map((tfm: any) => {
-                                            const assignedFee = dueFees.find((df: any) => df.is_transport && df.transport_fee_master_id === tfm.id);
-                                            let isDisabled = false;
-                                            let labelSuffix = "";
-
-                                                if (assignedFee) {
-                                                    const total = Number(assignedFee.fee_master?.amount || 0);
-                                                    const paid = assignedFee.payments?.reduce((acc: number, p: any) => acc + Number(p.amount), 0) || 0;
-                                                    
-                                                    if (paid >= total && total > 0) {
-                                                        isDisabled = true;
-                                                        labelSuffix = " [Paid]";
-                                                    } else {
-                                                        isDisabled = false;
-                                                        labelSuffix = " [Assigned - Unpaid]";
-                                                    }
-                                                }
-
-                                                return (
-                                                    <option key={tfm.id} value={tfm.id} disabled={isDisabled}>
-                                                        {tfm.month} {assignedFee ? `(${symbol}${assignedFee.fee_master?.amount || 0})` : ''} {labelSuffix}
-                                                    </option>
-                                                );
-                                            })}
-                                        </select>
-                                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                                    </div>
-                                </div>
-                        </div>
-
-                        <DialogFooter className="p-8 bg-muted/20 border-t border-muted/50 flex gap-4">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="flex-1 h-12 rounded-lg font-bold border-muted/50"
-                                onClick={() => setIsInvoiceDialogOpen(false)}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                variant="gradient"
-                                className="flex-1 h-12 rounded-lg font-bold shadow-lg shadow-primary/20 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
-                                disabled={invoiceLoading || (!selectedFeeMasterId && !selectedTransportFeeMasterId)}
-                            >
-                                {invoiceLoading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
-                                Generate
                             </Button>
                         </DialogFooter>
                     </form>

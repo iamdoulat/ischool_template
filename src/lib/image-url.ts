@@ -7,29 +7,29 @@ export function getImageUrl(
 
   let cleanPath = path.replace(/\\/g, '/');
 
-  // If it's a full URL, extract the relative part after the last /storage/
-  if (cleanPath.startsWith("http")) {
+  const domain = (
+    baseUrl ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "https://api.ischool.mddoulat.com"
+  )
+    .replace(/\/+$/, "")
+    .replace(/\/api\/v1\/?$/, "");
+
+  // If it's a full URL
+  if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
     const storageIndex = cleanPath.lastIndexOf("/storage/");
     if (storageIndex !== -1) {
       cleanPath = cleanPath.substring(storageIndex + 9);
     } else {
-      // No /storage/ segment — can't rebuild, return as-is
-      return cleanPath;
+      // Replace any localhost or HTTP domain with current domain
+      return cleanPath.replace(/^https?:\/\/[^\/]+/, domain);
     }
   }
 
-  // Remove redundant storage prefix if it somehow got saved in the DB
+  // Remove redundant storage prefix if present
   if (cleanPath.startsWith("/storage/")) cleanPath = cleanPath.substring(9);
   else if (cleanPath.startsWith("storage/")) cleanPath = cleanPath.substring(8);
-  // Also remove leading slash if any
   if (cleanPath.startsWith("/")) cleanPath = cleanPath.substring(1);
-
-  const domain = baseUrl
-    ? baseUrl.replace(/\/+$/, "")
-    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(
-        /\/api\/v1\/?$/,
-        ""
-      );
 
   return `${domain}/storage/${cleanPath}`;
 }
@@ -48,6 +48,6 @@ export function useBaseUrl() {
     return settings.base_url.replace(/\/+$/, "");
   }
   return (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+    process.env.NEXT_PUBLIC_API_URL || "https://api.ischool.mddoulat.com"
   ).replace(/\/api\/v1\/?$/, "");
 }

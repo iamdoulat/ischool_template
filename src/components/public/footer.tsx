@@ -16,11 +16,14 @@ import {
 import { useSettings } from "@/components/providers/settings-provider";
 import { useImageUrl } from "@/lib/image-url";
 import { getPublicMenus, type PublicMenuItem as MenuItem } from "@/lib/public-menus";
+import { useTranslation } from "@/hooks/use-translation";
 
 export function PublicFooter() {
     const { settings } = useSettings();
     const getImageUrl = useImageUrl();
+    const { t } = useTranslation();
     const [footerMenus, setFooterMenus] = useState<MenuItem[]>([]);
+
     useEffect(() => {
         let active = true;
         getPublicMenus().then((menus) => {
@@ -34,13 +37,16 @@ export function PublicFooter() {
             ? item.url || "#"
             : `/${(item.page || '').replace(/^\//, '')}`;
 
+        const key = item.title.toLowerCase().trim().replace(/[\s\-_]+/g, '_');
+        const translatedTitle = t(key) !== key ? t(key) : item.title;
+
         return (
             <Link
                 href={href}
                 target={item.open_new_tab ? "_blank" : "_self"}
                 className="hover:text-primary transition-colors block py-1"
             >
-                {item.title}
+                {translatedTitle}
             </Link>
         );
     };
@@ -48,6 +54,12 @@ export function PublicFooter() {
     const getColumnMenus = (column: number) => {
         return footerMenus.filter(m => m.column === column);
     };
+
+    // Combine column 1 and column 3 menu items into Information section if column 1 contains extra nav links
+    const informationMenus = [
+        ...getColumnMenus(3),
+        ...getColumnMenus(1),
+    ];
 
     return (
         <footer className="bg-slate-900 text-slate-300">
@@ -83,13 +95,6 @@ export function PublicFooter() {
                             {settings?.school_description || "Empowering students with knowledge, character, and skills for a bright future. Excellence in education since 2026."}
                         </p>
 
-                        {/* Dynamic Column 1 Links */}
-                        <div className="pt-2 space-y-1">
-                            {getColumnMenus(1).map(item => (
-                                <div key={item.id}>{renderMenuLink(item)}</div>
-                            ))}
-                        </div>
-
                         <div className="flex gap-4 pt-2">
                             {settings?.facebook_url && (
                                 <a href={settings.facebook_url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
@@ -121,7 +126,7 @@ export function PublicFooter() {
 
                     {/* Column 2: Quick Links */}
                     <div>
-                        <h3 className="text-white font-bold text-lg mb-4">Quick Links</h3>
+                        <h3 className="text-white font-bold text-lg mb-4">{t("quick_links")}</h3>
                         <ul className="space-y-1 text-sm">
                             {getColumnMenus(2).length > 0 ? (
                                 getColumnMenus(2).map(item => (
@@ -129,12 +134,9 @@ export function PublicFooter() {
                                 ))
                             ) : (
                                 <>
-                                    <li><Link href="#" className="hover:text-primary transition-colors">About Us</Link></li>
-                                    <li><Link href="#" className="hover:text-primary transition-colors">Academics</Link></li>
-                                    <li><Link href="#" className="hover:text-primary transition-colors">Admissions</Link></li>
-                                    <li><Link href="#" className="hover:text-primary transition-colors">Notices</Link></li>
-                                    <li><Link href="#" className="hover:text-primary transition-colors">Exam Results</Link></li>
-                                    <li><Link href="#" className="hover:text-primary transition-colors">Contact Us</Link></li>
+                                    <li><Link href="/" className="hover:text-primary transition-colors">{t("home")}</Link></li>
+                                    <li><Link href="/academics" className="hover:text-primary transition-colors">{t("academics")}</Link></li>
+                                    <li><Link href="/online_admission" className="hover:text-primary transition-colors">{t("admissions")}</Link></li>
                                 </>
                             )}
                         </ul>
@@ -142,19 +144,18 @@ export function PublicFooter() {
 
                     {/* Column 3: Information */}
                     <div>
-                        <h3 className="text-white font-bold text-lg mb-4">Information</h3>
+                        <h3 className="text-white font-bold text-lg mb-4">{t("information")}</h3>
                         <ul className="space-y-1 text-sm">
-                            {getColumnMenus(3).length > 0 ? (
-                                getColumnMenus(3).map(item => (
+                            {informationMenus.length > 0 ? (
+                                informationMenus.map(item => (
                                     <li key={item.id}>{renderMenuLink(item)}</li>
                                 ))
                             ) : (
                                 <>
-                                    <li><Link href="#" className="hover:text-primary transition-colors">Message From Principal</Link></li>
-                                    <li><Link href="#" className="hover:text-primary transition-colors">Message From Chairman</Link></li>
-                                    <li><Link href="#" className="hover:text-primary transition-colors">Mission & Vision</Link></li>
-                                    <li><Link href="#" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
-                                    <li><Link href="#" className="hover:text-primary transition-colors">Terms & Conditions</Link></li>
+                                    <li><Link href="/academics" className="hover:text-primary transition-colors">{t("about_us")}</Link></li>
+                                    <li><Link href="/contact-us" className="hover:text-primary transition-colors">{t("contact_us")}</Link></li>
+                                    <li><Link href="/exam-results" className="hover:text-primary transition-colors">{t("exam_results")}</Link></li>
+                                    <li><Link href="/notices" className="hover:text-primary transition-colors">{t("notices")}</Link></li>
                                 </>
                             )}
                         </ul>
@@ -162,7 +163,7 @@ export function PublicFooter() {
 
                     {/* Column 4: Contact Info */}
                     <div>
-                        <h3 className="text-white font-bold text-lg mb-4">{settings?.footer_contact_title || "Contact Us"}</h3>
+                        <h3 className="text-white font-bold text-lg mb-4">{settings?.footer_contact_title || t("contact_us")}</h3>
                         <ul className="space-y-4 text-sm mb-4">
                             <li className="flex items-start gap-3">
                                 <MapPin className="h-5 w-5 text-primary shrink-0 mt-0.5" />
@@ -180,7 +181,7 @@ export function PublicFooter() {
                         {/* Dynamic Column 4 Links */}
                         <div className="space-y-1">
                             {getColumnMenus(4).length > 0 && (
-                                <h4 className="text-white font-medium text-sm mb-2 opacity-80">{settings?.footer_contact_info_label || "Contact Info"}</h4>
+                                <h4 className="text-white font-medium text-sm mb-2 opacity-80">{settings?.footer_contact_info_label || t("contact_us")}</h4>
                             )}
                             {getColumnMenus(4).map(item => (
                                 <div key={item.id}>{renderMenuLink(item)}</div>
@@ -193,10 +194,10 @@ export function PublicFooter() {
             {/* Copyright Bar */}
             <div className="border-t border-slate-800 bg-slate-950/50">
                 <div className="container mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[12px] text-slate-500">
-                    <p>© {new Date().getFullYear()} {settings?.school_name || "Smart School"}. All rights reserved.</p>
+                    <p>© {new Date().getFullYear()} {settings?.school_name || "Smart School"}. {t("all_rights_reserved")}.</p>
                     <div className="flex gap-6">
-                        <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
-                        <Link href="/terms-and-conditions" className="hover:text-white transition-colors">Terms & Condition</Link>
+                        <Link href="/privacy-policy" className="hover:text-white transition-colors">{t("privacy_policy")}</Link>
+                        <Link href="/terms-and-conditions" className="hover:text-white transition-colors">{t("terms_and_conditions")}</Link>
                     </div>
                 </div>
             </div>

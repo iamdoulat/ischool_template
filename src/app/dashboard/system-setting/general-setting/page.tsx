@@ -46,7 +46,7 @@ import axios from "axios";
 import { useEffect } from "react";
 import { useSettings } from "@/components/providers/settings-provider";
 import api from "@/lib/api";
-import { getImageUrl } from "@/lib/image-url";
+import { getImageUrl, useImageUrl } from "@/lib/image-url";
 import { CheckCircle2, AlertTriangle, Save, Settings } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -420,6 +420,7 @@ export default function GeneralSettingPage() {
         value: string;
     }) => {
         const [uploading, setUploading] = useState(false);
+        const getImageUrl = useImageUrl();
 
         const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];

@@ -23,6 +23,7 @@ export const metadata: Metadata = {
 };
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { LanguageProvider } from "@/components/providers/language-provider";
 
 export default function RootLayout({
   children,
@@ -43,11 +44,13 @@ export default function RootLayout({
         >
           <MSWInit />
           <ToastProvider duration={3000}>
-            <SettingsProvider>
-              {children}
-              <Toaster />
-              <SonnerToaster position="top-center" richColors />
-            </SettingsProvider>
+            <LanguageProvider>
+              <SettingsProvider>
+                {children}
+                <Toaster />
+                <SonnerToaster position="top-center" richColors />
+              </SettingsProvider>
+            </LanguageProvider>
           </ToastProvider>
         </ThemeProvider>
       </body>

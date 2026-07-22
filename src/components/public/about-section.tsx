@@ -6,7 +6,9 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
+
+
+import { useTranslation } from "@/hooks/use-translation";
 
 const defaultAccordions: { id: number; title: string; content: string }[] = [
     { id: 1, title: "Collapsible Group Item #1", content: "Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod." },
@@ -15,7 +17,15 @@ const defaultAccordions: { id: number; title: string; content: string }[] = [
 ];
 
 export function AboutSection({ about }: { about?: { section_title?: string; section_subtitle?: string; title?: string; description?: string; image_url?: string; accordions?: { id: number; title: string; content: string }[] } }) {
+    const { t } = useTranslation();
     const accordions = (about?.accordions && about.accordions.length > 0) ? about.accordions : defaultAccordions;
+    
+    const displaySectionTitle = about?.section_title
+        ? (t(about.section_title.toLowerCase().trim().replace(/[\s\-_]+/g, '_')) !== about.section_title.toLowerCase().trim().replace(/[\s\-_]+/g, '_')
+            ? t(about.section_title.toLowerCase().trim().replace(/[\s\-_]+/g, '_'))
+            : about.section_title)
+        : t("about_us_heading");
+
     return (
         <section className="py-[50px] bg-white relative overflow-hidden">
             {/* Decorative Elements */}
@@ -25,7 +35,7 @@ export function AboutSection({ about }: { about?: { section_title?: string; sect
             <div className="container mx-auto px-4 md:px-8">
                 <div className="text-center space-y-4 mb-10 md:mb-12">
                     <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 uppercase tracking-tight">
-                        {about?.section_title || "About Us"}
+                        {displaySectionTitle}
                     </h2>
                     <div className="h-1.5 w-24 bg-primary mx-auto rounded-full" />
                     {(about?.section_subtitle) && (

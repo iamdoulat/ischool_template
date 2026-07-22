@@ -4,10 +4,21 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, X, Eye } from "lucide-react";
+import { ArrowRight, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
-const defaultCourses = [
+import { useTranslation } from "@/hooks/use-translation";
+
+interface CourseItem {
+    title: string;
+    description: string;
+    price?: string;
+    category?: string;
+    image?: string;
+    link?: string;
+}
+
+const defaultCourses: CourseItem[] = [
     {
         title: "Electrical Engineering",
         category: "Science",
@@ -28,14 +39,15 @@ const defaultCourses = [
     }
 ];
 
-export function CoursesSection({ courses: propCourses, sectionTitle, sectionSubtitle }: { courses?: { title: string; description: string; price?: string; category?: string; image?: string; link?: string }[]; sectionTitle?: string; sectionSubtitle?: string }) {
-    const [detailCourse, setDetailCourse] = useState<any | null>(null);
+export function CoursesSection({ courses: propCourses, sectionTitle, sectionSubtitle }: { courses?: CourseItem[]; sectionTitle?: string; sectionSubtitle?: string }) {
+    const { t } = useTranslation();
+    const [detailCourse, setDetailCourse] = useState<CourseItem | null>(null);
 
     const courses = (propCourses && propCourses.length > 0 ? propCourses : defaultCourses).map((c, i) => ({
         ...c,
-        category: (c as any).category || "General",
-        image: (c as any).image || defaultCourses[i]?.image || "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=600&auto=format&fit=crop",
-        link: (c as any).link || "",
+        category: c.category || "General",
+        image: c.image || defaultCourses[i]?.image || "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=600&auto=format&fit=crop",
+        link: c.link || "",
     }));
 
     return (
@@ -44,7 +56,7 @@ export function CoursesSection({ courses: propCourses, sectionTitle, sectionSubt
                 <div className="container mx-auto px-4 md:px-8 space-y-12">
                     <div className="text-center space-y-4 mb-8 md:mb-10">
                         <h2 className="text-3xl md:text-4xl font-bold text-slate-900 uppercase tracking-tight">
-                            {sectionTitle || "Our Main Courses"}
+                            {sectionTitle || t("our_main_courses")}
                         </h2>
                         <div className="h-1 w-20 bg-primary mx-auto rounded-full" />
                         {sectionSubtitle && (

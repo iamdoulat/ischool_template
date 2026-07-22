@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import api from "@/lib/api";
 import { i18nFallbacks } from "@/lib/i18n-fallbacks";
 import { i18nFallbacksBn } from "@/lib/i18n-fallbacks-bn";
+import { i18nFallbacksAr } from "@/lib/i18n-fallbacks-ar";
 
 interface Language {
     id: number;
@@ -36,8 +37,8 @@ function getLocaleFallbacks(code: string): Record<string, string> | null {
     switch (code) {
         case "bn":
             return i18nFallbacksBn;
-        // Add more locales here as needed, e.g.:
-        // case "hi": return i18nFallbacksHi;
+        case "ar":
+            return i18nFallbacksAr;
         default:
             return null;
     }

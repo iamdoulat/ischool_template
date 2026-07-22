@@ -5,17 +5,19 @@ import { usePathname } from "next/navigation";
 import {
     Phone,
     Mail,
+    MapPin,
     Facebook,
     Twitter,
-    Instagram,
-    Youtube,
     Linkedin,
-    LogIn,
+    Instagram,
     GraduationCap,
     Menu,
     X,
     House,
-    LayoutGrid
+    LayoutGrid,
+    Search,
+    ArrowUpRight,
+    ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -24,6 +26,9 @@ import { useSettings } from "@/components/providers/settings-provider";
 import { useImageUrl } from "@/lib/image-url";
 import { getPublicMenus, type PublicMenuItem as MenuItem } from "@/lib/public-menus";
 import api from "@/lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useLanguage } from "@/components/providers/language-provider";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface NavItem {
     name: string;
@@ -40,14 +45,32 @@ interface HeaderUser {
     permissions?: string[];
 }
 
+const LANGUAGES = [
+    { id: 1, name: "English", short_code: "en", country_code: "us", is_rtl: false, is_active: true, is_enabled: true, label: "us English" },
+    { id: 2, name: "Bengali", short_code: "bn", country_code: "bd", is_rtl: false, is_active: true, is_enabled: true, label: "bd বাংলা" },
+];
+
 export function PublicHeader() {
     const { settings } = useSettings();
     const pathname = usePathname();
+    const { t } = useTranslation();
+    const { selectedLanguage, setSelectedLanguage } = useLanguage();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
     const [dynamicMenus, setDynamicMenus] = useState<MenuItem[]>([]);
     const getImageUrl = useImageUrl();
     const [mounted, setMounted] = useState(false);
     const [user, setUser] = useState<HeaderUser | null>(null);
+
+    const currentLangCode = selectedLanguage?.short_code || "en";
+
+    const handleLanguageChange = (code: string) => {
+        const target = LANGUAGES.find(l => l.short_code === code);
+        if (target) {
+            setSelectedLanguage(target);
+        }
+    };
 
     useEffect(() => {
         let active = true;
@@ -88,18 +111,19 @@ export function PublicHeader() {
     };
 
     const defaultNavItems = [
-        { name: "Home", href: "/" },
-        { name: "Academics", href: "/academics" },
-        { name: "Admissions", href: "/online_admission" },
-        { name: "Exam Results", href: "/exam-results" },
-        { name: "Notices", href: "/notices" },
-        { name: "Contact Us", href: "/contact-us" },
+        { name: t("home"), href: "/" },
+        { name: t("academics"), href: "/academics" },
+        { name: t("admissions"), href: "/online_admission" },
+        { name: t("exam_results"), href: "/exam-results" },
+        { name: t("notices"), href: "/notices" },
+        { name: t("about_us"), href: "/academics" },
+        { name: t("contact"), href: "/contact-us" },
     ];
 
     const displayMenus: NavItem[] = (() => {
         const seen = new Set<string>();
         const items: NavItem[] = dynamicMenus.length > 0 ? [
-            { name: "Home", href: "/" },
+            { name: t("home"), href: "/" },
             ...dynamicMenus
                 .filter(m => m.title.toLowerCase() !== 'home')
                 .map(m => {
@@ -111,15 +135,18 @@ export function PublicHeader() {
                         href = pageSlug.startsWith('/') ? pageSlug : `/${pageSlug}`;
                     }
 
+                    // Translate title via key lookup
+                    const key = m.title.toLowerCase().trim().replace(/[\s\-_]+/g, '_');
+                    const translatedName = t(key);
+
                     return {
-                        name: m.title,
+                        name: translatedName !== key ? translatedName : m.title,
                         href,
                         newTab: !!m.open_new_tab
                     };
                 })
         ] : defaultNavItems;
 
-        // Deduplicate by name to avoid React duplicate-key warnings
         return items.filter(item => {
             if (seen.has(item.name)) return false;
             seen.add(item.name);
@@ -127,93 +154,136 @@ export function PublicHeader() {
         });
     })();
 
+    const logoSrc = settings?.app_logo || settings?.admin_logo || settings?.admin_small_logo;
+
     return (
-        <header className="w-full flex flex-col z-50 sticky top-0 bg-white shadow-md">
+        <header className="w-full flex flex-col z-50 sticky top-0 bg-white shadow-sm overflow-x-clip">
             {/* Top Bar */}
-            <div className="bg-primary text-primary-foreground py-2 px-4 md:px-8 text-xs md:text-sm transition-all duration-300">
-                <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
-                    <div className="flex items-center gap-4">
-                        {settings?.phone && (
-                            <a href={`tel:${settings.phone}`} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
-                                <Phone className="h-3 w-3 md:h-4 md:w-4" />
-                                <span>{settings.phone}</span>
-                            </a>
-                        )}
-                        {settings?.email && (
-                            <a href={`mailto:${settings.email}`} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
-                                <Mail className="h-3 w-3 md:h-4 md:w-4" />
-                                <span>{settings.email}</span>
-                            </a>
-                        )}
+            <div className="bg-white border-b border-gray-200/80 py-2 px-4 md:px-8 text-xs font-medium text-slate-600 transition-all duration-300">
+                <div className="container mx-auto flex flex-wrap justify-between items-center gap-3">
+                    {/* Contact Information */}
+                    <div className="flex items-center gap-4 flex-wrap">
+                        <a href={`tel:${settings?.phone || "+1 (800) 555-1234"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors">
+                            <Phone className="h-3.5 w-3.5 text-[#044E43]" />
+                            <span>{settings?.phone || "+1 (800) 555-1234"}</span>
+                        </a>
+                        <div className="w-px h-3.5 bg-gray-300 hidden sm:block" />
+                        <a href={`mailto:${settings?.email || "hello@eduex.com"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors">
+                            <Mail className="h-3.5 w-3.5 text-[#044E43]" />
+                            <span>{settings?.email || "hello@eduex.com"}</span>
+                        </a>
+                        <div className="w-px h-3.5 bg-gray-300 hidden md:block" />
+                        <div className="hidden lg:flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 text-[#044E43]" />
+                            <span>{settings?.address || "371 7th Ave, New York, NY 10001"}</span>
+                        </div>
                     </div>
+
+                    {/* Social Icons & Language Dropdown */}
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3">
-                            {settings?.facebook_url && (
-                                <a href={settings.facebook_url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity"><Facebook className="h-3 w-3 md:h-4 md:w-4" /></a>
-                            )}
-                            {settings?.twitter_url && (
-                                <a href={settings.twitter_url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity"><Twitter className="h-3 w-3 md:h-4 md:w-4" /></a>
-                            )}
+                        {/* Circular Social Buttons */}
+                        <div className="flex items-center gap-2">
+                            <a
+                                href={settings?.facebook_url || "#"}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-7.5 h-7.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
+                                title="Facebook"
+                            >
+                                <Facebook className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </a>
+                            <a
+                                href={settings?.twitter_url || "#"}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-7.5 h-7.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
+                                title="Twitter"
+                            >
+                                <Twitter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </a>
+                            <a
+                                href={settings?.linkedin_url || "#"}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-7.5 h-7.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
+                                title="LinkedIn"
+                            >
+                                <Linkedin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </a>
                             {settings?.instagram_url && (
-                                <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity"><Instagram className="h-3 w-3 md:h-4 md:w-4" /></a>
-                            )}
-                            {settings?.youtube_url && (
-                                <a href={settings.youtube_url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity"><Youtube className="h-3 w-3 md:h-4 md:w-4" /></a>
-                            )}
-                            {settings?.linkedin_url && (
-                                <a href={settings.linkedin_url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity"><Linkedin className="h-3 w-3 md:h-4 md:w-4" /></a>
+                                <a
+                                    href={settings.instagram_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-7.5 h-7.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
+                                    title="Instagram"
+                                >
+                                    <Instagram className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                </a>
                             )}
                         </div>
-                        <div className="w-px h-4 bg-primary-foreground/30 hidden md:block" />
-                        {!mounted || !user ? (
-                            <Link href="/login">
-                                <Button variant="secondary" size="sm" className="h-7 px-3 text-xs bg-white text-primary hover:bg-white/90">
-                                    <LogIn className="h-3 w-3 mr-1" />
-                                    Login
-                                </Button>
-                            </Link>
-                        ) : (
-                            <Link href={getDashboardUrl()}>
-                                <Button variant="secondary" size="sm" className="h-7 px-3 text-xs bg-white text-primary hover:bg-white/90">
-                                    <LayoutGrid className="h-3 w-3 mr-1" />
-                                    Dashboard
-                                </Button>
-                            </Link>
-                        )}
+
+                        {/* Functional Language Selector (English, Bangla) */}
+                        <div className="relative">
+                            <select
+                                value={currentLangCode}
+                                onChange={(e) => handleLanguageChange(e.target.value)}
+                                className="appearance-none bg-white border border-gray-300 rounded-full py-1 pl-3 pr-7 text-xs font-bold text-slate-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#044E43] shadow-sm hover:border-gray-400 transition-all"
+                            >
+                                {LANGUAGES.map((lang) => (
+                                    <option key={lang.short_code} value={lang.short_code}>
+                                        {lang.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="h-3.5 w-3.5 text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Main Navigation */}
-            <div className="bg-white border-b sticky top-0 shadow-sm">
-                <div className="container mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
-                    {/* Logo */}
-                    <Link href="/" className="flex items-center gap-3 text-primary group">
-                        {settings?.app_logo ? (
-                            <img
-                                src={getImageUrl(settings.app_logo)}
-                                alt={settings.school_name || "School Logo"}
-                                className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-105"
-                            />
-                        ) : (
-                            <>
-                                <div className="flex items-center justify-center">
-                                    <GraduationCap className="h-8 w-8 md:h-10 md:w-10 transition-transform group-hover:scale-110" />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="font-extrabold text-xl md:text-2xl tracking-tight uppercase leading-none text-slate-900 group-hover:text-primary transition-colors">
-                                        {settings?.school_name || "iSchool"}
-                                    </span>
-                                    <span className="text-[10px] md:text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                                        {settings?.school_slogan || "Excellence in Education"}
-                                    </span>
-                                </div>
-                            </>
-                        )}
-                    </Link>
+            <div className="bg-[#F4F6F5] border-b border-gray-200/60 sticky top-0 shadow-sm z-40">
+                <div className="container mx-auto px-4 md:px-8 h-20 flex items-center justify-between relative">
+
+                    {/* Logo with Curved Dark Teal Badge */}
+                    <div className="relative flex items-center h-full">
+                        <div className="bg-[#044E43] h-full px-4 sm:px-6 flex items-center relative z-10 shadow-sm min-w-[160px] sm:min-w-[200px] md:min-w-[240px] before:content-[''] before:absolute before:right-full before:top-0 before:bottom-0 before:w-[100vw] before:bg-[#044E43]">
+                            <Link href="/" className="flex items-center gap-2.5 text-white group relative z-10">
+                                {logoSrc ? (
+                                    <img
+                                        src={getImageUrl(logoSrc)}
+                                        alt={settings?.school_name || "School Logo"}
+                                        className="h-9 sm:h-10 md:h-11 w-auto max-w-[150px] sm:max-w-[180px] md:max-w-[220px] object-contain transition-transform group-hover:scale-105"
+                                    />
+                                ) : (
+                                    <>
+                                        <div className="flex items-center justify-center p-1.5 rounded-xl bg-white/10 text-white shrink-0">
+                                            <GraduationCap className="h-6 w-6 sm:h-7 sm:w-7 transition-transform group-hover:scale-110" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-black text-base sm:text-lg md:text-xl tracking-tight leading-none text-white font-sans whitespace-nowrap">
+                                                {settings?.school_name || "EduEx LMS"}
+                                            </span>
+                                            <span className="text-[8px] sm:text-[9px] font-semibold tracking-widest text-emerald-200 uppercase mt-0.5 whitespace-nowrap">
+                                                {settings?.school_slogan || "Education & LMS"}
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
+                            </Link>
+
+                            {/* SVG Curved Shape Flange */}
+                            <div className="absolute left-full top-0 h-full w-16 sm:w-24 md:w-28 lg:w-32 text-[#044E43] pointer-events-none">
+                                <svg className="h-full w-full" viewBox="0 0 140 100" fill="currentColor" preserveAspectRatio="none">
+                                    <path d="M 0 0 Q 35 0 60 30 C 85 60 100 100 140 100 L 0 100 Z" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
 
                     {/* Desktop Menu */}
-                    <nav className="hidden md:flex items-center gap-1">
+                    <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
                         {displayMenus.map((item) => {
                             const isActive = item.href === '/' ? pathname === '/' : (!!item.href && item.href !== '#' && pathname.startsWith(item.href));
                             return (
@@ -222,36 +292,66 @@ export function PublicHeader() {
                                     href={item.href || '#'}
                                     target={item.newTab ? "_blank" : "_self"}
                                     className={cn(
-                                        "px-4 py-2 text-sm font-semibold rounded-md transition-all flex items-center",
+                                        "px-3.5 py-2 text-sm font-semibold rounded-md transition-all flex items-center",
                                         isActive
-                                            ? "text-primary bg-primary/10 font-bold"
-                                            : "text-gray-700 hover:text-[#FF9800] hover:bg-orange-50"
+                                            ? "text-[#044E43] font-bold bg-[#044E43]/10"
+                                            : "text-slate-800 hover:text-[#044E43] hover:bg-white/80"
                                     )}
                                 >
-                                    {item.name === "Home" && <House className="h-4 w-4 mr-1" />}
+                                    {(item.name === t("home") || item.name === "Home") && <House className="h-4 w-4 mr-1.5 text-[#044E43]" />}
                                     {item.name}
                                 </Link>
                             );
                         })}
-                        <Button asChild className="ml-4 font-semibold">
-                            <Link href="/online_admission">Apply Now</Link>
-                        </Button>
                     </nav>
 
-                    {/* Mobile Menu Toggle */}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="md:hidden"
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    >
-                        {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                    </Button>
+                    {/* Right Controls: Search Icon & Login Button */}
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        {/* Search Trigger Button */}
+                        <button
+                            onClick={() => setIsSearchOpen(true)}
+                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 hover:text-[#044E43] transition-all duration-300"
+                            title={t("search")}
+                        >
+                            <Search className="h-4 w-4" />
+                        </button>
+
+                        {/* Login / Dashboard Button with Orange Circle Arrow */}
+                        {!mounted || !user ? (
+                            <Link href="/login" className="group">
+                                <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs md:text-sm pl-4 pr-1.5 py-1.5 rounded-full flex items-center gap-2 shadow-md transition-all duration-300">
+                                    <span>{t("login")}</span>
+                                    <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                                        <ArrowUpRight className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                    </div>
+                                </div>
+                            </Link>
+                        ) : (
+                            <Link href={getDashboardUrl()} className="group">
+                                <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs md:text-sm pl-4 pr-1.5 py-1.5 rounded-full flex items-center gap-2 shadow-md transition-all duration-300">
+                                    <span>{t("dashboard")}</span>
+                                    <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                                        <LayoutGrid className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                    </div>
+                                </div>
+                            </Link>
+                        )}
+
+                        {/* Mobile Menu Toggle */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="lg:hidden text-slate-800"
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        >
+                            {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Mobile Menu Dropdown */}
                 {isMenuOpen && (
-                    <div className="md:hidden border-t bg-white absolute w-full left-0 shadow-lg animate-in slide-in-from-top-2">
+                    <div className="lg:hidden border-t bg-white absolute w-full left-0 shadow-xl animate-in slide-in-from-top-2 z-50">
                         <div className="flex flex-col p-4 space-y-2">
                             {displayMenus.map((item) => {
                                 const isActive = item.href === '/' ? pathname === '/' : (!!item.href && item.href !== '#' && pathname.startsWith(item.href));
@@ -263,25 +363,60 @@ export function PublicHeader() {
                                         className={cn(
                                             "px-4 py-3 text-sm font-medium rounded-lg flex items-center",
                                             isActive
-                                                ? "text-primary bg-primary/10 font-bold"
-                                                : "text-gray-700 hover:text-[#FF9800] hover:bg-orange-50"
+                                                ? "text-[#044E43] bg-[#044E43]/10 font-bold"
+                                                : "text-gray-700 hover:text-[#044E43] hover:bg-slate-50"
                                         )}
                                         onClick={() => setIsMenuOpen(false)}
                                     >
-                                        {item.name === "Home" && <House className="h-4 w-4 mr-1" />}
+                                        {(item.name === t("home") || item.name === "Home") && <House className="h-4 w-4 mr-2 text-[#044E43]" />}
                                         {item.name}
                                     </Link>
                                 );
                             })}
-                            <div className="pt-2">
-                                <Button asChild className="w-full">
-                                    <Link href="/online_admission">Apply Now</Link>
-                                </Button>
-                            </div>
                         </div>
                     </div>
                 )}
             </div>
+
+            {/* Search Modal */}
+            <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+                <DialogContent className="sm:max-w-[500px] p-6 rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                            <Search className="h-5 w-5 text-[#044E43]" />
+                            {t("search_website")}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4 space-y-4">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder={t("type_to_search")}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#044E43]"
+                                autoFocus
+                            />
+                            <Search className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button variant="outline" onClick={() => setIsSearchOpen(false)} className="rounded-xl text-xs">
+                                {t("cancel")}
+                            </Button>
+                            <Button
+                                className="bg-[#044E43] hover:bg-[#033b33] text-white rounded-xl text-xs px-5"
+                                onClick={() => {
+                                    if (searchQuery.trim()) {
+                                        window.location.href = `/academics?search=${encodeURIComponent(searchQuery)}`;
+                                    }
+                                }}
+                            >
+                                {t("search")}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </header>
     );
 }

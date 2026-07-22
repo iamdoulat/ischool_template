@@ -23,11 +23,31 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import api from "@/lib/api";
 import { format } from "date-fns";
 
+import { useTranslation } from "@/hooks/use-translation";
+
+interface NoticeItem {
+  id?: number;
+  title?: string;
+  notice_date?: string;
+  publish_date?: string;
+  message?: string;
+  message_to?: string;
+  is_published?: boolean;
+}
+
+interface CmsData {
+  header_footer_sections?: Record<string, any>;
+  about_us?: Record<string, any>;
+  main_courses?: any[];
+  experienced_staffs?: any[];
+}
+
 export default function Home() {
-  const [cms, setCms] = useState<any>(null);
-  const [notices, setNotices] = useState<any[]>([]);
+  const { t } = useTranslation();
+  const [cms, setCms] = useState<CmsData | null>(null);
+  const [notices, setNotices] = useState<NoticeItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewNotice, setViewNotice] = useState<any | null>(null);
+  const [viewNotice, setViewNotice] = useState<NoticeItem | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,8 +60,8 @@ export default function Home() {
         setCms(cmsData);
 
         const noticeResult = noticesRes.data?.data || noticesRes.data || [];
-        const all = Array.isArray(noticeResult) ? noticeResult : [];
-        all.sort((a: any, b: any) => new Date(b.notice_date).getTime() - new Date(a.notice_date).getTime());
+        const all: NoticeItem[] = Array.isArray(noticeResult) ? noticeResult : [];
+        all.sort((a, b) => new Date(b.notice_date || 0).getTime() - new Date(a.notice_date || 0).getTime());
         setNotices(all.slice(0, 5));
       } catch {
         setNotices([]);
@@ -52,7 +72,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  const hfs: any = cms?.header_footer_sections || {};
+  const hfs = (cms?.header_footer_sections || {}) as Record<string, any>;
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
@@ -79,22 +99,22 @@ export default function Home() {
                 </Badge>
               )}
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1]">
-                {hfs.hero_title_part1 || "Empowering"} <span className="text-primary">{hfs.hero_title_highlight || "Minds"}</span>,<br />
-                {hfs.hero_title_part2 || "Shaping"} <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-green-400">{hfs.hero_title_gradient || "Futures"}</span>.
+                {hfs.hero_title_part1 || t("empowering")} <span className="text-primary">{hfs.hero_title_highlight || t("minds")}</span>,<br />
+                {hfs.hero_title_part2 || t("shaping")} <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-green-400">{hfs.hero_title_gradient || t("futures")}</span>.
               </h1>
               <p className="text-lg md:text-xl text-slate-200 max-w-2xl leading-relaxed font-light">
-                {hfs.hero_subtitle || "Provide your children with the best education possible. We focus on holistic development, academic excellence, and character building."}
+                {hfs.hero_subtitle || t("hero_subtitle")}
               </p>
               <div className="flex flex-col sm:flex-row gap-5 pt-6">
                 <Button asChild size="lg" className="text-base font-bold px-10 h-14 rounded-full shadow-lg hover:shadow-primary/20 hover:scale-105 transition-all duration-300">
                   <Link href={hfs.hero_btn1_link || "/online_admission"}>
-                    {hfs.hero_btn1_text || "Apply for Admission"}
+                    {hfs.hero_btn1_text || t("apply_for_admission")}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="text-base font-bold px-10 h-14 rounded-full bg-white/10 text-white border-white/20 hover:bg-white hover:text-slate-900 backdrop-blur-sm transition-all duration-300">
                   <Link href={hfs.hero_btn2_link || "#"}>
-                    {hfs.hero_btn2_text || "Take a Tour"}
+                    {hfs.hero_btn2_text || t("take_a_tour")}
                   </Link>
                 </Button>
               </div>
@@ -123,7 +143,7 @@ export default function Home() {
             <div className="max-w-4xl mx-auto space-y-8">
               <div className="text-center space-y-4">
                 <h2 className="text-3xl md:text-4xl font-bold text-slate-900 uppercase tracking-tight">
-                  Latest Notices
+                  {t("latest_notices")}
                 </h2>
                 <div className="h-1 w-20 bg-primary mx-auto rounded-full" />
               </div>
@@ -132,9 +152,9 @@ export default function Home() {
                 <div className="bg-slate-100/50 p-6 border-b flex items-center justify-between">
                   <div className="flex items-center gap-3 font-bold text-xl text-slate-800">
                     <Megaphone className="h-6 w-6 text-primary" />
-                    School Notice Board
+                    {t("school_notice_board")}
                   </div>
-                  <Button variant="outline" size="sm" className="font-semibold" asChild><Link href="/notices">View All Notices</Link></Button>
+                  <Button variant="outline" size="sm" className="font-semibold" asChild><Link href="/notices">{t("view_all_notices")}</Link></Button>
                 </div>
                 <CardContent className="p-0">
                   {loading ? (
@@ -149,7 +169,7 @@ export default function Home() {
                   ) : (
                     <div className="divide-y divide-slate-100">
                       {notices.map((notice, i) => {
-                        const d = new Date(notice.notice_date);
+                        const d = new Date(notice.notice_date || Date.now());
                         const day = format(d, 'dd');
                         const month = format(d, 'MMM');
                         const formattedDate = format(d, 'dd MMM yyyy');
@@ -203,11 +223,11 @@ export default function Home() {
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
                   <div className="flex items-center gap-1.5">
                     <CalendarDays className="h-4 w-4" />
-                    Notice: {format(new Date(viewNotice.notice_date), 'dd/MM/yyyy')}
+                    Notice: {format(new Date(viewNotice.notice_date || Date.now()), 'dd/MM/yyyy')}
                   </div>
                   <div className="flex items-center gap-1.5">
                     <CalendarDays className="h-4 w-4" />
-                    Publish: {format(new Date(viewNotice.publish_date), 'dd/MM/yyyy')}
+                    Publish: {format(new Date(viewNotice.publish_date || Date.now()), 'dd/MM/yyyy')}
                   </div>
                 </div>
 
@@ -233,7 +253,7 @@ export default function Home() {
 
                 <div className="border-t border-gray-100 pt-6">
                   <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-headings:font-bold prose-a:text-indigo-600 prose-img:max-w-full prose-img:h-auto prose-table:w-full prose-pre:overflow-x-auto break-words [&_*]:break-words"
-                    dangerouslySetInnerHTML={{ __html: viewNotice.message }}
+                    dangerouslySetInnerHTML={{ __html: viewNotice.message || "" }}
                   />
                 </div>
               </div>

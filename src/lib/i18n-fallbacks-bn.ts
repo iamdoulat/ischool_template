@@ -7,8 +7,36 @@
  */
 
 export const i18nFallbacksBn: Record<string, string> = {
-  // ─── TOP-LEVEL MODULES ─────────────────────────────────────────
+  // ─── PUBLIC WEBSITE & NAV ────────────────────────────────────────
+  admissions: "ভর্তি",
+  exam_results: "পরীক্ষার ফলাফল",
+  notices: "নোটিশ",
+  about: "আমাদের সম্পর্কে",
   dashboard: "ড্যাশবোর্ড",
+  quick_links: "দ্রুত লিঙ্ক",
+  empowering: "ক্ষমতায়ন",
+  minds: "মেধা",
+  shaping: "গড়া",
+  futures: "ভবিষ্যৎ",
+  hero_subtitle: "আপনার সন্তানদের সেরা শিক্ষার ব্যবস্থা করুন। আমরা সামগ্রিক উন্নয়ন, একাডেমিক শ্রেষ্ঠত্ব এবং চরিত্র গঠনে বিশ্বাসী।",
+  apply_for_admission: "ভর্তির জন্য আবেদন করুন",
+  take_a_tour: "ঘুরে দেখুন",
+  apply_now: "এখনই আবেদন করুন",
+  about_us_heading: "আমাদের সম্পর্কে",
+  welcome_to_smart_school: "স্মার্ট স্কুলে স্বাগতম",
+  our_main_courses: "আমাদের প্রধান কোর্সসমূহ",
+  experienced_staff: "অভিজ্ঞ শিক্ষক ও মণ্ডলী",
+  latest_notices: "সর্বশেষ নোটিশ",
+  school_notice_board: "স্কুল নোটিশ বোর্ড",
+  view_all_notices: "সকল নোটিশ দেখুন",
+  search_website: "ওয়েবসাইটে খুঁজুন",
+  type_to_search: "কোর্স, নোটিশ বা ভর্তি তথ্য খুঁজুন...",
+  x_of_y_students_selected: "{total} জনের মধ্যে {selected} জন শিক্ষার্থী নির্বাচিত",
+  teachers: "শিক্ষক",
+  awards: "পুরস্কার",
+  courses: "কোর্সসমূহ",
+
+  // ─── TOP-LEVEL MODULES ─────────────────────────────────────────
 
   // ─── ZOOM / LIVE CLASSES ───────────────────────────────────────
   search_classes: "ক্লাস অনুসন্ধান…",

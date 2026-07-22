@@ -21,6 +21,7 @@ export const i18nFallbacks: Record<string, string> = {
     failed_to_delete_selected_x_list: "Failed to delete selected {label} list",
     x_scheduled_entries: "{count} Scheduled Entries",
     x_staff_members_on_date: "{count} Staff Members on {date}",
+    x_of_y_students_selected: "{selected} of {total} students selected",
 
     // ===== ZOOM / LIVE CLASSES =====
     search_classes: "Search classes…",
