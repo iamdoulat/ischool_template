@@ -75,6 +75,13 @@ export default function QuickFeesPage() {
         date: new Date().toISOString().split('T')[0]
     });
 
+    const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
+    const [feeMasters, setFeeMasters] = useState<any[]>([]);
+    const [transportFeeMasters, setTransportFeeMasters] = useState<any[]>([]);
+    const [selectedFeeMasterId, setSelectedFeeMasterId] = useState("");
+    const [selectedTransportFeeMasterId, setSelectedTransportFeeMasterId] = useState("");
+    const [invoiceLoading, setInvoiceLoading] = useState(false);
+
     const { toast } = useToast();
 
     const fetchDropdowns = useCallback(async () => {
@@ -155,10 +162,13 @@ export default function QuickFeesPage() {
         if (!selectedFee) return;
         setLoading(true);
         try {
-            await api.post("/fee-collection/collect-fee", {
-                student_fee_master_id: selectedFee.id,
-                ...paymentData
-            });
+            const payload: any = { ...paymentData };
+            if (selectedFee.is_transport) {
+                payload.student_transport_fee_id = selectedFee.id;
+            } else {
+                payload.student_fee_master_id = selectedFee.id;
+            }
+            await api.post("/fee-collection/collect-fee", payload);
             toast("success", "Fee payment collected successfully");
             setIsPaymentDialogOpen(false);
             handleSearch(); // Refresh fees
@@ -167,6 +177,52 @@ export default function QuickFeesPage() {
             toast("error", err.response?.data?.message || "Failed to collect payment");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const openInvoiceDialog = async () => {
+        if (!selectedStudentId) {
+            toast("error", "Please select a student first");
+            return;
+        }
+
+        if (!studentData || studentData.id?.toString() !== selectedStudentId) {
+            await handleSearch();
+        }
+
+        setIsInvoiceDialogOpen(true);
+        try {
+            const [res1, res2] = await Promise.all([
+                api.get("/fees-masters?no_paginate=true"),
+                api.get("/transport/fees-master")
+            ]);
+            setFeeMasters(res1.data.data?.data || res1.data.data || []);
+            setTransportFeeMasters(res2.data.data?.data || res2.data.data || []);
+        } catch (error) {
+            toast("error", "Failed to load fee masters");
+        }
+    };
+
+    const handleInvoiceSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedFeeMasterId && !selectedTransportFeeMasterId) return;
+        setInvoiceLoading(true);
+        try {
+            await api.post("/fee-collection/assign-manual-fee", {
+                student_id: selectedStudentId,
+                fee_master_id: selectedFeeMasterId || null,
+                transport_fee_master_id: selectedTransportFeeMasterId || null
+            });
+            toast("success", "Invoice generated successfully");
+            setIsInvoiceDialogOpen(false);
+            setSelectedFeeMasterId("");
+            setSelectedTransportFeeMasterId("");
+            handleSearch();
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string } } };
+            toast("error", err.response?.data?.message || "Failed to generate invoice");
+        } finally {
+            setInvoiceLoading(false);
         }
     };
 
@@ -240,7 +296,16 @@ export default function QuickFeesPage() {
                             </div>
                         </div>
 
-                        <div className="md:col-span-3 flex justify-end">
+                        <div className="md:col-span-3 flex justify-end gap-3">
+                            <Button
+                                variant="outline"
+                                className="h-11 px-6 rounded-lg font-bold border-muted/50 flex items-center gap-2 transition-all hover:bg-muted/50"
+                                onClick={openInvoiceDialog}
+                                disabled={!selectedStudentId || loading}
+                            >
+                                <FileText className="h-4 w-4" />
+                                Generate Invoice
+                            </Button>
                             <Button
                                 variant="gradient"
                                 className="h-11 px-10 rounded-lg font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2"
@@ -294,7 +359,7 @@ export default function QuickFeesPage() {
                                             const isPaid = due <= 0;
 
                                             return (
-                                                <TableRow key={fee.id} className="group border-b border-muted/50 last:border-none hover:bg-muted/20 transition-colors">
+                                                <TableRow key={fee.is_transport ? `t_${fee.id}` : `r_${fee.id}`} className="group border-b border-muted/50 last:border-none hover:bg-muted/20 transition-colors">
                                                     <TableCell className="py-4 pl-8">
                                                         <div className="flex items-center gap-3">
                                                             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -500,6 +565,129 @@ export default function QuickFeesPage() {
                             >
                                 {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
                                 Complete Payment
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Manual Invoice Dialog */}
+            <Dialog open={isInvoiceDialogOpen} onOpenChange={setIsInvoiceDialogOpen}>
+                <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden rounded-lg border-none shadow-2xl">
+                    <DialogHeader className="p-8 bg-gradient-to-r from-emerald-500 to-teal-500 text-white relative">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-white/20 rounded-lg backdrop-blur-md border border-white/30">
+                                <FileText className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-2xl font-bold tracking-tight">Generate Invoice</DialogTitle>
+                                <DialogDescription className="text-white/80 font-medium">
+                                    Assign a new fee to this student
+                                </DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <form onSubmit={handleInvoiceSubmit}>
+                        <div className="p-8 space-y-6">
+                            <div className="space-y-2 group">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                                    Select Fee Master
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all font-medium"
+                                        value={selectedFeeMasterId}
+                                        onChange={(e) => setSelectedFeeMasterId(e.target.value)}
+                                    >
+                                        <option value="">Select a regular fee type (optional)...</option>
+                                        {feeMasters.map((fm: any) => {
+                                            const assignedFee = dueFees.find((df: any) => !df.is_transport && df.fee_master_id === fm.id);
+                                            let isDisabled = false;
+                                            let labelSuffix = "";
+
+                                            if (assignedFee) {
+                                                const total = Number(assignedFee.fee_master?.amount || 0);
+                                                const paid = assignedFee.payments?.reduce((acc: number, p: any) => acc + Number(p.amount), 0) || 0;
+                                                
+                                                if (paid >= total && total > 0) {
+                                                    isDisabled = true;
+                                                    labelSuffix = " [Paid]";
+                                                } else {
+                                                    isDisabled = false;
+                                                    labelSuffix = " [Assigned - Unpaid]";
+                                                }
+                                            }
+
+                                            return (
+                                                <option key={fm.id} value={fm.id} disabled={isDisabled}>
+                                                    {fm.fee_group?.name} - {fm.fee_type?.name} ({symbol}{fm.amount}){labelSuffix}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2 group">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                                    Select Transport Fee
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all font-medium"
+                                        value={selectedTransportFeeMasterId}
+                                        onChange={(e) => setSelectedTransportFeeMasterId(e.target.value)}
+                                    >
+                                        <option value="">Select a transport fee month (optional)...</option>
+                                        {transportFeeMasters.map((tfm: any) => {
+                                            const assignedFee = dueFees.find((df: any) => df.is_transport && df.transport_fee_master_id === tfm.id);
+                                            let isDisabled = false;
+                                            let labelSuffix = "";
+
+                                                if (assignedFee) {
+                                                    const total = Number(assignedFee.fee_master?.amount || 0);
+                                                    const paid = assignedFee.payments?.reduce((acc: number, p: any) => acc + Number(p.amount), 0) || 0;
+                                                    
+                                                    if (paid >= total && total > 0) {
+                                                        isDisabled = true;
+                                                        labelSuffix = " [Paid]";
+                                                    } else {
+                                                        isDisabled = false;
+                                                        labelSuffix = " [Assigned - Unpaid]";
+                                                    }
+                                                }
+
+                                                return (
+                                                    <option key={tfm.id} value={tfm.id} disabled={isDisabled}>
+                                                        {tfm.month} {assignedFee ? `(${symbol}${assignedFee.fee_master?.amount || 0})` : ''} {labelSuffix}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                    </div>
+                                </div>
+                        </div>
+
+                        <DialogFooter className="p-8 bg-muted/20 border-t border-muted/50 flex gap-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="flex-1 h-12 rounded-lg font-bold border-muted/50"
+                                onClick={() => setIsInvoiceDialogOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                variant="gradient"
+                                className="flex-1 h-12 rounded-lg font-bold shadow-lg shadow-primary/20 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+                                disabled={invoiceLoading || (!selectedFeeMasterId && !selectedTransportFeeMasterId)}
+                            >
+                                {invoiceLoading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
+                                Generate
                             </Button>
                         </DialogFooter>
                     </form>

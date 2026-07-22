@@ -62,20 +62,21 @@ interface OfflinePayment {
     status: "pending" | "approved" | "rejected";
     status_date: string | null;
     rejection_reason: string | null;
-    student: {
-        name: string;
-        last_name: string;
-        admission_no: string;
-        school_class: { class: string };
-        section: { section: string };
-    };
+    student?: {
+        name?: string;
+        last_name?: string;
+        admission_no?: string;
+        school_class?: { name?: string; class?: string };
+        schoolClass?: { name?: string; class?: string };
+        section?: { name?: string; section?: string };
+    } | null;
     student_fee_master?: {
-        fee_master: {
-            fee_type: { name: string };
+        fee_master?: {
+            fee_type?: { name?: string };
         };
     };
     course?: {
-        title: string;
+        title?: string;
     };
 }
 
@@ -192,16 +193,16 @@ export default function OfflineBankPaymentsPage() {
     const handleExportExcel = () => {
         const data = filteredPayments.map(p => ({
             "Request ID": `#${p.id}`,
-            "Student Name": `${p.student.name} ${p.student.last_name}`,
-            "Admission No": p.student.admission_no,
-            "Class & Section": `${p.student.school_class.class} (${p.student.section.section})`,
-            "Payment Fee Type": p.course ? `Course Purchase: ${p.course.title}` : (p.student_fee_master?.fee_master.fee_type.name || 'General Payment'),
+            "Student Name": p.student ? `${p.student.name || ''} ${p.student.last_name || ''}`.trim() : 'N/A',
+            "Admission No": p.student?.admission_no || 'N/A',
+            "Class & Section": p.student ? `${p.student.school_class?.name || p.student.school_class?.class || p.student.schoolClass?.name || p.student.schoolClass?.class || 'N/A'} (${p.student.section?.name || p.student.section?.section || 'N/A'})` : 'N/A',
+            "Payment Fee Type": p.course ? `Course Purchase: ${p.course.title || ''}` : (p.student_fee_master?.fee_master?.fee_type?.name || 'General Payment'),
             "Reference No": p.reference_no || 'N/A',
-            "Payment Date": new Date(p.payment_date).toLocaleDateString(),
+            "Payment Date": p.payment_date ? new Date(p.payment_date).toLocaleDateString() : 'N/A',
             "Bank Name": p.bank_name || 'N/A',
             "Account No": p.bank_account_no || 'N/A',
-            [`Amount (${symbol})`]: p.amount,
-            "Status": p.status
+            [`Amount (${symbol})`]: p.amount || 0,
+            "Status": p.status || ''
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
@@ -213,16 +214,16 @@ export default function OfflineBankPaymentsPage() {
     const handleExportCSV = () => {
         const data = filteredPayments.map(p => ({
             "Request ID": `#${p.id}`,
-            "Student Name": `${p.student.name} ${p.student.last_name}`,
-            "Admission No": p.student.admission_no,
-            "Class & Section": `${p.student.school_class.class} (${p.student.section.section})`,
-            "Payment Fee Type": p.course ? `Course Purchase: ${p.course.title}` : (p.student_fee_master?.fee_master.fee_type.name || 'General Payment'),
+            "Student Name": p.student ? `${p.student.name || ''} ${p.student.last_name || ''}`.trim() : 'N/A',
+            "Admission No": p.student?.admission_no || 'N/A',
+            "Class & Section": p.student ? `${p.student.school_class?.name || p.student.school_class?.class || p.student.schoolClass?.name || p.student.schoolClass?.class || 'N/A'} (${p.student.section?.name || p.student.section?.section || 'N/A'})` : 'N/A',
+            "Payment Fee Type": p.course ? `Course Purchase: ${p.course.title || ''}` : (p.student_fee_master?.fee_master?.fee_type?.name || 'General Payment'),
             "Reference No": p.reference_no || 'N/A',
-            "Payment Date": new Date(p.payment_date).toLocaleDateString(),
+            "Payment Date": p.payment_date ? new Date(p.payment_date).toLocaleDateString() : 'N/A',
             "Bank Name": p.bank_name || 'N/A',
             "Account No": p.bank_account_no || 'N/A',
-            [`Amount (${symbol})`]: p.amount,
-            "Status": p.status
+            [`Amount (${symbol})`]: p.amount || 0,
+            "Status": p.status || ''
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
         const csv = XLSX.utils.sheet_to_csv(worksheet);
@@ -240,10 +241,10 @@ export default function OfflineBankPaymentsPage() {
         const tableColumn = ["Request ID", "Student Name", "Payment Info", `Amount (${symbol})`, "Status"];
         const tableRows = filteredPayments.map(p => [
             `#${p.id}`,
-            `${p.student.name} ${p.student.last_name}`,
-            p.course ? `Course Purchase: ${p.course.title} (Ref: ${p.reference_no || 'N/A'})` : `${p.student_fee_master?.fee_master.fee_type.name || 'General Payment'} (Ref: ${p.reference_no || 'N/A'})`,
-            `${symbol}${p.amount.toFixed(2)}`,
-            p.status
+            p.student ? `${p.student.name || ''} ${p.student.last_name || ''}`.trim() : 'N/A',
+            p.course ? `Course Purchase: ${p.course.title || ''} (Ref: ${p.reference_no || 'N/A'})` : `${p.student_fee_master?.fee_master?.fee_type?.name || 'General Payment'} (Ref: ${p.reference_no || 'N/A'})`,
+            `${symbol}${(p.amount || 0).toFixed(2)}`,
+            p.status || ''
         ]);
         autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
         doc.save("offline_payments.pdf");
@@ -264,18 +265,18 @@ export default function OfflineBankPaymentsPage() {
         }
 
         const paymentType = payment.course 
-            ? `Course Purchase: ${payment.course.title}` 
-            : (payment.student_fee_master?.fee_master.fee_type.name || t("general_payment"));
+            ? `Course Purchase: ${payment.course.title || ''}` 
+            : (payment.student_fee_master?.fee_master?.fee_type?.name || t("general_payment"));
 
         setInvoiceData({
             type: 'bank',
             id: payment.id,
             date: payment.payment_date,
             reference_no: payment.reference_no,
-            studentName: `${payment.student.name} ${payment.student.last_name}`,
-            admissionNo: payment.student.admission_no,
+            studentName: payment.student ? `${payment.student.name || ''} ${payment.student.last_name || ''}`.trim() : 'N/A',
+            admissionNo: payment.student?.admission_no || 'N/A',
             detail: paymentType,
-            amount: payment.amount,
+            amount: payment.amount || 0,
         });
 
         setTimeout(async () => {
@@ -458,22 +459,24 @@ export default function OfflineBankPaymentsPage() {
                                                 <TableCell className="py-4 pl-8 text-sm font-bold text-slate-600">#{payment.id}</TableCell>
                                                 <TableCell className="py-4">
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-slate-800">{payment.student.name} {payment.student.last_name}</span>
+                                                        <span className="text-sm font-bold text-slate-800">
+                                                            {payment.student ? `${payment.student.name || ''} ${payment.student.last_name || ''}`.trim() : 'N/A'}
+                                                        </span>
                                                         <span className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">
-                                                            {payment.student.admission_no} • {payment.student.school_class.class}({payment.student.section.section})
+                                                            {payment.student?.admission_no || 'N/A'} • {payment.student?.school_class?.name || payment.student?.school_class?.class || payment.student?.schoolClass?.name || payment.student?.schoolClass?.class || ''}({payment.student?.section?.name || payment.student?.section?.section || ''})
                                                         </span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="py-4">
                                                     <div className="flex flex-col">
                                                         <span className="text-sm font-semibold text-slate-600">
-                                                            {payment.course ? `Course Purchase: ${payment.course.title}` : (payment.student_fee_master?.fee_master.fee_type.name || t("general_payment"))}
+                                                            {payment.course ? `Course Purchase: ${payment.course.title}` : (payment.student_fee_master?.fee_master?.fee_type?.name || t("general_payment"))}
                                                         </span>
                                                         <span className="text-[10px] text-muted-foreground font-medium">{t("ref_label")} {payment.reference_no || 'N/A'}</span>
-                                                        <span className="text-[10px] text-muted-foreground font-medium">{t("date_label")} {new Date(payment.payment_date).toLocaleDateString('en-GB')}</span>
+                                                        <span className="text-[10px] text-muted-foreground font-medium">{t("date_label")} {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-GB') : 'N/A'}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="py-4 text-sm font-black text-slate-800 text-right">{formatCurrency(payment.amount)}</TableCell>
+                                                <TableCell className="py-4 text-sm font-black text-slate-800 text-right">{formatCurrency(payment.amount || 0)}</TableCell>
                                                 <TableCell className="py-4">{getStatusBadge(payment.status)}</TableCell>
                                                 <TableCell className="py-4 pr-8">
                                                     <div className="flex justify-center gap-2">
@@ -554,12 +557,12 @@ export default function OfflineBankPaymentsPage() {
                                 <div>
                                     <DialogTitle className="text-2xl font-bold text-white">{t("payment_details")}</DialogTitle>
                                     <DialogDescription className="text-white/80 font-medium">
-                                        {t("review_the_submission_from", { name: selectedPayment?.student.name ?? "" })}
+                                        {t("review_the_submission_from", { name: selectedPayment?.student ? `${selectedPayment.student.name || ''} ${selectedPayment.student.last_name || ''}`.trim() : "" })}
                                     </DialogDescription>
                                 </div>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className="text-2xl font-black text-white">{symbol}{selectedPayment?.amount.toFixed(2)}</span>
+                                <span className="text-2xl font-black text-white">{symbol}{(selectedPayment?.amount || 0).toFixed(2)}</span>
                                 <span className="text-[10px] font-black uppercase tracking-widest text-white/80">{t("request")} #{selectedPayment?.id}</span>
                             </div>
                         </div>

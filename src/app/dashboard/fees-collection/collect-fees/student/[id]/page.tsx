@@ -140,10 +140,13 @@ export default function CollectStudentFeesPage({ params }: { params: Promise<{ i
         if (!selectedFee) return;
         setSubmitting(true);
         try {
-            await api.post("/fee-collection/collect-fee", {
-                student_fee_master_id: selectedFee.id,
-                ...paymentData
-            });
+            const payload: any = { ...paymentData };
+            if (selectedFee.is_transport) {
+                payload.student_transport_fee_id = selectedFee.id;
+            } else {
+                payload.student_fee_master_id = selectedFee.id;
+            }
+            await api.post("/fee-collection/collect-fee", payload);
             tt.success("fee_payment_collected_successfully");
             setIsPaymentDialogOpen(false);
             fetchStudentFees(); // Refresh fees
@@ -244,7 +247,7 @@ export default function CollectStudentFeesPage({ params }: { params: Promise<{ i
                                     const isPaid = due <= 0;
 
                                     return (
-                                        <TableRow key={fee.id} className="group border-b border-muted/50 last:border-none hover:bg-muted/10 transition-colors">
+                                        <TableRow key={fee.is_transport ? `t_${fee.id}` : `r_${fee.id}`} className="group border-b border-muted/50 last:border-none hover:bg-muted/10 transition-colors">
                                             <TableCell className="py-4 pl-8">
                                                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-bold px-2.5 py-0.5 rounded-lg whitespace-nowrap">
                                                     {fee.fee_master.fee_group?.name || "N/A"}

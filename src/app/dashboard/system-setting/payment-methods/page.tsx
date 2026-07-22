@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,8 +23,6 @@ const gateways = [
     "Mollie", "Cashfree", "Payfast", "ToyyibPay", "Twocheckout",
     "Skrill", "Payhere", "Onepay", "DPO Pay", "MOMO Pay"
 ];
-
-const activeGateways = [...gateways, "None"];
 
 const specificConfigs: Record<string, { fields: { key: string, label: string, type: string, options?: { value: string, label: string }[] }[] }> = {
     "Offline": {
@@ -94,10 +92,8 @@ export default function PaymentMethodsPage() {
     const { t } = useTranslation();
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState("Offline");
-    const [selectedGateway, setSelectedGateway] = useState("Offline");
     const [loading, setLoading] = useState(true);
     const [savingTab, setSavingTab] = useState(false);
-    const [savingSelected, setSavingSelected] = useState(false);
 
     const [settingsData, setSettingsData] = useState<Record<string, { config: any, status: boolean }>>({});
 
@@ -118,9 +114,6 @@ export default function PaymentMethodsPage() {
                         config: setting.config || {},
                         status: setting.status
                     };
-                    if (setting.provider === 'active_gateway' && setting.config?.selected) {
-                        setSelectedGateway(setting.config.selected);
-                    }
                 });
 
                 setSettingsData(formattedData);
@@ -139,7 +132,7 @@ export default function PaymentMethodsPage() {
             [providerKey]: {
                 ...prev[providerKey],
                 config: { ...(prev[providerKey]?.config || {}), [fieldKey]: value },
-                status: prev[providerKey]?.status ?? true
+                status: prev[providerKey]?.status ?? false
             }
         }));
     };
@@ -149,13 +142,21 @@ export default function PaymentMethodsPage() {
         try {
             const activeConfig = getProviderConfig(activeTab);
             const providerKey = activeConfig.providerName;
-            const currentData = settingsData[providerKey] || { config: {}, status: true };
+            const currentData = settingsData[providerKey] || { config: {}, status: false };
 
-            const payload = { provider: providerKey, config: currentData.config, status: true };
+            const payload = { provider: providerKey, config: currentData.config, status: currentData.status ?? false };
             const res = await api.post('system-setting/payment-settings', payload);
             if (res.data?.status === 'success') {
                 sonnerToast.success(`${activeTab} configuration saved successfully`);
                 toast("success", `${activeTab} ${t("configuration_saved")}`);
+                // also update state to ensure it exists
+                setSettingsData(prev => ({
+                    ...prev,
+                    [providerKey]: {
+                        config: currentData.config,
+                        status: currentData.status ?? false
+                    }
+                }));
             }
         } catch (error) {
             sonnerToast.error(`Failed to save ${activeTab} configuration`);
@@ -165,20 +166,34 @@ export default function PaymentMethodsPage() {
         }
     };
 
-    const handleSaveSelected = async () => {
-        setSavingSelected(true);
+    const handleToggleGateway = async (gatewayName: string) => {
+        const providerName = gatewayName.toLowerCase().replace(/ /g, '_');
+        const currentData = settingsData[providerName];
+
+        if (!currentData) {
+            sonnerToast.error(`Please configure and save ${gatewayName} before enabling it.`);
+            return;
+        }
+
         try {
-            const payload = { provider: 'active_gateway', config: { selected: selectedGateway }, status: true };
-            const res = await api.post('system-setting/payment-settings', payload);
+            const res = await api.post(`system-setting/payment-settings/${providerName}/toggle`);
             if (res.data?.status === 'success') {
-                sonnerToast.success(`Active gateway set to ${selectedGateway}`);
-                toast("success", `${t("active_gateway_saved_as")} ${selectedGateway}`);
+                const newStatus = res.data.data.status;
+                setSettingsData(prev => ({
+                    ...prev,
+                    [providerName]: {
+                        ...prev[providerName],
+                        status: newStatus
+                    }
+                }));
+                if (newStatus) {
+                    sonnerToast.success(`${gatewayName} activated`);
+                } else {
+                    sonnerToast.info(`${gatewayName} deactivated`);
+                }
             }
         } catch (error) {
-            sonnerToast.error("Failed to save active gateway");
-            toast("error", t("failed_to_save_active_gateway"));
-        } finally {
-            setSavingSelected(false);
+            sonnerToast.error(`Failed to toggle ${gatewayName}`);
         }
     };
 
@@ -336,44 +351,35 @@ export default function PaymentMethodsPage() {
                             <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-[12px] sm:text-[14px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("select_gateway")}</h1>
-                            <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">{t("configured_payment_methods")}</p>
+                            <h1 className="text-[12px] sm:text-[14px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("active_gateways") || "Active Gateways"}</h1>
+                            <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">{t("toggle_payment_methods") || "Toggle to enable"}</p>
                         </div>
                     </div>
                     <CardContent className="p-3 sm:p-4">
-                        <div className="overflow-y-auto max-h-[40vh] sm:max-h-[50vh] lg:max-h-[60vh]">
-                            <RadioGroup value={selectedGateway} onValueChange={setSelectedGateway} className="space-y-1.5 sm:space-y-2.5">
-                                {activeGateways.map((gateway) => (
-                                    <div key={`sel-${gateway}`} className="flex items-center space-x-2 sm:space-x-2.5 group py-0.5">
-                                        <RadioGroupItem
-                                            value={gateway}
-                                            id={`sel-${gateway}`}
-                                            className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-indigo-600 border-gray-300 data-[state=checked]:border-indigo-600"
-                                        />
-                                        <Label
-                                            htmlFor={`sel-${gateway}`}
-                                            className={cn(
-                                                "text-[10px] sm:text-[11px] font-medium cursor-pointer transition-colors flex items-center gap-1 sm:gap-1.5 truncate",
-                                                selectedGateway === gateway ? "text-indigo-600 font-bold" : "text-gray-500 hover:text-gray-700"
-                                            )}
-                                        >
-                                            {gateway === "Offline" && <Banknote className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />}
-                                            <span className="truncate">{gateway}</span>
-                                        </Label>
-                                    </div>
-                                ))}
-                            </RadioGroup>
-                        </div>
-
-                        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-50">
-                            <Button
-                                onClick={handleSaveSelected}
-                                disabled={savingSelected}
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-4 sm:px-6 h-7 sm:h-8 text-[10px] sm:text-[11px] font-bold uppercase transition-all rounded shadow-md w-full"
-                            >
-                                {savingSelected ? <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-2 animate-spin" /> : null}
-                                {savingSelected ? "..." : t("save_option")}
-                            </Button>
+                        <div className="overflow-y-auto max-h-[40vh] sm:max-h-[50vh] lg:max-h-[60vh] pr-1">
+                            <div className="space-y-1.5 sm:space-y-2.5">
+                                {gateways.map((gateway) => {
+                                    const providerName = gateway.toLowerCase().replace(/ /g, '_');
+                                    const isEnabled = settingsData[providerName]?.status || false;
+                                    
+                                    return (
+                                        <div key={`sel-${gateway}`} className="flex items-center justify-between group py-1 border-b border-gray-50 last:border-0">
+                                            <Label
+                                                className="text-[10px] sm:text-[11px] font-medium cursor-pointer transition-colors flex items-center gap-1 sm:gap-1.5 truncate text-gray-600 group-hover:text-indigo-600"
+                                                onClick={() => setActiveTab(gateway)}
+                                            >
+                                                {gateway === "Offline" && <Banknote className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />}
+                                                <span className="truncate">{gateway}</span>
+                                            </Label>
+                                            <Switch 
+                                                checked={isEnabled} 
+                                                onCheckedChange={() => handleToggleGateway(gateway)} 
+                                                className="data-[state=checked]:bg-indigo-600 h-4 w-7 sm:h-5 sm:w-9"
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

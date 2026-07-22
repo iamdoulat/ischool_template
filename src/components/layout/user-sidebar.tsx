@@ -543,79 +543,17 @@ export function UserSidebar({
                     collapsed ? "px-4 flex justify-center items-center" : "px-4 flex justify-between items-center"
                 )}>
                     {mounted ? (collapsed ? (
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <div className="h-10 w-10 rounded-xl border border-muted/50 cursor-pointer flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary transition-all shadow-sm">
-                                    <Settings className="h-5 w-5" />
-                                </div>
-                            </PopoverTrigger>
-                            <PopoverContent side="right" align="end" className="w-56 p-2 rounded-xl shadow-xl">
-                                <div className="space-y-1">
-                                    <p className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t("switch_session")}</p>
-                                    {fetchingSessions ? (
-                                        <div className="flex items-center justify-center py-4">
-                                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                        </div>
-                                    ) : sessions.map(session => (
-                                        <button
-                                            key={session.id}
-                                            onClick={() => handleSessionChange(session)}
-                                            disabled={changingSessionId !== null}
-                                            className={cn(
-                                                "w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors text-left",
-                                                session.is_active ? "bg-primary/10 text-primary font-bold" : "hover:bg-muted text-foreground/80",
-                                                changingSessionId === session.id && "opacity-50 cursor-not-allowed"
-                                            )}
-                                        >
-                                            <span>{session.session}</span>
-                                            {session.is_active && <div className="h-2 w-2 rounded-full bg-primary" />}
-                                            {changingSessionId === session.id && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                                        </button>
-                                    ))}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                        <div className="h-10 w-10 flex flex-col items-center justify-center text-muted-foreground bg-muted/10 rounded-xl border border-muted/20">
+                            <span className="text-[10px] font-bold text-foreground/70">{activeSession?.session?.substring(2, 4) || ""}</span>
+                            <span className="text-[8px] font-bold text-muted-foreground/50">{activeSession?.session?.substring(5, 7) || ""}</span>
+                        </div>
                     ) : (
-                        <>
-                            <div className="flex flex-col">
-                                <p className="text-[9px] text-muted-foreground/60 uppercase tracking-[0.15em] font-black leading-tight mb-0.5">{t("session")}</p>
-                                <p className="text-sm font-extrabold text-foreground/90 tracking-tight">
-                                    {fetchingSessions ? t("loading") : (activeSession?.session || t("not_set"))}
-                                </p>
-                            </div>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <div className="h-9 w-9 rounded-xl border border-muted/50 cursor-pointer flex items-center justify-center text-muted-foreground bg-background group-hover:text-primary group-hover:border-primary group-hover:shadow-lg transition-all duration-300">
-                                        <Settings className="h-5 w-5" />
-                                    </div>
-                                </PopoverTrigger>
-                                <PopoverContent side="top" align="end" className="w-56 p-2 rounded-xl shadow-xl border-none">
-                                    <div className="space-y-1">
-                                        <p className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t("switch_session")}</p>
-                                        {fetchingSessions ? (
-                                            <div className="flex items-center justify-center py-4">
-                                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                            </div>
-                                        ) : sessions.map(session => (
-                                            <button
-                                                key={session.id}
-                                                onClick={() => handleSessionChange(session)}
-                                                disabled={changingSessionId !== null}
-                                                className={cn(
-                                                    "w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors text-left",
-                                                    session.is_active ? "bg-primary/10 text-primary font-bold" : "hover:bg-muted text-foreground/80",
-                                                    changingSessionId === session.id && "opacity-50 cursor-not-allowed"
-                                                )}
-                                            >
-                                                <span>{session.session}</span>
-                                                {session.is_active && <div className="h-2 w-2 rounded-full bg-primary" />}
-                                                {changingSessionId === session.id && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        </>
+                        <div className="flex flex-col justify-center w-full py-1">
+                            <p className="text-[9px] text-muted-foreground/60 uppercase tracking-[0.15em] font-black leading-tight mb-0.5">{t("session")}</p>
+                            <p className="text-sm font-extrabold text-foreground/90 tracking-tight">
+                                {fetchingSessions ? t("loading") : (activeSession?.session || t("not_set"))}
+                            </p>
+                        </div>
                     )) : (
                         <div className="h-9 w-full bg-muted/20 animate-pulse rounded-lg" />
                     )}

@@ -165,7 +165,15 @@ export default function StudentTransportFeesPage() {
         setLoading(true);
         try {
             const res = await api.get("/transport/student-assignments", { params: filters });
-            setStudents(res.data.data || []);
+            let fetchedData = res.data?.data?.data || res.data?.data || res.data || [];
+            if (!Array.isArray(fetchedData)) {
+                if (typeof fetchedData === 'object' && Array.isArray(fetchedData.data)) {
+                    fetchedData = fetchedData.data;
+                } else {
+                    fetchedData = [];
+                }
+            }
+            setStudents(fetchedData);
             setSearched(true);
             setCurrentPage(1);
         } catch (error) {

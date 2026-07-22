@@ -69,16 +69,32 @@ interface Section {
 interface Student {
     id: number;
     name: string;
-    last_name: string;
-    admission_no: string;
-    roll_no: string;
-    dob: string;
-    phone: string;
-    father_name: string;
-    schoolClass?: { name: string };
-    school_class?: { name: string };
-    section?: { name: string };
+    last_name?: string;
+    admission_no?: string;
+    roll_no?: string;
+    dob?: string;
+    phone?: string;
+    father_name?: string;
+    schoolClass?: { name?: string; class?: string };
+    school_class?: { name?: string; class?: string };
+    section?: { name?: string; section?: string };
+    class_name?: string;
+    section_name?: string;
 }
+
+const getClassDisplay = (student: Student): string => {
+    const sc = student.schoolClass || student.school_class || (student as any).class;
+    if (!sc) return (student as any).class_name || (student as any).class || "-";
+    if (typeof sc === 'string') return sc;
+    return sc.name || sc.class || (student as any).class_name || (student as any).class || "-";
+};
+
+const getSectionDisplay = (student: Student): string => {
+    const sec = student.section;
+    if (!sec) return (student as any).section_name || (student as any).section || "-";
+    if (typeof sec === 'string') return sec;
+    return sec.name || sec.section || (student as any).section_name || (student as any).section || "-";
+};
 
 function CollectFeesContent() {
     const { t } = useTranslation();
@@ -168,13 +184,13 @@ function CollectFeesContent() {
         }
 
         const exportData = students.map(s => ({
-            "Class": s.schoolClass?.name || "",
-            "Section": s.section?.name || "",
-            "Admission No": s.admission_no,
-            "Student Name": `${s.name} ${s.last_name}`,
-            "Father Name": s.father_name,
+            "Class": getClassDisplay(s),
+            "Section": getSectionDisplay(s),
+            "Admission No": s.admission_no || "",
+            "Student Name": `${s.name || ""} ${s.last_name || ""}`.trim(),
+            "Father Name": s.father_name || "",
             "Date of Birth": formatDate(s.dob),
-            "Mobile No": s.phone
+            "Mobile No": s.phone || ""
         }));
 
         if (format === 'excel' || format === 'csv') {
@@ -393,13 +409,13 @@ function CollectFeesContent() {
                             ) : (
                                 students.map((student) => (
                                     <TableRow key={student.id} className="hover:bg-muted/10 transition-colors group border-b border-muted/50 last:border-none">
-                                        <TableCell className="py-4 pl-8 text-sm font-semibold text-slate-600">{student.schoolClass?.name || student.school_class?.name}</TableCell>
-                                        <TableCell className="py-4 text-sm font-semibold text-slate-600">{student.section?.name}</TableCell>
-                                        <TableCell className="py-4 text-sm font-bold text-slate-600">{student.admission_no}</TableCell>
-                                        <TableCell className="py-4 text-sm font-bold text-slate-800 capitalize">{`${student.name} ${student.last_name || ''}`}</TableCell>
-                                        <TableCell className="py-4 text-sm font-semibold text-slate-600 capitalize">{student.father_name}</TableCell>
+                                        <TableCell className="py-4 pl-8 text-sm font-semibold text-slate-600">{getClassDisplay(student)}</TableCell>
+                                        <TableCell className="py-4 text-sm font-semibold text-slate-600">{getSectionDisplay(student)}</TableCell>
+                                        <TableCell className="py-4 text-sm font-bold text-slate-600">{student.admission_no || '-'}</TableCell>
+                                        <TableCell className="py-4 text-sm font-bold text-slate-800 capitalize">{`${student.name || ''} ${student.last_name || ''}`.trim()}</TableCell>
+                                        <TableCell className="py-4 text-sm font-semibold text-slate-600 capitalize">{student.father_name || '-'}</TableCell>
                                         <TableCell className="py-4 text-sm font-semibold text-slate-600">{formatDate(student.dob)}</TableCell>
-                                        <TableCell className="py-4 text-sm font-semibold text-slate-600">{student.phone}</TableCell>
+                                        <TableCell className="py-4 text-sm font-semibold text-slate-600">{student.phone || '-'}</TableCell>
                                         <TableCell className="py-4 pr-8 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <Button

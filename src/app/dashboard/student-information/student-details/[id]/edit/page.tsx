@@ -239,10 +239,17 @@ export default function StudentEditPage() {
             const response = await api.get(`/academics/sections?no_paginate=true&school_class_id=${classId}`);
             let fetchedSections = response.data.data?.data || response.data.data || [];
             
-            // Ensure the current section is in the list (in case it's a globally grouped ID that doesn't strictly belong to this class)
-            if (currentSectionId && currentSectionName) {
-                if (!fetchedSections.some((s: any) => s.id.toString() === currentSectionId.toString())) {
-                    fetchedSections = [...fetchedSections, { id: parseInt(currentSectionId), name: currentSectionName }];
+            // Fallback to global sections if class-filtered section list is empty
+            if (!Array.isArray(fetchedSections) || fetchedSections.length === 0) {
+                const globalRes = await api.get(`/academics/sections?no_paginate=true`);
+                fetchedSections = globalRes.data.data?.data || globalRes.data.data || [];
+            }
+
+            // Ensure the current section is in the list
+            if (currentSectionId) {
+                if (!fetchedSections.some((s: any) => s.id?.toString() === currentSectionId.toString())) {
+                    const secLabel = currentSectionName || `Section ${currentSectionId}`;
+                    fetchedSections = [{ id: isNaN(Number(currentSectionId)) ? currentSectionId : parseInt(currentSectionId), name: secLabel }, ...fetchedSections];
                 }
             }
             
@@ -257,16 +264,28 @@ export default function StudentEditPage() {
             const response = await api.get(`/students/${id}`);
             const student = response.data.data;
             
-            if (student.school_class_id) {
-                fetchSectionsForClass(student.school_class_id.toString(), student.section_id?.toString(), student.section?.name);
+            const classId = (student.school_class_id ?? student.school_class?.id ?? student.schoolClass?.id ?? student.class_id ?? "")?.toString();
+            const sectionId = (student.section_id ?? student.section?.id ?? "")?.toString();
+            const className = student.school_class?.name || student.schoolClass?.name || student.class_name || "";
+            const sectionName = student.section?.name || student.section?.section || student.section_name || "";
+
+            if (classId) {
+                setClasses(prev => {
+                    if (!prev.some(c => c.id?.toString() === classId)) {
+                        const clsLabel = className || `Class ${classId}`;
+                        return [{ id: isNaN(Number(classId)) ? classId as any : parseInt(classId), name: clsLabel }, ...prev];
+                    }
+                    return prev;
+                });
+                fetchSectionsForClass(classId, sectionId, sectionName);
             }
             
             setFormData({
                 admission_no: student.admission_no || "",
                 roll_no: student.roll_no || "",
                 username: student.username || "",
-                school_class_id: student.school_class_id?.toString() || "",
-                section_id: student.section_id?.toString() || "",
+                school_class_id: classId,
+                section_id: sectionId,
                 name: student.name || "",
                 last_name: student.last_name || "",
                 full_name: student.full_name || `${student.name || ''} ${student.last_name || ''}`.trim(),

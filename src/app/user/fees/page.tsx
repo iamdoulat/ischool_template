@@ -9,6 +9,9 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useCurrency } from "@/components/providers/currency-provider";
 import { useTranslation } from "@/hooks/use-translation";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
     Printer, CreditCard, Copy, FileSpreadsheet, FileDown,
     User, Loader2, Wallet, ArrowLeft, ChevronRight, Receipt,
@@ -34,7 +37,7 @@ type FeeRow = {
     name: string;
     code: string;
     due_date: string;
-    status: "Paid" | "Unpaid" | "Partial";
+    status: "Paid" | "Unpaid" | "Partial" | "Pending";
     amount: number;
     fine: number;
     discount: number;
@@ -67,6 +70,7 @@ function StatusBadge({ status }: { status: string }) {
         Paid: "bg-green-100 text-green-700 border-green-200",
         Unpaid: "bg-red-100 text-red-600 border-red-200",
         Partial: "bg-amber-100 text-amber-700 border-amber-200",
+        Pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
     };
     return (
         <span className={cn("px-2 py-0.5 text-[10px] font-bold rounded-full uppercase border", map[status] ?? "bg-gray-100 text-gray-600 border-gray-200")}>
@@ -98,27 +102,29 @@ export default function StudentFeesPage() {
     const [data, setData] = useState<FeesData | null>(null);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<number[]>([]);
+    const [payingFee, setPayingFee] = useState<FeeRow | null>(null);
     const { toast } = useToast();
     const { selectedCurrency } = useCurrency();
     const cur = selectedCurrency?.symbol || "$";
 
-    useEffect(() => {
-        const fetchFees = async () => {
-            try {
-                const res = await api.get("/user/fees");
-                if (res.data.success) {
-                    setData(res.data.data);
-                } else {
-                    toast({ variant: "destructive", title: t("error"), description: res.data.message || t("failed_to_load_fees") });
-                }
-            } catch {
-                toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_fees") });
-            } finally {
-                setLoading(false);
+    const fetchFees = useCallback(async () => {
+        try {
+            const res = await api.get("/user/fees");
+            if (res.data.success) {
+                setData(res.data.data);
+            } else {
+                toast({ variant: "destructive", title: t("error"), description: res.data.message || t("failed_to_load_fees") });
             }
-        };
+        } catch {
+            toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_fees") });
+        } finally {
+            setLoading(false);
+        }
+    }, [toast, t]);
+
+    useEffect(() => {
         fetchFees();
-    }, [toast]);
+    }, [fetchFees]);
 
     const fees = data?.fees ?? [];
     const allIds = fees.map((f) => f.id);
@@ -340,6 +346,7 @@ export default function StudentFeesPage() {
                                                 fee={fee}
                                                 checked={checked}
                                                 onToggle={() => toggleOne(fee.id)}
+                                                onPay={() => setPayingFee(fee)}
                                                 delay={idx * 40}
                                             />
                                         );
@@ -367,13 +374,23 @@ export default function StudentFeesPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            <PaymentModal
+                fee={payingFee}
+                open={!!payingFee}
+                onClose={() => setPayingFee(null)}
+                onSuccess={fetchFees}
+            />
         </div>
     );
 }
 
 /* Fee row + its payment sub-rows, with entrance animation */
-function FeeRowGroup({ fee, checked, onToggle, delay }: { fee: FeeRow; checked: boolean; onToggle: () => void; delay: number }) {
+function FeeRowGroup({ fee, checked, onToggle, onPay, delay }: { fee: FeeRow; checked: boolean; onToggle: () => void; onPay: () => void; delay: number }) {
     const [visible, setVisible] = useState(false);
+    const { t } = useTranslation();
+    const { toast } = useToast();
+
     useEffect(() => {
         const t = setTimeout(() => setVisible(true), delay);
         return () => clearTimeout(t);
@@ -396,7 +413,19 @@ function FeeRowGroup({ fee, checked, onToggle, delay }: { fee: FeeRow; checked: 
                     <span className="text-[#6366F1] font-medium">{fee.name} ({fee.code})</span>
                 </td>
                 <td className="px-2 py-2.5 text-gray-600 whitespace-nowrap">{fee.due_date}</td>
-                <td className="px-2 py-2.5"><StatusBadge status={fee.status} /></td>
+                <td className="px-2 py-2.5">
+                    <div className="flex items-center gap-1.5">
+                        <StatusBadge status={fee.status} />
+                        {fee.status !== "Paid" && fee.status !== "Pending" && (
+                            <button
+                                onClick={onPay}
+                                className="px-2 py-[3px] text-[9px] uppercase tracking-wider font-bold text-white rounded bg-gradient-to-r from-[#10b981] to-[#059669] hover:shadow-md hover:-translate-y-px transition-all shadow-sm"
+                            >
+                                {t("pay")}
+                            </button>
+                        )}
+                    </div>
+                </td>
                 <td className="px-2 py-2.5 text-right whitespace-nowrap">
                     <span className="text-gray-700">{fmt(fee.amount)}</span>
                     {fee.fine > 0 && <span className="text-orange-500 ml-1">+ {fmt(fee.fine)}</span>}
@@ -424,5 +453,152 @@ function FeeRowGroup({ fee, checked, onToggle, delay }: { fee: FeeRow; checked: 
                 </tr>
             ))}
         </>
+    );
+}
+
+function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; open: boolean; onClose: () => void; onSuccess: () => void }) {
+    const { t } = useTranslation();
+    const { toast } = useToast();
+    const [gateways, setGateways] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [selectedGateway, setSelectedGateway] = useState<string>("offline");
+
+    // form data
+    const [paymentDate, setPaymentDate] = useState("");
+    const [amount, setAmount] = useState("");
+    const [referenceNo, setReferenceNo] = useState("");
+    const [bankName, setBankName] = useState("");
+    const [bankAccountNo, setBankAccountNo] = useState("");
+    const [screenshot, setScreenshot] = useState<File | null>(null);
+
+    useEffect(() => {
+        if (open) {
+            setLoading(true);
+            api.get("/user/payment-gateways")
+                .then(res => {
+                    if (res.data.success) {
+                        setGateways(res.data.data);
+                        if (res.data.data.length > 0) {
+                            setSelectedGateway(res.data.data[0].provider);
+                        }
+                    }
+                })
+                .finally(() => setLoading(false));
+            
+            if (fee) setAmount(fee.balance.toString());
+        } else {
+            // reset form
+            setPaymentDate("");
+            setReferenceNo("");
+            setBankName("");
+            setBankAccountNo("");
+            setScreenshot(null);
+        }
+    }, [open, fee]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!fee) return;
+        setSubmitting(true);
+
+        const formData = new FormData();
+        formData.append("student_fee_master_id", fee.id.toString());
+        formData.append("amount", amount);
+        formData.append("payment_date", paymentDate);
+        if (referenceNo) formData.append("reference_no", referenceNo);
+        if (bankName) formData.append("bank_name", bankName);
+        if (bankAccountNo) formData.append("bank_account_no", bankAccountNo);
+        if (screenshot) formData.append("screenshot", screenshot);
+
+        try {
+            const res = await api.post("/user/fees/offline-payment", formData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            });
+            if (res.data.success) {
+                toast({ title: t("success"), description: t("payment_submitted_successfully") });
+                onSuccess();
+                onClose();
+            } else {
+                toast({ variant: "destructive", title: t("error"), description: res.data.message });
+            }
+        } catch (err: any) {
+            toast({ variant: "destructive", title: t("error"), description: err.response?.data?.message || t("failed_to_submit_payment") });
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>{t("pay_fee")} - {fee?.name}</DialogTitle>
+                </DialogHeader>
+                {loading ? (
+                    <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                ) : (
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>{t("payment_method")}</Label>
+                            <select 
+                                value={selectedGateway} 
+                                onChange={(e) => setSelectedGateway(e.target.value)}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {gateways.map(g => (
+                                    <option key={g.provider} value={g.provider}>{g.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        {selectedGateway === "offline" ? (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>{t("amount")}</Label>
+                                        <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} required min="0.01" step="0.01" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>{t("payment_date")}</Label>
+                                        <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} required />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>{t("reference_no")}</Label>
+                                    <Input value={referenceNo} onChange={e => setReferenceNo(e.target.value)} placeholder="Cheque No / Transaction ID" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>{t("bank_name")}</Label>
+                                        <Input value={bankName} onChange={e => setBankName(e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>{t("bank_account_no")}</Label>
+                                        <Input value={bankAccountNo} onChange={e => setBankAccountNo(e.target.value)} />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>{t("screenshot")} / {t("proof")}</Label>
+                                    <Input type="file" onChange={e => setScreenshot(e.target.files?.[0] || null)} accept="image/*,.pdf" />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="py-4 text-center text-muted-foreground text-sm">
+                                {t("payment_gateway_coming_soon")}
+                            </div>
+                        )}
+                        
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button type="button" variant="outline" onClick={onClose}>{t("cancel")}</Button>
+                            <Button type="submit" disabled={submitting || selectedGateway !== "offline"}>
+                                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {t("submit")}
+                            </Button>
+                        </div>
+                    </form>
+                )}
+            </DialogContent>
+        </Dialog>
     );
 }
