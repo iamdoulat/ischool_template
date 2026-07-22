@@ -14,6 +14,7 @@ import { Loader2, CreditCard, Banknote } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast as sonnerToast } from "sonner";
 
 const gateways = [

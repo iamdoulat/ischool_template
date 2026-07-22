@@ -46,6 +46,7 @@ import axios from "axios";
 import { useEffect } from "react";
 import { useSettings } from "@/components/providers/settings-provider";
 import api from "@/lib/api";
+import { getImageUrl } from "@/lib/image-url";
 import { CheckCircle2, AlertTriangle, Save, Settings } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -391,8 +392,8 @@ export default function GeneralSettingPage() {
                 },
             });
 
-            if (response.data.status === "Success") {
-                const imageUrl = response.data.data.url;
+            if (response.data.status === "Success" || response.data.status === "success" || response.data.success) {
+                const imageUrl = response.data.data?.url || response.data.data?.path;
                 handleChange(field, imageUrl);
                 toast("success", t("logo_uploaded_successfully"));
                 return imageUrl;
@@ -423,6 +424,7 @@ export default function GeneralSettingPage() {
                 setUploading(true);
                 const url = await handleLogoUpload(field, file);
                 setUploading(false);
+                e.target.value = "";
                 if (url) {
                     // Update the settings immediately on the server for logos
                     try {
@@ -444,7 +446,7 @@ export default function GeneralSettingPage() {
                 <div className="flex-1 flex flex-col items-center justify-center space-y-3 w-full py-2">
                     <div className="relative group overflow-hidden rounded-md border border-gray-50 bg-gray-50/50 flex items-center justify-center p-2 min-h-[100px] w-full">
                         {value ? (
-                            <img src={value} alt={title} className="max-h-20 object-contain transition-transform group-hover:scale-105" />
+                            <img src={getImageUrl(value)} alt={title} className="max-h-20 object-contain transition-transform group-hover:scale-105" />
                         ) : (
                             <ImageIcon className="h-10 w-10 text-gray-200" />
                         )}
