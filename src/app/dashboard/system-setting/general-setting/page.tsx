@@ -420,7 +420,25 @@ export default function GeneralSettingPage() {
         value: string;
     }) => {
         const [uploading, setUploading] = useState(false);
+        const [imgErrorState, setImgErrorState] = useState<'initial' | 'proxy' | 'failed'>('initial');
         const getImageUrl = useImageUrl();
+
+        useEffect(() => {
+            setImgErrorState('initial');
+        }, [value]);
+
+        const primaryUrl = value ? getImageUrl(value) : "";
+        const displaySrc = imgErrorState === 'proxy' && primaryUrl
+            ? `/api/proxy-image?url=${encodeURIComponent(primaryUrl)}`
+            : primaryUrl;
+
+        const handleImageError = () => {
+            if (imgErrorState === 'initial' && primaryUrl) {
+                setImgErrorState('proxy');
+            } else {
+                setImgErrorState('failed');
+            }
+        };
 
         const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];
@@ -430,6 +448,7 @@ export default function GeneralSettingPage() {
                 setUploading(false);
                 e.target.value = "";
                 if (url) {
+                    setFormData(prev => ({ ...prev, [field]: url }));
                     // Update the settings immediately on the server for logos
                     try {
                         await api.post("/system-setting/general-setting", { ...formData, [field]: url });
@@ -449,10 +468,16 @@ export default function GeneralSettingPage() {
 
                 <div className="flex-1 flex flex-col items-center justify-center space-y-3 w-full py-2">
                     <div className="relative group overflow-hidden rounded-md border border-gray-50 bg-gray-50/50 flex items-center justify-center p-2 min-h-[100px] w-full">
-                        {value ? (
-                            <img src={getImageUrl(value)} alt={title} className="max-h-20 object-contain transition-transform group-hover:scale-105" />
+                        {value && imgErrorState !== 'failed' ? (
+                            <img
+                                key={`${field}-${value}-${imgErrorState}`}
+                                src={displaySrc}
+                                alt={title}
+                                onError={handleImageError}
+                                className="max-h-20 object-contain transition-transform group-hover:scale-105"
+                            />
                         ) : (
-                            <ImageIcon className="h-10 w-10 text-gray-200" />
+                            <ImageIcon className="h-10 w-10 text-gray-300" />
                         )}
                         {uploading && (
                             <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10 font-bold text-xs uppercase tracking-tight text-indigo-100">

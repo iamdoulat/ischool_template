@@ -20,10 +20,17 @@ export function getImageUrl(
     const storageIndex = cleanPath.lastIndexOf("/storage/");
     if (storageIndex !== -1) {
       cleanPath = cleanPath.substring(storageIndex + 9);
-    } else {
-      // Replace any localhost or HTTP domain with current domain
+    } else if (cleanPath.includes("localhost") || cleanPath.includes("127.0.0.1")) {
       return cleanPath.replace(/^https?:\/\/[^\/]+/, domain);
+    } else {
+      // External absolute URL (S3, CDN, Unsplash, external domain, etc.)
+      return cleanPath;
     }
+  }
+
+  // If it's a frontend static asset path (starts with / and not /storage or /uploads)
+  if (cleanPath.startsWith('/') && !cleanPath.startsWith('/storage') && !cleanPath.startsWith('/uploads')) {
+    return cleanPath;
   }
 
   // Remove redundant storage prefix if present

@@ -197,6 +197,8 @@ export function UserSidebar({
     const { t } = useTranslation();
 
     const [mounted, setMounted] = useState(false);
+    const [logoError, setLogoError] = useState(false);
+    const [smallLogoError, setSmallLogoError] = useState(false);
     const [sessions, setSessions] = useState<any[]>([]);
     const [fetchingSessions, setFetchingSessions] = useState(false);
     const [changingSessionId, setChangingSessionId] = useState<number | null>(null);
@@ -305,8 +307,8 @@ export function UserSidebar({
                     <div className="flex items-center gap-2">
                         {collapsed && !mobileOpen ? (
                             <div className="p-1.5 bg-white/20 backdrop-blur-md rounded-lg border border-white/10 shadow-sm overflow-hidden flex items-center justify-center h-9 w-9">
-                                {settings?.admin_small_logo ? (
-                                    <img src={getImageUrl(settings.admin_small_logo)} alt="S" className="h-5 w-5 object-contain" />
+                                {settings?.admin_small_logo && !smallLogoError ? (
+                                    <img src={getImageUrl(settings.admin_small_logo)} alt="S" onError={() => setSmallLogoError(true)} className="h-5 w-5 object-contain" />
                                 ) : (
                                     <GraduationCap className="h-6 w-6 text-white" />
                                 )}
@@ -314,8 +316,8 @@ export function UserSidebar({
                         ) : (
                             <div className="flex items-center gap-2">
                                 <div className="p-1.5 bg-white/20 backdrop-blur-md rounded-lg border border-white/10 shadow-sm overflow-hidden flex items-center justify-center">
-                                    {settings?.admin_small_logo ? (
-                                        <img src={getImageUrl(settings.admin_small_logo)} alt="S" className="h-5 w-5 object-contain" />
+                                    {settings?.admin_small_logo && !smallLogoError ? (
+                                        <img src={getImageUrl(settings.admin_small_logo)} alt="S" onError={() => setSmallLogoError(true)} className="h-5 w-5 object-contain" />
                                     ) : (
                                         <GraduationCap className="h-6 w-6 text-white" />
                                     )}
@@ -323,8 +325,8 @@ export function UserSidebar({
                                 <div className="flex flex-col">
                                     {settingsLoading ? (
                                         <div className="h-5 w-24 bg-white/20 animate-pulse rounded" />
-                                    ) : settings?.admin_logo ? (
-                                        <img src={getImageUrl(settings.admin_logo)} alt={settings.school_name} className="h-6 object-contain" />
+                                    ) : settings?.admin_logo && !logoError ? (
+                                        <img src={getImageUrl(settings.admin_logo)} alt={settings.school_name} onError={() => setLogoError(true)} className="h-6 object-contain" />
                                     ) : (
                                         <span className="font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300">
                                             {settings?.school_name || "Smart School"}
