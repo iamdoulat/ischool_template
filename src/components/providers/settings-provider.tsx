@@ -83,13 +83,13 @@ function createDefaultSettings(): GeneralSettings {
         currency_format: "USD",
         base_url: fallbackBaseUrl,
         file_upload_path: "uploads/",
-        print_logo: "",
+        print_logo: "/logo-print.png",
         print_logo_base64: "",
-        admin_logo: "",
-        admin_small_logo: "",
-        app_logo: "",
-        login_page_background_admin: "",
-        login_page_background_user: "",
+        admin_logo: "/logo-admin.png",
+        admin_small_logo: "/logo-admin-small.png",
+        app_logo: "/logo-app.png",
+        login_page_background_admin: "/bg-admin.jpg",
+        login_page_background_user: "/bg-user.jpg",
         theme_mode: "light",
         skins: "default",
         side_menu: "default",
@@ -179,6 +179,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     'maintenance_mode'
                 ];
 
+                const defaultLogoMap: Record<string, string> = {
+                    print_logo: "/logo-print.png",
+                    admin_logo: "/logo-admin.png",
+                    admin_small_logo: "/logo-admin-small.png",
+                    app_logo: "/logo-app.png",
+                    login_page_background_admin: "/bg-admin.jpg",
+                    login_page_background_user: "/bg-user.jpg",
+                };
+
                 fields.forEach(field => {
                     const value = incomingData[field];
                     if (field.includes('login') || field === 'allow_student_to_add_timeline' || field === 'biometric_attendance' || field === 'maintenance_mode') {
@@ -186,7 +195,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     } else if (field === 'staff_attendance_settings' || field === 'student_attendance_settings') {
                         normalizedData[field] = Array.isArray(value) ? value : [];
                     } else {
-                        normalizedData[field] = (value !== null && value !== undefined) ? String(value) : "";
+                        const strVal = (value !== null && value !== undefined) ? String(value) : "";
+                        normalizedData[field] = strVal || defaultLogoMap[field] || strVal;
                     }
                 });
 

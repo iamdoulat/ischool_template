@@ -423,11 +423,17 @@ export default function GeneralSettingPage() {
         const [imgErrorState, setImgErrorState] = useState<'initial' | 'proxy' | 'failed'>('initial');
         const getImageUrl = useImageUrl();
 
-        useEffect(() => {
-            setImgErrorState('initial');
-        }, [value]);
+        const defaultLogos: Record<string, string> = {
+            print_logo: "/logo-print.png",
+            admin_logo: "/logo-admin.png",
+            admin_small_logo: "/logo-admin-small.png",
+            app_logo: "/logo-app.png",
+            login_page_background_admin: "/bg-admin.jpg",
+            login_page_background_user: "/bg-user.jpg",
+        };
 
-        const primaryUrl = value ? getImageUrl(value) : "";
+        const effectiveValue = value || defaultLogos[field] || "";
+        const primaryUrl = effectiveValue ? getImageUrl(effectiveValue) : "";
         const displaySrc = imgErrorState === 'proxy' && primaryUrl
             ? `/api/proxy-image?url=${encodeURIComponent(primaryUrl)}`
             : primaryUrl;
@@ -1097,7 +1103,7 @@ export default function GeneralSettingPage() {
                                     <Input
                                         value={formData.mobile_api_url}
                                         onChange={(e) => handleChange('mobile_api_url', e.target.value)}
-                                        placeholder="https://demo.smart-school.in/api/"
+                                        placeholder="https://app.yourdomain.com"
                                         className="h-10 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md"
                                     />
                                 </div>
