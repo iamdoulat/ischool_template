@@ -393,10 +393,13 @@ export default function GeneralSettingPage() {
             });
 
             if (response.data.status === "Success" || response.data.status === "success" || response.data.success) {
-                const imageUrl = response.data.data?.url || response.data.data?.path;
-                handleChange(field, imageUrl);
+                let imagePath = response.data.data?.path || response.data.data?.url;
+                if (imagePath && imagePath.includes("/storage/")) {
+                    imagePath = imagePath.substring(imagePath.lastIndexOf("/storage/") + 9);
+                }
+                handleChange(field, imagePath);
                 toast("success", t("logo_uploaded_successfully"));
-                return imageUrl;
+                return imagePath;
             }
         } catch (error) {
             console.error("Error uploading logo:", error);
@@ -856,6 +859,30 @@ export default function GeneralSettingPage() {
                             </div>
 
 
+                        </div>
+                    </div>
+                );
+
+            case "Logo":
+                return (
+                    <div className="space-y-8 animate-in fade-in duration-300">
+                        <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("logo")}</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <LogoCard title="Print Logo" field="print_logo" dimensions="170PX X 184PX" value={formData.print_logo} />
+                            <LogoCard title="Admin Logo" field="admin_logo" dimensions="290PX X 51PX" value={formData.admin_logo} />
+                            <LogoCard title="Admin Small Logo" field="admin_small_logo" dimensions="32PX X 32PX" value={formData.admin_small_logo} />
+                            <LogoCard title="App Logo" field="app_logo" dimensions="290PX X 51PX" value={formData.app_logo} />
+                        </div>
+                    </div>
+                );
+
+            case "Login Page Background":
+                return (
+                    <div className="space-y-8 animate-in fade-in duration-300">
+                        <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("login_page_background")}</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <LogoCard title="Admin Login Background" field="login_page_background_admin" dimensions="1920PX X 1080PX" value={formData.login_page_background_admin} />
+                            <LogoCard title="User Login Background" field="login_page_background_user" dimensions="1920PX X 1080PX" value={formData.login_page_background_user} />
                         </div>
                     </div>
                 );
