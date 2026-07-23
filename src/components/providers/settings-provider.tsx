@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import api from "@/lib/api";
+import { getImageUrl } from "@/lib/image-url";
 
 const fallbackBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
 
@@ -156,50 +157,40 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     const fetchSettings = async () => {
         try {
             const response = await api.get("/system-setting/general-setting");
-            if (response.data.status === "Success") {
-                const incomingData = response.data.data || {};
-                const normalizedData: any = {};
+            if (response.data.status === "Success" || response.data.data || response.data) {
+                const incomingData = response.data.data || response.data || {};
+                const defaults = createDefaultSettings();
+                const normalizedData: Record<string, any> = { ...defaults };
 
-                // Fields to normalize
-                const fields = [
-                    'school_name', 'school_slogan', 'school_description', 'school_code', 'address', 'phone', 'email',
-                    'session', 'session_start_month', 'date_format', 'time_format', 'timezone',
-                    'start_day_of_week', 'currency_format', 'base_url', 'file_upload_path',
-                    'print_logo', 'print_logo_base64', 'admin_logo', 'admin_small_logo', 'app_logo',
-                    'login_page_background_admin', 'login_page_background_user',
-                    'theme_mode', 'skins', 'side_menu', 'primary_color', 'box_content',
-                    'theme_mode', 'skins', 'side_menu', 'primary_color', 'box_content',
-                    'mobile_api_url', 'mobile_primary_color', 'mobile_secondary_color',
-                    'student_login', 'parent_login', 'student_login_admission_no',
-                    'student_login_mobile_no', 'student_login_email', 'parent_login_mobile_no',
-                    'parent_login_email', 'allow_student_to_add_timeline',
-                    'attendance_type', 'biometric_attendance', 'devices', 'low_attendance_limit',
-                    'staff_attendance_settings', 'student_attendance_settings',
-                    'footer_contact_title', 'footer_contact_info_label',
-                    'facebook_url', 'twitter_url', 'instagram_url', 'youtube_url', 'linkedin_url', 'pinterest_url',
-                    'contact_form_receiver_email',
-                    'app_version',
-                    'maintenance_mode'
+                // Dynamically merge all backend setting properties
+                Object.keys(incomingData).forEach(key => {
+                    const value = incomingData[key];
+                    if (value !== null && value !== undefined && value !== "") {
+                        if (
+                            key.includes('login') ||
+                            key === 'allow_student_to_add_timeline' ||
+                            key === 'biometric_attendance' ||
+                            key === 'maintenance_mode'
+                        ) {
+                            normalizedData[key] = (value === 1 || value === true || value === '1' || value === 'true');
+                        } else if (key === 'staff_attendance_settings' || key === 'student_attendance_settings') {
+                            normalizedData[key] = Array.isArray(value) ? value : [];
+                        } else {
+                            normalizedData[key] = value;
+                        }
+                    }
+                });
+
+                // Resolve logo & background image paths to absolute URLs if uploaded
+                const imageFields = [
+                    'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo',
+                    'login_page_background_admin', 'login_page_background_user'
                 ];
 
-                const defaultLogoMap: Record<string, string> = {
-                    print_logo: "/logo-print.png",
-                    admin_logo: "/logo-admin.png",
-                    admin_small_logo: "/logo-admin-small.png",
-                    app_logo: "/logo-app.png",
-                    login_page_background_admin: "/bg-admin.jpg",
-                    login_page_background_user: "/bg-user.jpg",
-                };
-
-                fields.forEach(field => {
-                    const value = incomingData[field];
-                    if (field.includes('login') || field === 'allow_student_to_add_timeline' || field === 'biometric_attendance' || field === 'maintenance_mode') {
-                        normalizedData[field] = (value === 1 || value === true || value === '1' || value === 'true');
-                    } else if (field === 'staff_attendance_settings' || field === 'student_attendance_settings') {
-                        normalizedData[field] = Array.isArray(value) ? value : [];
-                    } else {
-                        const strVal = (value !== null && value !== undefined) ? String(value) : "";
-                        normalizedData[field] = strVal || defaultLogoMap[field] || strVal;
+                imageFields.forEach(imgField => {
+                    const val = normalizedData[imgField];
+                    if (val && typeof val === 'string' && val.trim() !== '') {
+                        normalizedData[imgField] = getImageUrl(val, normalizedData.base_url || fallbackBaseUrl);
                     }
                 });
 
