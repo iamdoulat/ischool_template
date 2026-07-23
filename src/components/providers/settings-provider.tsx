@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import api from "@/lib/api";
 import { getImageUrl } from "@/lib/image-url";
 
-const fallbackBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
+const fallbackBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://api.ischool.mddoulat.com").replace(/\/api\/v1\/?$/, "");
 
 interface GeneralSettings {
     school_name: string;
@@ -71,14 +71,14 @@ interface GeneralSettings {
 
 function createDefaultSettings(): GeneralSettings {
     return {
-        school_name: "",
-        school_slogan: "",
-        school_description: "",
-        school_code: "",
-        address: "",
-        phone: "",
-        email: "",
-        session: "",
+        school_name: "iSchool Management System",
+        school_slogan: "Excellence in Education",
+        school_description: "Comprehensive school management system",
+        school_code: "ISCHOOL",
+        address: "Default Address",
+        phone: "+1 234 567 890",
+        email: "admin@ischool.com",
+        session: "2026",
         session_start_month: "4",
         date_format: "d/m/Y",
         time_format: "12",
