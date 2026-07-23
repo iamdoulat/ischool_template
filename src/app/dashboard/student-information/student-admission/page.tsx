@@ -480,7 +480,7 @@ export default function StudentAdmissionPage() {
                 website: settings?.website || settings?.url || "ischool.mddoulat.com",
                 print_logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo || "/logo-print.png",
                 logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo,
-                currencySymbol: selectedCurrency?.symbol || "$",
+                currencySymbol: symbol || "$",
             };
 
             // Download admission form PDF with photos and dynamic settings
