@@ -439,9 +439,9 @@ export default function StudentAdmissionPage() {
 
             const houseName = houses.find(h => h.id?.toString() === (formData.house_id || formData.student_house_id || formData.house)?.toString())?.house_name || houses.find(h => h.id?.toString() === (formData.house_id || formData.student_house_id || formData.house)?.toString())?.name || (typeof formData.house === "string" && isNaN(Number(formData.house)) ? formData.house : undefined);
 
-            const routeName = routes.find(r => r.id?.toString() === (formData.transport_route_id || formData.route_id)?.toString())?.route_title || routes.find(r => r.id?.toString() === (formData.transport_route_id || formData.route_id)?.toString())?.title || routes.find(r => r.id?.toString() === (formData.transport_route_id || formData.route_id)?.toString())?.name;
+            const routeName = transportRoutes.find(r => r.id?.toString() === (formData.transport_route_id || formData.route_id)?.toString())?.route_title || transportRoutes.find(r => r.id?.toString() === (formData.transport_route_id || formData.route_id)?.toString())?.title || transportRoutes.find(r => r.id?.toString() === (formData.transport_route_id || formData.route_id)?.toString())?.name;
 
-            const pickupName = pickups.find(p => p.id?.toString() === (formData.transport_pickup_point_id || formData.pickup_point_id)?.toString())?.pickup_point_name || pickups.find(p => p.id?.toString() === (formData.transport_pickup_point_id || formData.pickup_point_id)?.toString())?.name || pickups.find(p => p.id?.toString() === (formData.transport_pickup_point_id || formData.pickup_point_id)?.toString())?.pickup_point;
+            const pickupName = pickupPoints.find(p => p.id?.toString() === (formData.transport_pickup_point_id || formData.pickup_point_id)?.toString())?.point_name || pickupPoints.find(p => p.id?.toString() === (formData.transport_pickup_point_id || formData.pickup_point_id)?.toString())?.pickup_point_name || pickupPoints.find(p => p.id?.toString() === (formData.transport_pickup_point_id || formData.pickup_point_id)?.toString())?.name;
 
             const hostelName = hostels.find(h => h.id?.toString() === (formData.hostel_id)?.toString())?.hostel_name || hostels.find(h => h.id?.toString() === (formData.hostel_id)?.toString())?.name;
 
