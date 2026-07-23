@@ -18,6 +18,7 @@ import { downloadAdmissionFormPdf } from "@/lib/pdf-utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useSettings } from "@/components/providers/settings-provider";
 
 // Types
