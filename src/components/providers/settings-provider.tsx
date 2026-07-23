@@ -71,14 +71,14 @@ interface GeneralSettings {
 
 function createDefaultSettings(): GeneralSettings {
     return {
-        school_name: "iSchool Management System",
-        school_slogan: "Excellence in Education",
-        school_description: "Comprehensive school management system",
-        school_code: "ISCHOOL",
-        address: "Default Address",
-        phone: "+1 234 567 890",
-        email: "admin@ischool.com",
-        session: "2026",
+        school_name: "",
+        school_slogan: "",
+        school_description: "",
+        school_code: "",
+        address: "",
+        phone: "",
+        email: "",
+        session: "",
         session_start_month: "4",
         date_format: "d/m/Y",
         time_format: "12",
