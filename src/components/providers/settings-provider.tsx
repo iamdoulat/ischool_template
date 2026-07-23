@@ -63,6 +63,9 @@ interface GeneralSettings {
     contact_form_receiver_email?: string;
     app_version?: string;
     maintenance_mode?: boolean;
+    website?: string;
+    url?: string;
+    [key: string]: any;
 }
 
 function createDefaultSettings(): GeneralSettings {
