@@ -41,7 +41,11 @@ export function getImageUrl(
   else if (cleanPath.startsWith("storage/")) cleanPath = cleanPath.substring(8);
   if (cleanPath.startsWith("/")) cleanPath = cleanPath.substring(1);
 
-  return `${domain}/storage/${cleanPath}`;
+  let url = `${domain}/storage/${cleanPath}`;
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    url = url.replace(/^http:\/\//i, "https://");
+  }
+  return url;
 }
 
 import { useSettings } from "@/components/providers/settings-provider";
@@ -54,10 +58,11 @@ export function useImageUrl() {
 
 export function useBaseUrl() {
   const { settings } = useSettings();
-  if (settings.base_url) {
-    return settings.base_url.replace(/\/+$/, "");
+  let url = settings.base_url
+    ? settings.base_url.replace(/\/+$/, "")
+    : (process.env.NEXT_PUBLIC_API_URL || "https://api.ischool.mddoulat.com").replace(/\/api\/v1\/?$/, "");
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    url = url.replace(/^http:\/\//i, "https://");
   }
-  return (
-    process.env.NEXT_PUBLIC_API_URL || "https://api.ischool.mddoulat.com"
-  ).replace(/\/api\/v1\/?$/, "");
+  return url;
 }

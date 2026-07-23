@@ -363,7 +363,8 @@ export default function GeneralSettingPage() {
     const handleSave = async (overrideData?: Record<string, any>) => {
         setSaving(true);
         try {
-            const dataToSave = overrideData || formData;
+            const isReactEvent = overrideData && (overrideData.nativeEvent || overrideData.target || overrideData._reactName || typeof overrideData.preventDefault === 'function');
+            const dataToSave = (overrideData && !isReactEvent) ? overrideData : formData;
             const payload = { ...dataToSave } as Record<string, any>;
             Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null; });
             if (payload.contact_form_receiver_email === null) delete payload.contact_form_receiver_email;
