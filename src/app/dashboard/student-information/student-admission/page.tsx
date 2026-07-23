@@ -36,11 +36,13 @@ import api from "@/lib/api";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { downloadAdmissionFormPdf, type AdmissionFormConfig } from "@/lib/pdf-utils";
+import { useSettings } from "@/components/providers/settings-provider";
 
 export default function StudentAdmissionPage() {
     const getImageUrl = useImageUrl();
     const tt = useTranslateToast();
     const { t } = useTranslation();
+    const { settings } = useSettings();
     const { symbol } = useCurrencyFormatter();
     const [loading, setLoading] = useState(false);
     const [fetchingPrereqs, setFetchingPrereqs] = useState(true);
