@@ -360,17 +360,19 @@ export default function GeneralSettingPage() {
         setFormData(prev => ({ ...prev, student_attendance_settings: currentSettings }));
     };
 
-    const handleSave = async () => {
+    const handleSave = async (overrideData?: Record<string, any>) => {
         setSaving(true);
         try {
-            const payload = { ...formData } as Record<string, any>;
+            const dataToSave = overrideData || formData;
+            const payload = { ...dataToSave } as Record<string, any>;
             Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null; });
             if (payload.contact_form_receiver_email === null) delete payload.contact_form_receiver_email;
             const response = await api.post("/system-setting/general-setting", payload);
-            if (response.data.status === "Success") {
+            if (response.data.status === "Success" || response.data.status === "success") {
                 await refreshSettings();
                 toast("success", t("general_settings_updated_successfully"));
                 setIsSaveDialogOpen(false);
+                return true;
             }
         } catch (error: any) {
             console.error("Error saving general settings:", error);
@@ -378,6 +380,7 @@ export default function GeneralSettingPage() {
         } finally {
             setSaving(false);
         }
+        return false;
     };
 
     const handleLogoUpload = async (field: string, file: File) => {
@@ -450,18 +453,16 @@ export default function GeneralSettingPage() {
             const file = e.target.files?.[0];
             if (file) {
                 setUploading(true);
-                const url = await handleLogoUpload(field, file);
+                const newUrl = await handleLogoUpload(field, file);
                 setUploading(false);
                 e.target.value = "";
-                if (url) {
-                    setFormData(prev => ({ ...prev, [field]: url }));
-                    // Update the settings immediately on the server for logos
-                    try {
-                        await api.post("/system-setting/general-setting", { ...formData, [field]: url });
-                        await refreshSettings();
-                    } catch (err) {
-                        console.error("Failed to save logo setting:", err);
-                    }
+                if (newUrl) {
+                    setImgErrorState('initial');
+                    setFormData(prev => {
+                        const updated = { ...prev, [field]: newUrl };
+                        handleSave(updated);
+                        return updated;
+                    });
                 }
             }
         };
@@ -891,30 +892,6 @@ export default function GeneralSettingPage() {
                             </div>
 
 
-                        </div>
-                    </div>
-                );
-
-            case "Logo":
-                return (
-                    <div className="space-y-8 animate-in fade-in duration-300">
-                        <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("logo")}</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <LogoCard title="Print Logo" field="print_logo" dimensions="170PX X 184PX" value={formData.print_logo} />
-                            <LogoCard title="Admin Logo" field="admin_logo" dimensions="290PX X 51PX" value={formData.admin_logo} />
-                            <LogoCard title="Admin Small Logo" field="admin_small_logo" dimensions="32PX X 32PX" value={formData.admin_small_logo} />
-                            <LogoCard title="App Logo" field="app_logo" dimensions="290PX X 51PX" value={formData.app_logo} />
-                        </div>
-                    </div>
-                );
-
-            case "Login Page Background":
-                return (
-                    <div className="space-y-8 animate-in fade-in duration-300">
-                        <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("login_page_background")}</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <LogoCard title="Admin Login Background" field="login_page_background_admin" dimensions="1920PX X 1080PX" value={formData.login_page_background_admin} />
-                            <LogoCard title="User Login Background" field="login_page_background_user" dimensions="1920PX X 1080PX" value={formData.login_page_background_user} />
                         </div>
                     </div>
                 );

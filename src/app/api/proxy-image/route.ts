@@ -15,8 +15,10 @@ export async function GET(req: NextRequest) {
 
         // If URL is relative (e.g. /storage/... or /logo-admin.png)
         if (targetUrl.startsWith("/")) {
-            if (targetUrl.startsWith("/storage/") || targetUrl.startsWith("/uploads/")) {
+            if (targetUrl.startsWith("/storage/")) {
                 targetUrl = `${backendBaseUrl}${targetUrl}`;
+            } else if (targetUrl.startsWith("/uploads/")) {
+                targetUrl = `${backendBaseUrl}/storage${targetUrl}`;
             } else {
                 // Next.js frontend relative path
                 targetUrl = `${req.nextUrl.origin}${targetUrl}`;
@@ -24,6 +26,10 @@ export async function GET(req: NextRequest) {
         } else if (targetUrl.includes("localhost") || targetUrl.includes("127.0.0.1")) {
             // Replace localhost/127.0.0.1 with backend domain
             targetUrl = targetUrl.replace(/^https?:\/\/[^\/]+/, backendBaseUrl);
+        }
+
+        if (targetUrl.includes("/uploads/") && !targetUrl.includes("/storage/uploads/")) {
+            targetUrl = targetUrl.replace("/uploads/", "/storage/uploads/");
         }
 
         const response = await fetch(targetUrl, {

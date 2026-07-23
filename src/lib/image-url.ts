@@ -18,8 +18,11 @@ export function getImageUrl(
   // If it's a full URL
   if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
     const storageIndex = cleanPath.lastIndexOf("/storage/");
+    const uploadsIndex = cleanPath.lastIndexOf("/uploads/");
     if (storageIndex !== -1) {
       cleanPath = cleanPath.substring(storageIndex + 9);
+    } else if (uploadsIndex !== -1) {
+      cleanPath = cleanPath.substring(uploadsIndex + 1);
     } else if (cleanPath.includes("localhost") || cleanPath.includes("127.0.0.1")) {
       return cleanPath.replace(/^https?:\/\/[^\/]+/, domain);
     } else {

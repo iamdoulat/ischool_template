@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
 import { PublicHeader } from "@/components/public/header";
 import { PublicFooter } from "@/components/public/footer";
 import { ContactFormSection } from "@/components/public/contact-form";
@@ -56,16 +56,7 @@ export default function DynamicPage() {
     }
 
     if (error || !page) {
-        return (
-            <div className="min-h-screen flex flex-col">
-                <PublicHeader />
-                <div className="flex-1 container mx-auto px-4 py-20 text-center">
-                    <h1 className="text-4xl font-bold text-gray-900 mb-4">404 - Page Not Found</h1>
-                    <p className="text-gray-600">The page you are looking for does not exist or has been moved.</p>
-                </div>
-                <PublicFooter />
-            </div>
-        );
+        notFound();
     }
 
     return (
