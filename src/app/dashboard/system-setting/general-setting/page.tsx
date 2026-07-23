@@ -368,7 +368,7 @@ export default function GeneralSettingPage() {
             Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null; });
             if (payload.contact_form_receiver_email === null) delete payload.contact_form_receiver_email;
             const response = await api.post("/system-setting/general-setting", payload);
-            if (response.data.status === "Success" || response.data.status === "success") {
+            if (response.data.status === "Success" || response.data.status === "success" || response.data.success) {
                 await refreshSettings();
                 toast("success", t("general_settings_updated_successfully"));
                 setIsSaveDialogOpen(false);
