@@ -18,7 +18,7 @@ import { downloadAdmissionFormPdf } from "@/lib/pdf-utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { DatePicker } from "@/components/ui/date-picker";
+import { useSettings } from "@/components/providers/settings-provider";
 
 // Types
 interface OnlineAdmissionField {
@@ -56,6 +56,9 @@ const STEPS = [
 ];
 
 export default function OnlineAdmissionPage() {
+    const { settings: globalSettings } = useSettings();
+    const schoolName = globalSettings?.school_name || globalSettings?.app_name || "SMART SCHOOL";
+
     // State
     const [currentStep, setCurrentStep] = useState(0);
     const [settings, setSettings] = useState<OnlineAdmissionSetting | null>(null);
@@ -986,12 +989,19 @@ export default function OnlineAdmissionPage() {
                                                 onClick={() => {
                                                     const selectedClass = classes.find((c: any) => c.id === parseInt(formData.school_class_id));
                                                     const selectedSection = selectedClass?.sections?.find((s: any) => s.id === parseInt(formData.section_id));
+                                                    const pPhotos = {
+                                                        father_photo: successData?.father_photo || formData?.father_photo,
+                                                        mother_photo: successData?.mother_photo || formData?.mother_photo,
+                                                        guardian_photo: successData?.guardian_photo || formData?.guardian_photo,
+                                                    };
                                                     downloadAdmissionFormPdf(
                                                         successData,
                                                         selectedClass?.name || "",
                                                         selectedSection?.name || "",
-                                                        `admission-form-${successData.reference_no}.pdf`,
-                                                        successData.student_photo ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}/storage/${successData.student_photo}` : undefined
+                                                        `admission-form-${successData.reference_no || "admission"}.pdf`,
+                                                        successData.student_photo ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}/storage/${successData.student_photo}` : undefined,
+                                                        { name: settings?.school_name, slogan: settings?.school_slogan, address: settings?.address, phone: settings?.phone, email: settings?.email, website: settings?.website || settings?.url || "ischool.mddoulat.com", print_logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo || "/logo-print.png", logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo },
+                                                        pPhotos
                                                     );
                                                 }}
                                             >
@@ -1009,12 +1019,19 @@ export default function OnlineAdmissionPage() {
                                             onClick={() => {
                                                 const selectedClass = classes.find((c: any) => c.id === parseInt(formData.school_class_id));
                                                 const selectedSection = selectedClass?.sections?.find((s: any) => s.id === parseInt(formData.section_id));
+                                                const pPhotos = {
+                                                    father_photo: successData?.father_photo || formData?.father_photo,
+                                                    mother_photo: successData?.mother_photo || formData?.mother_photo,
+                                                    guardian_photo: successData?.guardian_photo || formData?.guardian_photo,
+                                                };
                                                 downloadAdmissionFormPdf(
                                                     successData,
                                                     selectedClass?.name || "",
                                                     selectedSection?.name || "",
-                                                    `admission-form-${successData.reference_no}.pdf`,
-                                                    successData.student_photo ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}/storage/${successData.student_photo}` : undefined
+                                                    `admission-form-${successData.reference_no || "admission"}.pdf`,
+                                                    successData.student_photo ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}/storage/${successData.student_photo}` : undefined,
+                                                    { name: settings?.school_name, slogan: settings?.school_slogan, address: settings?.address, phone: settings?.phone, email: settings?.email, website: settings?.website || settings?.url || "ischool.mddoulat.com", print_logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo || "/logo-print.png", logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo },
+                                                    pPhotos
                                                 );
                                             }}
                                         >
@@ -1038,12 +1055,18 @@ export default function OnlineAdmissionPage() {
             {/* Nav Header */}
             <header className="sticky top-0 z-50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl border-b border-slate-100 dark:border-slate-900 px-6 h-20 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
-                        <GraduationCap className="w-7 h-7 text-white" />
+                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 overflow-hidden">
+                        {globalSettings?.app_logo || globalSettings?.print_logo ? (
+                            <img src={globalSettings.app_logo || globalSettings.print_logo} alt="Logo" className="w-full h-full object-contain p-1" />
+                        ) : (
+                            <GraduationCap className="w-7 h-7 text-white" />
+                        )}
                     </div>
                     <div>
-                        <h1 className="text-xl font-black tracking-tight leading-none">iSchool</h1>
-                        <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">Admission Portal 2026</p>
+                        <h1 className="text-xl font-black tracking-tight leading-none">{schoolName}</h1>
+                        <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">
+                            Admission Portal [{sessions.find((s: any) => s.is_active || s.active || s.status === 1 || s.status === "active")?.session || sessions.find((s: any) => s.is_active || s.active || s.status === 1 || s.status === "active")?.name || globalSettings?.session || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`}] Session
+                        </p>
                     </div>
                 </div>
                 <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-400">
@@ -1448,9 +1471,9 @@ export default function OnlineAdmissionPage() {
 
             <footer className="bg-white dark:bg-slate-950 py-16 border-t border-slate-100 dark:border-slate-900 text-center">
                 <div className="max-w-6xl mx-auto px-6 flex flex-col items-center gap-6">
-                    <div className="font-black text-indigo-600/30 uppercase tracking-[0.5em] text-xs">iSchool Enterprise 2026</div>
+                    <div className="font-black text-indigo-600/30 uppercase tracking-[0.5em] text-xs">{schoolName} {new Date().getFullYear()}</div>
                     <p className="text-slate-400 text-[12px] max-w-lg leading-relaxed">
-                        &copy; {new Date().getFullYear()} iSchool Management System. All rights reserved. 
+                        &copy; {new Date().getFullYear()} {schoolName}. All rights reserved. 
                         Admission processes are subject to school policies and local regulations.
                     </p>
                     <div className="flex gap-8 text-xs font-bold text-slate-500 uppercase tracking-widest">

@@ -430,31 +430,75 @@ export default function StudentAdmissionPage() {
                 },
             });
 
-            // Resolve class & section names for PDF
+            // Resolve class, section, category, house, transport, hostel names for PDF
             const clsName = classes.find(c => c.id.toString() === formData.school_class_id?.toString())?.name || "";
             const secName = sections.find(s => s.id.toString() === formData.section_id?.toString())?.name || "";
             const fullName = formData.full_name || `${formData.name || ""} ${formData.last_name || ""}`.trim();
 
-            // Read avatar as data URL for the PDF (if a file was selected)
-            let photoUrl: string | undefined;
-            if (formData.avatar instanceof File) {
-                photoUrl = await new Promise<string | undefined>((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.onerror = () => resolve(undefined);
-                    reader.readAsDataURL(formData.avatar);
-                });
-            }
+            const catName = categories.find(c => c.id?.toString() === (formData.student_category_id || formData.category_id || formData.category)?.toString())?.category_name || categories.find(c => c.id?.toString() === (formData.student_category_id || formData.category_id || formData.category)?.toString())?.name || (typeof formData.category === "string" && isNaN(Number(formData.category)) ? formData.category : undefined);
 
-            // Download admission form PDF with photo and dynamic settings
+            const houseName = houses.find(h => h.id?.toString() === (formData.house_id || formData.student_house_id || formData.house)?.toString())?.house_name || houses.find(h => h.id?.toString() === (formData.house_id || formData.student_house_id || formData.house)?.toString())?.name || (typeof formData.house === "string" && isNaN(Number(formData.house)) ? formData.house : undefined);
+
+            const routeName = routes.find(r => r.id?.toString() === (formData.transport_route_id || formData.route_id)?.toString())?.route_title || routes.find(r => r.id?.toString() === (formData.transport_route_id || formData.route_id)?.toString())?.title || routes.find(r => r.id?.toString() === (formData.transport_route_id || formData.route_id)?.toString())?.name;
+
+            const pickupName = pickups.find(p => p.id?.toString() === (formData.transport_pickup_point_id || formData.pickup_point_id)?.toString())?.pickup_point_name || pickups.find(p => p.id?.toString() === (formData.transport_pickup_point_id || formData.pickup_point_id)?.toString())?.name || pickups.find(p => p.id?.toString() === (formData.transport_pickup_point_id || formData.pickup_point_id)?.toString())?.pickup_point;
+
+            const hostelName = hostels.find(h => h.id?.toString() === (formData.hostel_id)?.toString())?.hostel_name || hostels.find(h => h.id?.toString() === (formData.hostel_id)?.toString())?.name;
+
+            const roomNo = rooms.find(r => r.id?.toString() === (formData.room_id || formData.hostel_room_id)?.toString())?.room_no || rooms.find(r => r.id?.toString() === (formData.room_id || formData.hostel_room_id)?.toString())?.room_number || rooms.find(r => r.id?.toString() === (formData.room_id || formData.hostel_room_id)?.toString())?.name;
+
+            // Helper to read File or URL as data URL for PDF rendering
+            const readFileAsDataUrl = async (fileOrUrl: unknown): Promise<string | undefined> => {
+                if (!fileOrUrl) return undefined;
+                if (typeof fileOrUrl === "string") return fileOrUrl;
+                if (fileOrUrl instanceof File) {
+                    return new Promise<string | undefined>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.onerror = () => resolve(undefined);
+                        reader.readAsDataURL(fileOrUrl);
+                    });
+                }
+                return undefined;
+            };
+
+            const photoUrl = await readFileAsDataUrl(formData.avatar);
+            const parentPhotos = {
+                father_photo: await readFileAsDataUrl(formData.father_photo),
+                mother_photo: await readFileAsDataUrl(formData.mother_photo),
+                guardian_photo: await readFileAsDataUrl(formData.guardian_photo),
+            };
+
+            const schoolInfo = {
+                name: settings?.school_name,
+                slogan: settings?.school_slogan,
+                address: settings?.address,
+                phone: settings?.phone,
+                email: settings?.email,
+                website: settings?.website || settings?.url || "ischool.mddoulat.com",
+                print_logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo || "/logo-print.png",
+                logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo,
+                currencySymbol: selectedCurrency?.symbol || "$",
+            };
+
+            // Download admission form PDF with photos and dynamic settings
             await downloadAdmissionFormPdf(
-                { ...formData, full_name: fullName },
+                {
+                    ...formData,
+                    full_name: fullName,
+                    category_name: catName,
+                    house_name: houseName,
+                    route_title: routeName,
+                    pickup_point_name: pickupName,
+                    hostel_name: hostelName,
+                    room_number: roomNo,
+                },
                 clsName,
                 secName,
                 `admission-form-${formData.admission_no || "new"}.pdf`,
                 photoUrl,
-                undefined,
-                undefined,
+                schoolInfo,
+                parentPhotos,
                 admissionFormConfig,
             );
 

@@ -126,7 +126,7 @@ export default function LoginPage() {
                             )}
                         </div>
                         <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
-                            iSchool <span className="text-indigo-400 italic">Cloud</span>
+                            {settings?.school_name || settings?.app_name || "iSchool"}
                         </h1>
                         <p className="text-slate-400 text-lg font-medium">
                             Comprehensive School Management
@@ -292,7 +292,7 @@ export default function LoginPage() {
                     </Card>
 
                     <p className="text-center text-slate-400 text-xs font-medium">
-                        © {new Date().getFullYear()} iSchool Management System. All rights reserved.
+                        © {new Date().getFullYear()} {settings?.school_name || settings?.app_name || "iSchool"}. All rights reserved.
                     </p>
                 </div>
             </div>

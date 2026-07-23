@@ -207,15 +207,79 @@ export default function StudentDetailsPage() {
             // The admission form config (documents, fee policy, office use only,
             // terms & conditions, declaration) is sourced from
             // /dashboard/system-setting/admission-form -> "Admission Form Setting" tab.
-            const [studentRes, admissionFormRes] = await Promise.all([
+            const [studentRes, admissionFormRes, routesRes, pickupsRes, routePickupsRes, transportAssignmentsRes, hostelsRes, roomsRes, housesRes] = await Promise.all([
                 api.get(`/students/${student.id}`),
                 api.get("/system-setting/admission-form").catch(() => null),
+                api.get("/transport/routes").catch(() => null),
+                api.get("/transport/pickup-points").catch(() => null),
+                api.get("/transport/route-pickup-points").catch(() => null),
+                api.get("/transport/student-assignments").catch(() => null),
+                api.get("/hostels").catch(() => null),
+                api.get("/rooms").catch(() => null),
+                api.get("/student-houses").catch(() => null),
             ]);
             const fullData = studentRes.data?.data || studentRes.data;
             if (!fullData) {
                 tt.error("failed_to_load_student_details");
                 return;
             }
+
+            const routesList = routesRes?.data?.data?.data || routesRes?.data?.data || routesRes?.data || [];
+            const pickupsList = pickupsRes?.data?.data?.data || pickupsRes?.data?.data || pickupsRes?.data || [];
+            const routePickupsList = routePickupsRes?.data?.data?.data || routePickupsRes?.data?.data || routePickupsRes?.data || [];
+            const transportAssignmentsList = transportAssignmentsRes?.data?.data?.data || transportAssignmentsRes?.data?.data || transportAssignmentsRes?.data || [];
+            const hostelsList = hostelsRes?.data?.data?.data || hostelsRes?.data?.data || hostelsRes?.data || [];
+            const roomsList = roomsRes?.data?.data?.data || roomsRes?.data?.data || roomsRes?.data || [];
+            const housesList = housesRes?.data?.data?.data || housesRes?.data?.data || housesRes?.data || [];
+
+            const studentAssignment = Array.isArray(transportAssignmentsList)
+                ? transportAssignmentsList.find((a: any) => a.student_id?.toString() === (fullData.id || student.id)?.toString())
+                : null;
+
+            const routeId = fullData.transport_route_id || fullData.route_id || studentAssignment?.route_id || studentAssignment?.transport_route_id;
+            const routeObj = Array.isArray(routesList) ? routesList.find((r: any) => r.id?.toString() === routeId?.toString()) : null;
+
+            const routeName = (fullData.route_title && !/^\d+$/.test(String(fullData.route_title).trim())) ? fullData.route_title :
+                (fullData.transport_route_name && !/^\d+$/.test(String(fullData.transport_route_name).trim())) ? fullData.transport_route_name :
+                fullData.route?.title || fullData.route?.route_title || fullData.route?.name ||
+                fullData.transport_route?.title || fullData.transport_route?.route_title || fullData.transport_route?.name ||
+                routeObj?.title || routeObj?.route_title || routeObj?.name;
+
+            const pickupId = fullData.transport_pickup_point_id || fullData.pickup_point_id || fullData.route_pickup_point_id || studentAssignment?.pickup_point_id || studentAssignment?.route_pickup_point_id;
+            const pickupObj = Array.isArray(pickupsList) ? pickupsList.find((p: any) => p.id?.toString() === pickupId?.toString()) : null;
+            const routePickupMapping = Array.isArray(routePickupsList) ? routePickupsList.find((rp: any) => rp.id?.toString() === pickupId?.toString()) : null;
+            const pickupObjFromMapping = routePickupMapping ? Array.isArray(pickupsList) && pickupsList.find((p: any) => p.id?.toString() === routePickupMapping.pickup_point_id?.toString()) : null;
+
+            const pickupName = (fullData.pickup_point_name && !/^\d+$/.test(String(fullData.pickup_point_name).trim())) ? fullData.pickup_point_name :
+                fullData.pickup_point?.point_name || fullData.pickup_point?.pickup_point_name || fullData.pickup_point?.name || fullData.pickup_point?.title ||
+                pickupObj?.point_name || pickupObj?.pickup_point_name || pickupObj?.name || pickupObj?.title ||
+                pickupObjFromMapping?.point_name || pickupObjFromMapping?.pickup_point_name || pickupObjFromMapping?.name;
+
+            const hostelId = fullData.hostel_id || fullData.room?.hostel_id || fullData.hostel_room?.hostel_id;
+            const hostelObj = Array.isArray(hostelsList) ? hostelsList.find((h: any) => h.id?.toString() === hostelId?.toString()) : null;
+
+            const hostelName = (fullData.hostel_name && !/^\d+$/.test(String(fullData.hostel_name).trim())) ? fullData.hostel_name :
+                fullData.hostel?.hostel_name || fullData.hostel?.name || fullData.hostel?.title ||
+                fullData.room?.hostel?.hostel_name || fullData.room?.hostel?.name ||
+                fullData.hostel_room?.hostel?.hostel_name || fullData.hostel_room?.hostel?.name ||
+                hostelObj?.hostel_name || hostelObj?.name;
+
+            const roomId = fullData.room_id || fullData.hostel_room_id;
+            const roomObj = Array.isArray(roomsList) ? roomsList.find((r: any) => r.id?.toString() === roomId?.toString()) : null;
+
+            const roomNo = (fullData.room_number && !/^\d+$/.test(String(fullData.room_number).trim())) ? String(fullData.room_number) :
+                (fullData.room_no && !/^\d+$/.test(String(fullData.room_no).trim())) ? String(fullData.room_no) :
+                fullData.room?.room_number || fullData.room?.room_no || fullData.room?.name ||
+                fullData.hostel_room?.room_number || fullData.hostel_room?.room_no || fullData.hostel_room?.name ||
+                roomObj?.room_number || roomObj?.room_no || roomObj?.name;
+
+            const houseId = fullData.house || fullData.student_house_id || fullData.house_id;
+            const houseObj = Array.isArray(housesList) ? housesList.find((h: any) => h.id?.toString() === houseId?.toString() || h.name === houseId || h.house_name === houseId) : null;
+
+            const houseName = (fullData.house_name && !/^\d+$/.test(String(fullData.house_name).trim())) ? fullData.house_name :
+                fullData.student_house?.house_name || fullData.student_house?.name ||
+                houseObj?.house_name || houseObj?.name || houseObj?.title ||
+                (typeof fullData.house === "string" && !/^\d+$/.test(fullData.house.trim()) ? fullData.house : undefined);
 
             const className = fullData.school_class?.name || student.school_class?.name || "";
             const sectionName = fullData.section?.name || student.section?.name || "";
@@ -235,15 +299,34 @@ export default function StudentDetailsPage() {
                 office_use_only: afData.settings?.office_use_only || "",
                 terms_conditions: afData.settings?.terms_conditions || "",
                 declaration: afData.settings?.declaration || "",
+                pre_documents_note: afData.settings?.pre_documents_note || "",
             } : undefined;
 
             await downloadAdmissionFormPdf(
-                { ...fullData, full_name: fullName },
+                {
+                    ...fullData,
+                    full_name: fullName,
+                    route_title: routeName,
+                    pickup_point_name: pickupName,
+                    hostel_name: hostelName,
+                    room_number: roomNo,
+                    house_name: houseName,
+                },
                 className,
                 sectionName,
                 `student-details-${fullData.admission_no || student.id}.pdf`,
                 photoUrl,
-                { name: settings?.school_name, slogan: settings?.school_slogan, currencySymbol: selectedCurrency?.symbol || '$' },
+                {
+                    name: settings?.school_name,
+                    slogan: settings?.school_slogan,
+                    address: settings?.address,
+                    phone: settings?.phone,
+                    email: settings?.email,
+                    website: settings?.website || settings?.url || "ischool.mddoulat.com",
+                    print_logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo || "/logo-print.png",
+                    logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo,
+                    currencySymbol: selectedCurrency?.symbol || '$'
+                },
                 parentPhotos,
                 admissionFormConfig
             );
