@@ -32,15 +32,41 @@ export async function GET(req: NextRequest) {
             targetUrl = targetUrl.replace("/uploads/", "/storage/uploads/");
         }
 
-        const response = await fetch(targetUrl, {
+        let response = await fetch(targetUrl, {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
             },
         });
 
+        // Fallback retry: if /storage/uploads/ gave 404, try /uploads/ directly
+        if (!response.ok && response.status === 404 && targetUrl.includes("/storage/uploads/")) {
+            const altUrl = targetUrl.replace("/storage/uploads/", "/uploads/");
+            const altRes = await fetch(altUrl, {
+                headers: {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                },
+            });
+            if (altRes.ok) {
+                response = altRes;
+            }
+        }
+
         if (!response.ok) {
-            return new NextResponse(`Failed to fetch image from target: ${response.status}`, { status: response.status });
+            // Return 1x1 transparent PNG fallback instead of 404 to avoid console errors
+            const transparentPng = Buffer.from(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+                "base64"
+            );
+            return new NextResponse(transparentPng, {
+                status: 200,
+                headers: {
+                    "Content-Type": "image/png",
+                    "Access-Control-Allow-Origin": "*",
+                    "Cache-Control": "no-store, must-revalidate",
+                },
+            });
         }
         
         const buffer = await response.arrayBuffer();
