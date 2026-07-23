@@ -1001,7 +1001,7 @@ export default function OnlineAdmissionPage() {
                                                         selectedSection?.name || "",
                                                         `admission-form-${successData.reference_no || "admission"}.pdf`,
                                                         successData.student_photo ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}/storage/${successData.student_photo}` : undefined,
-                                                        { name: settings?.school_name, slogan: settings?.school_slogan, address: settings?.address, phone: settings?.phone, email: settings?.email, website: settings?.website || settings?.url || "ischool.mddoulat.com", print_logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo || "/logo-print.png", logo: settings?.print_logo || settings?.admin_logo || settings?.app_logo },
+                                                        { name: globalSettings?.school_name, slogan: globalSettings?.school_slogan, address: globalSettings?.address, phone: globalSettings?.phone, email: globalSettings?.email, website: globalSettings?.website || globalSettings?.url || "ischool.mddoulat.com", print_logo: globalSettings?.print_logo || globalSettings?.admin_logo || globalSettings?.app_logo || "/logo-print.png", logo: globalSettings?.print_logo || globalSettings?.admin_logo || globalSettings?.app_logo },
                                                         pPhotos
                                                     );
                                                 }}
