@@ -179,15 +179,15 @@ export function PublicHeader() {
                         </div>
                     </div>
 
-                    {/* Social Icons & Language Dropdown */}
-                    <div className="flex items-center gap-4">
+                    {/* Social Icons, Language Dropdown, Search & Login/Dashboard */}
+                    <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
                         {/* Circular Social Buttons */}
                         <div className="flex items-center gap-2">
                             <a
                                 href={settings?.facebook_url || "#"}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-7.5 h-7.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
                                 title="Facebook"
                             >
                                 <Facebook className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -196,7 +196,7 @@ export function PublicHeader() {
                                 href={settings?.twitter_url || "#"}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-7.5 h-7.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
                                 title="Twitter"
                             >
                                 <Twitter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -205,7 +205,7 @@ export function PublicHeader() {
                                 href={settings?.linkedin_url || "#"}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-7.5 h-7.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
                                 title="LinkedIn"
                             >
                                 <Linkedin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -215,7 +215,7 @@ export function PublicHeader() {
                                     href={settings.instagram_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="w-7.5 h-7.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
+                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
                                     title="Instagram"
                                 >
                                     <Instagram className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -238,6 +238,36 @@ export function PublicHeader() {
                             </select>
                             <ChevronDown className="h-3.5 w-3.5 text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
+
+                        {/* Search Trigger Button */}
+                        <button
+                            onClick={() => setIsSearchOpen(true)}
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 border border-gray-200 flex items-center justify-center text-slate-700 hover:bg-[#044E43] hover:text-white transition-all duration-300 shadow-sm"
+                            title={t("search")}
+                        >
+                            <Search className="h-3.5 w-3.5" />
+                        </button>
+
+                        {/* Login / Dashboard Button */}
+                        {!mounted || !user ? (
+                            <Link href="/login" className="group">
+                                <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs pl-3 pr-1 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-all duration-300">
+                                    <span>{t("login")}</span>
+                                    <div className="w-5 h-5 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                                        <ArrowUpRight className="h-3 w-3" />
+                                    </div>
+                                </div>
+                            </Link>
+                        ) : (
+                            <Link href={getDashboardUrl()} className="group">
+                                <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs pl-3 pr-1 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-all duration-300">
+                                    <span>{t("dashboard")}</span>
+                                    <div className="w-5 h-5 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                                        <LayoutGrid className="h-3 w-3" />
+                                    </div>
+                                </div>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>
@@ -247,14 +277,14 @@ export function PublicHeader() {
                 <div className="container mx-auto px-4 md:px-8 h-20 flex items-center justify-between relative">
 
                     {/* Logo with Curved Dark Teal Badge */}
-                    <div className="relative flex items-center h-full">
-                        <div className="bg-[#044E43] h-full px-4 sm:px-6 flex items-center relative z-10 shadow-sm min-w-[160px] sm:min-w-[200px] md:min-w-[240px] before:content-[''] before:absolute before:right-full before:top-0 before:bottom-0 before:w-[100vw] before:bg-[#044E43]">
-                            <Link href="/" className="flex items-center gap-2.5 text-white group relative z-10">
+                    <div className="relative flex items-center h-full shrink-0">
+                        <div className="bg-[#044E43] h-full px-4 sm:px-5 md:px-6 flex items-center relative z-10 shadow-sm min-w-[160px] sm:min-w-[190px] md:min-w-[220px] lg:min-w-[250px] before:content-[''] before:absolute before:right-full before:top-0 before:bottom-0 before:w-[100vw] before:bg-[#044E43]">
+                            <Link href="/" className="flex items-center gap-2.5 text-white group relative z-10 py-1">
                                 {logoSrc ? (
                                     <img
                                         src={getImageUrl(logoSrc)}
                                         alt={settings?.school_name || "School Logo"}
-                                        className="h-9 sm:h-10 md:h-11 w-auto max-w-[150px] sm:max-w-[180px] md:max-w-[220px] object-contain transition-transform group-hover:scale-105"
+                                        className="h-10 sm:h-11 md:h-12 lg:h-13 w-auto max-w-[170px] sm:max-w-[200px] md:max-w-[230px] lg:max-w-[260px] object-contain transition-transform group-hover:scale-105 drop-shadow-sm"
                                     />
                                 ) : (
                                     <>
@@ -273,17 +303,17 @@ export function PublicHeader() {
                                 )}
                             </Link>
 
-                            {/* SVG Curved Shape Flange */}
-                            <div className="absolute left-full top-0 h-full w-16 sm:w-24 md:w-28 lg:w-32 text-[#044E43] pointer-events-none">
-                                <svg className="h-full w-full" viewBox="0 0 140 100" fill="currentColor" preserveAspectRatio="none">
-                                    <path d="M 0 0 Q 35 0 60 30 C 85 60 100 100 140 100 L 0 100 Z" />
+                            {/* SVG Curved Shape Flange - Extra Sweeping Curve */}
+                            <div className="absolute left-full top-0 h-full w-16 sm:w-24 md:w-28 lg:w-32 xl:w-36 text-[#044E43] pointer-events-none">
+                                <svg className="h-full w-full" viewBox="0 0 160 100" fill="currentColor" preserveAspectRatio="none">
+                                    <path d="M 0 0 C 45 0 70 25 85 50 C 100 75 120 100 160 100 L 0 100 Z" />
                                 </svg>
                             </div>
                         </div>
                     </div>
 
                     {/* Desktop Menu */}
-                    <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
+                    <nav className="hidden lg:flex items-center gap-1 xl:gap-2 ml-16 lg:ml-24 xl:ml-32">
                         {displayMenus.map((item) => {
                             const isActive = item.href === '/' ? pathname === '/' : (!!item.href && item.href !== '#' && pathname.startsWith(item.href));
                             return (
@@ -305,43 +335,12 @@ export function PublicHeader() {
                         })}
                     </nav>
 
-                    {/* Right Controls: Search Icon & Login Button */}
-                    <div className="flex items-center gap-2 sm:gap-3">
-                        {/* Search Trigger Button */}
-                        <button
-                            onClick={() => setIsSearchOpen(true)}
-                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 hover:text-[#044E43] transition-all duration-300"
-                            title={t("search")}
-                        >
-                            <Search className="h-4 w-4" />
-                        </button>
-
-                        {/* Login / Dashboard Button with Orange Circle Arrow */}
-                        {!mounted || !user ? (
-                            <Link href="/login" className="group">
-                                <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs md:text-sm pl-4 pr-1.5 py-1.5 rounded-full flex items-center gap-2 shadow-md transition-all duration-300">
-                                    <span>{t("login")}</span>
-                                    <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                                        <ArrowUpRight className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                    </div>
-                                </div>
-                            </Link>
-                        ) : (
-                            <Link href={getDashboardUrl()} className="group">
-                                <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs md:text-sm pl-4 pr-1.5 py-1.5 rounded-full flex items-center gap-2 shadow-md transition-all duration-300">
-                                    <span>{t("dashboard")}</span>
-                                    <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                                        <LayoutGrid className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                    </div>
-                                </div>
-                            </Link>
-                        )}
-
-                        {/* Mobile Menu Toggle */}
+                    {/* Mobile Menu Toggle */}
+                    <div className="lg:hidden flex items-center">
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="lg:hidden text-slate-800"
+                            className="text-slate-800"
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                         >
                             {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
