@@ -31,6 +31,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useToast as useUiToast } from "@/components/ui/use-toast";
 import { Progress } from "@/components/ui/progress";
 
 interface VersionInfo {
@@ -53,6 +54,7 @@ interface RemoteUpdateInfo {
 export default function SystemUpdatePage() {
     const { t } = useTranslation();
     const { settings } = useSettings();
+    const { toast: uiToast } = useUiToast();
 
     const [currentVersion, setCurrentVersion] = useState<string>(settings?.app_version || "1.0.0");
     const [systemInfo, setSystemInfo] = useState<VersionInfo | null>(null);
@@ -66,6 +68,7 @@ export default function SystemUpdatePage() {
     const [updateProgress, setUpdateProgress] = useState<number>(0);
     const [currentStep, setCurrentStep] = useState<string>("");
     const [executionLogs, setExecutionLogs] = useState<string[]>([]);
+    const [updateSuccessVersion, setUpdateSuccessVersion] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Fetch current system version on mount
@@ -148,6 +151,7 @@ export default function SystemUpdatePage() {
         }
 
         setUpdating(true);
+        setUpdateSuccessVersion(null);
         setUpdateProgress(15);
         setCurrentStep("Uploading update.zip package...");
         setExecutionLogs(["[Start] Preparing update.zip package for installation..."]);
@@ -168,17 +172,30 @@ export default function SystemUpdatePage() {
 
             if (response.data && response.data.data) {
                 const resData = response.data.data;
+                const newVer = resData.version || currentVersion;
                 setUpdateProgress(100);
                 setCurrentStep("Update process completed successfully!");
 
                 if (resData.logs && Array.isArray(resData.logs)) {
                     setExecutionLogs(resData.logs);
                 } else {
-                    setExecutionLogs(prev => [...prev, `[Success] System updated to version ${resData.version}`]);
+                    setExecutionLogs(prev => [...prev, `[Success] System updated to version ${newVer}`]);
                 }
 
-                setCurrentVersion(resData.version || currentVersion);
-                toast.success(resData.message || `System updated to version ${resData.version}!`);
+                setCurrentVersion(newVer);
+                setUpdateSuccessVersion(newVer);
+
+                // Display prominent success toast notifications across both toast engines
+                toast.success(`🎉 System Update Completed Successfully!`, {
+                    description: resData.message || `System updated to version ${newVer}. All files and database migrations were executed cleanly.`,
+                    duration: 8000,
+                });
+
+                uiToast({
+                    title: "System Update Completed!",
+                    description: `Successfully updated system to version ${newVer}.`,
+                });
+
                 setSelectedFile(null);
                 fetchSystemVersion();
             }
@@ -198,6 +215,7 @@ export default function SystemUpdatePage() {
 
     const handleInstallRemote = async (downloadUrl: string) => {
         setUpdating(true);
+        setUpdateSuccessVersion(null);
         setUpdateProgress(20);
         setCurrentStep("Downloading update package from remote server...");
         setExecutionLogs(["[Start] Initiating remote package download..."]);
@@ -212,6 +230,7 @@ export default function SystemUpdatePage() {
 
             if (response.data && response.data.data) {
                 const resData = response.data.data;
+                const newVer = resData.version || currentVersion;
                 setUpdateProgress(100);
                 setCurrentStep("Remote update completed!");
 
@@ -219,9 +238,21 @@ export default function SystemUpdatePage() {
                     setExecutionLogs(resData.logs);
                 }
 
-                setCurrentVersion(resData.version || currentVersion);
+                setCurrentVersion(newVer);
                 setRemoteUpdate(null);
-                toast.success(`System successfully upgraded to version ${resData.version}!`);
+                setUpdateSuccessVersion(newVer);
+
+                // Display prominent success toast notifications across both toast engines
+                toast.success(`🎉 System Upgrade Completed Successfully!`, {
+                    description: `System successfully upgraded to version ${newVer}. All files and database migrations were executed cleanly.`,
+                    duration: 8000,
+                });
+
+                uiToast({
+                    title: "System Update Completed!",
+                    description: `Successfully updated system to version ${newVer}.`,
+                });
+
                 fetchSystemVersion();
             }
         } catch (error: any) {
@@ -260,67 +291,69 @@ export default function SystemUpdatePage() {
                         onClick={handleCheckUpdate}
                         disabled={loadingCheck || updating}
                     >
-                        <RefreshCw className={cn("mr-2 h-3.5 w-3.5", loadingCheck && "animate-spin")} />
-                        {t("check_for_updates") || "Check For Updates"}
+                        {loadingCheck ? (
+                            <>
+                                <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" />
+                                Checking...
+                            </>
+                        ) : (
+                            <>
+                                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                                Check For Update
+                            </>
+                        )}
                     </Button>
                 </div>
 
                 <CardContent className="p-6 space-y-6">
-                    {/* Status & Version Dashboard Cards */}
+                    {/* System Information & Version Overview */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Current Version Card */}
-                        <div className="bg-gradient-to-br from-emerald-50 via-green-50 to-emerald-100/50 border border-emerald-200/80 p-5 rounded-xl flex flex-col justify-between shadow-sm relative overflow-hidden">
+                        {/* Current System Version */}
+                        <div className="bg-gradient-to-br from-indigo-50/70 to-blue-50/50 border border-indigo-100 p-5 rounded-xl flex flex-col justify-between shadow-sm">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700/80">
-                                        Installed System Version
+                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-800/80">
+                                        Current Version
                                     </span>
-                                    <h3 className="text-2xl font-black text-emerald-800 mt-1 tracking-tight">
+                                    <h3 className="text-2xl font-black text-indigo-950 mt-1 tracking-tight">
                                         v{currentVersion}
                                     </h3>
                                 </div>
-                                <span className="p-2.5 bg-emerald-500/10 rounded-lg text-emerald-700">
-                                    <ShieldCheck className="h-6 w-6" />
-                                </span>
-                            </div>
-                            <div className="mt-4 flex items-center gap-2 text-xs font-medium text-emerald-700">
-                                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                Backend Controlled via .env
-                            </div>
-                        </div>
-
-                        {/* Environment Diagnostics */}
-                        <div className="bg-gradient-to-br from-indigo-50/60 to-slate-50 border border-indigo-100 p-5 rounded-xl flex flex-col justify-between shadow-sm">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-700/80">
-                                        Server Environment
-                                    </span>
-                                    <div className="space-y-1 mt-2 text-xs text-gray-700">
-                                        <div className="flex items-center gap-2">
-                                            <Server className="h-3.5 w-3.5 text-indigo-600" />
-                                            <span>PHP: <strong>{systemInfo?.php_version || "8.2+"}</strong></span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Database className="h-3.5 w-3.5 text-indigo-600" />
-                                            <span>Laravel: <strong>{systemInfo?.laravel_version || "12.x"}</strong></span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <span className="p-2.5 bg-indigo-500/10 rounded-lg text-indigo-700">
+                                <span className="p-2.5 bg-indigo-500/10 rounded-lg text-indigo-600">
                                     <Server className="h-6 w-6" />
                                 </span>
                             </div>
-                            <div className="mt-3 text-[11px] text-gray-500">
-                                Zip Archive Extractor: {systemInfo?.zip_enabled !== false ? (
-                                    <span className="text-emerald-600 font-semibold inline-flex items-center gap-1">
-                                        <Check className="h-3 w-3" /> Enabled
+                            <p className="text-[11px] text-indigo-800/80 mt-3 leading-snug">
+                                Running on production branch. Updates add new features, security patches, and database migrations.
+                            </p>
+                        </div>
+
+                        {/* Environment Specs */}
+                        <div className="bg-gray-50/70 border border-gray-200/80 p-5 rounded-xl flex flex-col justify-between shadow-sm">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                        Environment Specs
                                     </span>
-                                ) : (
-                                    <span className="text-amber-600 font-semibold inline-flex items-center gap-1">
-                                        <AlertCircle className="h-3 w-3" /> Zip extension missing
-                                    </span>
-                                )}
+                                    <h4 className="text-sm font-bold text-gray-800 mt-1">
+                                        PHP {systemInfo?.php_version || "8.2+"} • Laravel {systemInfo?.laravel_version || "12.x"}
+                                    </h4>
+                                </div>
+                                <span className="p-2.5 bg-gray-200/60 rounded-lg text-gray-700">
+                                    <Database className="h-6 w-6" />
+                                </span>
+                            </div>
+                            <div className="text-[11px] text-gray-600 mt-3 space-y-1">
+                                <p className="flex items-center gap-1.5">
+                                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                                    ZIP Extension: {systemInfo?.zip_enabled !== false ? (
+                                        <span className="text-emerald-600 font-semibold">Enabled</span>
+                                    ) : (
+                                        <span className="text-amber-600 font-semibold inline-flex items-center gap-1">
+                                            <AlertCircle className="h-3 w-3" /> Missing
+                                        </span>
+                                    )}
+                                </p>
                             </div>
                         </div>
 
@@ -344,6 +377,33 @@ export default function SystemUpdatePage() {
                             </p>
                         </div>
                     </div>
+
+                    {/* Success Alert Banner when update is completed */}
+                    {updateSuccessVersion && (
+                        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-md">
+                                    <CheckCircle2 className="h-6 w-6" />
+                                </span>
+                                <div>
+                                    <h4 className="text-sm font-bold text-emerald-950 dark:text-emerald-200">
+                                        System Update Completed Successfully!
+                                    </h4>
+                                    <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
+                                        Your iSchool application has been successfully updated to version <strong className="font-bold">{updateSuccessVersion}</strong>. All backend code and database migrations were executed cleanly.
+                                    </p>
+                                </div>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setUpdateSuccessVersion(null)}
+                                className="text-emerald-700 dark:text-emerald-300 border-emerald-300 hover:bg-emerald-100 rounded-lg text-xs font-bold"
+                            >
+                                Dismiss
+                            </Button>
+                        </div>
+                    )}
 
                     {/* Remote Update Available Alert Box */}
                     {remoteUpdate?.has_update && (
