@@ -58,11 +58,13 @@ const DEFAULT_WIDGETS = [
 /** Small section label used to break the page into scannable bands. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
     return (
-        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70 mb-4">
+        <h3 className="text-xs font-black uppercase tracking-widest text-foreground/80 mb-4 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
             {children}
         </h3>
     );
 }
+
 
 export default function DashboardPage() {
     const { t } = useTranslation();
@@ -174,8 +176,7 @@ export default function DashboardPage() {
 
             {/* Stat Cards Grid */}
             {visibleWidgetDefs.length > 0 && (
-                <section>
-                    <SectionLabel>{t("key_metrics")}</SectionLabel>
+                <section className="mt-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {visibleWidgetDefs.map((w, i) => (
                             <div

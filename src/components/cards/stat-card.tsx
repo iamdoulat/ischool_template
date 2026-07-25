@@ -42,12 +42,13 @@ export function StatCard({ title, current, total, percentage, icon: Icon, color 
             <CardContent className="px-6 py-4 md:px-8 md:py-6 relative z-10 h-full flex flex-col justify-between">
                 <div className="flex justify-between items-start mb-6">
                     <div>
-                        <h3 className="text-xs md:text-sm font-bold text-white/80 uppercase tracking-widest mb-1">{title}</h3>
-                        <p className="text-3xl md:text-[2.5rem] font-extrabold leading-none">
+                        <h3 className="text-xs md:text-sm font-extrabold text-white/90 uppercase tracking-widest mb-1">{title}</h3>
+                        <p className="text-3xl md:text-[2.6rem] font-black tracking-tight leading-none">
                             {current}
-                            <span className="text-sm md:text-base text-white/60 font-medium ml-1">/{total}</span>
+                            <span className="text-sm md:text-base text-white/70 font-semibold ml-1">/{total}</span>
                         </p>
                     </div>
+
                     <div className="p-3 md:p-4 rounded-xl bg-white/20 backdrop-blur-md border border-white/10 shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:bg-white/30">
                         <Icon className="h-6 w-6 md:h-8 md:w-8 text-white" />
                     </div>

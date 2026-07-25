@@ -33,8 +33,9 @@ export function SummaryCard({ title, value, icon: Icon, color }: SummaryCardProp
                     <Icon className="h-6 w-6 md:h-8 md:w-8 text-white" />
                 </div>
                 <div>
-                    <p className="text-[0.65rem] md:text-xs font-bold text-white/80 uppercase tracking-widest leading-none mb-1">{title}</p>
-                    <h4 className="text-xl md:text-2xl font-extrabold tracking-tight">{value}</h4>
+                    <p className="text-[0.65rem] md:text-xs font-extrabold text-white/90 uppercase tracking-widest leading-none mb-1">{title}</p>
+                    <h4 className="text-xl md:text-2xl font-black tracking-tight">{value}</h4>
+
                 </div>
             </CardContent>
         </Card>
