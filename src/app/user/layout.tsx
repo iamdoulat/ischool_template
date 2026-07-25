@@ -89,7 +89,7 @@ function UserLayoutContent({
                 <footer className="h-14 flex-shrink-0 border-t bg-background flex items-center justify-between px-4 md:px-8 z-20">
                     <div className="flex items-center gap-4 hidden md:flex">
                         <p className="text-[12px] text-muted-foreground/60 font-medium">
-                            Version {settings?.app_version || "5.1.0"}
+                            Version {settings?.app_version || "1.0.0"}
                         </p>
                     </div>
                     <p className="text-[12px] text-muted-foreground font-medium">

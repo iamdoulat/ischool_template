@@ -125,7 +125,7 @@ function createDefaultSettings(): GeneralSettings {
         linkedin_url: "",
         pinterest_url: "",
         contact_form_receiver_email: "",
-        app_version: "7.2.0",
+        app_version: "1.0.0",
         maintenance_mode: false
     };
 }
