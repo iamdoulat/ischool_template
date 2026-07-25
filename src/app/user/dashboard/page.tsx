@@ -238,8 +238,8 @@ export default function UserDashboardPage() {
                                     )}
                                 </div>
                                 <div className="relative text-white min-w-0">
-                                    <p className="text-[12px] font-medium text-white/80">{t("welcome_back")},</p>
-                                    <h2 className="text-xl font-bold leading-tight truncate">{profile.name}!</h2>
+                                    <p className="text-[12px] font-medium text-white/80">{t("welcome_back")}</p>
+                                    <h2 className="text-xl font-bold leading-tight truncate">{profile.name}</h2>
                                     <p className="text-[12px] text-white/90 mt-1">{t("keep_going_message")} 🎯</p>
                                 </div>
                             </div>
@@ -416,7 +416,7 @@ export default function UserDashboardPage() {
                                             "shrink-0 px-2 py-0.5 text-[10px] rounded-full font-bold text-white uppercase",
                                             item.status === "Pending" ? "bg-red-500" : "bg-[#5cb85c]"
                                         )}>
-                                            {item.status}
+                                            {item.status === "Pending" ? t("pending") : item.status === "Completed" ? t("completed") : item.status}
                                         </span>
                                     </div>
                                     <div className="flex flex-col gap-0.5 text-[11px] text-gray-500">

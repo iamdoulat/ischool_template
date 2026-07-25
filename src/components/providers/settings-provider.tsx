@@ -197,8 +197,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 const currentSettings = normalizedData as GeneralSettings;
                 setSettings(currentSettings);
 
-                // Set theme based on settings
-                if (currentSettings.theme_mode) {
+                // Set theme based on settings if user has not set a local preference
+                const savedTheme = typeof window !== 'undefined' ? localStorage.getItem("theme") : null;
+                if (!savedTheme && currentSettings.theme_mode) {
                     setTheme(currentSettings.theme_mode.toLowerCase());
                 }
             }
@@ -213,7 +214,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     const updateSettingsLocal = (newData: Partial<GeneralSettings>) => {
         setSettings(prev => {
             const updated = { ...prev, ...newData };
-            if (updated.theme_mode) {
+            const savedTheme = typeof window !== 'undefined' ? localStorage.getItem("theme") : null;
+            if (!savedTheme && updated.theme_mode) {
                 setTheme(updated.theme_mode.toLowerCase());
             }
             return updated;

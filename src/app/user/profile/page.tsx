@@ -1241,7 +1241,7 @@ const attendanceMonths = ["April", "May", "June", "July", "August", "September",
 const attendanceData: AttendanceDay[] = Array.from({ length: 31 }, (_, i) => {
   const day = i + 1;
   const row: AttendanceDay = {};
-  
+
   if (day === 1) { row["April"] = "P"; row["May"] = "A"; row["June"] = "P"; }
   if (day === 2) { row["May"] = "P"; }
   if (day === 3) { row["April"] = "L"; row["May"] = "H"; }
@@ -1272,7 +1272,7 @@ const attendanceData: AttendanceDay[] = Array.from({ length: 31 }, (_, i) => {
   if (day === 29) { row["April"] = "P"; }
   if (day === 30) { row["May"] = "P"; row["June"] = "A"; }
   if (day === 31) { row["May"] = "H"; }
-  
+
   return row;
 });
 
@@ -1285,13 +1285,63 @@ const getAttendanceColor = (status: string) => {
 };
 
 // ─── Attendance Tab Component ──────────────────────────────────────────────────
-function AttendanceTab() {
+function AttendanceTab({ studentId }: { studentId?: number }) {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState({
+    total_present: 0,
+    total_late: 0,
+    total_absent: 0,
+    total_half_day: 0,
+    total_holiday: 0,
+  });
+  const [attendanceRows, setAttendanceRows] = useState<AttendanceDay[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRealAttendance = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get("/user/attendance", {
+          params: studentId ? { student_id: studentId } : {},
+        });
+        const payload = response.data?.data || response.data;
+        if (isMounted && payload) {
+          if (payload.summary) {
+            setSummary({
+              total_present: payload.summary.total_present || 0,
+              total_late: payload.summary.total_late || 0,
+              total_absent: payload.summary.total_absent || 0,
+              total_half_day: payload.summary.total_half_day || 0,
+              total_holiday: payload.summary.total_holiday || 0,
+            });
+          }
+          if (Array.isArray(payload.records) && payload.records.length > 0) {
+            setAttendanceRows(payload.records);
+          } else {
+            setAttendanceRows(attendanceData);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch real student attendance data:", error);
+        if (isMounted) {
+          setAttendanceRows(attendanceData);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchRealAttendance();
+    return () => {
+      isMounted = false;
+    };
+  }, [studentId]);
 
   const handleCopy = () => {
     let text = "Date | Month\t" + attendanceMonths.join("\t") + "\n";
-    attendanceData.forEach((row, i) => {
+    attendanceRows.forEach((row, i) => {
       text += `${i + 1}\t` + attendanceMonths.map(m => row[m] || "").join("\t") + "\n";
     });
     navigator.clipboard.writeText(text);
@@ -1300,7 +1350,7 @@ function AttendanceTab() {
 
   const handleExportExcel = () => {
     let csv = `"Date | Month",` + attendanceMonths.map(m => `"${m}"`).join(",") + "\n";
-    attendanceData.forEach((row, i) => {
+    attendanceRows.forEach((row, i) => {
       csv += `"${i + 1}",` + attendanceMonths.map(m => `"${row[m] || ""}"`).join(",") + "\n";
     });
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -1314,22 +1364,33 @@ function AttendanceTab() {
 
   const handlePrint = () => window.print();
 
+  if (loading) {
+    return (
+      <TabPanel>
+        <div className="py-12 flex flex-col items-center justify-center text-gray-400">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+          <p className="text-sm">{t("loading")}</p>
+        </div>
+      </TabPanel>
+    );
+  }
+
   return (
     <TabPanel>
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { title: t("total_present"), value: "28", color: "from-green-500 to-emerald-400", icon: "P", textColor: "text-green-700" },
-          { title: t("total_late"), value: "5", color: "from-yellow-400 to-orange-400", icon: "L", textColor: "text-yellow-700" },
-          { title: t("total_absent"), value: "8", color: "from-red-500 to-rose-400", icon: "A", textColor: "text-red-700" },
-          { title: t("total_half_day"), value: "4", color: "from-sky-400 to-blue-500", icon: "F", textColor: "text-sky-700" },
-          { title: t("total_holiday"), value: "7", color: "from-purple-400 to-indigo-500", icon: "H", textColor: "text-purple-700" },
+          { title: t("total_present"), value: String(summary.total_present), color: "from-green-500 to-emerald-400", icon: "P", textColor: "text-green-700 dark:text-green-400" },
+          { title: t("total_late"), value: String(summary.total_late), color: "from-yellow-400 to-orange-400", icon: "L", textColor: "text-yellow-700 dark:text-yellow-400" },
+          { title: t("total_absent"), value: String(summary.total_absent), color: "from-red-500 to-rose-400", icon: "A", textColor: "text-red-700 dark:text-red-400" },
+          { title: t("total_half_day"), value: String(summary.total_half_day), color: "from-sky-400 to-blue-500", icon: "F", textColor: "text-sky-700 dark:text-sky-400" },
+          { title: t("total_holiday"), value: String(summary.total_holiday), color: "from-purple-400 to-indigo-500", icon: "H", textColor: "text-purple-700 dark:text-purple-400" },
         ].map((card, i) => (
-          <div key={i} className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+          <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
             <div className={`h-1.5 w-full bg-gradient-to-r ${card.color}`} />
             <div className="px-3 py-3 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold text-gray-500 mb-1 leading-none">{card.title}</p>
+                <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1 leading-none">{card.title}</p>
                 <p className={`text-2xl font-bold ${card.textColor}`}>{card.value}</p>
               </div>
               <span className={`text-2xl font-black opacity-15 ${card.textColor}`}>{card.icon}</span>
@@ -1342,31 +1403,31 @@ function AttendanceTab() {
         title={t("attendance_record")}
         right={
           <div className="flex flex-col items-end gap-1">
-            <div className="text-[10px] font-bold text-gray-500 flex flex-wrap gap-x-2">
-              <span className="text-green-600">P={t("present")}</span>
-              <span className="text-gray-500">E={t("late_with_excuse")}</span>
-              <span className="text-yellow-500">L={t("late")}</span>
-              <span className="text-red-500">A={t("absent")}</span>
-              <span className="text-gray-500">H={t("holiday")}</span>
-              <span className="text-sky-500">F={t("half_day")}</span>
+            <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-2">
+              <span className="text-green-600 dark:text-green-400">P={t("present")}</span>
+              <span className="text-gray-500 dark:text-gray-400">E={t("late_with_excuse")}</span>
+              <span className="text-yellow-500 dark:text-yellow-400">L={t("late")}</span>
+              <span className="text-red-500 dark:text-red-400">A={t("absent")}</span>
+              <span className="text-gray-500 dark:text-gray-400">H={t("holiday")}</span>
+              <span className="text-sky-500 dark:text-sky-400">F={t("half_day")}</span>
             </div>
           </div>
         }
         bodyClassName="p-0"
       >
         {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-4 py-3 border-b border-gray-100">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               placeholder={t("search")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 h-8 w-full text-[13px] border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-100 transition-all"
+              className="pl-8 h-8 w-full text-[13px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 text-foreground rounded-lg focus:outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-100 transition-all"
             />
           </div>
           <div className="flex items-center gap-2 self-end sm:self-auto">
-            <select className="h-8 border border-gray-200 text-[12px] rounded-lg bg-white text-gray-700 px-2 outline-none focus:border-indigo-300">
+            <select className="h-8 border border-gray-200 dark:border-gray-700 text-[12px] rounded-lg bg-white dark:bg-slate-900 text-foreground px-2 outline-none focus:border-indigo-300">
               <option>50</option>
             </select>
             <ExportToolbar onCopy={handleCopy} onExcel={handleExportExcel} onPrint={handlePrint} />
@@ -1377,21 +1438,21 @@ function AttendanceTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-[12px] text-center border-collapse">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50/80 text-[#333]">
-                <th className="px-3 py-2.5 font-bold min-w-[90px] border-r border-gray-100 whitespace-nowrap sticky left-0 bg-gray-50 z-10">
+              <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-slate-800/80 text-foreground">
+                <th className="px-3 py-2.5 font-bold min-w-[90px] border-r border-gray-100 dark:border-gray-800 whitespace-nowrap sticky left-0 bg-gray-50 dark:bg-slate-800 z-10">
                   {t("date")} <ArrowUpDown className="inline h-3 w-3 opacity-30 ml-1" />
                 </th>
                 {attendanceMonths.map(m => (
-                  <th key={m} className="px-2 py-2.5 font-bold min-w-[70px] border-r border-gray-100 whitespace-nowrap">{m}</th>
+                  <th key={m} className="px-2 py-2.5 font-bold min-w-[70px] border-r border-gray-100 dark:border-gray-800 whitespace-nowrap">{m}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {attendanceData.map((row, i) => (
-                <tr key={i} className="border-b border-gray-100 hover:bg-indigo-50/30 transition-colors text-[#555]">
-                  <td className="px-3 py-2 border-r border-gray-100 font-semibold text-gray-600 sticky left-0 bg-white">{i + 1}</td>
+              {attendanceRows.map((row, i) => (
+                <tr key={i} className="border-b border-gray-100 dark:border-gray-800 hover:bg-indigo-50/30 dark:hover:bg-slate-800/50 transition-colors text-foreground">
+                  <td className="px-3 py-2 border-r border-gray-100 dark:border-gray-800 font-semibold text-gray-600 dark:text-gray-300 sticky left-0 bg-white dark:bg-slate-900">{i + 1}</td>
                   {attendanceMonths.map(m => (
-                    <td key={m} className={`px-2 py-2 border-r border-gray-100 ${getAttendanceColor(row[m])}`}>
+                    <td key={m} className={`px-2 py-2 border-r border-gray-100 dark:border-gray-800 ${getAttendanceColor(row[m])}`}>
                       {row[m] || ""}
                     </td>
                   ))}
@@ -1402,12 +1463,12 @@ function AttendanceTab() {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between items-center text-[11px] text-gray-500 px-4 py-3 border-t border-gray-100">
-          <span>{t("showing")} 1 {t("to")} 31 {t("of")} 31 {t("entries")}</span>
+        <div className="flex justify-between items-center text-[11px] text-gray-500 dark:text-gray-400 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+          <span>{t("showing")} 1 {t("to")} {attendanceRows.length} {t("of")} {attendanceRows.length} {t("entries")}</span>
           <div className="flex gap-1 items-center">
-            <button className="h-7 w-7 bg-white text-gray-400 rounded-[10px] border border-gray-200 flex items-center justify-center disabled:opacity-40" disabled>&lt;</button>
+            <button className="h-7 w-7 bg-white dark:bg-slate-900 text-gray-400 rounded-[10px] border border-gray-200 dark:border-gray-700 flex items-center justify-center disabled:opacity-40" disabled>&lt;</button>
             <button className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] flex items-center justify-center font-bold rounded-[10px] shadow-sm">1</button>
-            <button className="h-7 w-7 bg-white text-gray-400 rounded-[10px] border border-gray-200 flex items-center justify-center disabled:opacity-40" disabled>&gt;</button>
+            <button className="h-7 w-7 bg-white dark:bg-slate-900 text-gray-400 rounded-[10px] border border-gray-200 dark:border-gray-700 flex items-center justify-center disabled:opacity-40" disabled>&gt;</button>
           </div>
         </div>
       </PanelCard>
@@ -1543,36 +1604,49 @@ function TimelineTab() {
           </div>
         )}
 
-        <div className="relative pl-8">
-          {/* Vertical line */}
-          <div className="absolute left-[14px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-[#FF9800] to-[#6366F1] rounded-full" />
+        <div className="p-6 sm:p-8 pl-8 sm:pl-10">
+          {timelineData.map((entry, index) => {
+            const isLast = index === timelineData.length - 1;
+            return (
+              <div key={entry.id} className="relative pl-12 sm:pl-14 pb-8">
+                {/* Vertical line segment */}
+                <div
+                  className={cn(
+                    "absolute left-[15px] top-4 w-[2px] bg-gradient-to-b from-[#FF9800] to-[#6366F1] rounded-full z-0",
+                    isLast ? "h-12" : "bottom-0"
+                  )}
+                />
 
-          {timelineData.map((entry) => (
-            <div key={entry.id} className="relative mb-8 last:mb-4">
-              {/* Date badge */}
-              <div className="mb-3">
-                <span className="inline-block bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
-                  {entry.date}
-                </span>
-              </div>
+                {/* Circular File Icon overlaying directly on top of vertical line (centered at 16px) */}
+                <div className="absolute left-0 top-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center shadow-md z-10">
+                  <Newspaper className="h-4 w-4 text-white" />
+                </div>
 
-              {/* Icon on the line */}
-              <div className="absolute left-[-22px] top-[34px] w-8 h-8 rounded-full bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center shadow-md">
-                <Newspaper className="h-4 w-4 text-white" />
-              </div>
+                {/* Horizontal connector line from icon (16px) to content card area (44px) */}
+                <div className="absolute left-[16px] top-4 w-7 h-[2px] bg-gradient-to-r from-[#FF9800] to-[#6366F1]/50 z-0" />
 
-              {/* Content card */}
-              <div className="ml-4 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-l-4 border-[#6366F1]">
-                  <p className="text-[13px] text-[#0dcaf0] font-semibold">{entry.title}</p>
+                {/* Date badge */}
+                <div className="mb-2.5 flex items-center">
+                  <span className="inline-block bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">
+                    {entry.date}
+                  </span>
+                </div>
+
+                {/* History Content Card */}
+                <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                  <div className="px-4 py-3 border-l-4 border-[#6366F1]">
+                    <p className="text-[13px] text-[#0dcaf0] font-semibold">{entry.title}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
-          {/* End marker */}
-          <div className="absolute left-[-8px] bottom-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#6366F1] to-[#FF9800] flex items-center justify-center shadow-md">
-            <Clock className="h-4 w-4 text-white" />
+          {/* End marker (Clock icon at bottom of timeline line) */}
+          <div className="relative pl-12 sm:pl-14">
+            <div className="absolute left-0 top-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#6366F1] to-[#FF9800] flex items-center justify-center shadow-md z-10">
+              <Clock className="h-4 w-4 text-white" />
+            </div>
           </div>
         </div>
       </PanelCard>
@@ -1788,17 +1862,17 @@ export default function UserProfilePage() {
   const mock = mockUserProfileData;
   const merged = data
     ? {
-        basic: { ...mock.basic, ...data.basic },
-        profileTab: {
-          basicDetails: { ...mock.profileTab.basicDetails, ...data.profileTab?.basicDetails },
-          addressDetails: { ...mock.profileTab.addressDetails, ...data.profileTab?.addressDetails },
-          parentGuardianDetails: data.profileTab?.parentGuardianDetails ?? mock.profileTab.parentGuardianDetails,
-          transportDetails: { ...mock.profileTab.transportDetails, ...data.profileTab?.transportDetails },
-          hostelDetails: { ...mock.profileTab.hostelDetails, ...data.profileTab?.hostelDetails },
-          miscellaneousDetails: { ...mock.profileTab.miscellaneousDetails, ...data.profileTab?.miscellaneousDetails },
-          previousAcademicRecord: data.profileTab?.previousAcademicRecord ?? mock.profileTab.previousAcademicRecord,
-        },
-      }
+      basic: { ...mock.basic, ...data.basic },
+      profileTab: {
+        basicDetails: { ...mock.profileTab.basicDetails, ...data.profileTab?.basicDetails },
+        addressDetails: { ...mock.profileTab.addressDetails, ...data.profileTab?.addressDetails },
+        parentGuardianDetails: data.profileTab?.parentGuardianDetails ?? mock.profileTab.parentGuardianDetails,
+        transportDetails: { ...mock.profileTab.transportDetails, ...data.profileTab?.transportDetails },
+        hostelDetails: { ...mock.profileTab.hostelDetails, ...data.profileTab?.hostelDetails },
+        miscellaneousDetails: { ...mock.profileTab.miscellaneousDetails, ...data.profileTab?.miscellaneousDetails },
+        previousAcademicRecord: data.profileTab?.previousAcademicRecord ?? mock.profileTab.previousAcademicRecord,
+      },
+    }
     : mock;
   const { basic, profileTab } = merged;
   const customFields: { id: number; name: string; type: string; value: string }[] = data?.customFields || [];
@@ -1850,51 +1924,51 @@ export default function UserProfilePage() {
   const GuardianRow = ({ title, titleKey, name, phone, occupation, address, email, relation, image }: any) => {
     const tt = t(titleKey);
     return (
-    <div className="flex border-b border-gray-100 last:border-0 py-3 relative">
-      <div className="flex-1 pr-24">
-        <div className="flex mb-1">
-          <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("name")}</div>
-          <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{name || "-"}</div>
-        </div>
-        {email !== undefined && (
+      <div className="flex border-b border-gray-100 last:border-0 py-3 relative">
+        <div className="flex-1 pr-24">
           <div className="flex mb-1">
-            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("email")}</div>
-            <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{email || "-"}</div>
+            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("name")}</div>
+            <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{name || "-"}</div>
           </div>
-        )}
-        {relation !== undefined && (
+          {email !== undefined && (
+            <div className="flex mb-1">
+              <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("email")}</div>
+              <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{email || "-"}</div>
+            </div>
+          )}
+          {relation !== undefined && (
+            <div className="flex mb-1">
+              <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("relation")}</div>
+              <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{relation || "-"}</div>
+            </div>
+          )}
           <div className="flex mb-1">
-            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("relation")}</div>
-            <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{relation || "-"}</div>
+            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("phone")}</div>
+            <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{phone || "-"}</div>
           </div>
-        )}
-        <div className="flex mb-1">
-          <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("phone")}</div>
-          <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{phone || "-"}</div>
-        </div>
-        <div className="flex mb-1">
-          <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("occupation")}</div>
-          <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{occupation || "-"}</div>
-        </div>
-        {address !== undefined && (
-          <div className="flex">
-            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("address")}</div>
-            <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{address || "-"}</div>
+          <div className="flex mb-1">
+            <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("occupation")}</div>
+            <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{occupation || "-"}</div>
           </div>
-        )}
+          {address !== undefined && (
+            <div className="flex">
+              <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("address")}</div>
+              <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{address || "-"}</div>
+            </div>
+          )}
+        </div>
+        <div className="absolute top-3 right-0 w-20 h-20 bg-gray-100 rounded border flex flex-col items-center justify-center text-gray-400">
+          {image ? (
+            <img src={image} alt="Guardian" className="w-full h-full object-cover rounded" />
+          ) : (
+            <>
+              <User className="w-8 h-8 opacity-50 mb-1" />
+              <span className="text-[8px] uppercase font-bold text-center leading-none">{t("no_image")}<br />{t("available")}</span>
+            </>
+          )}
+        </div>
       </div>
-      <div className="absolute top-3 right-0 w-20 h-20 bg-gray-100 rounded border flex flex-col items-center justify-center text-gray-400">
-        {image ? (
-          <img src={image} alt="Guardian" className="w-full h-full object-cover rounded" />
-        ) : (
-          <>
-            <User className="w-8 h-8 opacity-50 mb-1" />
-            <span className="text-[8px] uppercase font-bold text-center leading-none">{t("no_image")}<br />{t("available")}</span>
-          </>
-        )}
-      </div>
-    </div>
-  );
+    );
   };
 
   return (
@@ -2182,7 +2256,7 @@ export default function UserProfilePage() {
           {activeTab === "CBSE Examination" && <CbseExamTab />}
 
           {/* ── Attendance Tab ── */}
-          {activeTab === "Attendance" && <AttendanceTab />}
+          {activeTab === "Attendance" && <AttendanceTab studentId={data?.id || data?.basic?.id} />}
 
           {/* ── Documents Tab ── */}
           {activeTab === "Documents" && <DocumentsTab />}

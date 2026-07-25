@@ -112,16 +112,16 @@ export default function LoginPage() {
             <div className="container relative z-10 flex items-center justify-center px-4">
                 <div className="w-full max-w-md space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="text-center space-y-2">
-                        <div className="flex justify-center mb-4">
-{settings?.app_logo ? (
-                                    <img
-                                        src={getImageUrl(settings.app_logo)}
-                                        alt={settings?.school_name || "School Logo"}
-                                        className="h-16 w-auto object-contain"
-                                    />
+                        <div className="flex justify-center mb-3">
+                            {settings?.app_logo ? (
+                                <img
+                                    src={getImageUrl(settings.app_logo)}
+                                    alt={settings?.school_name || "School Logo"}
+                                    className="h-12 max-h-12 w-auto object-contain"
+                                />
                             ) : (
-                                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-3 rounded-2xl shadow-xl shadow-indigo-500/30 border border-white/10">
-                                    <GraduationCap className="h-10 w-10 text-white" />
+                                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2.5 rounded-xl shadow-xl shadow-indigo-500/30 border border-white/10">
+                                    <GraduationCap className="h-8 w-8 text-white" />
                                 </div>
                             )}
                         </div>

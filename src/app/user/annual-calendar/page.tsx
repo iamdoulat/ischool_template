@@ -19,14 +19,14 @@ interface CalendarEntry {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-    holiday: "bg-rose-50 text-rose-600 border-rose-200",
-    activity: "bg-amber-50 text-amber-600 border-amber-200",
-    "school events": "bg-indigo-50 text-indigo-600 border-indigo-200",
-    vacation: "bg-emerald-50 text-emerald-600 border-emerald-200",
+    holiday: "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/90 dark:text-rose-200 dark:border-rose-800",
+    activity: "bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-950/90 dark:text-amber-200 dark:border-amber-800",
+    "school events": "bg-indigo-100 text-indigo-900 border-indigo-200 dark:bg-indigo-950/90 dark:text-indigo-200 dark:border-indigo-800",
+    vacation: "bg-emerald-100 text-emerald-900 border-emerald-200 dark:bg-emerald-950/90 dark:text-emerald-200 dark:border-emerald-800",
 };
 
 function typeColor(name?: string) {
-    return TYPE_COLORS[(name || "").toLowerCase()] || "bg-gray-50 text-gray-600 border-gray-200";
+    return TYPE_COLORS[(name || "").toLowerCase()] || "bg-gray-100 text-gray-800 border-gray-200 dark:bg-slate-800 dark:text-gray-200 dark:border-slate-700";
 }
 
 function SkeletonRow() {

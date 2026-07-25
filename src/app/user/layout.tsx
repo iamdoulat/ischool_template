@@ -8,7 +8,7 @@ import { LanguageProvider } from "@/components/providers/language-provider";
 import { CurrencyProvider } from "@/components/providers/currency-provider";
 import { useTranslation } from "@/hooks/use-translation";
 
-import { useTheme, ThemeProvider } from "next-themes";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { PageGuard } from "@/components/auth/page-guard";
 
@@ -30,9 +30,10 @@ function UserLayoutContent({
             const schoolName = settings.school_name || "Smart School";
             document.title = `${schoolName} - Student Portal`;
 
-            // Sync Theme Mode
-            if (settings.theme_mode) {
-                setTheme(settings.theme_mode);
+            // Sync Theme Mode only if no user local preference exists
+            const savedTheme = typeof window !== 'undefined' ? localStorage.getItem("theme") : null;
+            if (!savedTheme && settings.theme_mode) {
+                setTheme(settings.theme_mode.toLowerCase());
             }
 
             // Sync Primary Color
@@ -70,7 +71,7 @@ function UserLayoutContent({
 
     return (
         <div className={cn(
-            "fixed inset-0 flex h-screen w-screen overflow-hidden bg-background",
+            "fixed inset-0 flex h-screen w-screen overflow-hidden bg-background text-foreground",
             settings?.skins === 'bordered' ? "skin-bordered" : "skin-shadow"
         )}>
             <UserSidebar
@@ -107,14 +108,12 @@ export default function UserLayout({
     children: React.ReactNode;
 }) {
     return (
-        <ThemeProvider attribute="class" defaultTheme="light">
-            <LanguageProvider>
-                <CurrencyProvider>
-                    <UserLayoutContent>
-                        {children}
-                    </UserLayoutContent>
-                </CurrencyProvider>
-            </LanguageProvider>
-        </ThemeProvider>
+        <LanguageProvider>
+            <CurrencyProvider>
+                <UserLayoutContent>
+                    {children}
+                </UserLayoutContent>
+            </CurrencyProvider>
+        </LanguageProvider>
     );
 }

@@ -85,14 +85,15 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -100,22 +101,182 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
+  --ring: #6366f1;
+  --chart-1: #6366f1;
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: #6366f1;
+}
+
+/* Global dark mode fallbacks for legacy hardcoded light classes & font colors across Admin & Student portals */
+.dark,
+.dark body,
+.dark main,
+.dark header,
+.dark footer,
+.dark nav,
+.dark section,
+.dark article,
+.dark form,
+.dark p,
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6,
+.dark label,
+.dark .form-label,
+.dark th,
+.dark td,
+.dark input,
+.dark select,
+.dark textarea {
+  color: #ffffff;
+}
+
+/* Enforce white font color on headings & titles */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6,
+.dark .card-title,
+.dark [class*="CardTitle"] {
+  color: #ffffff !important;
+}
+
+/* Enforce white font color on all Tab controls in dark mode */
+.dark [role="tablist"] {
+  background-color: oklch(0.22 0 0) !important;
+  border-color: oklch(1 0 0 / 12%) !important;
+}
+
+.dark [role="tab"],
+.dark [role="tablist"] > *,
+.dark .tab-button,
+.dark [data-state="inactive"] {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.dark [role="tab"][data-state="active"],
+.dark [data-state="active"] {
+  background-color: oklch(0.28 0 0) !important;
+  color: #ffffff !important;
+}
+
+/* Form inputs & dropdowns in dark mode */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark select,
+.dark textarea {
+  background-color: oklch(0.18 0 0) !important;
+  border-color: oklch(1 0 0 / 15%) !important;
+  color: #ffffff !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Table headers & cells in dark mode */
+.dark th,
+.dark thead tr,
+.dark table thead th {
+  background-color: oklch(0.24 0 0) !important;
+  color: #ffffff !important;
+}
+
+.dark td,
+.dark table tbody td {
+  color: #ffffff !important;
+}
+
+.dark table tbody tr:hover {
+  background-color: oklch(0.26 0 0 / 70%) !important;
+}
+
+/* Override legacy hardcoded dark text classes unless inside a colored badge/pill */
+.dark .text-black:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-gray-950:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-gray-900:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-gray-800:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-gray-700:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-gray-600:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-slate-950:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-slate-900:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-slate-800:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-slate-700:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-slate-600:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-[#333]:not([class*="bg-"]),
+.dark .text-[#555]:not([class*="bg-"]),
+.dark .text-[#222]:not([class*="bg-"]),
+.dark .text-[#111]:not([class*="bg-"]),
+.dark .text-[#444]:not([class*="bg-"]) {
+  color: #ffffff;
+}
+
+/* Secondary muted text */
+.dark .text-gray-500:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-slate-500:not([class*="bg-"]):not([class*="badge"]),
+.dark .text-muted-foreground:not([class*="bg-"]):not([class*="badge"]) {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Hardcoded background & border overrides for dark mode */
+.dark .bg-white,
+.dark [class*="bg-white"] {
+  background-color: oklch(0.205 0 0) !important;
+}
+.dark .bg-gray-50,
+.dark .bg-gray-50\/80,
+.dark .bg-slate-50,
+.dark .bg-slate-50\/80,
+.dark .bg-gray-100\/50,
+.dark .bg-slate-100\/50 {
+  background-color: oklch(0.24 0 0) !important;
+}
+.dark .bg-gray-100,
+.dark .bg-slate-100 {
+  background-color: oklch(0.26 0 0) !important;
+}
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300 {
+  border-color: oklch(1 0 0 / 12%) !important;
+}
+
+/* Dark mode colored badge fallbacks */
+.dark .bg-green-100, .dark .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+}
+.dark .bg-red-100, .dark .bg-rose-100 {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  color: #f87171 !important;
+}
+.dark .bg-amber-100, .dark .bg-yellow-100 {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+  color: #fbbf24 !important;
+}
+.dark .bg-indigo-100, .dark .bg-blue-100 {
+  background-color: rgba(99, 102, 241, 0.2) !important;
+  color: #a5b4fc !important;
 }
 
 @layer base {

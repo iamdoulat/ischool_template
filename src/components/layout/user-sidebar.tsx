@@ -390,7 +390,7 @@ export function UserSidebar({
                                                 </div>
                                                 {!collapsed && (
                                                     <>
-                                                        <span className="flex-1 text-left">
+                                                        <span className="flex-1 text-start">
                                                             {t(item.name) !== item.name ? t(item.name) : item.label}
                                                         </span>
                                                         {/* Red Badge for Notice Board */}
@@ -481,7 +481,7 @@ export function UserSidebar({
                                                                 isItemActive
                                                                     ? `${colors.active} text-white shadow-lg`
                                                                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                                                                "text-sm font-semibold text-left"
+                                                                "text-sm font-semibold text-start"
                                                             )}
                                                         >
                                                             <div className="flex items-center gap-3 w-full">
@@ -494,13 +494,13 @@ export function UserSidebar({
                                                                         isItemActive ? "text-white" : "transition-colors"
                                                                     )} />
                                                                 </div>
-                                                                <span className="flex-1 text-left">
+                                                                <span className="flex-1 text-start">
                                                                     {t(item.name) !== item.name ? t(item.name) : item.label}
                                                                 </span>
                                                             </div>
                                                         </AccordionTrigger>
-                                                        <AccordionContent className="pb-2 pt-1 pl-4 pr-1">
-                                                            <div className={cn("flex flex-col gap-1 border-l-2 ml-3 pl-3 animate-in slide-in-from-top-2 duration-300 items-start", isItemActive ? `border-orange-500/20` : "border-primary/10")}>
+                                                        <AccordionContent className="pb-2 pt-1 pl-4 pr-1 rtl:pl-1 rtl:pr-4">
+                                                            <div className={cn("flex flex-col gap-1 border-l-2 rtl:border-l-0 rtl:border-r-2 ml-3 rtl:ml-0 rtl:mr-3 pl-3 rtl:pl-0 rtl:pr-3 animate-in slide-in-from-top-2 duration-300 items-start", isItemActive ? `border-orange-500/20` : "border-primary/10")}>
                                                                 {item.submenus.map((submenu) => {
                                                                     const isSubActive = pathname === submenu.href;
                                                                     return (
@@ -511,7 +511,7 @@ export function UserSidebar({
                                                                                 if (window.innerWidth < 768 && onClose) onClose();
                                                                             }}
                                                                             className={cn(
-                                                                                "relative py-2.5 text-xs font-bold rounded-xl transition-all duration-300 px-3 flex items-center justify-start text-left w-full group/sub",
+                                                                                "relative py-2.5 text-xs font-bold rounded-xl transition-all duration-300 px-3 flex items-center justify-start text-start w-full group/sub",
                                                                                 isSubActive
                                                                                     ? `${colors.active} text-white shadow-md shadow-orange-200/20 tracking-tight`
                                                                                     : "text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"

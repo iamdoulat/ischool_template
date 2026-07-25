@@ -57,7 +57,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
     const { settings, loading } = useSettings();
-    const { selectedLanguage, setSelectedLanguage, t } = useLanguage();
+    const { selectedLanguage, setSelectedLanguage, setUserContext, t } = useLanguage();
     const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
     const getImageUrl = useImageUrl();
 
@@ -184,8 +184,19 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                         )}
                     </div>
                     <div className="p-2 border-t border-muted/50 bg-muted/20 text-center">
-                        <Button variant="ghost" className="w-full h-8 text-[11px] uppercase font-bold text-muted-foreground hover:text-primary rounded-xl">
-                            {t("view_all_notifications")}
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setIsOpen(false);
+                                const isUserPortal = typeof window !== "undefined" && window.location.pathname.startsWith("/user");
+                                const target = (isUserPortal || user?.role === "Student" || user?.role === "Parent")
+                                    ? "/user/notifications"
+                                    : "/dashboard/notifications";
+                                router.push(target);
+                            }}
+                            className="w-full h-8 text-[11px] uppercase font-bold text-muted-foreground hover:text-primary rounded-xl"
+                        >
+                            {t("view_all_notifications") || "VIEW ALL NOTIFICATIONS"}
                         </Button>
                     </div>
                 </PopoverContent>
@@ -198,7 +209,9 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
         const fetchProfile = async () => {
             try {
                 const response = await api.get("/profile");
-                setUser(response.data.data);
+                const userData = response.data.data;
+                setUser(userData);
+                if (userData) setUserContext(userData);
             } catch (error) {
                 console.error("Failed to fetch profile:", error);
             }
@@ -210,14 +223,6 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                 if (response.data.success) {
                     const enabled = response.data.data.filter((lang: Language) => lang.is_enabled);
                     setAvailableLanguages(enabled);
-
-                    // Set default language if none selected
-                    if (!localStorage.getItem("selected_language")) {
-                        const active = enabled.find((lang: Language) => lang.is_active) ||
-                            enabled.find((lang: Language) => lang.short_code === 'en') ||
-                            enabled[0];
-                        if (active) setSelectedLanguage(active);
-                    }
                 }
             } catch (error) {
                 console.error("Failed to fetch languages:", error);
@@ -226,7 +231,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
 
         fetchProfile();
         fetchAvailableLanguages();
-    }, []);
+    }, [setUserContext]);
 
     const handleLogout = async () => {
         try {
@@ -235,6 +240,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
             console.error("Logout failed:", error);
         } finally {
             localStorage.removeItem("auth_token");
+            setUserContext(null);
             router.push("/login");
         }
     };
@@ -338,31 +344,33 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                         <LayoutGrid className="h-5 w-5" />
                     </Button>
 
-                    <div className="relative group hidden sm:block">
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                            <ArrowLeftRight className="h-5 w-5" />
-                        </Button>
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-[#6366f1] text-white text-[11px] font-bold rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#6366f1] rotate-45" />
-                            {t("switch_branch")}
-                        </div>
-                    </div>
+                    {user && ['Super Admin', 'Admin'].includes(user.role) && (
+                        <>
+                            <div className="relative group hidden sm:block">
+                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
+                                    <ArrowLeftRight className="h-5 w-5" />
+                                </Button>
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-[#6366f1] text-white text-[11px] font-bold rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#6366f1] rotate-45" />
+                                    {t("switch_branch")}
+                                </div>
+                            </div>
 
-                    <div className="hidden md:flex items-center gap-1 md:gap-2">
-                        <CurrencySwitcher />
+                            <CurrencySwitcher />
+                        </>
+                    )}
 
-                        <LanguageSelector />
+                    <LanguageSelector />
 
-                        <NotificationBell />
+                    <NotificationBell />
 
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                            <MessageSquare className="h-5 w-5" />
-                        </Button>
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
+                        <MessageSquare className="h-5 w-5" />
+                    </Button>
 
-                        {mounted && (
-                            <ThemeToggle className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl" />
-                        )}
-                    </div>
+                    {mounted && (
+                        <ThemeToggle className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl" />
+                    )}
 
                     {mounted && (
                         <div className="md:hidden">
@@ -377,10 +385,15 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
                                             <LayoutGrid className="h-5 w-5" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                                            <ArrowLeftRight className="h-5 w-5" />
-                                        </Button>
-                                        <CurrencySwitcher />
+
+                                        {user && ['Super Admin', 'Admin'].includes(user.role) && (
+                                            <>
+                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
+                                                    <ArrowLeftRight className="h-5 w-5" />
+                                                </Button>
+                                                <CurrencySwitcher />
+                                            </>
+                                        )}
 
                                         <LanguageSelector />
 

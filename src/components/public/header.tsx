@@ -54,7 +54,7 @@ export function PublicHeader() {
     const { settings } = useSettings();
     const pathname = usePathname();
     const { t } = useTranslation();
-    const { selectedLanguage, setSelectedLanguage } = useLanguage();
+    const { selectedLanguage, setSelectedLanguage, setUserContext } = useLanguage();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -84,6 +84,7 @@ export function PublicHeader() {
         const checkAuth = async () => {
             const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
             if (!token) {
+                setUserContext(null);
                 setMounted(true);
                 return;
             }
@@ -91,15 +92,19 @@ export function PublicHeader() {
                 const response = await api.get("/profile", { skipGlobalErrorHandler: true });
                 if (response.data?.success) {
                     setUser(response.data.data);
+                    setUserContext(response.data.data);
+                } else {
+                    setUserContext(null);
                 }
             } catch (error) {
                 console.error("Failed to fetch profile in public header:", error);
+                setUserContext(null);
             } finally {
                 setMounted(true);
             }
         };
         checkAuth();
-    }, []);
+    }, [setUserContext]);
 
     const getDashboardUrl = () => {
         if (!user) return "/login";

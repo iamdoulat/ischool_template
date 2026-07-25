@@ -227,9 +227,9 @@ export default function StudentFeesPage() {
             </div>
 
             {/* ── Student Info Card ── */}
-            <Card className="shadow-sm border-0 p-0 gap-0 overflow-hidden">
-                <div className="px-4 py-2.5 flex items-center justify-between border-b border-gray-200 bg-white">
-                    <h3 className="text-[15px] font-bold text-gray-800">{t("student_fees")}</h3>
+            <Card className="shadow-sm border-0 p-0 gap-0 overflow-hidden bg-white dark:bg-slate-900">
+                <div className="px-4 py-2.5 flex items-center justify-between border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900">
+                    <h3 className="text-[15px] font-bold text-gray-800 dark:text-gray-100">{t("student_fees")}</h3>
                     <Link
                         href="/user/dashboard"
                         className="flex items-center gap-1 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-semibold px-3 py-1.5 rounded-[10px] hover:opacity-90 transition-opacity"
@@ -239,25 +239,25 @@ export default function StudentFeesPage() {
                 </div>
                 <CardContent className="p-4">
                     <div className="flex gap-4 items-start">
-                        <div className="h-20 w-20 shrink-0 bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden">
+                        <div className="h-20 w-20 shrink-0 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden">
                             {student.photo
                                 ? <img src={student.photo} alt={student.name} className="h-full w-full object-cover" />
                                 : <User className="h-8 w-8 opacity-40" />}
                         </div>
-                        <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+                        <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
                             {[
-                                [t("name"), student.name, "text-[#6366F1] font-semibold", true],
-                                [t("class_section"), student.class_section, "text-gray-800", true],
-                                [t("father_name"), student.father_name || "—", "text-[#6366F1] font-medium", true],
-                                [t("admission_no"), student.admission_no || "—", "text-gray-800", true],
-                                [t("mobile_number"), student.mobile || "—", "text-gray-800", true],
-                                [t("roll_number"), student.roll_no || "—", "text-gray-800", true],
-                                [t("category"), student.category || "—", "text-gray-800", true],
-                                [t("rte"), student.rte, "text-red-500 font-semibold", true],
-                            ].map(([label, value, cls, boldLabel]) => (
-                                <div key={label as string}>
-                                    <span className={boldLabel ? "text-gray-700 font-bold text-sm" : "text-gray-500 text-xs"}>{label}</span>
-                                    <p className={cls as string}>{value}</p>
+                                [t("name"), student.name],
+                                [t("class_section"), student.class_section],
+                                [t("father_name"), student.father_name || "—"],
+                                [t("admission_no"), student.admission_no || "—"],
+                                [t("mobile_number"), student.mobile || "—"],
+                                [t("roll_number"), student.roll_no || "—"],
+                                [t("category"), student.category || "—"],
+                                [t("rte"), student.rte || "—"],
+                            ].map(([label, value]) => (
+                                <div key={label as string} className="space-y-0.5">
+                                    <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">{label}</span>
+                                    <p className="text-[13px] font-bold text-gray-800 dark:text-gray-100 truncate">{value}</p>
                                 </div>
                             ))}
                         </div>
@@ -266,14 +266,14 @@ export default function StudentFeesPage() {
             </Card>
 
             {/* ── Fees Table Card ── */}
-            <Card className="shadow-sm border-0 p-0 gap-0 overflow-hidden">
-                <div className="px-4 py-2.5 flex items-center border-b border-gray-200 bg-white">
-                    <h3 className="text-[15px] font-bold text-gray-800">{t("fees_details")}</h3>
+            <Card className="shadow-sm border-0 p-0 gap-0 overflow-hidden bg-white dark:bg-slate-900">
+                <div className="px-4 py-2.5 flex items-center border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900">
+                    <h3 className="text-[15px] font-bold text-gray-800 dark:text-gray-100">{t("fees_details")}</h3>
                 </div>
 
                 <CardContent className="p-0">
                     {/* Action Row */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
                         <div className="flex flex-wrap gap-2">
                             <button
                                 onClick={() => window.print()}
@@ -299,7 +299,7 @@ export default function StudentFeesPage() {
                     </div>
 
                     {/* Export Icons */}
-                    <div className="flex justify-end gap-1 px-4 py-2 border-b border-gray-100">
+                    <div className="flex justify-end gap-1 px-4 py-2 border-b border-gray-100 dark:border-gray-800">
                         {[
                             { icon: Copy, label: t("copy"), action: copyToClipboard },
                             { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
@@ -307,7 +307,7 @@ export default function StudentFeesPage() {
                             { icon: Printer, label: t("print"), action: () => window.print() },
                         ].map(({ icon: Icon, label, action }) => (
                             <Button key={label} variant="ghost" size="icon" title={label} onClick={action}
-                                className="h-8 w-8 rounded hover:bg-gray-100 text-gray-500">
+                                className="h-8 w-8 rounded hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-gray-400">
                                 <Icon className="h-4 w-4" />
                             </Button>
                         ))}
@@ -317,21 +317,21 @@ export default function StudentFeesPage() {
                     <div className="overflow-x-auto">
                         <table className="w-full text-xs">
                             <thead>
-                                <tr className="border-b border-gray-200 bg-gray-100">
+                                <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-slate-800/90 text-foreground">
                                     <th className="w-8 px-2 py-3 text-center">
                                         <input type="checkbox" checked={allChecked} onChange={toggleAll} className="rounded cursor-pointer accent-[#6366F1]" />
                                     </th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700 min-w-[180px]">{t("fees")}</th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700 whitespace-nowrap">{t("due_date")}</th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700">{t("status")}</th>
-                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">{t("amount")} ({cur})</th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700 whitespace-nowrap">{t("payment_id")}</th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700">{t("mode")}</th>
-                                    <th className="px-2 py-3 text-left font-bold text-gray-700">{t("date")}</th>
-                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">{t("discount")} ({cur})</th>
-                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">{t("fine")} ({cur})</th>
-                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">{t("paid")} ({cur})</th>
-                                    <th className="px-2 py-3 text-right font-bold text-gray-700 whitespace-nowrap">{t("balance")} ({cur})</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 dark:text-gray-200 min-w-[180px]">{t("fees")}</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">{t("due_date")}</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 dark:text-gray-200">{t("status")}</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">{t("amount")} ({cur})</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">{t("payment_id")}</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 dark:text-gray-200">{t("mode")}</th>
+                                    <th className="px-2 py-3 text-left font-bold text-gray-700 dark:text-gray-200">{t("date")}</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">{t("discount")} ({cur})</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">{t("fine")} ({cur})</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">{t("paid")} ({cur})</th>
+                                    <th className="px-2 py-3 text-right font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">{t("balance")} ({cur})</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -355,18 +355,18 @@ export default function StudentFeesPage() {
 
                                 {/* Grand total */}
                                 {fees.length > 0 && (
-                                    <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                                    <tr className="border-t-2 border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-900 font-bold">
                                         <td></td>
-                                        <td className="px-2 py-3 text-sm text-gray-700" colSpan={3}>{t("grand_total")}</td>
-                                        <td className="px-2 py-3 text-right text-gray-800 whitespace-nowrap">
+                                        <td className="px-2 py-3 text-sm text-gray-700 dark:text-gray-200" colSpan={3}>{t("grand_total")}</td>
+                                        <td className="px-2 py-3 text-right text-gray-800 dark:text-gray-100 whitespace-nowrap">
                                             {cur}{fmt(totals.amount)}
-                                            {totals.fine > 0 && <span className="text-orange-500 ml-1">+ {fmt(totals.fine)}</span>}
+                                            {totals.fine > 0 && <span className="text-orange-500 dark:text-orange-400 ml-1">+ {fmt(totals.fine)}</span>}
                                         </td>
                                         <td colSpan={3}></td>
-                                        <td className="px-2 py-3 text-right text-gray-700">{cur}{fmt(totals.discount)}</td>
-                                        <td className="px-2 py-3 text-right text-gray-700">{cur}{fmt(totals.fineAmt)}</td>
-                                        <td className="px-2 py-3 text-right text-green-600">{cur}{fmt(totals.paid)}</td>
-                                        <td className="px-2 py-3 text-right text-red-600">{cur}{fmt(totals.balance)}</td>
+                                        <td className="px-2 py-3 text-right text-gray-700 dark:text-gray-300">{cur}{fmt(totals.discount)}</td>
+                                        <td className="px-2 py-3 text-right text-gray-700 dark:text-gray-300">{cur}{fmt(totals.fineAmt)}</td>
+                                        <td className="px-2 py-3 text-right text-green-600 dark:text-green-400">{cur}{fmt(totals.paid)}</td>
+                                        <td className="px-2 py-3 text-right text-red-600 dark:text-red-400">{cur}{fmt(totals.balance)}</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -385,11 +385,9 @@ export default function StudentFeesPage() {
     );
 }
 
-/* Fee row + its payment sub-rows, with entrance animation */
 function FeeRowGroup({ fee, checked, onToggle, onPay, delay }: { fee: FeeRow; checked: boolean; onToggle: () => void; onPay: () => void; delay: number }) {
     const [visible, setVisible] = useState(false);
     const { t } = useTranslation();
-    const { toast } = useToast();
 
     useEffect(() => {
         const t = setTimeout(() => setVisible(true), delay);
@@ -400,8 +398,8 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, delay }: { fee: FeeRow; ch
         <>
             <tr
                 className={cn(
-                    "border-b border-gray-100 hover:bg-gray-50/70 transition-all",
-                    checked && "bg-indigo-50/50",
+                    "border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/70 dark:hover:bg-slate-800/50 transition-all text-foreground",
+                    checked && "bg-indigo-50/50 dark:bg-indigo-950/40",
                     visible ? "opacity-100" : "opacity-0"
                 )}
                 style={{ transition: `opacity 0.3s ease ${delay}ms, background-color 0.15s` }}
@@ -410,9 +408,9 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, delay }: { fee: FeeRow; ch
                     <input type="checkbox" checked={checked} onChange={onToggle} className="rounded cursor-pointer accent-[#6366F1]" />
                 </td>
                 <td className="px-2 py-2.5">
-                    <span className="text-[#6366F1] font-medium">{fee.name} ({fee.code})</span>
+                    <span className="text-[#6366F1] dark:text-indigo-400 font-semibold">{fee.name} ({fee.code})</span>
                 </td>
-                <td className="px-2 py-2.5 text-gray-600 whitespace-nowrap">{fee.due_date}</td>
+                <td className="px-2 py-2.5 text-gray-600 dark:text-gray-300 whitespace-nowrap">{fee.due_date}</td>
                 <td className="px-2 py-2.5">
                     <div className="flex items-center gap-1.5">
                         <StatusBadge status={fee.status} />
@@ -427,23 +425,23 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, delay }: { fee: FeeRow; ch
                     </div>
                 </td>
                 <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                    <span className="text-gray-700">{fmt(fee.amount)}</span>
-                    {fee.fine > 0 && <span className="text-orange-500 ml-1">+ {fmt(fee.fine)}</span>}
+                    <span className="text-gray-700 dark:text-gray-200 font-medium">{fmt(fee.amount)}</span>
+                    {fee.fine > 0 && <span className="text-orange-500 dark:text-orange-400 ml-1">+ {fmt(fee.fine)}</span>}
                 </td>
                 <td colSpan={3}></td>
-                <td className="px-2 py-2.5 text-right text-gray-600">{fmt(fee.discount)}</td>
-                <td className="px-2 py-2.5 text-right text-gray-600">{fmt(fee.fine_amount)}</td>
-                <td className="px-2 py-2.5 text-right text-gray-600">{fmt(fee.paid_amount)}</td>
-                <td className="px-2 py-2.5 text-right font-medium text-gray-700">{fee.balance > 0 ? fmt(fee.balance) : "—"}</td>
+                <td className="px-2 py-2.5 text-right text-gray-600 dark:text-gray-300">{fmt(fee.discount)}</td>
+                <td className="px-2 py-2.5 text-right text-gray-600 dark:text-gray-300">{fmt(fee.fine_amount)}</td>
+                <td className="px-2 py-2.5 text-right text-gray-600 dark:text-gray-300">{fmt(fee.paid_amount)}</td>
+                <td className="px-2 py-2.5 text-right font-medium text-gray-700 dark:text-gray-200">{fee.balance > 0 ? fmt(fee.balance) : "—"}</td>
             </tr>
 
             {fee.payments.map((p) => (
-                <tr key={p.id} className="border-b border-gray-50 text-gray-500 bg-gray-50/30">
+                <tr key={p.id} className="border-b border-gray-50 dark:border-gray-800/80 text-gray-500 dark:text-gray-300 bg-gray-50/30 dark:bg-slate-900/50">
                     <td></td>
-                    <td className="px-2 py-1.5 pl-6"><ChevronRight className="h-3 w-3 inline text-gray-300" /></td>
+                    <td className="px-2 py-1.5 pl-6"><ChevronRight className="h-3 w-3 inline text-gray-300 dark:text-gray-600" /></td>
                     <td colSpan={2}></td>
                     <td></td>
-                    <td className="px-2 py-1.5 text-[#6366F1]">{p.payment_id}</td>
+                    <td className="px-2 py-1.5 text-[#6366F1] dark:text-indigo-400 font-medium">{p.payment_id}</td>
                     <td className="px-2 py-1.5">{p.mode}</td>
                     <td className="px-2 py-1.5 whitespace-nowrap">{p.date}</td>
                     <td className="px-2 py-1.5 text-right">{p.discount > 0 ? fmt(p.discount) : "0.00"}</td>

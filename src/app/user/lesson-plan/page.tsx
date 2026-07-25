@@ -43,13 +43,13 @@ interface LessonPlanData {
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const DAY_COLORS: Record<string, { card: string; accent: string; text: string; dot: string }> = {
-    Monday:    { card: "border-indigo-200 bg-indigo-50/50",   accent: "text-indigo-600",  text: "text-indigo-700",  dot: "bg-indigo-500" },
-    Tuesday:   { card: "border-violet-200 bg-violet-50/50",   accent: "text-violet-600",  text: "text-violet-700",  dot: "bg-violet-500" },
-    Wednesday: { card: "border-sky-200 bg-sky-50/50",         accent: "text-sky-600",     text: "text-sky-700",     dot: "bg-sky-500" },
-    Thursday:  { card: "border-emerald-200 bg-emerald-50/50", accent: "text-emerald-600", text: "text-emerald-700", dot: "bg-emerald-500" },
-    Friday:    { card: "border-amber-200 bg-amber-50/50",     accent: "text-amber-600",   text: "text-amber-700",   dot: "bg-amber-500" },
-    Saturday:  { card: "border-orange-200 bg-orange-50/50",   accent: "text-orange-600",  text: "text-orange-700",  dot: "bg-orange-500" },
-    Sunday:    { card: "border-rose-200 bg-rose-50/50",       accent: "text-rose-500",    text: "text-rose-600",    dot: "bg-rose-500" },
+    Monday:    { card: "border-indigo-200 bg-indigo-50/50 dark:bg-slate-900/90 dark:border-indigo-900/60",   accent: "text-indigo-600 dark:text-indigo-400",  text: "text-indigo-700 dark:text-indigo-300",  dot: "bg-indigo-500" },
+    Tuesday:   { card: "border-violet-200 bg-violet-50/50 dark:bg-slate-900/90 dark:border-violet-900/60",   accent: "text-violet-600 dark:text-violet-400",  text: "text-violet-700 dark:text-violet-300",  dot: "bg-violet-500" },
+    Wednesday: { card: "border-sky-200 bg-sky-50/50 dark:bg-slate-900/90 dark:border-sky-900/60",         accent: "text-sky-600 dark:text-sky-400",     text: "text-sky-700 dark:text-sky-300",     dot: "bg-sky-500" },
+    Thursday:  { card: "border-emerald-200 bg-emerald-50/50 dark:bg-slate-900/90 dark:border-emerald-900/60", accent: "text-emerald-600 dark:text-emerald-400", text: "text-emerald-700 dark:text-emerald-300", dot: "bg-emerald-500" },
+    Friday:    { card: "border-amber-200 bg-amber-50/50 dark:bg-slate-900/90 dark:border-amber-900/60",     accent: "text-amber-600 dark:text-amber-400",   text: "text-amber-700 dark:text-amber-300",   dot: "bg-amber-500" },
+    Saturday:  { card: "border-orange-200 bg-orange-50/50 dark:bg-slate-900/90 dark:border-orange-900/60",   accent: "text-orange-600 dark:text-orange-400",  text: "text-orange-700 dark:text-orange-300",  dot: "bg-orange-500" },
+    Sunday:    { card: "border-rose-200 bg-rose-50/50 dark:bg-slate-900/90 dark:border-rose-900/60",       accent: "text-rose-500 dark:text-rose-400",    text: "text-rose-600 dark:text-rose-300",    dot: "bg-rose-500" },
 };
 
 const TODAY_NAME = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
@@ -86,27 +86,27 @@ function PlanCard({ plan, colors, onView }: { plan: PlanItem; colors: typeof DAY
                     </div>
                     <div className="flex items-start gap-1.5">
                         <Clock className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                        <span className="leading-tight text-[11px] font-medium text-gray-600">{plan.time}</span>
+                        <span className="leading-tight text-[11px] font-medium text-gray-600 dark:text-gray-300">{plan.time}</span>
                     </div>
                     {plan.room && (
                         <div className="flex items-start gap-1.5">
                             <Building className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                            <span className="leading-tight text-[11px] text-gray-600">{t("room")} {plan.room}</span>
+                            <span className="leading-tight text-[11px] text-gray-600 dark:text-gray-300">{t("room")} {plan.room}</span>
                         </div>
                     )}
                     {(plan.topic || plan.subTopic) && (
-                        <div className="mt-1 pt-1.5 border-t border-gray-200/70 space-y-0.5">
+                        <div className="mt-1 pt-1.5 border-t border-gray-200/70 dark:border-gray-700/70 space-y-0.5">
                             {plan.topic && (
                                 <div className="flex items-start gap-1.5">
                                     <FileText className="h-3 w-3 mt-0.5 shrink-0 text-gray-400" />
-                                    <span className="leading-tight text-[10px] text-gray-500">
-                                        <span className="font-semibold text-gray-600">{t("topic")}:</span> {plan.topic}
+                                    <span className="leading-tight text-[10px] text-gray-500 dark:text-gray-300">
+                                        <span className="font-semibold text-gray-600 dark:text-gray-200">{t("topic")}:</span> {plan.topic}
                                     </span>
                                 </div>
                             )}
                             {plan.subTopic && (
-                                <div className="text-[10px] text-gray-500 pl-[18px] leading-tight">
-                                    <span className="font-semibold text-gray-600">{t("sub")}:</span> {plan.subTopic}
+                                <div className="text-[10px] text-gray-500 dark:text-gray-300 pl-[18px] leading-tight">
+                                    <span className="font-semibold text-gray-600 dark:text-gray-200">{t("sub")}:</span> {plan.subTopic}
                                 </div>
                             )}
                         </div>
@@ -121,9 +121,9 @@ function PlanCard({ plan, colors, onView }: { plan: PlanItem; colors: typeof DAY
 function EmptyDay() {
     const { t } = useTranslation();
     return (
-        <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-200 bg-gray-50/40 py-6 text-gray-400">
+        <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/40 dark:bg-slate-900/60 py-6 text-gray-400 dark:text-gray-500">
             <XCircle className="h-4 w-4 opacity-50" />
-            <span className="text-[11px] font-medium">{t("not_scheduled")}</span>
+            <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">{t("not_scheduled")}</span>
         </div>
     );
 }
@@ -220,9 +220,9 @@ export default function UserLessonPlanPage() {
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <div className="flex items-center gap-1.5 px-3 h-9 rounded-[10px] bg-white border border-gray-200 min-w-[180px] justify-center">
+                            <div className="flex items-center gap-1.5 px-3 h-9 rounded-[10px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 min-w-[180px] justify-center">
                                 <CalendarDays className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-                                <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">
+                                <span className="text-[12px] font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">
                                     {data ? `${data.weekStart} – ${data.weekEnd}` : t("loading")}
                                 </span>
                             </div>
@@ -266,11 +266,13 @@ export default function UserLessonPlanPage() {
                                             {/* Day column header */}
                                             <div className={cn(
                                                 "px-2 py-2.5 border-b text-center sticky top-0",
-                                                isToday ? "bg-gradient-to-b from-indigo-50 to-transparent border-indigo-200" : "bg-gray-50/60 border-gray-100"
+                                                isToday
+                                                    ? "bg-gradient-to-b from-indigo-50/80 to-transparent dark:from-indigo-950/80 dark:to-slate-900 border-indigo-200 dark:border-indigo-800"
+                                                    : "bg-gray-50/60 dark:bg-slate-900/80 border-gray-100 dark:border-gray-800"
                                             )}>
                                                 <div className="flex items-center justify-center gap-1.5">
                                                     <span className={cn("h-1.5 w-1.5 rounded-full", colors.dot)} />
-                                                    <span className={cn("text-[11px] font-bold uppercase tracking-wide", isToday ? "text-indigo-700" : "text-gray-600")}>
+                                                    <span className={cn("text-[11px] font-extrabold uppercase tracking-wide", isToday ? "text-indigo-700 dark:text-indigo-300" : "text-gray-700 dark:text-gray-200")}>
                                                         {day.slice(0, 3)}
                                                     </span>
                                                     {isToday && (
@@ -279,7 +281,7 @@ export default function UserLessonPlanPage() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="text-[10px] text-gray-400 mt-0.5">{info?.date || ""}</div>
+                                                <div className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 mt-0.5">{info?.date || ""}</div>
                                             </div>
                                             {/* Day column body */}
                                             <div className="p-1.5 space-y-2">
