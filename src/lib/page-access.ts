@@ -247,7 +247,7 @@ const urlModuleMap: Record<string, { moduleKey: string; submenuName: string }> =
   "/dashboard/qr-code-attendance/qr-code-generation": { moduleKey: "qr_code_attendance", submenuName: "qr_code_generation" },
   "/dashboard/qr-code-attendance/nfc-assignment": { moduleKey: "qr_code_attendance", submenuName: "nfc_assignment" },
   "/dashboard/qr-code-attendance/setting": { moduleKey: "qr_code_attendance", submenuName: "setting" },
-  "/dashboard/qr-code-attendance/smart-attendance-settings": { moduleKey: "qr_code_attendance", submenuName: "smart_attendance_settings" },
+  "/dashboard/qr-code-attendance/smart-attendance-settings": { moduleKey: "qr_code_attendance", submenuName: "setting" },
 
   // System Setting
   "/dashboard/system-setting/general-setting": { moduleKey: "system_setting", submenuName: "general_setting" },

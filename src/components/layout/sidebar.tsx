@@ -492,7 +492,6 @@ const menuItems = [
                     { name: "qr_code_generation", href: "/dashboard/qr-code-attendance/qr-code-generation" },
                     { name: "nfc_assignment", href: "/dashboard/qr-code-attendance/nfc-assignment" },
                     { name: "setting", href: "/dashboard/qr-code-attendance/setting" },
-                    { name: "smart_attendance_settings", href: "/dashboard/qr-code-attendance/smart-attendance-settings" },
                 ]
             },
             {
