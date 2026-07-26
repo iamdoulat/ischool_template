@@ -29,6 +29,9 @@ test_students.json
 
 # production
 /build
+/backend/update.zip
+/backend/update_1.0.4.zip
+
 
 # misc
 .DS_Store
@@ -65,3 +68,5 @@ CLAUDE.md
 # Build Executables & Temp
 composer.phar
 .kilo/
+backend/*.zip
+backend/update*.zip
