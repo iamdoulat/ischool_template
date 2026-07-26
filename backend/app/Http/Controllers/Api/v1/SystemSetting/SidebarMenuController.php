@@ -309,8 +309,12 @@ class SidebarMenuController extends Controller
         $user = $request->user();
         if ($user) {
             $userRoleLower = strtolower($user->role ?? '');
+            $isAdminRole = in_array($userRoleLower, ['super admin', 'admin', 'superadmin', 'super-admin', 'super_admin', 'school admin', 'system admin']) 
+                || str_contains($userRoleLower, 'admin') 
+                || empty($userRoleLower);
+
             // Admin & Super Admin see all menus and submenus
-            if ($userRoleLower === 'super admin' || $userRoleLower === 'admin' || $userRoleLower === 'superadmin' || empty($userRoleLower)) {
+            if ($isAdminRole) {
                 $menus = $this->injectAllSubmenus($menus);
                 return response()->json([
                     'success' => true,
@@ -373,7 +377,14 @@ class SidebarMenuController extends Controller
         return $menus->map(function ($menu) {
             $submenus = $this->moduleSubmenus[$menu->name] ?? null;
             if ($submenus === null) return $menu;
+            $menu->is_visible = true;
             $menu->visible_submenus = $submenus;
+            if ($menu->submenu_order && is_array($menu->submenu_order)) {
+                $missing = array_diff($submenus, $menu->submenu_order);
+                if (!empty($missing)) {
+                    $menu->submenu_order = array_merge($menu->submenu_order, array_values($missing));
+                }
+            }
             return $menu;
         });
     }
