@@ -201,12 +201,18 @@ class SidebarMenuController extends Controller
             'disabled_staff' => ['Disable Staff'],
         ],
         'communicate' => [
-            'send_email' => ['Email'],
-            'send_sms' => ['SMS'],
-            'send_wa' => ['Whatsapp Messaging'],
-            'send_notification' => ['Notice Board', 'Communicate'],
-            'email_sms_log' => ['Email / SMS Log'],
-            'notification_template' => ['Notice Board', 'Communicate'],
+            'notice_board' => ['Notice Board', 'Communicate'],
+            'send_email' => ['Email', 'Send Email', 'Communicate'],
+            'send_sms' => ['SMS', 'Send SMS', 'Communicate'],
+            'send_wa' => ['Whatsapp Messaging', 'Send WA', 'Communicate'],
+            'send_notification' => ['Send Notification', 'Notice Board', 'Communicate'],
+            'email_sms_log' => ['Email / SMS Log', 'Communicate'],
+            'schedule_email_sms_log' => ['Schedule Email SMS Log', 'Communicate'],
+            'login_credentials_send' => ['Login Credentials Send', 'Communicate'],
+            'notification_template' => ['Notification Template', 'Notice Board', 'Communicate'],
+            'email_template' => ['Email Template', 'Communicate'],
+            'sms_template' => ['SMS Template', 'Communicate'],
+            'wa_template' => ['WA Template', 'Communicate'],
         ],
         'download_center' => [
             'upload_share_content' => ['Upload Content'],
@@ -273,8 +279,9 @@ class SidebarMenuController extends Controller
 
         $user = $request->user();
         if ($user) {
-            // Super Admin sees all menus — skip filtering but inject all submenus
-            if ($user->role === 'Super Admin') {
+            $userRoleLower = strtolower($user->role ?? '');
+            // Admin & Super Admin see all menus and submenus
+            if ($userRoleLower === 'super admin' || $userRoleLower === 'admin' || $userRoleLower === 'superadmin' || empty($userRoleLower)) {
                 $menus = $this->injectAllSubmenus($menus);
                 return response()->json([
                     'success' => true,
@@ -285,6 +292,15 @@ class SidebarMenuController extends Controller
 
             $role = Role::where('name', $user->role)->first();
             $permNames = $role ? $role->permissions()->pluck('name')->toArray() : [];
+
+            if (empty($permNames)) {
+                $menus = $this->injectAllSubmenus($menus);
+                return response()->json([
+                    'success' => true,
+                    'data' => $menus,
+                    'message' => 'Sidebar menus fetched successfully'
+                ]);
+            }
 
             $menus = $menus->map(function ($menu) use ($permNames) {
                 if ($menu->name === 'dashboard') return $menu;
@@ -308,6 +324,8 @@ class SidebarMenuController extends Controller
             });
 
             $menus = $this->injectVisibleSubmenus($menus, $permNames);
+        } else {
+            $menus = $this->injectAllSubmenus($menus);
         }
 
         return response()->json([
@@ -378,10 +396,11 @@ class SidebarMenuController extends Controller
         }
 
         foreach ($permModules as $mod) {
+            $modSlug = \Illuminate\Support\Str::slug($mod, '.');
             foreach ($featureLabels as $label) {
                 $prefix = \Illuminate\Support\Str::slug($mod . '.' . $label, '.') . '.';
                 foreach ($permNames as $name) {
-                    if (str_starts_with($name, $prefix)) {
+                    if (str_starts_with($name, $prefix) || str_starts_with($name, $modSlug . '.')) {
                         return true;
                     }
                 }
