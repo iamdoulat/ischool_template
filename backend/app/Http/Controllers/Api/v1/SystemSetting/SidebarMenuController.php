@@ -279,8 +279,9 @@ class SidebarMenuController extends Controller
 
         $user = $request->user();
         if ($user) {
-            // Super Admin sees all menus — skip filtering but inject all submenus
-            if ($user->role === 'Super Admin') {
+            $userRoleLower = strtolower($user->role ?? '');
+            // Admin & Super Admin see all menus and submenus
+            if ($userRoleLower === 'super admin' || $userRoleLower === 'admin' || $userRoleLower === 'superadmin' || empty($userRoleLower)) {
                 $menus = $this->injectAllSubmenus($menus);
                 return response()->json([
                     'success' => true,
@@ -291,6 +292,15 @@ class SidebarMenuController extends Controller
 
             $role = Role::where('name', $user->role)->first();
             $permNames = $role ? $role->permissions()->pluck('name')->toArray() : [];
+
+            if (empty($permNames)) {
+                $menus = $this->injectAllSubmenus($menus);
+                return response()->json([
+                    'success' => true,
+                    'data' => $menus,
+                    'message' => 'Sidebar menus fetched successfully'
+                ]);
+            }
 
             $menus = $menus->map(function ($menu) use ($permNames) {
                 if ($menu->name === 'dashboard') return $menu;
@@ -314,6 +324,8 @@ class SidebarMenuController extends Controller
             });
 
             $menus = $this->injectVisibleSubmenus($menus, $permNames);
+        } else {
+            $menus = $this->injectAllSubmenus($menus);
         }
 
         return response()->json([

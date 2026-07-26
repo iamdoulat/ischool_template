@@ -690,7 +690,7 @@ export function Sidebar({
                     let submenus = item.submenus;
 
                     // Filter submenus by backend's visible_submenus (permission-based)
-                    if (config?.visible_submenus) {
+                    if (config?.visible_submenus && config.visible_submenus.length > 0) {
                         const visibleSet = new Set(config.visible_submenus);
                         submenus = submenus.filter(s => visibleSet.has(s.name));
                     }
