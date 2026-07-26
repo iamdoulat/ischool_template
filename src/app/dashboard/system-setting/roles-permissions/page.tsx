@@ -661,6 +661,8 @@ export default function RolesPermissionsPage() {
                         names.push(p.name);
                     }
                 }
+            }
+        }
         if (names.length === 0) {
             const subSlug = subName.replace(/_/g, '.');
             for (const permModule of permModuleNames) {
