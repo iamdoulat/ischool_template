@@ -1,0 +1,67 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# documentation & feature specs
+/docs/features/
+design_output.md
+
+# setup & scratch scripts
+setup-*.bat
+setup-*.sh
+patch*.py
+test_students.json
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+netlify.toml
+
+# debug & logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.txt
+*.log
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# AI Agents & IDEs
+.agent/
+.agents/
+.claude/
+.gemini/
+CLAUDE.md
+.idea/
+.vscode/
+
+# Build Executables & Temp
+composer.phar
+.kilo/
