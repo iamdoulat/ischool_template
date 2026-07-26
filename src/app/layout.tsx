@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast";
 import { SettingsProvider } from "@/components/providers/settings-provider";
-import { MSWInit } from "@/lib/msw.tsx";
+import { MSWInit } from "@/lib/msw";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 
