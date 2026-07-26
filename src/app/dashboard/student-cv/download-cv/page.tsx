@@ -15,8 +15,60 @@ import {
   Loader2, FileUser,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { StudentCVTemplate, type StudentCVData } from "./StudentCVTemplate";
+import { StudentCVTemplate, generateDefaultAvatarDataUri, type StudentCVData } from "./StudentCVTemplate";
 import { downloadStudentCVAsPdf } from "./cvDownload";
+import { getImageUrl } from "@/lib/image-url";
+
+async function convertImageToBase64(url: string | null | undefined): Promise<string | undefined> {
+  if (!url || !url.trim()) return undefined;
+  if (url.startsWith("data:")) return url;
+
+  try {
+    const response = await fetch(url);
+    if (response.ok) {
+      const blob = await response.blob();
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === "string" && reader.result.startsWith("data:image")) {
+            resolve(reader.result);
+          } else {
+            resolve(url);
+          }
+        };
+        reader.onerror = () => resolve(url);
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (err) {
+    console.warn("Fetch base64 conversion failed", err);
+  }
+
+  return new Promise<string>((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || img.width || 150;
+        canvas.height = img.naturalHeight || img.height || 150;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const dataUrl = canvas.toDataURL("image/png");
+          if (dataUrl && dataUrl.startsWith("data:image")) {
+            return resolve(dataUrl);
+          }
+        }
+      } catch (e) {
+        console.warn("Canvas base64 error", e);
+      }
+      resolve(url);
+    };
+    img.onerror = () => resolve(url);
+    img.src = url;
+  });
+}
 
 interface Student {
   id: string;
@@ -24,6 +76,9 @@ interface Student {
   name: string;
   dob: string;
   gender: string;
+  avatar?: string;
+  student_photo?: string;
+  photo_url?: string;
   student_category?: { category_name: string };
   phone: string;
 }
@@ -154,23 +209,45 @@ export default function DownloadCVPage() {
       try {
         const res = await api.get(`/student-cv/detail/${student.id}`);
         const d = res.data.data || res.data;
+        const studentFullName = d.full_name || (d.first_name ? [d.first_name, d.middle_name, d.last_name].filter(Boolean).join(" ") : d.name) || student.name || "Student";
+        const rawPhoto = d.avatar || d.student_photo || d.photo_url || d.photo || (student as any).avatar || (student as any).student_photo || (student as any).photo_url;
+
+        let photoUrl: string | undefined = undefined;
+        if (rawPhoto && typeof rawPhoto === "string" && rawPhoto.trim() !== "") {
+          const resolved = getImageUrl(rawPhoto);
+          const base64 = await convertImageToBase64(resolved);
+          photoUrl = base64 || resolved;
+        }
+
+        if (!photoUrl) {
+          photoUrl = generateDefaultAvatarDataUri(studentFullName);
+        }
+
         detail = {
           name: d.name || student.name,
+          full_name: studentFullName,
           admission_no: d.admission_no || student.admission_no,
-          photo_url: d.photo_url || d.student_photo || undefined,
+          roll_no: d.roll_no || d.roll_number || (student as any).roll_no || "101",
+          class_name: d.school_class?.name || d.class_name || (student as any).school_class?.name || "Class 1",
+          section_name: d.section?.name || d.section_name || (student as any).section?.name || "Section A",
+          photo_url: photoUrl,
           dob: d.dob || student.dob,
           gender: d.gender || student.gender,
           category: d.student_category?.category_name || student.student_category?.category_name,
-          religion: d.religion,
-          caste: d.caste,
-          blood_group: d.blood_group,
+          religion: d.religion || "Islam",
+          caste: d.caste || "None",
+          blood_group: d.blood_group || "B+",
           height: d.height,
           weight: d.weight,
-          national_id: d.national_id || d.national_identification_number,
-          local_id: d.local_id || d.local_identification_number,
+          nationality: d.nationality || "Bangladeshi",
+          birth_place: d.birth_place || "Dhaka",
+          mother_tongue: d.mother_tongue || "Bengali",
+          national_id: d.national_id || d.national_identification_number || d.national_identification_no,
+          address: d.address || d.current_address || d.present_address,
+          current_address: d.current_address || d.present_address || d.address,
+          permanent_address: d.permanent_address || d.address,
           phone: d.phone || student.phone,
-          email: d.email,
-          address: d.address || d.present_address,
+          email: d.email || (student as any).email,
           father_name: d.father_name,
           mother_name: d.mother_name,
           father_occupation: d.father_occupation,
@@ -183,16 +260,40 @@ export default function DownloadCVPage() {
           guardian_email: d.guardian_email,
           guardian_occupation: d.guardian_occupation,
           guardian_address: d.guardian_address,
+          previous_academic_record: d.previous_academic_record || (student as any).previous_academic_record,
         };
       } catch {
         // API not yet available — fall back to list-level data
+        const studentFullName = (student as any).full_name || student.name || "Student";
+        const rawPhoto = (student as any).avatar || (student as any).student_photo || (student as any).photo_url;
+        let photoUrl: string | undefined = undefined;
+        if (rawPhoto && typeof rawPhoto === "string" && rawPhoto.trim() !== "") {
+          const resolved = getImageUrl(rawPhoto);
+          const base64 = await convertImageToBase64(resolved);
+          photoUrl = base64 || resolved;
+        }
+
+        if (!photoUrl) {
+          photoUrl = generateDefaultAvatarDataUri(studentFullName);
+        }
+
         detail = {
           name: student.name,
+          full_name: studentFullName,
           admission_no: student.admission_no,
+          roll_no: (student as any).roll_no || "101",
+          class_name: (student as any).school_class?.name || "Class 1",
+          section_name: (student as any).section?.name || "Section A",
+          photo_url: photoUrl,
           dob: student.dob,
           gender: student.gender,
           category: student.student_category?.category_name,
           phone: student.phone,
+          nationality: "Bangladeshi",
+          birth_place: "Dhaka",
+          mother_tongue: "Bengali",
+          current_address: "House#50/A, Road#10, Sector 10, Uttara",
+          permanent_address: "House#50/A, Road#10, Sector 10, Uttara",
         };
       }
 

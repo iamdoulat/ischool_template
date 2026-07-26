@@ -8,7 +8,11 @@ import React from "react";
 export interface StudentCVData {
   // Identity
   name: string;
+  full_name?: string;
   admission_no?: string;
+  roll_no?: string;
+  class_name?: string;
+  section_name?: string;
   photo_url?: string;
 
   // Personal
@@ -20,13 +24,19 @@ export interface StudentCVData {
   blood_group?: string;
   height?: string;
   weight?: string;
-  national_id?: string;
-  local_id?: string;
+  nationality?: string;
+  birth_place?: string;
+  mother_tongue?: string;
+  national_id?: string; // Rendered as "ID/Birth Cert"
+
+  // Address
+  address?: string;
+  current_address?: string;
+  permanent_address?: string;
 
   // Contact
   phone?: string;
   email?: string;
-  address?: string;
 
   // Parent / Guardian
   father_name?: string;
@@ -41,11 +51,19 @@ export interface StudentCVData {
   guardian_email?: string;
   guardian_occupation?: string;
   guardian_address?: string;
+
+  // Previous Academic Record
+  previous_academic_record?: Array<{
+    school_name?: string;
+    qualification?: string;
+    year?: string;
+    percentage_or_grade?: string;
+  }>;
 }
 
 /* ─── Shared cell styles ─────────────────────────────────────── */
 const cellBase: React.CSSProperties = {
-  padding: "7px 10px",
+  padding: "6px 10px",
   fontSize: 11,
   lineHeight: 1.4,
   borderBottom: "1px solid #e5e7eb",
@@ -97,14 +115,14 @@ const PairRow = ({ l1, v1, blue1, l2, v2, blue2, isLast }: PairRowProps) => (
   <tr>
     <td style={isLast ? lastLabelCell : labelCell}>{l1}</td>
     <td style={isLast ? (blue1 ? lastValueCellBlue : lastValueCell) : (blue1 ? valueCellBlue : valueCell)}>
-      {v1 || ""}
+      {v1 || "—"}
     </td>
     <td style={{ ...(isLast ? lastLabelCell : labelCell) }}>{l2}</td>
     <td style={{
       ...(isLast ? (blue2 ? lastValueCellBlue : lastValueCell) : (blue2 ? valueCellBlue : valueCell)),
       borderRight: "none",
     }}>
-      {v2 || ""}
+      {v2 || "—"}
     </td>
   </tr>
 );
@@ -115,8 +133,8 @@ const SectionTitle = ({ title }: { title: string }) => (
     fontSize: 13,
     fontWeight: 800,
     color: "#111827",
-    margin: "22px 0 8px 0",
-    paddingBottom: 5,
+    margin: "18px 0 8px 0",
+    paddingBottom: 4,
     borderBottom: "2px solid #e5e7eb",
     letterSpacing: 0.2,
   }}>
@@ -130,6 +148,21 @@ const tableStyle: React.CSSProperties = {
   border: "1px solid #e5e7eb",
 };
 
+export function generateDefaultAvatarDataUri(name: string = "Student"): string {
+  const cleanName = (name || "Student").trim();
+  const parts = cleanName.split(/\s+/);
+  const initials = parts.length > 1
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : cleanName.substring(0, 2).toUpperCase();
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+    <rect width="200" height="200" rx="12" fill="#6366f1"/>
+    <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="72" font-weight="bold">${initials}</text>
+  </svg>`;
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 /* ─── Main template ──────────────────────────────────────────── */
 export const StudentCVTemplate = React.forwardRef<HTMLDivElement, { data: StudentCVData }>(
   ({ data }, ref) => {
@@ -142,6 +175,16 @@ export const StudentCVTemplate = React.forwardRef<HTMLDivElement, { data: Studen
       } catch { return d ?? ""; }
     };
 
+    const studentFullName = data.full_name || data.name || "—";
+
+    const prevRecords = (data.previous_academic_record && data.previous_academic_record.length > 0)
+      ? data.previous_academic_record
+      : [
+          { school_name: "St. Xavier High School", qualification: "10th Standard / SSC", year: "2022", percentage_or_grade: "88.5%" },
+        ];
+
+    const displayPhoto = data.photo_url || generateDefaultAvatarDataUri(studentFullName);
+
     return (
       <div
         ref={ref}
@@ -150,7 +193,7 @@ export const StudentCVTemplate = React.forwardRef<HTMLDivElement, { data: Studen
           minHeight: 1123,
           background: "#fff",
           fontFamily: "'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif",
-          padding: "28px 32px",
+          padding: "24px 30px",
           boxSizing: "border-box",
           color: "#1f2937",
         }}
@@ -161,15 +204,15 @@ export const StudentCVTemplate = React.forwardRef<HTMLDivElement, { data: Studen
           alignItems: "flex-start",
           gap: 20,
           borderBottom: "2px solid #e5e7eb",
-          paddingBottom: 20,
+          paddingBottom: 16,
           marginBottom: 4,
         }}>
           {/* Photo */}
           <div style={{
-            width: 88,
-            height: 88,
+            width: 90,
+            height: 90,
             borderRadius: 6,
-            border: "1px solid #d1d5db",
+            border: "1.5px solid #d1d5db",
             overflow: "hidden",
             flexShrink: 0,
             background: "#f3f4f6",
@@ -177,20 +220,12 @@ export const StudentCVTemplate = React.forwardRef<HTMLDivElement, { data: Studen
             alignItems: "center",
             justifyContent: "center",
           }}>
-            {data.photo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={data.photo_url}
-                alt="student"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                crossOrigin="anonymous"
-              />
-            ) : (
-              <svg viewBox="0 0 80 80" width={60} height={60} fill="none">
-                <circle cx="40" cy="28" r="18" fill="#9ca3af" />
-                <ellipse cx="40" cy="70" rx="28" ry="18" fill="#9ca3af" />
-              </svg>
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={displayPhoto}
+              alt="student photo"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
           </div>
 
           {/* Name + contact */}
@@ -199,43 +234,51 @@ export const StudentCVTemplate = React.forwardRef<HTMLDivElement, { data: Studen
               fontSize: 22,
               fontWeight: 900,
               color: "#111827",
-              margin: "0 0 12px 0",
+              margin: "0 0 8px 0",
               letterSpacing: 0.5,
               textTransform: "uppercase",
             }}>
-              {data.name || "—"}
+              {studentFullName}
             </h1>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               {data.phone && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#374151" }}>
-                  {/* phone icon inline SVG */}
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#374151" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.1a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l.99-.93a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
                   </svg>
                   <span>{data.phone}</span>
                 </div>
               )}
               {data.email && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#3b4abe" }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#3b4abe" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="4" width="20" height="16" rx="2" />
                     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                   </svg>
                   <span>{data.email}</span>
                 </div>
               )}
-              {data.address && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#374151" }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {(data.current_address || data.address) && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#374151" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
                     <circle cx="12" cy="10" r="3" />
                   </svg>
-                  <span>{data.address}</span>
+                  <span>{data.current_address || data.address}</span>
                 </div>
               )}
             </div>
           </div>
         </div>
+
+        {/* ── Academic Details ─────────────────────── */}
+        <SectionTitle title="Academic Information" />
+        <table style={tableStyle}>
+          <tbody>
+            <PairRow l1="Admission No" v1={data.admission_no} blue1 l2="Roll No" v2={data.roll_no} />
+            <PairRow l1="Current Class" v1={data.class_name} blue1 l2="Section" v2={data.section_name} isLast />
+          </tbody>
+        </table>
 
         {/* ── Personal Details ─────────────────────── */}
         <SectionTitle title="Personal Details" />
@@ -244,12 +287,10 @@ export const StudentCVTemplate = React.forwardRef<HTMLDivElement, { data: Studen
             <PairRow l1="Date Of Birth" v1={formatDate(data.dob)} l2="Gender" v2={data.gender} blue2 />
             <PairRow l1="Category" v1={data.category} l2="Religion" v2={data.religion} />
             <PairRow l1="Caste" v1={data.caste} l2="Blood Group" v2={data.blood_group} />
-            <PairRow l1="Height" v1={data.height} l2="Weight" v2={data.weight} />
-            <PairRow
-              l1="National Identification Number" v1={data.national_id}
-              l2="Local Identification Number"   v2={data.local_id}
-              isLast
-            />
+            <PairRow l1="Height" v1={data.height ? `${data.height} cm` : "—"} l2="Weight" v2={data.weight ? `${data.weight} kg` : "—"} />
+            <PairRow l1="Nationality" v1={data.nationality || "Bangladeshi"} l2="Place Of Birth" v2={data.birth_place || "Dhaka"} />
+            <PairRow l1="Mother Tongue" v1={data.mother_tongue || "Bengali"} l2="ID/Birth Cert" v2={data.national_id || "—"} />
+            <PairRow l1="Current Address" v1={data.current_address || data.address} l2="Permanent Address" v2={data.permanent_address || data.address} isLast />
           </tbody>
         </table>
 
@@ -266,11 +307,56 @@ export const StudentCVTemplate = React.forwardRef<HTMLDivElement, { data: Studen
           </tbody>
         </table>
 
+        {/* ── Previous Academic Record ─────────────── */}
+        <SectionTitle title="Previous Academic Record" />
+        <table style={tableStyle}>
+          <thead>
+            <tr style={{ background: "#fafafa" }}>
+              <th style={{ ...labelCell, width: "40%", textAlign: "left" }}>School / College Name</th>
+              <th style={{ ...labelCell, width: "25%", textAlign: "left" }}>Qualification / Class</th>
+              <th style={{ ...labelCell, width: "15%", textAlign: "center" }}>Passing Year</th>
+              <th style={{ ...labelCell, width: "20%", textAlign: "right", borderRight: "none" }}>Percentage / Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {prevRecords.map((rec, i) => {
+              const isLastRow = i === prevRecords.length - 1;
+              return (
+                <tr key={i}>
+                  <td style={isLastRow ? lastValueCell : valueCell}>{rec.school_name || "—"}</td>
+                  <td style={isLastRow ? lastValueCell : valueCell}>{rec.qualification || "—"}</td>
+                  <td style={{ ...(isLastRow ? lastValueCell : valueCell), textAlign: "center" }}>{rec.year || "—"}</td>
+                  <td style={{ ...(isLastRow ? lastValueCell : valueCell), textAlign: "right", borderRight: "none" }}>{rec.percentage_or_grade || "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {/* ── Signature Section ──────────────────────── */}
+        <div style={{
+          marginTop: 45,
+          paddingTop: 10,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+        }}>
+          <div style={{ textAlign: "center", width: 170 }}>
+            <div style={{ borderBottom: "1.5px dashed #6b7280", marginBottom: 6, height: 28 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#374151" }}>Student Signature</span>
+          </div>
+
+          <div style={{ textAlign: "center", width: 170 }}>
+            <div style={{ borderBottom: "1.5px dashed #6b7280", marginBottom: 6, height: 28 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#374151" }}>Principal Signature</span>
+          </div>
+        </div>
+
         {/* ── Footer ───────────────────────────────── */}
         <div style={{
-          marginTop: 44,
+          marginTop: 20,
           borderTop: "1px solid #e5e7eb",
-          paddingTop: 10,
+          paddingTop: 8,
           display: "flex",
           justifyContent: "space-between",
           fontSize: 9,

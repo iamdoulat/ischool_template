@@ -1,14 +1,32 @@
 // @ts-nocheck
 import { http, HttpResponse } from 'msw'
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
-const api = (path: string) => `${API_BASE}${path}`;
-
-
+import { mockDashboardData } from '@/lib/mock-data'
 
 export const handlers = [
+  // Dashboard endpoint
+  http.get('*/api/v1/dashboard', () => {
+    return HttpResponse.json(mockDashboardData)
+  }),
+
+  // Sessions endpoint
+  http.get('*/api/v1/system-setting/sessions', () => {
+    return HttpResponse.json({
+      success: true,
+      data: [
+        { id: 1, session: "2025-26", is_active: 1 }
+      ]
+    })
+  }),
+
+  // Sidebar menu endpoint
+  http.get('*/api/v1/system-setting/sidebar-menu', () => {
+    return HttpResponse.json({
+      success: true,
+      data: []
+    })
+  }),
   // Profile endpoint
-  http.get('/api/v1/profile', () => {
+  http.get('*/api/v1/profile', () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -23,23 +41,35 @@ export const handlers = [
   }),
 
   // Login endpoint
-  http.post('/api/v1/login', async ({ request }) => {
+  http.post('*/api/v1/login', async ({ request }) => {
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch (_) {}
+    const email = body.email_or_username || 'superadmin@ischool.com';
+    const isSuperAdmin = email.includes('superadmin');
+    const isStudent = email.includes('STD') || email.includes('student');
+    const isParent = email.includes('PAR') || email.includes('parent');
+
+    const role = isStudent ? 'Student' : isParent ? 'Parent' : isSuperAdmin ? 'superadmin' : 'admin';
+    const name = isSuperAdmin ? 'Super Admin' : isStudent ? 'Student User' : isParent ? 'Parent User' : 'Admin User';
+
     return HttpResponse.json({
       success: true,
       data: {
         access_token: 'mock-token-12345',
         user: {
           id: 1,
-          name: 'Admin User',
-          email: 'admin@ischool.com',
-          role: 'admin'
+          name,
+          email,
+          role
         }
       }
     })
   }),
 
   // General settings
-  http.get('/api/v1/system-setting/general-setting', () => {
+  http.get('*/api/v1/system-setting/general-setting', () => {
     return HttpResponse.json({
       status: "Success",
       data: {
@@ -95,8 +125,17 @@ export const handlers = [
     })
   }),
 
+  // Save General settings
+  http.post('*/api/v1/system-setting/general-setting', async ({ request }) => {
+    return HttpResponse.json({
+      status: "Success",
+      success: true,
+      message: "General settings updated successfully"
+    })
+  }),
+
   // Online Admission settings
-  http.get('/api/v1/system-setting/online-admission', () => {
+  http.get('*/api/v1/system-setting/online-admission', () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -138,8 +177,8 @@ export const handlers = [
   }),
 
   // Save online admission settings
-  http.post('/api/v1/system-setting/online-admission/settings', async ({ request }) => {
-    const formData = await request.formData()
+  http.post('*/api/v1/system-setting/online-admission/settings', async ({ request }) => {
+    await request.formData()
     return HttpResponse.json({
       success: true,
       message: 'Settings updated successfully'
@@ -148,7 +187,7 @@ export const handlers = [
 
   // Save online admission fields
   http.post('*/api/v1/system-setting/online-admission/fields', async ({ request }) => {
-    const body = await request.json()
+    await request.json()
     return HttpResponse.json({
       success: true,
       message: 'Fields updated successfully'
@@ -156,7 +195,7 @@ export const handlers = [
   }),
 
   // Classes endpoint
-  http.get('/api/v1/classes', () => {
+  http.get('*/api/v1/classes', () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -177,7 +216,7 @@ export const handlers = [
   }),
 
   // Sections endpoint
-  http.get('/api/v1/sections', () => {
+  http.get('*/api/v1/sections', () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -191,9 +230,8 @@ export const handlers = [
     })
   }),
 
-
   // Houses
-  http.get('/api/v1/houses', () => {
+  http.get('*/api/v1/houses', () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -208,7 +246,7 @@ export const handlers = [
   }),
 
   // Routes
-  http.get('/api/v1/routes', () => {
+  http.get('*/api/v1/routes', () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -221,7 +259,7 @@ export const handlers = [
   }),
 
   // Pickup points
-  http.get('/api/v1/pickup-points', () => {
+  http.get('*/api/v1/pickup-points', () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -234,7 +272,7 @@ export const handlers = [
   }),
 
   // Generate admission number
-  http.get('/api/v1/students/generate-admission-no', () => {
+  http.get('*/api/v1/students/generate-admission-no', () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -245,7 +283,7 @@ export const handlers = [
   }),
 
   // Generate username
-  http.get('/api/v1/students/generate-username', () => {
+  http.get('*/api/v1/students/generate-username', () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -256,7 +294,7 @@ export const handlers = [
   }),
 
   // Matching parent username for a selected student
-  http.get('/api/v1/students/:id/matching-parent-username', ({ params }) => {
+  http.get('*/api/v1/students/:id/matching-parent-username', ({ params }) => {
     const studentId = params.id;
     return HttpResponse.json({
       success: true,
@@ -267,7 +305,7 @@ export const handlers = [
   }),
 
   // Generate parent username
-  http.get('/api/v1/system-setting/users/generate-parent-username', () => {
+  http.get('*/api/v1/system-setting/users/generate-parent-username', () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -278,7 +316,7 @@ export const handlers = [
   }),
 
   // Languages endpoint
-  http.get('/api/v1/system-setting/languages', () => {
+  http.get('*/api/v1/system-setting/languages', () => {
     return HttpResponse.json({
       success: true,
       data: [
@@ -289,7 +327,7 @@ export const handlers = [
   }),
 
   // Languages translations endpoint
-  http.get('/api/v1/system-setting/languages/translations/:code', () => {
+  http.get('*/api/v1/system-setting/languages/translations/:code', () => {
     return HttpResponse.json({
       success: true,
       data: {}
@@ -297,7 +335,7 @@ export const handlers = [
   }),
 
   // Currencies endpoint
-  http.get('/api/v1/system-setting/currencies', () => {
+  http.get('*/api/v1/system-setting/currencies', () => {
     return HttpResponse.json({
       status: 'Success',
       data: [
@@ -307,38 +345,8 @@ export const handlers = [
     })
   }),
 
-  // Classes endpoint
-  http.get('/api/v1/classes', () => {
-    return HttpResponse.json({
-      success: true,
-      data: {
-        data: [
-          { id: 1, name: 'Class 1' },
-          { id: 2, name: 'Class 2' },
-          { id: 3, name: 'Class 3' },
-          { id: 4, name: 'Class 4' },
-          { id: 5, name: 'Class 5' }
-        ]
-      }
-    })
-  }),
-
-  // Sections endpoint
-  http.get('/api/v1/sections', () => {
-    return HttpResponse.json({
-      success: true,
-      data: {
-        data: [
-          { id: 1, name: 'A' },
-          { id: 2, name: 'B' },
-          { id: 3, name: 'C' }
-        ]
-      }
-    })
-  }),
-
   // Lesson Plan Report Criteria (classes, sections, subject groups, subjects)
-  http.get('/api/v1/reports/lesson-plan/criteria', () => {
+  http.get('*/api/v1/reports/lesson-plan/criteria', () => {
     return HttpResponse.json({
       classes: [
         {
@@ -391,7 +399,7 @@ export const handlers = [
   }),
 
   // Subject Lesson Plan Report
-  http.get('/api/v1/reports/lesson-plan/report', ({ request }) => {
+  http.get('*/api/v1/reports/lesson-plan/report', ({ request }) => {
     const url = new URL(request.url);
     const classId = url.searchParams.get('school_class_id');
 
@@ -420,7 +428,7 @@ export const handlers = [
   }),
 
   // Syllabus Status Report
-  http.post('/api/v1/reports/lesson-plan/syllabus-status', async ({ request }) => {
+  http.post('*/api/v1/reports/lesson-plan/syllabus-status', async ({ request }) => {
     const body = await request.json() as { class_id?: string };
     const classId = body.class_id;
 
@@ -539,7 +547,7 @@ export const handlers = [
   // ── Student CV ─────────────────────────────────────────────────────────────
 
   // Criteria: classes with nested sections
-  http.get('/api/v1/student-cv/criteria', () => {
+  http.get('*/api/v1/student-cv/criteria', () => {
     return HttpResponse.json({
       success: true,
       data: [
@@ -583,7 +591,7 @@ export const handlers = [
   }),
 
   // CV Settings (field toggles)
-  http.get('/api/v1/student-cv/settings', () => {
+  http.get('*/api/v1/student-cv/settings', () => {
     return HttpResponse.json({
       success: true,
       data: [
@@ -614,7 +622,7 @@ export const handlers = [
   }),
 
   // Toggle a CV setting
-  http.post('/api/v1/student-cv/settings/toggle', async ({ request }) => {
+  http.post('*/api/v1/student-cv/settings/toggle', async ({ request }) => {
     await request.json();
     return HttpResponse.json({ success: true, message: 'Setting updated' });
   }),
@@ -622,7 +630,7 @@ export const handlers = [
   // ── Track application status ────────────────────────────────────────────────
 
   // Track application status
-  http.get('/api/v1/online-admissions/track/:referenceNo', ({ params }) => {
+  http.get('*/api/v1/online-admissions/track/:referenceNo', ({ params }) => {
     const referenceNo = params.referenceNo as string;
 
     // Mock data for demonstration

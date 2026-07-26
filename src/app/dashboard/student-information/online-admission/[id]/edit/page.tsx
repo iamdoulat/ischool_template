@@ -106,11 +106,8 @@ export default function EditAdmissionPage() {
         try {
             const formData = new FormData(e.currentTarget);
             
-            // Log for debugging data collection
-            console.log("Submitting Section ID:", formData.get("section_id"));
-            console.log("Submitting DOB:", formData.get("dob"));
-
             await api.post(`/online-admissions/${id}`, formData);
+
             
             toast("success", "Admission record updated successfully.");
             router.push("/dashboard/student-information/online-admission");

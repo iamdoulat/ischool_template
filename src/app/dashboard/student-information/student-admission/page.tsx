@@ -474,6 +474,7 @@ export default function StudentAdmissionPage() {
             const schoolInfo = {
                 name: settings?.school_name,
                 slogan: settings?.school_slogan,
+                school_code: settings?.school_code,
                 address: settings?.address,
                 phone: settings?.phone,
                 email: settings?.email,
@@ -516,9 +517,9 @@ export default function StudentAdmissionPage() {
                 tt.error("failed_to_admit_student");
             }
             if (err.response?.data?.errors) {
-                // Log specific validation errors for easier debugging
-                console.log("Validation Errors:", err.response.data.errors);
+                // Validation errors handled via response UI
             }
+
         } finally {
             setLoading(false);
         }
@@ -1277,25 +1278,63 @@ function TextAreaField({ label, required, rows = 3, value, onChange }: { label: 
 }
 
 function FileUploadField({ label, required, value, onChange, placeholder }: { label: string, required?: boolean, value?: File | null, onChange?: (file: File | null) => void, placeholder?: string }) {
+    const [localPreview, setLocalPreview] = useState<string | null>(null);
+    const [imgError, setImgError] = useState<boolean>(false);
+
+    useEffect(() => {
+        setImgError(false);
+        if (value instanceof File) {
+            const url = URL.createObjectURL(value);
+            setLocalPreview(url);
+            return () => URL.revokeObjectURL(url);
+        } else {
+            setLocalPreview(null);
+        }
+    }, [value]);
+
+    const showPreview = localPreview && !imgError;
+
     return (
-        <div className="space-y-2 group">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+        <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
                 {label} {required && <span className="text-destructive">*</span>}
             </label>
-            <div className="relative h-11 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/30 flex items-center justify-center cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all group/upload overflow-hidden">
-                <div className="flex items-center gap-2 px-4 pointer-events-none w-full">
-                    <Upload className="h-4 w-4 text-muted-foreground group-hover/upload:text-primary transition-colors" />
-                    <span className="text-xs font-semibold text-muted-foreground group-hover/upload:text-foreground truncate">
-                        {value ? value.name : placeholder || "Drag and drop a file here or click"}
-                    </span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="relative group w-[100px] h-[100px] rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary transition-all overflow-hidden bg-muted/20 flex flex-col items-center justify-center cursor-pointer shrink-0">
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                        onChange={(e) => onChange?.(e.target.files?.[0] || null)}
+                        required={required}
+                    />
+                    {showPreview ? (
+                        <div className="relative w-full h-full group">
+                            <img
+                                src={localPreview}
+                                alt={label}
+                                className="w-full h-full object-cover rounded-md"
+                                onError={() => setImgError(true)}
+                            />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-semibold gap-1 z-10 pointer-events-none">
+                                <Upload className="h-4 w-4" />
+                                <span>Change</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center p-2 text-center text-muted-foreground group-hover:text-primary transition-colors">
+                            <Upload className="h-6 w-6 mb-1 text-muted-foreground/60 group-hover:text-primary transition-colors" />
+                            <span className="text-[10px] font-medium leading-tight">Upload</span>
+                            <span className="text-[8px] opacity-70">100x100</span>
+                        </div>
+                    )}
                 </div>
-                <input
-                    type="file"
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={(e) => onChange?.(e.target.files?.[0] || null)}
-                    accept="image/*"
-                    required={required}
-                />
+                <div className="flex flex-col justify-center">
+                    <span className="text-xs font-medium text-foreground">
+                        {value ? value.name : (placeholder || "No file chosen")}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">PNG, JPG or WEBP (Max 2MB)</span>
+                </div>
             </div>
         </div>
     );

@@ -273,8 +273,10 @@ const urlModuleMap: Record<string, { moduleKey: string; submenuName: string }> =
   "/dashboard/system-setting/system-fields": { moduleKey: "system_setting", submenuName: "system_fields" },
   "/dashboard/system-setting/student-profile-setting": { moduleKey: "system_setting", submenuName: "student_profile_setting" },
   "/dashboard/system-setting/online-admission": { moduleKey: "system_setting", submenuName: "online_admission" },
+  "/dashboard/system-setting/admission-form": { moduleKey: "system_setting", submenuName: "admission_form" },
   "/dashboard/system-setting/file-types": { moduleKey: "system_setting", submenuName: "file_types" },
   "/dashboard/system-setting/sidebar-menu": { moduleKey: "system_setting", submenuName: "sidebar_menu" },
+
   "/dashboard/system-setting/system-update": { moduleKey: "system_setting", submenuName: "system_update" },
 };
 

@@ -151,7 +151,7 @@ export const downloadAdmissionFormPdf = async (
     sectionName: string,
     filename: string,
     photoUrl?: string,
-    schoolInfo?: { name?: string; slogan?: string; currencySymbol?: string; address?: string; phone?: string; email?: string; website?: string; web?: string; logo?: string; print_logo?: string; app_logo?: string; logoUrl?: string },
+    schoolInfo?: { name?: string; slogan?: string; school_code?: string; dise_code?: string; code?: string; schoolCode?: string; currencySymbol?: string; address?: string; phone?: string; email?: string; website?: string; web?: string; logo?: string; print_logo?: string; app_logo?: string; logoUrl?: string },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parentPhotos?: any,
     admissionFormConfig?: AdmissionFormConfig
@@ -301,6 +301,13 @@ export const downloadAdmissionFormPdf = async (
                             clonedDoc.documentElement.style.color = "#334155";
                             clonedDoc.body.style.color = "#334155";
 
+                            const styles = clonedDoc.querySelectorAll("style");
+                            styles.forEach((style) => {
+                                if (style.textContent && style.textContent.includes("oklch")) {
+                                    style.textContent = style.textContent.replace(/oklch\([^)]+\)/g, "#6366f1");
+                                }
+                            });
+
                             const target = clonedDoc.getElementById("pdf-multilingual-container");
                             if (target) {
                                 target.style.color = "#334155";
@@ -395,10 +402,16 @@ export const downloadAdmissionFormPdf = async (
         leftY += 4.5;
     }
 
-    // Right-aligned Address, Phone No., Email, Website
+    // Right-aligned School Code, Address, Phone No., Email, Website
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(71, 85, 105);
+
+    const schoolCodeVal = schoolInfo?.school_code || schoolInfo?.dise_code || schoolInfo?.code || schoolInfo?.schoolCode;
+    if (schoolCodeVal && schoolCodeVal !== "-") {
+        doc.text(`School Code: ${safeText(schoolCodeVal)}`, rightX, rightY + 3.5, { align: "right" });
+        rightY += 4.5;
+    }
 
     if (schoolInfo?.address) {
         doc.text(`Address: ${safeText(schoolInfo.address)}`, rightX, rightY + 3.5, { align: "right" });

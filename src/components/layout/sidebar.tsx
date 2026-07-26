@@ -644,7 +644,7 @@ export function Sidebar({
         const fetchSessions = async () => {
             try {
                 setFetchingSessions(true);
-                const response = await api.get("/system-setting/sessions");
+                const response = await api.get("/system-setting/sessions", { skipGlobalErrorHandler: true });
                 if (response.data.success) {
                     setSessions(response.data.data);
                 }
@@ -658,7 +658,7 @@ export function Sidebar({
         const fetchSidebarConfig = async () => {
             try {
                 setFetchingSidebar(true);
-                const response = await api.get("/system-setting/sidebar-menu");
+                const response = await api.get("/system-setting/sidebar-menu", { skipGlobalErrorHandler: true });
                 if (response.data.success) {
                     setSidebarConfig(response.data.data);
                 }
@@ -675,17 +675,9 @@ export function Sidebar({
 
     // Process menu items based on backend config
     const processedMenuItems = React.useMemo(() => {
-        // Show loading state
-        if (fetchingSidebar) return [];
-
-        // Show only dashboard if config not loaded (avoid exposing all menus)
-        if (sidebarConfig.length === 0) {
-            return menuItems
-                .map(group => ({
-                    ...group,
-                    items: group.items.filter(item => item.name === 'dashboard')
-                }))
-                .filter(group => group.items.length > 0);
+        // Default to all menu items if no custom sidebar config override is set
+        if (fetchingSidebar || !sidebarConfig || sidebarConfig.length === 0) {
+            return menuItems;
         }
 
         // Create a map for quick lookup

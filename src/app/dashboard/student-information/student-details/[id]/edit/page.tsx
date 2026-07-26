@@ -507,10 +507,14 @@ export default function StudentEditPage() {
                 newData.full_name = `${newData.name} ${newData.last_name}`.trim();
             }
 
-            if (field === "avatar" && value instanceof File) {
+            if (value instanceof File) {
                 const reader = new FileReader();
                 reader.onloadend = () => {
-                    setAvatarPreview(reader.result as string);
+                    const result = reader.result as string;
+                    if (field === "avatar") setAvatarPreview(result);
+                    if (field === "father_photo") setFatherPhotoPreview(result);
+                    if (field === "mother_photo") setMotherPhotoPreview(result);
+                    if (field === "guardian_photo") setGuardianPhotoPreview(result);
                 };
                 reader.readAsDataURL(value);
             }
@@ -1350,8 +1354,10 @@ function TextAreaField({ label, required, value = "", onChange, rows = 3 }: { la
 
 function FileUploadField({ label, required, value, onChange, existingPreview }: { label: string, required?: boolean, value: any, onChange: (val: File | null) => void, existingPreview?: string | null }) {
     const [localPreview, setLocalPreview] = useState<string | null>(null);
+    const [imgError, setImgError] = useState<boolean>(false);
 
     useEffect(() => {
+        setImgError(false);
         if (value instanceof File) {
             const url = URL.createObjectURL(value);
             setLocalPreview(url);
@@ -1359,34 +1365,51 @@ function FileUploadField({ label, required, value, onChange, existingPreview }: 
         } else {
             setLocalPreview(null);
         }
-    }, [value]);
+    }, [value, existingPreview]);
 
-    const preview = localPreview || existingPreview;
+    const preview = localPreview || (existingPreview && existingPreview.trim() !== "" ? existingPreview : null);
+    const showPreview = preview && !imgError;
 
     return (
         <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
                 {label} {required && <span className="text-destructive">*</span>}
             </label>
-            <div className="flex items-center gap-3 w-full h-11 rounded-lg border border-muted/50 bg-muted/30 px-3 relative focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-card focus-within:border-primary transition-all overflow-hidden group">
-                <input
-                    type="file"
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                    onChange={(e) => onChange(e.target.files?.[0] || null)}
-                />
-                {preview ? (
-                    <>
-                        <img src={preview} alt={label} className="h-8 w-8 rounded-md object-cover border border-border shrink-0" />
-                        <span className="text-sm text-muted-foreground truncate">{value instanceof File ? value.name : "Current photo"}</span>
-                    </>
-                ) : (
-                    <>
-                        <div className="h-8 w-8 rounded-md bg-background shadow-sm border border-border flex items-center justify-center shrink-0 group-hover:bg-primary/5 transition-colors">
-                            <Upload className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="relative group w-[100px] h-[100px] rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary transition-all overflow-hidden bg-muted/20 flex flex-col items-center justify-center cursor-pointer shrink-0">
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                        onChange={(e) => onChange(e.target.files?.[0] || null)}
+                    />
+                    {showPreview ? (
+                        <div className="relative w-full h-full group">
+                            <img
+                                src={preview}
+                                alt={label}
+                                className="w-full h-full object-cover rounded-md"
+                                onError={() => setImgError(true)}
+                            />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-semibold gap-1 z-10 pointer-events-none">
+                                <Upload className="h-4 w-4" />
+                                <span>Change</span>
+                            </div>
                         </div>
-                        <span className="text-sm text-muted-foreground truncate">Choose file...</span>
-                    </>
-                )}
+                    ) : (
+                        <div className="flex flex-col items-center justify-center p-2 text-center text-muted-foreground group-hover:text-primary transition-colors">
+                            <Upload className="h-6 w-6 mb-1 text-muted-foreground/60 group-hover:text-primary transition-colors" />
+                            <span className="text-[10px] font-medium leading-tight">Upload</span>
+                            <span className="text-[8px] opacity-70">100x100</span>
+                        </div>
+                    )}
+                </div>
+                <div className="flex flex-col justify-center">
+                    <span className="text-xs font-medium text-foreground">
+                        {value instanceof File ? value.name : (showPreview ? "Photo attached" : "No photo chosen")}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">PNG, JPG or WEBP (Max 2MB)</span>
+                </div>
             </div>
         </div>
     );

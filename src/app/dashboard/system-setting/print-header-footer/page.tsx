@@ -196,6 +196,7 @@ export default function PrintHeaderFooterPage() {
                                         </div>
                                     </div>
                                     <div className="text-right text-[11px] md:text-sm flex flex-col justify-center space-y-0.5 p-2">
+                                        {(settings.school_code || (settings as any).dise_code) && <div><span className="font-bold">School Code:</span> {settings.school_code || (settings as any).dise_code}</div>}
                                         <div><span className="font-bold">Address:</span> {settings.address || "25 Kings Street, CA"}</div>
                                         <div><span className="font-bold">Phone No.:</span> {settings.phone || "89562423934"}</div>
                                         <div><span className="font-bold">Email:</span> {settings.email || "yourschool@gmail.com"}</div>
@@ -226,12 +227,14 @@ export default function PrintHeaderFooterPage() {
                                         </div>
                                     </div>
                                     <div className="text-right text-[11px] md:text-sm flex flex-col justify-center space-y-0.5 p-2">
+                                        {(settings.school_code || (settings as any).dise_code) && <div><span className="font-bold">School Code:</span> {settings.school_code || (settings as any).dise_code}</div>}
                                         <div><span className="font-bold">Address:</span> {settings.address || "25 Kings Street, CA"}</div>
                                         <div><span className="font-bold">Phone No.:</span> {settings.phone || "89562423934"}</div>
                                         <div><span className="font-bold">Email:</span> {settings.email || "yourschool@gmail.com"}</div>
                                         <div><span className="font-bold">Website:</span> {settings.base_url?.replace(/^https?:\/\//, '') || "www.yoursite.in"}</div>
                                     </div>
                                 </div>
+
                                 <div className="bg-black text-white text-center py-2 font-bold text-sm md:text-lg uppercase">
                                     {activeTab}
                                 </div>

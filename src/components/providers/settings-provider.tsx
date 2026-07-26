@@ -156,7 +156,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
     const fetchSettings = async () => {
         try {
-            const response = await api.get("/system-setting/general-setting");
+            const response = await api.get("/system-setting/general-setting", { skipGlobalErrorHandler: true });
             if (response.data.status === "Success" || response.data.data || response.data) {
                 const incomingData = response.data.data || response.data || {};
                 const defaults = createDefaultSettings();

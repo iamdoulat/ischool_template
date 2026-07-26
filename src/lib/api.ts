@@ -48,7 +48,8 @@ api.interceptors.response.use(
             if (axios.isCancel?.(error) || error.code === 'ERR_CANCELED') {
                 return Promise.reject(error);
             }
-            if (typeof window !== 'undefined') {
+            const method = config?.method?.toLowerCase();
+            if (typeof window !== 'undefined' && method && method !== 'get') {
                 toast.error('Cannot reach the server. Please check that the API is running and try again.');
             }
             return Promise.reject(error);

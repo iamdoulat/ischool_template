@@ -8,8 +8,13 @@ export async function downloadStudentCVAsPdf(
   element: HTMLElement,
   filename: string = "student-cv.pdf"
 ): Promise<void> {
-  // Lazy-load to avoid SSR issues
-  const html2canvas = (await import("html2canvas")).default;
+  // Lazy-load html2canvas-pro to support modern Tailwind v4 oklch colors
+  let html2canvas: any;
+  try {
+    html2canvas = (await import("html2canvas-pro")).default;
+  } catch {
+    html2canvas = (await import("html2canvas")).default;
+  }
   const { jsPDF } = await import("jspdf");
 
   // A4 dimensions in mm
@@ -23,6 +28,14 @@ export async function downloadStudentCVAsPdf(
     allowTaint: true,
     backgroundColor: "#ffffff",
     logging: false,
+    onclone: (clonedDoc: Document) => {
+      const styles = clonedDoc.querySelectorAll("style");
+      styles.forEach((style) => {
+        if (style.textContent && style.textContent.includes("oklch")) {
+          style.textContent = style.textContent.replace(/oklch\([^)]+\)/g, "#6366f1");
+        }
+      });
+    },
   });
 
   const imgData = canvas.toDataURL("image/png");

@@ -823,7 +823,7 @@ export default function GeneralSettingPage() {
                                         <Input
                                             value={formData.base_url}
                                             onChange={(e) => handleChange("base_url", e.target.value)}
-                                            placeholder="https://demo.smart-school.in/"
+                                            placeholder="https://api.yourdomain.com"
                                             className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                         />
                                     </div>
@@ -832,10 +832,11 @@ export default function GeneralSettingPage() {
                                         <Input
                                             value={formData.file_upload_path}
                                             onChange={(e) => handleChange("file_upload_path", e.target.value)}
-                                            placeholder="/var/www/demo.smart-school.in/public_html"
+                                            placeholder="/storage/uploads"
                                             className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                         />
                                     </div>
+
                                 </div>
                             </div>
 

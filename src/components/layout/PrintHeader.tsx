@@ -62,11 +62,13 @@ export function PrintHeader({ title, headerImageUrl: externalHeaderImageUrl, tab
 
                 {/* Right Side: Contact Info */}
                 <div className="flex flex-col text-[8px] md:text-[9px] text-gray-600 font-medium items-end text-right space-y-0.5 justify-center">
+                    {(settings.school_code || (settings as any).dise_code) && <p><span className="font-bold">School Code:</span> {settings.school_code || (settings as any).dise_code}</p>}
                     <p>Address: {settings.address || "25 Kings Street, CA"}</p>
                     <p>Phone No.: {settings.phone || "89562423934"}</p>
                     <p>Email: {settings.email || "yourschool@gmail.com"}</p>
                     <p>Website: {settings.base_url?.replace(/^https?:\/\//, '') || "www.yoursite.in"}</p>
                 </div>
+
             </div>
 
             {/* Bottom Bar: Title */}

@@ -319,6 +319,7 @@ export default function StudentDetailsPage() {
                 {
                     name: settings?.school_name,
                     slogan: settings?.school_slogan,
+                    school_code: settings?.school_code,
                     address: settings?.address,
                     phone: settings?.phone,
                     email: settings?.email,
@@ -345,13 +346,9 @@ export default function StudentDetailsPage() {
             if (filters.status) params.status = filters.status;
             if (filters.search) params.search = filters.search;
 
-            console.log("[StudentDetails] Fetching with params:", params);
             const response = await api.get("/students", { params });
-            console.log("[StudentDetails] Full API response.data:", JSON.stringify(response.data).substring(0, 500));
             const result = response.data?.data;
-            console.log("[StudentDetails] result (response.data.data):", typeof result, Array.isArray(result));
             const studentsData = result?.data || result || [];
-            console.log("[StudentDetails] studentsData length:", studentsData.length, "first item:", studentsData[0]);
 
             setStudents(studentsData);
             setPagination({
@@ -362,9 +359,6 @@ export default function StudentDetailsPage() {
                 to: result?.to || studentsData.length
             });
 
-            if (!studentsData || studentsData.length === 0) {
-                console.log("[StudentDetails] No students found. Params sent:", JSON.stringify(params), "API response:", JSON.stringify(response.data));
-            }
         } catch (error: any) {
             console.error("[StudentDetails] Error fetching students:", error?.response?.status, error?.response?.data || error?.message);
             tt.error("failed_to_fetch_students");

@@ -77,7 +77,7 @@ export default function DashboardPage() {
 
     const fetchDashboardData = useCallback(async () => {
         try {
-            const response = await api.get('/dashboard');
+            const response = await api.get('/dashboard', { skipGlobalErrorHandler: true });
             setData(response.data);
             setVisibleWidgets(response.data.visible_widgets || []);
         } catch (error) {

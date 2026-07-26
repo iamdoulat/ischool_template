@@ -290,9 +290,11 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
         { name: "system_fields", label: "System Fields" },
         { name: "student_profile_setting", label: "Student Profile Setting" },
         { name: "online_admission", label: "Online Admission" },
+        { name: "admission_form", label: "Admission Form" },
         { name: "file_types", label: "File Types" },
         { name: "sidebar_menu", label: "Sidebar Menu" },
         { name: "system_update", label: "System Update" },
+
     ],
 };
 

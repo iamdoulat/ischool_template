@@ -7,10 +7,14 @@ export function getImageUrl(
 
   let cleanPath = path.replace(/\\/g, '/');
 
+  const defaultDomain = (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"))
+    ? `${window.location.protocol}//${window.location.hostname}:8000`
+    : "https://api.ischool.mddoulat.com";
+
   const domain = (
     baseUrl ||
     process.env.NEXT_PUBLIC_API_URL ||
-    "https://api.ischool.mddoulat.com"
+    defaultDomain
   )
     .replace(/\/+$/, "")
     .replace(/\/api\/v1\/?$/, "");

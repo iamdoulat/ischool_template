@@ -13,6 +13,7 @@ import { FileType2, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
+import { clearFileUploadSettingsCache } from "@/lib/file-validation";
 
 interface FileUploadSetting {
     id?: number;
@@ -100,6 +101,7 @@ export default function FileTypesPage() {
                 image_mime: setting.image_mime,
                 image_size: Number(setting.image_size) || 0,
             });
+            clearFileUploadSettingsCache();
             toast("success", t("file_upload_settings_saved"));
         } catch (error) {
             console.error("Failed to save file upload settings", error);
