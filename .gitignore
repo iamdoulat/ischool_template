@@ -29,8 +29,6 @@ test_students.json
 
 # production
 /build
-/backend/update.zip
-/backend/update_1.0.4.zip
 
 
 # misc

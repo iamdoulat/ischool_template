@@ -273,8 +273,37 @@ class SidebarMenuController extends Controller
         ],
     ];
 
+    /**
+     * All known menu names — must stay in sync with frontend menuItems.
+     * Any name here that is missing from the database will be auto-inserted.
+     */
+    private array $knownMenus = [
+        'dashboard', 'front_office', 'student_information', 'fees_collection',
+        'income', 'expenses', 'attendance', 'examinations', 'cbse_examination',
+        'online_examinations', 'academics', 'human_resource', 'communicate',
+        'download_center', 'homework', 'online_course', 'library', 'inventory',
+        'transport', 'hostel', 'certificate', 'multi_branch', 'behaviour_records',
+        'front_cms', 'alumni', 'reports', 'gmeet_live_classes', 'zoom_live_classes',
+        'lesson_plan', 'student_cv', 'annual_calendar', 'qr_code_attendance',
+        'system_setting', 'quick_fees', 'thermal_print', 'whatsapp_messaging',
+    ];
+
     public function index(Request $request): JsonResponse
     {
+        // Auto-insert any new known menus that don't exist in DB yet
+        $existingNames = SidebarMenu::pluck('name')->toArray();
+        $maxOrder = SidebarMenu::max('sort_order') ?? 0;
+        foreach ($this->knownMenus as $i => $name) {
+            if (!in_array($name, $existingNames)) {
+                SidebarMenu::create([
+                    'name' => $name,
+                    'label' => ucwords(str_replace('_', ' ', $name)),
+                    'is_visible' => true,
+                    'sort_order' => $maxOrder + $i + 1,
+                ]);
+            }
+        }
+
         $menus = SidebarMenu::orderBy('sort_order')->get();
 
         $user = $request->user();

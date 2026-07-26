@@ -449,10 +449,18 @@ const submenuFeatureOverride: Record<string, Record<string, string[]>> = {
         disabled_staff: ["Disable Staff"],
     },
     communicate: {
-        send_email: ["Email"],
-        send_sms: ["SMS"],
-        send_wa: ["Whatsapp Messaging"],
-        email_sms_log: ["Email / SMS Log"],
+        notice_board: ["Notice Board", "Communicate"],
+        send_email: ["Email", "Send Email", "Communicate"],
+        send_sms: ["SMS", "Send SMS", "Communicate"],
+        send_wa: ["Whatsapp Messaging", "Send WA", "Communicate"],
+        send_notification: ["Send Notification", "Notice Board", "Communicate"],
+        email_sms_log: ["Email / SMS Log", "Communicate"],
+        schedule_email_sms_log: ["Schedule Email SMS Log", "Communicate"],
+        login_credentials_send: ["Login Credentials Send", "Communicate"],
+        notification_template: ["Notification Template", "Notice Board", "Communicate"],
+        email_template: ["Email Template", "Communicate"],
+        sms_template: ["SMS Template", "Communicate"],
+        wa_template: ["WA Template", "Communicate"],
     },
     download_center: {
         upload_share_content: ["Upload Content"],
@@ -653,6 +661,26 @@ export default function RolesPermissionsPage() {
                         names.push(p.name);
                     }
                 }
+        if (names.length === 0) {
+            const subSlug = subName.replace(/_/g, '.');
+            for (const permModule of permModuleNames) {
+                const features = permissionsMatrix[permModule];
+                if (features) {
+                    for (const perms of Object.values(features) as any[]) {
+                        for (const p of perms as any) {
+                            if (p.name && p.name.includes(subSlug)) {
+                                names.push(p.name);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (names.length === 0) {
+            const subSlug = subName.replace(/_/g, '.');
+            for (const permModule of permModuleNames) {
+                const modSlug = permModule.toLowerCase().replace(/\s+/g, '.');
+                names.push(`${modSlug}.${subSlug}.view`);
             }
         }
         return names;

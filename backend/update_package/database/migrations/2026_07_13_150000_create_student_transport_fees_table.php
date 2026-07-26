@@ -11,15 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('student_transport_fees', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('transport_fee_master_id')->constrained('transport_fee_masters')->onDelete('cascade');
-            $table->decimal('amount', 10, 2);
-            $table->string('status')->default('unpaid');
-            $table->foreignId('academic_session_id')->nullable()->constrained('academic_sessions')->onDelete('set null');
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('student_transport_fees')) {
+            Schema::create('student_transport_fees', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
+                $table->foreignId('transport_fee_master_id')->constrained('transport_fee_masters')->onDelete('cascade');
+                $table->decimal('amount', 10, 2);
+                $table->string('status')->default('unpaid');
+                $table->foreignId('academic_session_id')->nullable()->constrained('academic_sessions')->onDelete('set null');
+                $table->timestamps();
+            });
+        }
     }
 
     /**
