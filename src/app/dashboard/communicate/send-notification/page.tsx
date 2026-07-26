@@ -53,10 +53,10 @@ export default function SendNotificationPage() {
 
     const fetchTemplates = async () => {
         try {
-            const res = await api.get("/communicate/notification-templates");
+            const res = await api.get("/communicate/notification-templates", { skipGlobalErrorHandler: true });
             setTemplates(res.data?.data || []);
         } catch {
-            // Silently fallback if empty
+            // Silently fallback if empty or route not found
         }
     };
 

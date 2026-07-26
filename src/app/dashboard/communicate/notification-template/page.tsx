@@ -94,7 +94,7 @@ export default function NotificationTemplatePage() {
     const fetchTemplates = useCallback(async () => {
         try {
             setLoading(true);
-            const res = await api.get(`/communicate/notification-templates?page=${currentPage}&per_page=${limit}`);
+            const res = await api.get(`/communicate/notification-templates?page=${currentPage}&per_page=${limit}`, { skipGlobalErrorHandler: true });
             const data = res.data?.data;
             if (data?.data) {
                 setTemplates(data.data);
@@ -119,6 +119,7 @@ export default function NotificationTemplatePage() {
             }
         } catch (error) {
             console.error("Failed to fetch notification templates", error);
+            setTemplates([]);
         } finally {
             setLoading(false);
         }
