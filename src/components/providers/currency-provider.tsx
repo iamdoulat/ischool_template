@@ -42,10 +42,11 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
             setLoading(true);
             const response = await api.get("/system-setting/currencies").catch(() => ({ data: { status: 'Error', data: [] } }));
             if (response.data.status === "Success") {
-                const enabled = response.data.data.filter((c: Currency) => c.is_enabled);
+                const allowedCodes = ["USD", "BDT", "INR", "AED"];
+                const enabled = response.data.data.filter((c: Currency) => c.is_enabled && allowedCodes.includes(c.short_code));
                 setAvailableCurrencies(enabled);
 
-                const active = enabled.find((c: Currency) => c.is_active) || enabled[0];
+                const active = enabled.find((c: Currency) => c.is_active) || enabled.find((c: Currency) => c.short_code === 'USD') || enabled[0];
                 if (active) setSelectedCurrencyState(active);
             }
         } catch (error) {

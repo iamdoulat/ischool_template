@@ -33,6 +33,17 @@ class StudentController extends BaseController
             $query->where('section_id', $request->section_id);
         }
 
+        if ($request->filled('gender')) {
+            $query->where('gender', $request->gender);
+        }
+
+        if ($request->filled('category')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('category', $request->category)
+                  ->orWhere('student_category_id', $request->category);
+            });
+        }
+
         if ($request->filled('status')) {
             if ($request->status === 'active') {
                 $query->where('active', true);
@@ -49,7 +60,11 @@ class StudentController extends BaseController
                     ->orWhere(DB::raw("CONCAT(name, ' ', IFNULL(last_name, ''))"), 'like', "%{$search}%")
                     ->orWhere('admission_no', 'like', "%{$search}%")
                     ->orWhere('roll_no', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('father_name', 'like', "%{$search}%")
+                    ->orWhere('mother_name', 'like', "%{$search}%")
+                    ->orWhere('guardian_name', 'like', "%{$search}%");
             });
         }
 

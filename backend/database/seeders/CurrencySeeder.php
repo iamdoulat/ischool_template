@@ -12,15 +12,13 @@ class CurrencySeeder extends Seeder
      */
     public function run(): void
     {
+        // Delete any currencies not in the allowed list
+        Currency::whereNotIn('short_code', ['USD', 'BDT', 'INR', 'AED'])->delete();
+
         $currencies = [
             ['currency' => 'United States Dollar', 'short_code' => 'USD', 'symbol' => '$', 'rate' => 1.0000, 'is_base' => true, 'is_active' => true, 'is_enabled' => true],
-            ['currency' => 'Indian Rupee', 'short_code' => 'INR', 'symbol' => '₹', 'rate' => 83.0000, 'is_base' => false, 'is_active' => false, 'is_enabled' => true],
-            ['currency' => 'Canadian Dollar', 'short_code' => 'CAD', 'symbol' => 'C$', 'rate' => 1.3500, 'is_base' => false, 'is_active' => false, 'is_enabled' => true],
             ['currency' => 'Bangladeshi Taka', 'short_code' => 'BDT', 'symbol' => '৳', 'rate' => 110.0000, 'is_base' => false, 'is_active' => false, 'is_enabled' => true],
-            ['currency' => 'Euro', 'short_code' => 'EUR', 'symbol' => '€', 'rate' => 0.9200, 'is_base' => false, 'is_active' => false, 'is_enabled' => true],
-            ['currency' => 'British Pound', 'short_code' => 'GBP', 'symbol' => '£', 'rate' => 0.7900, 'is_base' => false, 'is_active' => false, 'is_enabled' => true],
-            ['currency' => 'Australian Dollar', 'short_code' => 'AUD', 'symbol' => 'A$', 'rate' => 1.5200, 'is_base' => false, 'is_active' => false, 'is_enabled' => true],
-            ['currency' => 'Japanese Yen', 'short_code' => 'JPY', 'symbol' => '¥', 'rate' => 150.0000, 'is_base' => false, 'is_active' => false, 'is_enabled' => true],
+            ['currency' => 'Indian Rupee', 'short_code' => 'INR', 'symbol' => '₹', 'rate' => 83.0000, 'is_base' => false, 'is_active' => false, 'is_enabled' => true],
             ['currency' => 'United Arab Emirates Dirham', 'short_code' => 'AED', 'symbol' => 'AED', 'rate' => 3.6700, 'is_base' => false, 'is_active' => false, 'is_enabled' => true],
         ];
 
@@ -30,5 +28,8 @@ class CurrencySeeder extends Seeder
                 $currencyData
             );
         }
+
+        Currency::where('short_code', 'USD')->update(['is_base' => true]);
+        Currency::where('short_code', '!=', 'USD')->update(['is_base' => false]);
     }
 }

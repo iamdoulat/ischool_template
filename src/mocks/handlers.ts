@@ -339,8 +339,10 @@ export const handlers = [
     return HttpResponse.json({
       status: 'Success',
       data: [
-        { id: 1, currency: 'USD', short_code: 'USD', symbol: '$', rate: 1, is_base: true, is_active: true, is_enabled: true },
-        { id: 2, currency: 'EUR', short_code: 'EUR', symbol: '€', rate: 0.85, is_base: false, is_active: false, is_enabled: true }
+        { id: 1, currency: 'United States Dollar', short_code: 'USD', symbol: '$', rate: 1, is_base: true, is_active: true, is_enabled: true },
+        { id: 2, currency: 'Bangladeshi Taka', short_code: 'BDT', symbol: '৳', rate: 110, is_base: false, is_active: false, is_enabled: true },
+        { id: 3, currency: 'Indian Rupee', short_code: 'INR', symbol: '₹', rate: 83, is_base: false, is_active: false, is_enabled: true },
+        { id: 4, currency: 'United Arab Emirates Dirham', short_code: 'AED', symbol: 'AED', rate: 3.67, is_base: false, is_active: false, is_enabled: true }
       ]
     })
   }),

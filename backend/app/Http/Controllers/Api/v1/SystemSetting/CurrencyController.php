@@ -14,7 +14,7 @@ class CurrencyController extends BaseController
      */
     public function index(): JsonResponse
     {
-        $currencies = Currency::orderBy('id', 'asc')->get();
+        $currencies = Currency::whereIn('short_code', ['USD', 'BDT', 'INR', 'AED'])->orderBy('id', 'asc')->get();
         return $this->success($currencies, 'Currencies fetched successfully');
     }
 

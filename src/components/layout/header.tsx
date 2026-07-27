@@ -16,7 +16,10 @@ import {
     User as UserIcon,
     Settings,
     Check,
-    Trash2
+    Trash2,
+    Loader2,
+    X,
+    GraduationCap
 } from "lucide-react";
 import { CurrencySwitcher } from "./currency-switcher";
 import { ThemeToggle } from "./theme-toggle";
@@ -49,6 +52,167 @@ interface Language {
     is_rtl: boolean;
     is_active: boolean;
     is_enabled: boolean;
+}
+
+function HeaderStudentSearch() {
+    const router = useRouter();
+    const { t } = useLanguage();
+    const getImageUrl = useImageUrl();
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+
+    useEffect(() => {
+        if (!query.trim()) {
+            setResults([]);
+            setLoading(false);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setLoading(true);
+            try {
+                const res = await api.get("/students", {
+                    params: { search: query.trim(), limit: 5 }
+                });
+                const data = res.data?.data?.data || res.data?.data || [];
+                setResults(data);
+                setIsOpen(true);
+            } catch (err) {
+                console.error("Header search error:", err);
+                setResults([]);
+            } finally {
+                setLoading(false);
+            }
+        }, 250);
+
+        return () => clearTimeout(timer);
+    }, [query]);
+
+    const handleExecuteSearch = (searchKeyword = query) => {
+        if (!searchKeyword.trim()) return;
+        setIsOpen(false);
+        router.push(`/dashboard/student-information/student-details?search=${encodeURIComponent(searchKeyword.trim())}`);
+    };
+
+    const handleSelectStudent = (student: any) => {
+        setIsOpen(false);
+        const searchVal = student.admission_no || `${student.name} ${student.last_name || ""}`.trim();
+        router.push(`/dashboard/student-information/student-details?search=${encodeURIComponent(searchVal)}`);
+    };
+
+    return (
+        <div className="hidden lg:flex items-center relative w-1/2 max-w-[50%] ml-auto group">
+            <div className="relative w-full">
+                <Search
+                    onClick={() => handleExecuteSearch()}
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors z-10 cursor-pointer"
+                />
+                <Input
+                    value={query}
+                    onChange={(e) => {
+                        setQuery(e.target.value);
+                        setIsOpen(true);
+                    }}
+                    onFocus={() => {
+                        if (query.trim() && results.length > 0) setIsOpen(true);
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleExecuteSearch();
+                        }
+                    }}
+                    placeholder={t("search_student")}
+                    className="pl-10 pr-9 h-10 w-full bg-muted/30 border-muted/50 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all rounded-2xl shadow-sm group-hover:bg-muted/50 text-xs"
+                />
+                {loading ? (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
+                ) : query ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setQuery("");
+                            setResults([]);
+                            setIsOpen(false);
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                        <X className="h-3.5 w-3.5" />
+                    </button>
+                ) : null}
+
+                {/* Dropdown Results */}
+                {isOpen && query.trim().length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-card/95 backdrop-blur-md border border-muted/50 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="p-2.5 border-b border-muted/40 bg-muted/20 flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                <GraduationCap className="h-3.5 w-3.5 text-primary" /> Student Database
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                                {loading ? "Searching..." : `${results.length} results`}
+                            </span>
+                        </div>
+
+                        <div className="max-h-[320px] overflow-y-auto custom-scrollbar p-1">
+                            {results.length > 0 ? (
+                                results.map((student) => {
+                                    const fullName = `${student.name} ${student.last_name || ""}`.trim();
+                                    const className = student.schoolClass?.name || student.school_class?.name || "";
+                                    const sectionName = student.section?.name || "";
+                                    const classSec = className ? `${className}${sectionName ? ` (${sectionName})` : ''}` : "";
+
+                                    return (
+                                        <div
+                                            key={student.id}
+                                            onClick={() => handleSelectStudent(student)}
+                                            className="flex items-center gap-3 p-2.5 hover:bg-primary/10 rounded-xl cursor-pointer transition-colors group/item"
+                                        >
+                                            <Avatar className="h-9 w-9 rounded-lg border border-primary/20 shrink-0">
+                                                <AvatarImage src={getImageUrl(student.avatar)} />
+                                                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold rounded-lg">
+                                                    {student.name?.[0]?.toUpperCase() || "S"}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-xs font-bold text-foreground group-hover/item:text-primary truncate">
+                                                        {fullName}
+                                                    </p>
+                                                    {classSec && (
+                                                        <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
+                                                            {classSec}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                                                    Adm: <span className="font-semibold text-foreground">{student.admission_no || "-"}</span>
+                                                    {student.roll_no ? ` | Roll: ${student.roll_no}` : ''}
+                                                    {student.father_name ? ` | Guardian: ${student.father_name}` : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : !loading ? (
+                                <div className="p-4 text-center text-xs text-muted-foreground">
+                                    No students found matching &quot;{query}&quot;
+                                </div>
+                            ) : null}
+                        </div>
+
+                        <div
+                            onClick={() => handleExecuteSearch()}
+                            className="p-2.5 bg-primary/5 hover:bg-primary/15 text-primary text-center text-xs font-bold cursor-pointer transition-colors border-t border-muted/40"
+                        >
+                            View all results for &quot;{query}&quot; &rarr;
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 }
 
 export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
@@ -331,13 +495,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
             </div>
 
             <div className="flex items-center justify-end gap-3 md:gap-6 flex-1 min-w-0">
-                <div className="hidden lg:flex items-center relative w-1/2 max-w-[50%] ml-auto group">
-                    <Search className="absolute left-4 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
-                    <Input
-                        placeholder={t("search_student")}
-                        className="pl-11 h-10 w-full bg-muted/30 border-muted/50 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all rounded-2xl shadow-sm group-hover:bg-muted/50"
-                    />
-                </div>
+                <HeaderStudentSearch />
 
                 <div className="flex items-center gap-1 md:gap-2">
                     <Button variant="ghost" size="icon" className="hidden sm:flex text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">

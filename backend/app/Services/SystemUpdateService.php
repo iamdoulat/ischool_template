@@ -235,31 +235,49 @@ class SystemUpdateService
         }
 
         $logs = [];
+        $targetBasePath = base_path();
         $filesUpdated = 0;
         $updatedFiles = [];
 
-        // Copy/Replace files from package to backend
-        // Source folders can be 'backend', 'app', 'database', 'routes', 'config', etc.
-        $targetBasePath = base_path();
+        // Auto-clean any legacy backslash-filename artifacts or update_package folder in root base path
+        try {
+            $legacyRootDir = base_path('update_package');
+            if (File::exists($legacyRootDir)) {
+                File::deleteDirectory($legacyRootDir);
+                $logs[] = "Cleaned up legacy root update_package directory.";
+            }
+
+            $rootFiles = File::files($targetBasePath);
+            foreach ($rootFiles as $rf) {
+                $rfName = $rf->getFilename();
+                if (str_contains($rfName, '\\') || str_contains($rfName, '%5C')) {
+                    File::delete($rf->getPathname());
+                    $logs[] = "Cleaned up stray root artifact: " . $rfName;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore cleanup warnings
+        }
 
         $sourceFiles = File::allFiles($workPath);
         foreach ($sourceFiles as $file) {
-            $relativePath = $file->getRelativePathname();
+            $relativePath = str_replace('\\', '/', $file->getRelativePathname());
 
             // Skip meta files that shouldn't be overwritten directly into backend
-            if (in_array($relativePath, ['version.json', 'manifest.json', 'update.php', 'script.php'])) {
+            if (in_array(basename($relativePath), ['version.json', 'manifest.json', 'update.php', 'script.php'])) {
                 continue;
             }
 
             // Strip leading 'backend/' if present in path inside zip
             $normalizedRelative = preg_replace('#^backend[/\\\\]#i', '', $relativePath);
+            $normalizedRelative = str_replace('\\', '/', $normalizedRelative);
 
             // Prevent overwriting sensitive configuration & runtime files
             if (preg_match('#^(\.env|\.git|storage/|node_modules/|vendor/)#i', $normalizedRelative)) {
                 continue;
             }
 
-            $destinationFile = $targetBasePath . '/' . $normalizedRelative;
+            $destinationFile = $targetBasePath . '/' . ltrim($normalizedRelative, '/');
             $destinationDir = dirname($destinationFile);
 
             if (!File::exists($destinationDir)) {

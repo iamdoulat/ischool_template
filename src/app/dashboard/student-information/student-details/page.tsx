@@ -38,7 +38,7 @@ const formatDate = (dateString?: string | null) => {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -110,6 +110,7 @@ export default function StudentDetailsPage() {
     const tt = useTranslateToast();
     const { t } = useTranslation();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const getImageUrl = useImageUrl();
     const { settings } = useSettings();
     const { selectedCurrency } = useCurrency();
@@ -118,13 +119,16 @@ export default function StudentDetailsPage() {
     const [fetchingPrereqs, setFetchingPrereqs] = useState(true);
 
     const [classes, setClasses] = useState<{ id: number; name: string; sections?: { id: number; name: string }[] }[]>([]);
+    const [categories, setCategories] = useState<{ id: number; category_name?: string; name?: string }[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
 
     const [filters, setFilters] = useState({
-        school_class_id: "",
-        section_id: "",
-        search: "",
-        status: ""
+        school_class_id: searchParams.get("school_class_id") || "",
+        section_id: searchParams.get("section_id") || "",
+        search: searchParams.get("search") || "",
+        status: searchParams.get("status") || "",
+        gender: searchParams.get("gender") || "",
+        category: searchParams.get("category") || "",
     });
 
     const [pagination, setPagination] = useState({
@@ -145,22 +149,39 @@ export default function StudentDetailsPage() {
         fetchPrerequisites();
     }, []);
 
+    // Sync URL search params into filters state when URL changes
+    useEffect(() => {
+        const urlSearch = searchParams.get("search") || "";
+        const urlClass = searchParams.get("school_class_id") || "";
+        const urlSection = searchParams.get("section_id") || "";
+        const urlStatus = searchParams.get("status") || "";
+        const urlGender = searchParams.get("gender") || "";
+        const urlCategory = searchParams.get("category") || "";
+
+        setFilters(prev => ({
+            ...prev,
+            search: urlSearch,
+            school_class_id: urlClass,
+            section_id: urlSection,
+            status: urlStatus,
+            gender: urlGender,
+            category: urlCategory,
+        }));
+    }, [searchParams]);
+
     // Auto-load students once prerequisites finish loading
     useEffect(() => {
         if (!fetchingPrereqs) handleSearch(1);
-    }, [fetchingPrereqs]);
-
-    // Auto filter when dropdowns change
-    useEffect(() => {
-        if (!fetchingPrereqs) handleSearch(1);
-    }, [filters.school_class_id, filters.section_id, filters.status]);
+    }, [fetchingPrereqs, filters.school_class_id, filters.section_id, filters.status, filters.gender, filters.category, searchParams]);
 
     const fetchPrerequisites = async () => {
         try {
-            const [classesRes] = await Promise.all([
-                api.get("/academics/classes?no_paginate=true")
+            const [classesRes, categoriesRes] = await Promise.all([
+                api.get("/academics/classes?no_paginate=true").catch(() => ({ data: { data: [] } })),
+                api.get("/student-categories").catch(() => ({ data: { data: [] } }))
             ]);
-            setClasses(classesRes.data.data?.data || classesRes.data.data || []);
+            setClasses(classesRes.data?.data?.data || classesRes.data?.data || []);
+            setCategories(categoriesRes.data?.data?.data || categoriesRes.data?.data || []);
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
             tt.error("failed_to_load_classes");
@@ -344,6 +365,8 @@ export default function StudentDetailsPage() {
             if (filters.school_class_id) params.school_class_id = filters.school_class_id;
             if (filters.section_id) params.section_id = filters.section_id;
             if (filters.status) params.status = filters.status;
+            if (filters.gender) params.gender = filters.gender;
+            if (filters.category) params.category = filters.category;
             if (filters.search) params.search = filters.search;
 
             const response = await api.get("/students", { params });
@@ -387,123 +410,143 @@ export default function StudentDetailsPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
-                        {/* Class and Section fields */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    {t("class")} <span className="text-destructive">*</span>
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        value={filters.school_class_id}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            setFilters(prev => ({ ...prev, school_class_id: val, section_id: "" }));
-                                        }}
-                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
-                                    >
-                                        <option value="">{t("select_class")}</option>
-                                        {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
-                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                                </div>
-                            </div>
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    {t("section")}
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        value={filters.section_id}
-                                        onChange={(e) => setFilters(prev => ({ ...prev, section_id: e.target.value }))}
-                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
-                                    >
-                                        <option value="">{t("select_section")}</option>
-                                        {getClassSections(filters.school_class_id).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                                </div>
-                            </div>
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    {t("status")}
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        value={filters.status}
-                                        onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
-                                    >
-                                        <option value="">{t("select_status")}</option>
-                                        <option value="active">{t("active")}</option>
-                                        <option value="disabled">{t("disabled")}</option>
-                                    </select>
-                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                                </div>
-                            </div>
-                            <div className="sm:col-span-2 flex justify-end">
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        className="h-11 px-6 rounded-lg border-muted/50 hover:bg-muted/50"
-                                        onClick={handleReset}
-                                        disabled={loading}
-                                    >
-                                        {t("reset")}
-                                    </Button>
-                                    <Button
-                                        variant="gradient"
-                                        className="h-11 px-8"
-                                        onClick={() => handleSearch(1)}
-                                        disabled={loading}
-                                    >
-                                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                        {t("search")}
-                                    </Button>
-                                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Class */}
+                        <div className="space-y-2 group">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                                {t("class")}
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={filters.school_class_id}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setFilters(prev => ({ ...prev, school_class_id: val, section_id: "" }));
+                                    }}
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                >
+                                    <option value="">{t("select_class")}</option>
+                                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                             </div>
                         </div>
 
-                        {/* Search By Keyword field */}
-                        <div className="space-y-4 border-l border-muted/50 pl-8 hidden md:block">
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    {t("search_by_keyword")}
-                                </label>
-                                <div className="relative">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                    <Input
-                                        placeholder={t("search_by_student_name_roll_number_etc")}
-                                        value={filters.search}
-                                        onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                                        className="h-11 pl-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all"
-                                        onKeyDown={(e) => e.key === "Enter" && handleSearch(1)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex justify-end">
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        className="h-11 px-6 rounded-lg border-muted/50 hover:bg-muted/50"
-                                        onClick={handleReset}
-                                        disabled={loading}
-                                    >
-                                        {t("reset")}
-                                    </Button>
-                                    <Button
-                                        variant="gradient"
-                                        className="h-11 px-8"
-                                        onClick={() => handleSearch(1)}
-                                        disabled={loading}
-                                    >
-                                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                        {t("search")}
-                                    </Button>
-                                </div>
+                        {/* Section */}
+                        <div className="space-y-2 group">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                                {t("section")}
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={filters.section_id}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, section_id: e.target.value }))}
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                >
+                                    <option value="">{t("select_section")}</option>
+                                    {getClassSections(filters.school_class_id).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                             </div>
                         </div>
+
+                        {/* Category */}
+                        <div className="space-y-2 group">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                                {t("category")}
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={filters.category}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                >
+                                    <option value="">{t("select_category") || "Select Category"}</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.category_name || cat.name || cat.id.toString()}>
+                                            {cat.category_name || cat.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {/* Gender */}
+                        <div className="space-y-2 group">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                                {t("gender")}
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={filters.gender}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, gender: e.target.value }))}
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                >
+                                    <option value="">{t("select_gender") || "Select Gender"}</option>
+                                    <option value="Male">{t("male") || "Male"}</option>
+                                    <option value="Female">{t("female") || "Female"}</option>
+                                    <option value="Other">{t("other") || "Other"}</option>
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {/* Status */}
+                        <div className="space-y-2 group">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                                {t("status")}
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={filters.status}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                >
+                                    <option value="">{t("select_status")}</option>
+                                    <option value="active">{t("active")}</option>
+                                    <option value="disabled">{t("disabled")}</option>
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {/* Search By Keyword */}
+                        <div className="space-y-2 group">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                                {t("search_by_keyword")}
+                            </label>
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                <Input
+                                    placeholder={t("search_by_student_name_roll_number_etc")}
+                                    value={filters.search}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                                    className="h-11 pl-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all text-xs"
+                                    onKeyDown={(e) => e.key === "Enter" && handleSearch(1)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-muted/30">
+                        <Button
+                            variant="outline"
+                            className="h-10 px-6 rounded-lg border-muted/50 hover:bg-muted/50 text-xs"
+                            onClick={handleReset}
+                            disabled={loading}
+                        >
+                            {t("reset")}
+                        </Button>
+                        <Button
+                            variant="gradient"
+                            className="h-10 px-8 text-xs"
+                            onClick={() => handleSearch(1)}
+                            disabled={loading}
+                        >
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 mr-1.5" />}
+                            {t("search")}
+                        </Button>
                     </div>
                 </CardContent>
             </Card>

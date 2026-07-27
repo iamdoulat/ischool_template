@@ -63,7 +63,12 @@ export default function CurrencyPage() {
             setLoading(true);
             const response = await api.get("/system-setting/currencies");
             if (response.data.status === "Success") {
-                setCurrencies(response.data.data);
+                const allowedCodes = ["USD", "BDT", "INR", "AED"];
+                const filtered = (response.data.data || []).filter((c: Currency) => allowedCodes.includes(c.short_code));
+                setCurrencies(filtered.map((c: Currency) => ({
+                    ...c,
+                    is_base: c.short_code === "USD"
+                })));
             }
         } catch (error) {
             console.error("Failed to fetch currencies", error);
@@ -71,7 +76,7 @@ export default function CurrencyPage() {
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, t]);
 
     useEffect(() => {
         fetchCurrencies();

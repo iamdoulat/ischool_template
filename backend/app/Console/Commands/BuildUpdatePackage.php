@@ -51,11 +51,17 @@ class BuildUpdatePackage extends Command
 
         $changelog = $this->option('changelog') ?? $this->ask("Enter changelog/description for this release", "Bug fixes and performance improvements.");
 
-        $outputDir = base_path('update_package');
+        $outputDir = storage_path('app/update/build_staging');
         if (File::exists($outputDir)) {
             File::deleteDirectory($outputDir);
         }
         File::makeDirectory($outputDir, 0755, true);
+
+        // Also clean up legacy root update_package directory if it exists
+        $legacyRootDir = base_path('update_package');
+        if (File::exists($legacyRootDir)) {
+            File::deleteDirectory($legacyRootDir);
+        }
 
         // Create version.json
         $manifest = [
@@ -142,10 +148,16 @@ class BuildUpdatePackage extends Command
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
             $files = File::allFiles($outputDir);
             foreach ($files as $file) {
-                $relativePath = $file->getRelativePathname();
+                // Normalize path separators to POSIX forward slashes '/' so Linux/HestiaCP extracts directories properly
+                $relativePath = str_replace('\\', '/', $file->getRelativePathname());
                 $zip->addFile($file->getPathname(), $relativePath);
             }
             $zip->close();
+
+            // Clean up temporary build staging folder so backend root file manager stays clean
+            if (File::exists($outputDir)) {
+                File::deleteDirectory($outputDir);
+            }
 
             // Also copy as standard update.zip
             File::copy($zipPath, $defaultZipPath);
