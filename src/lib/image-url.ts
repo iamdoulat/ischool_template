@@ -32,6 +32,13 @@ export function getImageUrl(
     domain = domain.replace(/^http:\/\//i, "https://");
   }
 
+  // Ensure production live site requests point to backend api domain, not frontend app domain
+  if (!isLocalHost) {
+    if (!domain || (domain.includes("ischool.mddoulat.com") && !domain.includes("api.ischool.mddoulat.com"))) {
+      domain = "https://api.ischool.mddoulat.com";
+    }
+  }
+
   // Handle absolute URLs
   if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
     const storageIdx = cleanPath.lastIndexOf("/storage/");
