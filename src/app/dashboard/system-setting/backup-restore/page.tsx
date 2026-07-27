@@ -736,12 +736,25 @@ export default function BackupRestorePage() {
             {/* Confirmation Dialog for Delete / Restore */}
             <ConfirmDialog
                 open={confirmOpen}
-                loading={confirmLoading}
-                type={confirmAction?.type || "delete"}
-                onClose={() => {
-                    setConfirmOpen(false);
-                    setConfirmAction(null);
+                onOpenChange={(open) => {
+                    setConfirmOpen(open);
+                    if (!open) setConfirmAction(null);
                 }}
+                loading={confirmLoading}
+                title={
+                    confirmAction?.type === "delete"
+                        ? t("delete_backup") || "Delete Backup"
+                        : confirmAction?.type === "restore"
+                        ? t("restore_backup") || "Restore Backup"
+                        : t("restore_uploaded_backup") || "Restore Uploaded Backup"
+                }
+                description={
+                    confirmAction?.type === "delete"
+                        ? t("are_you_sure_you_want_to_delete_this_backup") || "Are you sure you want to delete this backup file?"
+                        : t("are_you_sure_you_want_to_restore_this_backup") || "Restoring a backup will overwrite current database records. Proceed?"
+                }
+                confirmText={confirmAction?.type === "delete" ? t("delete") || "Delete" : t("restore") || "Restore"}
+                variant={confirmAction?.type === "delete" ? "destructive" : "warning"}
                 onConfirm={() => {
                     if (confirmAction?.type === "delete") confirmDelete();
                     else if (confirmAction?.type === "restore" || confirmAction?.type === "upload-restore") confirmRestore();
