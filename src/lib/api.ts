@@ -1,5 +1,6 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
+import { safeStorage } from '@/lib/utils';
 
 // Extend axios config to allow suppressing the global error toast per-request
 declare module 'axios' {
@@ -8,8 +9,19 @@ declare module 'axios' {
     }
 }
 
+const getBaseUrl = () => {
+    if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+    if (typeof window !== 'undefined') {
+        const host = window.location.hostname;
+        if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host.endsWith('.local')) {
+            return `${window.location.protocol}//${host}:8000/api/v1`;
+        }
+    }
+    return 'http://127.0.0.1:8000/api/v1';
+};
+
 const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1',
+    baseURL: getBaseUrl(),
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -19,7 +31,7 @@ const api = axios.create({
 
 // Add a request interceptor to include the token in headers
 api.interceptors.request.use((config) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const token = safeStorage.getItem('auth_token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -64,9 +76,9 @@ api.interceptors.response.use(
                 const path = window.location.pathname;
                 const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/user');
                 if (isProtectedRoute && path !== '/login') {
-                    const token = localStorage.getItem('auth_token');
+                    const token = safeStorage.getItem('auth_token');
                     if (token) {
-                        localStorage.removeItem('auth_token');
+                        safeStorage.removeItem('auth_token');
                         window.location.href = '/login';
                     }
                 }

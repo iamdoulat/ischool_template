@@ -46,7 +46,7 @@ export const MSWInit = ({ children }: { children?: React.ReactNode }) => {
             console.log('Unregistered mockServiceWorker to enable direct Laravel API calls');
           }
         }
-      });
+      }).catch(() => {});
     }
   }, []);
 

@@ -7,7 +7,15 @@ export function getImageUrl(
 
   let cleanPath = path.replace(/\\/g, '/');
 
-  const defaultDomain = (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"))
+  const isLocalHost = typeof window !== "undefined" && (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname.startsWith("192.168.") ||
+    window.location.hostname.startsWith("10.") ||
+    window.location.hostname.endsWith(".local")
+  );
+
+  const defaultDomain = isLocalHost
     ? `${window.location.protocol}//${window.location.hostname}:8000`
     : "https://api.ischool.mddoulat.com";
 
