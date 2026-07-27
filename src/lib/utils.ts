@@ -67,6 +67,8 @@ export function formatLabel(name: string): string {
         })
         .join(' ')
         .replace(/\bSetting\b/g, 'Settings');
+}
+
 /**
  * Safe LocalStorage wrapper to prevent SecurityError / DOMExceptions
  * on Android Incognito, Private browsing, or restricted WebViews.
