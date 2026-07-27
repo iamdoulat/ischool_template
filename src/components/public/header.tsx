@@ -104,7 +104,7 @@ export function PublicHeader() {
             }
         };
         checkAuth();
-    }, [setUserContext]);
+    }, []);
 
     const getDashboardUrl = () => {
         if (!user) return "/login";

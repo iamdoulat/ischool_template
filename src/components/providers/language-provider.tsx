@@ -85,7 +85,12 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     }, []);
 
     const applyLanguage = useCallback((lang: Language) => {
-        setSelectedLanguageState(lang);
+        setSelectedLanguageState((prev) => {
+            if (prev?.short_code === lang.short_code && prev?.id === lang.id) {
+                return prev;
+            }
+            return lang;
+        });
         fetchTranslations(lang.short_code);
         updateLayoutDirection(lang.is_rtl);
     }, [fetchTranslations]);
@@ -110,12 +115,12 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
             }
         }
 
-        // Default system language lookup
+        // Default system language lookup (admin active language)
         try {
             const res = await api.get("/system-setting/languages/public").catch(() => null);
-            if (res?.data?.success && res.data.data?.length > 0) {
-                const enabled = res.data.data;
-                const active = enabled.find((l: Language) => l.is_active) || enabled.find((l: Language) => l.short_code === 'en') || enabled[0];
+            if (res?.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+                const enabled: Language[] = res.data.data;
+                const active = enabled.find((l: Language) => l.is_active === true || (l.is_active as unknown) === 1 || String(l.is_active) === '1' || String(l.is_active) === 'true') || enabled[0];
                 if (active) {
                     applyLanguage(active);
                 }
@@ -136,7 +141,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     }, [loadLanguageForUser]);
 
     useEffect(() => {
-        // Initial auto-detection of user from profile if token exists
+        // Initial auto-detection of user from profile ONCE on mount
         const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
         if (token) {
             api.get("/profile", { skipGlobalErrorHandler: true })
@@ -145,16 +150,19 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
                         setCurrentUser(res.data.data);
                         loadLanguageForUser(res.data.data);
                     } else {
-                        setUserContext(null);
+                        setCurrentUser(null);
+                        loadLanguageForUser(null);
                     }
                 })
                 .catch(() => {
-                    setUserContext(null);
+                    setCurrentUser(null);
+                    loadLanguageForUser(null);
                 });
         } else {
-            setUserContext(null);
+            setCurrentUser(null);
+            loadLanguageForUser(null);
         }
-    }, [loadLanguageForUser, setUserContext]);
+    }, []);
 
     const setSelectedLanguage = (lang: Language) => {
         applyLanguage(lang);
@@ -167,6 +175,8 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     };
 
     const t = (key: string, params?: Record<string, string | number>): string => {
+        if (!key || typeof key !== "string") return key || "";
+
         // Hardcoded overrides — special display names that differ from key convention
         const overrides: Record<string, string> = {
             send_wa: "Send WA",
@@ -181,42 +191,49 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
         if (overrides[key]) return overrides[key];
 
         const langCode = selectedLanguage?.short_code;
+        const normKey = key.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
-        // Resolve the raw template string from the highest-priority source, then
-        // interpolate once at the end so {paramName} placeholders are always
-        // replaced regardless of which source the string came from.
         let result: string | undefined;
 
-        // 1. API-loaded translations take priority
-        if (translations[key]) {
-            // If the API translation equals the English fallback (i.e. the backend
-            // returned English because it has no real translation for this locale),
-            // skip it and use the locale-specific fallback instead.
-            const engFallback = i18nFallbacks[key];
-            const looksEnglish =
-                langCode &&
-                langCode !== "en" &&
-                engFallback &&
-                translations[key] === engFallback;
+        // Helper to query dictionary by key or normKey
+        const getFromDict = (dict: Record<string, string>) => {
+            if (dict[key] !== undefined) return dict[key];
+            if (normKey && dict[normKey] !== undefined) return dict[normKey];
+            return undefined;
+        };
 
-            if (!looksEnglish) result = translations[key];
+        // 1. Locale-specific fallbacks (Bengali, Arabic, Hindi, etc.) take highest priority when non-English
+        if (langCode && langCode !== "en") {
+            const localeFallbacks = getLocaleFallbacks(langCode);
+            if (localeFallbacks) {
+                const locVal = getFromDict(localeFallbacks);
+                if (locVal !== undefined && locVal !== "") {
+                    result = locVal;
+                }
+            }
         }
 
-        // 2. Locale-specific fallbacks (Bengali, etc.). An intentionally blank
-        //    translation ("") is a valid value, so only skip when the key is
-        //    truly absent — not merely falsy.
-        if (result === undefined && langCode !== "en" && langCode) {
-            const localeFallbacks = getLocaleFallbacks(langCode);
-            if (localeFallbacks && localeFallbacks[key] !== undefined) result = localeFallbacks[key];
+        // 2. API-loaded translations take priority if not resolved by locale fallbacks
+        if (result === undefined) {
+            const apiVal = getFromDict(translations);
+            if (apiVal !== undefined) {
+                const engFallback = i18nFallbacks[key] || (normKey ? i18nFallbacks[normKey] : undefined);
+                const looksEnglish =
+                    langCode &&
+                    langCode !== "en" &&
+                    engFallback &&
+                    apiVal === engFallback;
+
+                if (!looksEnglish) result = apiVal;
+            }
         }
 
         // 3. Built-in English fallbacks
         if (result === undefined) {
-            result = i18nFallbacks[key];
+            result = getFromDict(i18nFallbacks);
         }
 
-        // 4. Ultimate fallback: humanize the key itself (only when truly missing;
-        //    an empty-string translation above is respected as-is).
+        // 4. Ultimate fallback: humanize the key itself
         if (result === undefined) {
             result = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
         }

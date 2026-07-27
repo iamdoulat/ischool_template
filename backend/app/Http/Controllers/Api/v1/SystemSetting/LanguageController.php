@@ -38,7 +38,7 @@ class LanguageController extends Controller
         $languages = Language::where('is_enabled', true)
             ->orderByDesc('is_active')
             ->orderBy('name')
-            ->get(['name', 'short_code', 'country_code', 'is_rtl', 'is_active']);
+            ->get(['id', 'name', 'short_code', 'country_code', 'is_rtl', 'is_active']);
 
         return response()->json([
             'success' => true,

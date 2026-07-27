@@ -395,7 +395,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
 
         fetchProfile();
         fetchAvailableLanguages();
-    }, [setUserContext]);
+    }, []);
 
     const handleLogout = async () => {
         try {
@@ -497,7 +497,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
             <div className="flex items-center justify-end gap-3 md:gap-6 flex-1 min-w-0">
                 <HeaderStudentSearch />
 
-                <div className="flex items-center gap-1 md:gap-2">
+                <div className="hidden md:flex items-center gap-1 md:gap-2">
                     <Button variant="ghost" size="icon" className="hidden sm:flex text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
                         <LayoutGrid className="h-5 w-5" />
                     </Button>
@@ -529,47 +529,9 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                     {mounted && (
                         <ThemeToggle className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl" />
                     )}
-
-                    {mounted && (
-                        <div className="md:hidden">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl bg-muted/30">
-                                        <MoreVertical className="h-5 w-5" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-fit p-2 bg-card/95 backdrop-blur-md border-muted/50 shadow-xl rounded-2xl" align="end" sideOffset={8}>
-                                    <div className="flex flex-row items-center gap-1">
-                                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                                            <LayoutGrid className="h-5 w-5" />
-                                        </Button>
-
-                                        {user && ['Super Admin', 'Admin'].includes(user.role) && (
-                                            <>
-                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                                                    <ArrowLeftRight className="h-5 w-5" />
-                                                </Button>
-                                                <CurrencySwitcher />
-                                            </>
-                                        )}
-
-                                        <LanguageSelector />
-
-                                        <NotificationBell />
-                                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                                            <MessageSquare className="h-5 w-5" />
-                                        </Button>
-                                        {mounted && (
-                                            <ThemeToggle className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl" />
-                                        )}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                    )}
                 </div>
 
-                <div className="h-8 w-[1px] bg-border mx-1" />
+                <div className="hidden md:block h-8 w-[1px] bg-border mx-1" />
 
                 {mounted && (
                     <Popover>
@@ -587,7 +549,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                                 </Avatar>
                             </div>
                         </PopoverTrigger>
-                        <PopoverContent className="w-64 p-2 bg-card/95 backdrop-blur-md border-muted/50 shadow-2xl rounded-2xl" align="end" sideOffset={12}>
+                        <PopoverContent className="w-72 p-2 bg-card/95 backdrop-blur-md border-muted/50 shadow-2xl rounded-2xl" align="end" sideOffset={12}>
                             <div className="p-3 border-b border-muted/50 mb-2">
                                 <p className="text-sm font-bold text-foreground truncate">{user?.name || t("loading")}</p>
                                 <p className="text-[10px] md:text-xs font-medium text-muted-foreground truncate">{user?.email || "..."}</p>
@@ -595,6 +557,22 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                                     {user?.role || t("staff")}
                                 </div>
                             </div>
+
+                            {/* Mobile mode quick action icons inside profile action menu */}
+                            <div className="md:hidden p-2 border-b border-muted/50 mb-2 bg-muted/20 rounded-xl flex items-center justify-between gap-1">
+                                {user && ['Super Admin', 'Admin'].includes(user.role) && (
+                                    <CurrencySwitcher />
+                                )}
+                                <LanguageSelector />
+                                <NotificationBell />
+                                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl">
+                                    <MessageSquare className="h-4 w-4" />
+                                </Button>
+                                {mounted && (
+                                    <ThemeToggle className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl" />
+                                )}
+                            </div>
+
                             <div className="space-y-1">
                                 <Button
                                     variant="ghost"

@@ -42,7 +42,7 @@ export function FinanceChart({ title, data, type }: FinanceChartProps) {
             <CardContent className="pb-0">
                 <div className="h-[320px] min-h-[320px] w-full">
                     {mounted ? (
-                        <ResponsiveContainer width="99.9%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={320}>
                             <ChartComponent data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorCollections" x1="0" y1="0" x2="0" y2="1">

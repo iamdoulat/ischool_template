@@ -58,13 +58,17 @@ api.interceptors.response.use(
         const message = error.response?.data?.message || error.message || 'Something went wrong';
 
         if (error.response?.status === 401) {
-            if (typeof window !== 'undefined') {
-                localStorage.removeItem('auth_token');
-                // Only redirect to /login if the user is on a protected route (/dashboard or /user)
+            const resConfig = error.response?.config as (InternalAxiosRequestConfig & { skipGlobalErrorHandler?: boolean }) | undefined;
+            const isOptedOut = config?.skipGlobalErrorHandler || resConfig?.skipGlobalErrorHandler;
+            if (!isOptedOut && typeof window !== 'undefined') {
                 const path = window.location.pathname;
                 const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/user');
-                if (isProtectedRoute) {
-                    window.location.href = '/login';
+                if (isProtectedRoute && path !== '/login') {
+                    const token = localStorage.getItem('auth_token');
+                    if (token) {
+                        localStorage.removeItem('auth_token');
+                        window.location.href = '/login';
+                    }
                 }
             }
         } else if (error.response?.status !== 422) {
