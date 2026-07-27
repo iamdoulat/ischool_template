@@ -2,10 +2,11 @@ export function getImageUrl(
   path: string | null | undefined,
   baseUrl?: string
 ): string {
-  if (!path) return "";
+  if (!path || typeof path !== 'string') return "";
   if (path.startsWith("data:")) return path;
 
-  let cleanPath = path.replace(/\\/g, '/');
+  let cleanPath = path.replace(/\\/g, '/').trim();
+  if (!cleanPath) return "";
 
   const isLocalHost = typeof window !== "undefined" && (
     window.location.hostname === "localhost" ||
@@ -19,7 +20,7 @@ export function getImageUrl(
     ? `${window.location.protocol}//${window.location.hostname}:8000`
     : "https://api.ischool.mddoulat.com";
 
-  const domain = (
+  let domain = (
     baseUrl ||
     process.env.NEXT_PUBLIC_API_URL ||
     defaultDomain
@@ -27,37 +28,48 @@ export function getImageUrl(
     .replace(/\/+$/, "")
     .replace(/\/api\/v1\/?$/, "");
 
-  // If it's a full URL
-  if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
-    const storageIndex = cleanPath.lastIndexOf("/storage/");
-    const uploadsIndex = cleanPath.lastIndexOf("/uploads/");
-    if (storageIndex !== -1) {
-      cleanPath = cleanPath.substring(storageIndex + 9);
-    } else if (uploadsIndex !== -1) {
-      cleanPath = cleanPath.substring(uploadsIndex + 1);
-    } else if (cleanPath.includes("localhost") || cleanPath.includes("127.0.0.1")) {
-      return cleanPath.replace(/^https?:\/\/[^\/]+/, domain);
-    } else {
-      // External absolute URL (S3, CDN, Unsplash, external domain, etc.)
-      return cleanPath;
-    }
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    domain = domain.replace(/^http:\/\//i, "https://");
   }
 
-  // If it's a frontend static asset path (starts with / and not /storage or /uploads)
+  // Handle absolute URLs
+  if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
+    const storageIdx = cleanPath.lastIndexOf("/storage/");
+    const uploadsIdx = cleanPath.lastIndexOf("/uploads/");
+
+    if (storageIdx !== -1) {
+      const rel = cleanPath.substring(storageIdx + 9).replace(/^\/+/, '');
+      return `${domain}/storage/${rel}`;
+    }
+    if (uploadsIdx !== -1) {
+      const rel = cleanPath.substring(uploadsIdx + 9).replace(/^\/+/, '');
+      return `${domain}/uploads/${rel}`;
+    }
+
+    // External absolute URL (S3, CDN, etc.) - upgrade http to https if window is https
+    if (typeof window !== "undefined" && window.location.protocol === "https:") {
+      return cleanPath.replace(/^http:\/\//i, "https://");
+    }
+    return cleanPath;
+  }
+
+  // Handle frontend static asset paths (e.g. /images/default-avatar.png)
   if (cleanPath.startsWith('/') && !cleanPath.startsWith('/storage') && !cleanPath.startsWith('/uploads')) {
     return cleanPath;
   }
 
-  // Remove redundant storage prefix if present
-  if (cleanPath.startsWith("/storage/")) cleanPath = cleanPath.substring(9);
-  else if (cleanPath.startsWith("storage/")) cleanPath = cleanPath.substring(8);
-  if (cleanPath.startsWith("/")) cleanPath = cleanPath.substring(1);
+  // Strip redundant leading prefixes
+  cleanPath = cleanPath
+    .replace(/^\/?public\//i, '')
+    .replace(/^\/?storage\//i, '');
 
-  let url = `${domain}/storage/${cleanPath}`;
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    url = url.replace(/^http:\/\//i, "https://");
+  if (cleanPath.startsWith('uploads/') || cleanPath.startsWith('/uploads/')) {
+    const rel = cleanPath.replace(/^\/?uploads\//i, '');
+    return `${domain}/uploads/${rel}`;
   }
-  return url;
+
+  cleanPath = cleanPath.replace(/^\/+/, '');
+  return `${domain}/storage/${cleanPath}`;
 }
 
 import { useSettings } from "@/components/providers/settings-provider";

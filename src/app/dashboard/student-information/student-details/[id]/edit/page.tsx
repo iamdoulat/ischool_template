@@ -148,6 +148,7 @@ export default function StudentEditPage() {
     }, [feeGroups, formData.school_class_id]);
 
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [avatarImgError, setAvatarImgError] = useState(false);
     const [fatherPhotoPreview, setFatherPhotoPreview] = useState<string | null>(null);
     const [motherPhotoPreview, setMotherPhotoPreview] = useState<string | null>(null);
     const [guardianPhotoPreview, setGuardianPhotoPreview] = useState<string | null>(null);
@@ -367,17 +368,22 @@ export default function StudentEditPage() {
                 }
             }
 
-            if (student.avatar) {
-                setAvatarPreview(getImageUrl(student.avatar));
+            const studentAvatarPath = student.avatar || student.student_photo || student.photo || student.image;
+            if (studentAvatarPath) {
+                setAvatarPreview(getImageUrl(studentAvatarPath));
+                setAvatarImgError(false);
             }
-            if (student.father_photo) {
-                setFatherPhotoPreview(getImageUrl(student.father_photo));
+            const fatherPhotoPath = student.father_photo || student.father_image || student.father_pic;
+            if (fatherPhotoPath) {
+                setFatherPhotoPreview(getImageUrl(fatherPhotoPath));
             }
-            if (student.mother_photo) {
-                setMotherPhotoPreview(getImageUrl(student.mother_photo));
+            const motherPhotoPath = student.mother_photo || student.mother_image || student.mother_pic;
+            if (motherPhotoPath) {
+                setMotherPhotoPreview(getImageUrl(motherPhotoPath));
             }
-            if (student.guardian_photo) {
-                setGuardianPhotoPreview(getImageUrl(student.guardian_photo));
+            const guardianPhotoPath = student.guardian_photo || student.guardian_image || student.guardian_pic;
+            if (guardianPhotoPath) {
+                setGuardianPhotoPreview(getImageUrl(guardianPhotoPath));
             }
 
             if (student.siblings) {
@@ -611,8 +617,13 @@ export default function StudentEditPage() {
                         <div className="lg:col-span-1 flex flex-col items-center justify-center border-r border-muted/50 pr-6">
                             <div className="relative group">
                                 <div className="h-32 w-32 rounded-lg border-4 border-muted/20 overflow-hidden bg-muted/10">
-                                    {avatarPreview ? (
-                                        <img src={avatarPreview} alt="Preview" className="h-full w-full object-cover" />
+                                    {avatarPreview && !avatarImgError ? (
+                                        <img
+                                            src={avatarPreview}
+                                            alt="Preview"
+                                            className="h-full w-full object-cover"
+                                            onError={() => setAvatarImgError(true)}
+                                        />
                                     ) : (
                                         <UserCircle className="h-full w-full text-muted-foreground/20 p-2" />
                                     )}
