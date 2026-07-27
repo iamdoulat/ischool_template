@@ -10,5 +10,6 @@ class Backup extends Model
         'filename',
         'path',
         'size',
+        'destination',
     ];
 }

@@ -24,7 +24,8 @@ import {
     Cloud,
     Save,
     Clock,
-    Server
+    Server,
+    HardDrive
 } from "lucide-react";
 import {
     Table,
@@ -45,6 +46,7 @@ interface BackupFile {
     filename: string;
     path: string;
     size: string;
+    destination?: string;
     created_at: string;
 }
 
@@ -150,7 +152,10 @@ export default function BackupRestorePage() {
         try {
             setCreatingType(type);
             toast("info", type === "full" ? "Creating full system & uploads backup (.zip)..." : "Creating database backup (.sql)...");
-            const response = await api.post("/system-setting/backups", { type });
+            const response = await api.post("/system-setting/backups", {
+                type,
+                destination: settings.destination
+            });
             if (response.data.status === "Success") {
                 toast("success", type === "full" ? "Full system backup (.zip) created successfully!" : t("backup_created_successfully"));
                 fetchBackups();
@@ -324,6 +329,32 @@ export default function BackupRestorePage() {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const renderDestinationBadge = (dest?: string) => {
+        const d = (dest || "local").toLowerCase();
+        if (d === "s3") {
+            return (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
+                    <Cloud className="h-3 w-3 text-amber-500" />
+                    Amazon S3
+                </span>
+            );
+        }
+        if (d === "gdrive") {
+            return (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                    <Server className="h-3 w-3 text-emerald-500" />
+                    Google Drive
+                </span>
+            );
+        }
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs">
+                <HardDrive className="h-3 w-3 text-slate-500" />
+                Local Storage
+            </span>
+        );
+    };
+
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
             {/* Top Header Card */}
@@ -374,20 +405,21 @@ export default function BackupRestorePage() {
                                     <TableHeader>
                                         <TableRow className="bg-gray-50/50 hover:bg-gray-50/50 border-b border-gray-100">
                                             <TableHead className="h-9 text-[11px] font-semibold text-gray-600 px-4">{t("backup_file")}</TableHead>
+                                            <TableHead className="h-9 text-[11px] font-semibold text-gray-600 px-4">Destination</TableHead>
                                             <TableHead className="h-9 text-[11px] font-semibold text-gray-600 px-4 text-right">{t("action")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {loading ? (
                                             <TableRow>
-                                                <TableCell colSpan={2} className="text-center py-8 text-gray-400">
+                                                <TableCell colSpan={3} className="text-center py-8 text-gray-400">
                                                     <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-indigo-500" />
                                                     <span className="text-[11px]">{t("loading_backup_history")}...</span>
                                                 </TableCell>
                                             </TableRow>
                                         ) : backups.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={2} className="text-center py-8 text-gray-400 text-[11px] uppercase font-bold">
+                                                <TableCell colSpan={3} className="text-center py-8 text-gray-400 text-[11px] uppercase font-bold">
                                                     {t("no_backups_found")}
                                                 </TableCell>
                                             </TableRow>
@@ -421,6 +453,9 @@ export default function BackupRestorePage() {
                                                                     </div>
                                                                 </div>
                                                             </div>
+                                                        </TableCell>
+                                                        <TableCell className="py-2.5 px-4">
+                                                            {renderDestinationBadge(file.destination)}
                                                         </TableCell>
                                                         <TableCell className="py-2.5 px-4 text-right">
                                                             <div className="flex items-center justify-end gap-1.5">

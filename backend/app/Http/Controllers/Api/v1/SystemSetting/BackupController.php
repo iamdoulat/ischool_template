@@ -28,16 +28,17 @@ class BackupController extends Controller
     {
         try {
             $type = $request->input('type', 'db'); // 'db' or 'full'
+            $destination = $request->input('destination', 'local');
 
             if (!Storage::disk('local')->exists('backups')) {
                 Storage::disk('local')->makeDirectory('backups');
             }
 
             if ($type === 'full') {
-                return $this->createFullBackup();
+                return $this->createFullBackup($destination);
             }
 
-            return $this->createDatabaseBackup();
+            return $this->createDatabaseBackup($destination);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Backup execution crashed: " . $e->getMessage() . "\n" . $e->getTraceAsString());
             return response()->json([
@@ -47,7 +48,7 @@ class BackupController extends Controller
         }
     }
 
-    private function createDatabaseBackup()
+    private function createDatabaseBackup($destination = 'local')
     {
         $filename = "db_backup_" . date('Y-m-d_H-i-s') . ".sql";
         $path = "backups/" . $filename;
@@ -89,7 +90,8 @@ class BackupController extends Controller
             $backup = Backup::create([
                 'filename' => $filename,
                 'path' => $path,
-                'size' => $this->formatBytes($size)
+                'size' => $this->formatBytes($size),
+                'destination' => $destination
             ]);
 
             return response()->json([
@@ -109,7 +111,7 @@ class BackupController extends Controller
         ], 500);
     }
 
-    private function createFullBackup()
+    private function createFullBackup($destination = 'local')
     {
         $timestamp = date('Y-m-d_H-i-s');
         $tempSqlFilename = "temp_db_" . $timestamp . ".sql";
@@ -182,7 +184,8 @@ class BackupController extends Controller
             $backup = Backup::create([
                 'filename' => $zipFilename,
                 'path' => $zipRelativePath,
-                'size' => $this->formatBytes($size)
+                'size' => $this->formatBytes($size),
+                'destination' => $destination
             ]);
 
             return response()->json([
@@ -373,7 +376,8 @@ class BackupController extends Controller
         $backup = Backup::create([
             'filename' => $filename,
             'path' => $path,
-            'size' => $this->formatBytes($file->getSize())
+            'size' => $this->formatBytes($file->getSize()),
+            'destination' => 'local'
         ]);
 
         return response()->json([
@@ -446,13 +450,14 @@ class BackupController extends Controller
         }
 
         $type = $settings['backup_type'] ?? 'db';
+        $destination = $settings['destination'] ?? 'local';
 
-        // Trigger backup creation
-        $req = new Request(['type' => $type]);
+        // Trigger backup creation with configured destination
+        $req = new Request(['type' => $type, 'destination' => $destination]);
         $response = $this->store($req);
 
         // Upload to cloud destination if S3 or GDrive configured
-        if ($settings['destination'] === 's3' && !empty($settings['aws_bucket']) && !empty($settings['aws_access_key_id'])) {
+        if ($destination === 's3' && !empty($settings['aws_bucket']) && !empty($settings['aws_access_key_id'])) {
             \Illuminate\Support\Facades\Log::info("Scheduled backup uploaded to AWS S3 Bucket: " . $settings['aws_bucket']);
         }
 
