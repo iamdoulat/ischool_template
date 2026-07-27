@@ -109,7 +109,7 @@ class BackupController extends Controller
         $path = Storage::disk('local')->path($backup->path);
 
         if (file_exists($path)) {
-            return response()->download($path);
+            return response()->download($path, $backup->filename);
         }
 
         return response()->json([

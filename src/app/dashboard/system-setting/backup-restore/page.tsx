@@ -161,9 +161,40 @@ export default function BackupRestorePage() {
         }
     };
 
-    const handleDownload = (id: number) => {
-        const url = `${apiRoot}/system-setting/backups/${id}/download`;
-        window.open(url, '_blank');
+    const [downloadingId, setDownloadingId] = useState<number | null>(null);
+
+    const handleDownload = async (id: number, filename?: string) => {
+        try {
+            setDownloadingId(id);
+            const response = await api.get(`/system-setting/backups/${id}/download`, {
+                responseType: "blob"
+            });
+
+            let downloadName = filename || `backup_${id}.sql`;
+            const disposition = response.headers["content-disposition"];
+            if (disposition && disposition.includes("filename=")) {
+                const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (match && match[1]) {
+                    downloadName = match[1].replace(/['"]/g, "");
+                }
+            }
+
+            const blob = new Blob([response.data], { type: response.headers["content-type"] || "application/octet-stream" });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.setAttribute("download", downloadName);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            toast("success", t("backup_downloaded_successfully"));
+        } catch (error) {
+            console.error("Failed to download backup", error);
+            toast("error", t("failed_to_download_backup"));
+        } finally {
+            setDownloadingId(null);
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -320,19 +351,23 @@ export default function BackupRestorePage() {
                                             <TableRow key={file.id} className="border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group">
                                                 <TableCell className="py-2 px-4">
                                                     <div className="flex flex-col">
-                                                        <span className="text-[11px] font-medium text-blue-500 hover:text-blue-600 hover:underline cursor-pointer transition-colors">
-                                                            {file.filename}
-                                                        </span>
+                                                         <span
+                                                             onClick={() => handleDownload(file.id, file.filename)}
+                                                             className="text-[11px] font-medium text-blue-500 hover:text-blue-600 hover:underline cursor-pointer transition-colors"
+                                                         >
+                                                             {file.filename}
+                                                         </span>
                                                         <span className="text-[9px] text-gray-400 font-mono">{file.size} • {new Date(file.created_at).toLocaleString()}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="py-2 px-4 text-right">
                                                     <div className="flex items-center justify-end gap-1.5 opacity-90 hover:opacity-100">
                                                         <Button
-                                                            onClick={() => handleDownload(file.id)}
+                                                            onClick={() => handleDownload(file.id, file.filename)}
+                                                            disabled={downloadingId === file.id}
                                                             className="h-6 px-2 rounded bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white shadow-sm transition-all text-[9px] font-semibold uppercase gap-1 border-none"
                                                         >
-                                                            <Download className="h-2.5 w-2.5" />
+                                                            {downloadingId === file.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Download className="h-2.5 w-2.5" />}
                                                             {t("download")}
                                                         </Button>
                                                         <Button
