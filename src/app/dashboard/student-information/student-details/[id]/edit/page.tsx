@@ -554,6 +554,10 @@ export default function StudentEditPage() {
                 } else if (Array.isArray(value)) {
                     value.forEach(v => data.append(`${key}[]`, v));
                 } else if (value !== null && value !== undefined && value !== "") {
+                    // Prevent sending existing path strings for photo fields which fail Laravel's 'image' validation rule
+                    if (['avatar', 'father_photo', 'mother_photo', 'guardian_photo'].includes(key) && typeof value === 'string') {
+                        return;
+                    }
                     if (key === 'active') {
                         data.append(key, value ? '1' : '0');
                     } else {
