@@ -62,7 +62,7 @@ class BackupController extends Controller
         $passwordStr = empty($dbPass) ? '' : '--password=' . escapeshellarg($dbPass);
 
         $command = sprintf(
-            'mysqldump --user=%s %s --host=%s --port=%s --ssl=0 %s > %s 2>&1',
+            'mysqldump --user=%s %s --host=%s --port=%s %s > %s 2>&1',
             escapeshellarg($dbUser),
             $passwordStr,
             escapeshellarg($dbHost),
@@ -123,7 +123,7 @@ class BackupController extends Controller
         $passwordStr = empty($dbPass) ? '' : '--password=' . escapeshellarg($dbPass);
 
         $command = sprintf(
-            'mysqldump --user=%s %s --host=%s --port=%s --ssl=0 %s > %s 2>&1',
+            'mysqldump --user=%s %s --host=%s --port=%s %s > %s 2>&1',
             escapeshellarg($dbUser),
             $passwordStr,
             escapeshellarg($dbHost),
