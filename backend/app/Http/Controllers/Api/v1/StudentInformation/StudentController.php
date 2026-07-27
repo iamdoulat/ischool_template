@@ -157,9 +157,13 @@ class StudentController extends BaseController
             'room_id' => 'nullable|exists:rooms,id',
         ]);
 
-        // Handle File Uploads
+        // Handle File Uploads & Base64 Photos
         $photoFields = ['avatar' => 'avatars', 'father_photo' => 'parents', 'mother_photo' => 'parents', 'guardian_photo' => 'guardians'];
         foreach ($photoFields as $field => $folder) {
+            if (!Storage::disk('public')->exists($folder)) {
+                Storage::disk('public')->makeDirectory($folder);
+            }
+
             if ($request->hasFile($field)) {
                 if ($student->$field) {
                     Storage::disk('public')->delete($student->$field);
@@ -168,6 +172,25 @@ class StudentController extends BaseController
                 $filename = Str::random(40) . '.' . $file->getClientOriginalExtension();
                 $path = $file->storeAs($folder, $filename, 'public');
                 $validated[$field] = $path;
+            } elseif ($request->filled($field) && is_string($request->input($field)) && (Str::startsWith($request->input($field), 'data:image/') || strlen($request->input($field)) > 200)) {
+                $dataUrl = $request->input($field);
+                if (Str::startsWith($dataUrl, 'data:image/')) {
+                    if ($student->$field) {
+                        Storage::disk('public')->delete($student->$field);
+                    }
+                    @list($type, $data) = explode(';', $dataUrl);
+                    @list(, $data) = explode(',', $data);
+                    if ($data) {
+                        $decodedData = base64_decode($data);
+                        preg_match('/data:image\/(.*?);/', $dataUrl, $matches);
+                        $ext = $matches[1] ?? 'jpg';
+                        if ($ext === 'jpeg') $ext = 'jpg';
+                        $filename = Str::random(40) . '.' . $ext;
+                        $path = $folder . '/' . $filename;
+                        Storage::disk('public')->put($path, $decodedData);
+                        $validated[$field] = $path;
+                    }
+                }
             }
         }
 
@@ -535,14 +558,32 @@ class StudentController extends BaseController
             'room_id' => 'nullable|exists:rooms,id',
         ]);
 
-        // Handle File Uploads
+        // Handle File Uploads & Base64 Photos
         $photoFields = ['avatar' => 'avatars', 'father_photo' => 'parents', 'mother_photo' => 'parents', 'guardian_photo' => 'guardians'];
         foreach ($photoFields as $field => $folder) {
+            if (!Storage::disk('public')->exists($folder)) {
+                Storage::disk('public')->makeDirectory($folder);
+            }
+
             if ($request->hasFile($field)) {
                 $file = $request->file($field);
                 $filename = Str::random(40) . '.' . $file->getClientOriginalExtension();
                 $path = $file->storeAs($folder, $filename, 'public');
                 $validated[$field] = $path;
+            } elseif ($request->filled($field) && is_string($request->input($field)) && Str::startsWith($request->input($field), 'data:image/')) {
+                $dataUrl = $request->input($field);
+                @list($type, $data) = explode(';', $dataUrl);
+                @list(, $data) = explode(',', $data);
+                if ($data) {
+                    $decodedData = base64_decode($data);
+                    preg_match('/data:image\/(.*?);/', $dataUrl, $matches);
+                    $ext = $matches[1] ?? 'jpg';
+                    if ($ext === 'jpeg') $ext = 'jpg';
+                    $filename = Str::random(40) . '.' . $ext;
+                    $path = $folder . '/' . $filename;
+                    Storage::disk('public')->put($path, $decodedData);
+                    $validated[$field] = $path;
+                }
             }
         }
 
