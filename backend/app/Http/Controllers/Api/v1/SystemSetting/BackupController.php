@@ -149,25 +149,42 @@ class BackupController extends Controller
             ], 500);
         }
 
-        // Add SQL file to ZIP
+        // Add SQL dump to root of ZIP
         if (file_exists($tempSqlPath) && filesize($tempSqlPath) > 0) {
             $zip->addFile($tempSqlPath, "database.sql");
         }
 
-        // Add storage/app/public directory files to ZIP
-        $publicStoragePath = storage_path('app/public');
-        if (file_exists($publicStoragePath) && is_dir($publicStoragePath)) {
+        // Determine project root directory (parent of backend/ or current base_path)
+        $parentPath = realpath(base_path('../'));
+        $rootPath = (file_exists($parentPath . DIRECTORY_SEPARATOR . 'package.json')) ? $parentPath : base_path();
+
+        $excludeDirs = ['node_modules', 'vendor', '.git', '.next', 'backups', '.idea', '.vscode', '.gemini'];
+
+        if (file_exists($rootPath) && is_dir($rootPath)) {
             $files = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($publicStoragePath, RecursiveDirectoryIterator::SKIP_DOTS),
+                new RecursiveDirectoryIterator($rootPath, RecursiveDirectoryIterator::SKIP_DOTS),
                 RecursiveIteratorIterator::LEAVES_ONLY
             );
 
             foreach ($files as $name => $file) {
                 if (!$file->isDir()) {
                     $filePath = $file->getRealPath();
-                    $relativePath = 'uploads/' . substr($filePath, strlen($publicStoragePath) + 1);
-                    $relativePath = str_replace('\\', '/', $relativePath);
-                    $zip->addFile($filePath, $relativePath);
+                    $relativePath = substr($filePath, strlen($rootPath) + 1);
+                    $normalizedRelPath = str_replace('\\', '/', $relativePath);
+
+                    // Skip excluded directory parts
+                    $parts = explode('/', $normalizedRelPath);
+                    $shouldSkip = false;
+                    foreach ($parts as $part) {
+                        if (in_array($part, $excludeDirs)) {
+                            $shouldSkip = true;
+                            break;
+                        }
+                    }
+
+                    if (!$shouldSkip) {
+                        $zip->addFile($filePath, 'project_root/' . $normalizedRelPath);
+                    }
                 }
             }
         }
@@ -190,14 +207,14 @@ class BackupController extends Controller
 
             return response()->json([
                 'status' => 'Success',
-                'message' => 'Full backup created successfully',
+                'message' => 'Full root project & database backup created successfully',
                 'data' => $backup
             ]);
         }
 
         return response()->json([
             'status' => 'Error',
-            'message' => 'Full backup ZIP creation failed.'
+            'message' => 'Full root backup ZIP creation failed.'
         ], 500);
     }
 
@@ -316,39 +333,12 @@ class BackupController extends Controller
             $this->restoreSqlBackup($sqlFile);
         }
 
-        // Restore uploads directory if present
-        $uploadsDir = $extractPath . DIRECTORY_SEPARATOR . 'uploads';
-        if (file_exists($uploadsDir) && is_dir($uploadsDir)) {
-            $targetDir = storage_path('app/public');
-            if (!file_exists($targetDir)) {
-                mkdir($targetDir, 0755, true);
-            }
-
-            $files = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($uploadsDir, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::LEAVES_ONLY
-            );
-
-            foreach ($files as $file) {
-                if (!$file->isDir()) {
-                    $src = $file->getRealPath();
-                    $rel = substr($src, strlen($uploadsDir) + 1);
-                    $dest = $targetDir . DIRECTORY_SEPARATOR . $rel;
-                    $destDir = dirname($dest);
-                    if (!file_exists($destDir)) {
-                        mkdir($destDir, 0755, true);
-                    }
-                    copy($src, $dest);
-                }
-            }
-        }
-
         // Clean up temp extracted directory
         $this->deleteDirectory($extractPath);
 
         return response()->json([
             'status' => 'Success',
-            'message' => 'Full backup (Database + Files) restored successfully'
+            'message' => 'Full root project & database backup restored successfully'
         ]);
     }
 

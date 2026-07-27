@@ -521,7 +521,7 @@ export default function BackupRestorePage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="db">Database Only (.sql)</SelectItem>
-                                        <SelectItem value="full">Full System (Database + Uploads .zip)</SelectItem>
+                                        <SelectItem value="full">Full System (Database + Complete Project Root .zip)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
