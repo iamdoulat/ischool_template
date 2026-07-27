@@ -305,8 +305,8 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
     };
 
     return (
-        <header className="h-14 min-h-[56px] border-b bg-card/80 backdrop-blur-xl pl-2 pr-4 md:pr-8 flex items-center justify-between sticky top-0 z-30 transition-all duration-300">
-            <div className="flex items-center gap-4">
+        <header className="h-14 min-h-[56px] border-b bg-card/80 backdrop-blur-xl pl-2 pr-4 md:pr-8 flex items-center justify-between gap-4 sticky top-0 z-30 transition-all duration-300">
+            <div className="flex items-center gap-4 min-w-0 shrink-0">
                 <div className="relative group">
                     <div className="absolute -inset-1 bg-gradient-to-r from-primary/40 to-indigo-500/40 rounded-xl blur opacity-25 group-hover:opacity-100 transition duration-300 animate-pulse" />
                     <Button
@@ -330,12 +330,12 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                 </div>
             </div>
 
-            <div className="flex items-center gap-4 md:gap-6">
-                <div className="hidden lg:flex items-center relative max-w-sm group">
-                    <Search className="absolute left-4 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <div className="flex items-center justify-end gap-3 md:gap-6 flex-1 min-w-0">
+                <div className="hidden lg:flex items-center relative w-1/2 max-w-[50%] ml-auto group">
+                    <Search className="absolute left-4 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
                     <Input
                         placeholder={t("search_student")}
-                        className="pl-11 h-10 w-[320px] bg-muted/30 border-muted/50 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all rounded-2xl shadow-sm group-hover:bg-muted/50"
+                        className="pl-11 h-10 w-full bg-muted/30 border-muted/50 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all rounded-2xl shadow-sm group-hover:bg-muted/50"
                     />
                 </div>
 

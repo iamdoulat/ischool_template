@@ -68,6 +68,8 @@ export default function SystemUpdatePage() {
     const [updateProgress, setUpdateProgress] = useState<number>(0);
     const [currentStep, setCurrentStep] = useState<string>("");
     const [executionLogs, setExecutionLogs] = useState<string[]>([]);
+    const [updatedFilesList, setUpdatedFilesList] = useState<Array<{ name: string; path: string; extension?: string; size?: number }>>([]);
+    const [migrationsRunList, setMigrationsRunList] = useState<string[]>([]);
     const [updateSuccessVersion, setUpdateSuccessVersion] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -152,6 +154,8 @@ export default function SystemUpdatePage() {
 
         setUpdating(true);
         setUpdateSuccessVersion(null);
+        setUpdatedFilesList([]);
+        setMigrationsRunList([]);
         setUpdateProgress(15);
         setCurrentStep("Uploading update.zip package...");
         setExecutionLogs(["[Start] Preparing update.zip package for installation..."]);
@@ -180,6 +184,13 @@ export default function SystemUpdatePage() {
                     setExecutionLogs(resData.logs);
                 } else {
                     setExecutionLogs(prev => [...prev, `[Success] System updated to version ${newVer}`]);
+                }
+
+                if (resData.updated_files && Array.isArray(resData.updated_files)) {
+                    setUpdatedFilesList(resData.updated_files);
+                }
+                if (resData.migrations_run && Array.isArray(resData.migrations_run)) {
+                    setMigrationsRunList(resData.migrations_run);
                 }
 
                 setCurrentVersion(newVer);
@@ -216,6 +227,8 @@ export default function SystemUpdatePage() {
     const handleInstallRemote = async (downloadUrl: string) => {
         setUpdating(true);
         setUpdateSuccessVersion(null);
+        setUpdatedFilesList([]);
+        setMigrationsRunList([]);
         setUpdateProgress(20);
         setCurrentStep("Downloading update package from remote server...");
         setExecutionLogs(["[Start] Initiating remote package download..."]);
@@ -236,6 +249,13 @@ export default function SystemUpdatePage() {
 
                 if (resData.logs && Array.isArray(resData.logs)) {
                     setExecutionLogs(resData.logs);
+                }
+
+                if (resData.updated_files && Array.isArray(resData.updated_files)) {
+                    setUpdatedFilesList(resData.updated_files);
+                }
+                if (resData.migrations_run && Array.isArray(resData.migrations_run)) {
+                    setMigrationsRunList(resData.migrations_run);
                 }
 
                 setCurrentVersion(newVer);
@@ -544,6 +564,71 @@ export default function SystemUpdatePage() {
                         )}
                     </div>
 
+                    {/* Standalone Updated Files & Database Summary */}
+                    {updatedFilesList.length > 0 && (
+                        <div className="border border-emerald-200 bg-emerald-50/40 rounded-xl p-5 space-y-4 shadow-sm">
+                            <div className="flex items-center justify-between border-b border-emerald-200/80 pb-3">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-2 bg-emerald-500 text-white rounded-lg shadow-sm">
+                                        <CheckCircle2 className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-emerald-950">
+                                            Updated Files & Database Summary
+                                        </h3>
+                                        <p className="text-xs text-emerald-700">
+                                            {updatedFilesList.length} standalone file{updatedFilesList.length > 1 ? 's' : ''} updated cleanly across backend & migrations.
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-full uppercase tracking-wider">
+                                    {updatedFilesList.length} Files Modified
+                                </span>
+                            </div>
+
+                            {/* Standalone Files Grid Badges */}
+                            <div className="space-y-2">
+                                <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider block">
+                                    Standalone Updated Files:
+                                </span>
+                                <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
+                                    {updatedFilesList.map((fileItem, idx) => (
+                                        <div
+                                            key={idx}
+                                            title={`File Path: ${fileItem.path}`}
+                                            className="group relative flex items-center gap-2 bg-white border border-emerald-200 hover:border-emerald-400 px-3 py-1.5 rounded-lg shadow-xs transition-all hover:shadow-md cursor-pointer"
+                                        >
+                                            <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                            <span className="text-xs font-bold text-gray-800 group-hover:text-emerald-700 transition-colors">
+                                                {fileItem.name}
+                                            </span>
+                                            <span className="text-[10px] font-mono text-gray-400 border-l border-gray-200 pl-2 max-w-[180px] truncate">
+                                                {fileItem.path}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Executed Migrations List */}
+                            {migrationsRunList.length > 0 && (
+                                <div className="pt-2 border-t border-emerald-200/80 space-y-2">
+                                    <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider block">
+                                        Database Migrations Executed:
+                                    </span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {migrationsRunList.map((mig, idx) => (
+                                            <span key={idx} className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-900 text-xs font-mono font-semibold rounded-md border border-emerald-300">
+                                                <Database className="h-3 w-3 text-emerald-600" />
+                                                {mig}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Real-time Update Progress & Terminal Logs */}
                     {(updating || executionLogs.length > 0) && (
                         <div className="border border-slate-800 bg-slate-950 text-slate-100 rounded-xl p-5 shadow-lg space-y-4 font-mono text-xs">
@@ -568,20 +653,34 @@ export default function SystemUpdatePage() {
                             )}
 
                             <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-4 max-h-56 overflow-y-auto space-y-1.5 text-[11px] leading-relaxed text-slate-300">
-                                {executionLogs.map((log, idx) => (
-                                    <div key={idx} className="flex items-start gap-2">
-                                        <span className="text-slate-600 select-none">&gt;</span>
-                                        <span className={cn(
-                                            log.includes("Error") || log.includes("failed") || log.includes("Warning")
-                                                ? "text-red-400 font-semibold"
-                                                : log.includes("Success") || log.includes("Updated") || log.includes("completed")
-                                                    ? "text-emerald-400 font-semibold"
-                                                    : "text-slate-300"
-                                        )}>
-                                            {log}
-                                        </span>
-                                    </div>
-                                ))}
+                                {executionLogs.map((log, idx) => {
+                                    // Parse "Updated file: StandaloneName [path]"
+                                    const match = log.match(/^Updated file:\s*([^\s\[]+)\s*\[(.*)\]$/);
+                                    if (match) {
+                                        return (
+                                            <div key={idx} className="flex items-start gap-2">
+                                                <span className="text-slate-600 select-none">&gt;</span>
+                                                <span className="text-emerald-400 font-semibold">
+                                                    Updated file: <strong className="text-emerald-200 font-bold bg-emerald-950/80 px-1 py-0.5 rounded border border-emerald-800/60">{match[1]}</strong> <span className="text-slate-400 text-[10px] font-mono ml-1">({match[2]})</span>
+                                                </span>
+                                            </div>
+                                        );
+                                    }
+                                    return (
+                                        <div key={idx} className="flex items-start gap-2">
+                                            <span className="text-slate-600 select-none">&gt;</span>
+                                            <span className={cn(
+                                                log.includes("Error") || log.includes("failed") || log.includes("Warning")
+                                                    ? "text-red-400 font-semibold"
+                                                    : log.includes("Success") || log.includes("Updated") || log.includes("completed")
+                                                        ? "text-emerald-400 font-semibold"
+                                                        : "text-slate-300"
+                                            )}>
+                                                {log}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}

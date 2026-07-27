@@ -396,6 +396,9 @@ export default function SidebarMenuPage() {
 
             if (response.data.success) {
                 toast("success", t("updated_successfully"));
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(new Event("sidebar-menu-updated"));
+                }
             }
         } catch (error) {
             console.error("Error updating sidebar menus:", error);

@@ -671,6 +671,14 @@ export function Sidebar({
 
         fetchSessions();
         fetchSidebarConfig();
+
+        const handleUpdate = () => {
+            fetchSidebarConfig();
+        };
+        window.addEventListener("sidebar-menu-updated", handleUpdate);
+        return () => {
+            window.removeEventListener("sidebar-menu-updated", handleUpdate);
+        };
     }, []);
 
     // Process menu items based on backend config

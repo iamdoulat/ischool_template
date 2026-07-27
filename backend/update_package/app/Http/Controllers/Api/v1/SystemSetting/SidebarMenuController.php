@@ -352,7 +352,7 @@ class SidebarMenuController extends Controller
                         }
                     }
                 }
-                $menu->is_visible = $hasAccess;
+                $menu->is_visible = (bool) $menu->is_visible && $hasAccess;
                 return $menu;
             });
 
@@ -377,7 +377,7 @@ class SidebarMenuController extends Controller
         return $menus->map(function ($menu) {
             $submenus = $this->moduleSubmenus[$menu->name] ?? null;
             if ($submenus === null) return $menu;
-            $menu->is_visible = true;
+            $menu->is_visible = (bool) $menu->is_visible;
             $menu->visible_submenus = $submenus;
             if ($menu->submenu_order && is_array($menu->submenu_order)) {
                 $missing = array_diff($submenus, $menu->submenu_order);

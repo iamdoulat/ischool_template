@@ -236,6 +236,7 @@ class SystemUpdateService
 
         $logs = [];
         $filesUpdated = 0;
+        $updatedFiles = [];
 
         // Copy/Replace files from package to backend
         // Source folders can be 'backend', 'app', 'database', 'routes', 'config', etc.
@@ -267,7 +268,16 @@ class SystemUpdateService
 
             File::copy($file->getPathname(), $destinationFile);
             $filesUpdated++;
-            $logs[] = "Updated file: " . $normalizedRelative;
+
+            $standaloneName = basename($normalizedRelative);
+            $updatedFiles[] = [
+                'name' => $standaloneName,
+                'path' => $normalizedRelative,
+                'extension' => $file->getExtension(),
+                'size' => $file->getSize(),
+            ];
+
+            $logs[] = "Updated file: " . $standaloneName . " [" . $normalizedRelative . "]";
         }
 
         // Run custom PHP update script if present
@@ -287,10 +297,19 @@ class SystemUpdateService
         }
 
         // Execute Database Migrations
+        $migrationsRun = [];
         try {
             Artisan::call('migrate', ['--force' => true]);
             $migrationOutput = Artisan::output();
-            $logs[] = "Database migrations executed: " . trim($migrationOutput);
+            
+            if (!empty($migrationOutput)) {
+                preg_match_all('/(?:Running|Migrating|Migrated):\s*([0-9_a-zA-Z]+)/i', $migrationOutput, $matches);
+                if (!empty($matches[1])) {
+                    $migrationsRun = array_values(array_unique($matches[1]));
+                }
+            }
+
+            $logs[] = "Database migrations executed: " . (count($migrationsRun) > 0 ? implode(', ', $migrationsRun) : 'Schema is up to date.');
         } catch (\Throwable $e) {
             Log::error("Migration failed during system update: " . $e->getMessage());
             $logs[] = "Migration Error: " . $e->getMessage();
@@ -329,6 +348,8 @@ class SystemUpdateService
             'success' => true,
             'version' => $newVersion,
             'files_updated' => $filesUpdated,
+            'updated_files' => $updatedFiles,
+            'migrations_run' => $migrationsRun,
             'message' => 'System successfully updated to version ' . $newVersion,
             'logs' => $logs
         ];
